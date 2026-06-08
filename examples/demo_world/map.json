@@ -1,0 +1,12 @@
+{
+  "regions": [
+    { "name": "Aldermoor", "level": "continent" },
+    { "name": "Greenvale", "level": "province", "parent": "Aldermoor" },
+    { "name": "Frostreach", "level": "province", "parent": "Aldermoor" },
+    { "name": "Riverton", "level": "town", "parent": "Greenvale" },
+    { "name": "Highcrag", "level": "town", "parent": "Frostreach" }
+  ],
+  "connections": [
+    { "from": "Riverton", "to": "Highcrag", "kind": "blocked" }
+  ]
+}

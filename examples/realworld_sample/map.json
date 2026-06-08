@@ -1,0 +1,12 @@
+{
+  "regions": [
+    { "name": "Highlands", "level": "province", "attributes": { "terrain": "mountain" } },
+    { "name": "Sun Basin", "level": "province", "attributes": { "terrain": "basin" } },
+    { "name": "River Vale", "level": "province", "attributes": { "terrain": "river" } },
+    { "name": "Port Coast", "level": "province", "attributes": { "terrain": "coast" } }
+  ],
+  "connections": [
+    { "from": "Highlands", "to": "Sun Basin", "kind": "blocked" },
+    { "from": "River Vale", "to": "Port Coast", "kind": "route" }
+  ]
+}

@@ -1,0 +1,6 @@
+Real-world geography priors:
+- A mountain range between two regions slows travel and the exchange of news; cultures on either side diverge.
+- A basin (low land ringed by higher terrain) traps heat and tends to be hot and arid, like Death Valley.
+- Rivers enable trade and tend to concentrate settlements along their banks.
+- Coastal regions trade by sea and share goods and rumors with distant ports.
+- Deserts isolate the regions they separate; crossing is slow and dangerous.

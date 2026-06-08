@@ -52,10 +52,21 @@ export function App() {
       />
       {error && <div style={{ color: "#c0392b", padding: 8 }}>{error}</div>}
       {busy && <div style={{ padding: 8, color: "#888" }} data-testid="busy">working…</div>}
-      {!busy && (!data || data.regions.length === 0) && (
+      {!busy && data && data.regions.length === 0 && (
+        <div data-testid="empty-hint" style={{ padding: 8, color: "#b9770e" }}>
+          World <b>{worldId}</b> has <b>0 regions</b> — build it first (button above or
+          <code> locus build-world --world {worldId} --demo</code>), then Load. Check the world id matches.
+        </div>
+      )}
+      {!busy && !data && (
         <div data-testid="empty-hint" style={{ padding: 8, color: "#888" }}>
-          No world loaded. Click <b>Build World (demo)</b> to generate one, or{" "}
-          <b>Load</b> if it already exists (CLI: <code>locus build-world --world {worldId} --demo</code>).
+          No world loaded. Click <b>Build World (demo)</b> or <b>Load</b>.
+        </div>
+      )}
+      {data && (
+        <div data-testid="graph-status" style={{ padding: "0 8px 8px", fontSize: 12, color: "#666" }}>
+          world <b>{data.world_id}</b> · regions {data.regions.length} · connections{" "}
+          {data.connections.length} · knowledge {data.knowledge.length}
         </div>
       )}
       <div style={{ display: "flex", gap: 16, padding: 12 }}>

@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 interface Props {
   worldId: string;
   onWorldIdChange: (v: string) => void;
@@ -19,16 +17,15 @@ export function Toolbar({
   onPickMap,
   busy,
 }: Props) {
-  const [pending, setPending] = useState(worldId);
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center", padding: 8, borderBottom: "1px solid #ddd" }}>
       <strong>Locus</strong>
       <input
         data-testid="world-input"
-        value={pending}
+        value={worldId}
         placeholder="world id"
-        onChange={(e) => setPending(e.target.value)}
-        onBlur={() => onWorldIdChange(pending)}
+        // keep parent state in sync on every keystroke (avoids stale worldId on Load)
+        onChange={(e) => onWorldIdChange(e.target.value)}
       />
       <button data-testid="load-btn" onClick={onLoad} disabled={busy}>
         Load

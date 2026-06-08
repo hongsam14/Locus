@@ -26,11 +26,13 @@ export const api = {
   // authoring
   exportWorld: (worldId: string) =>
     http<WorldExport>(`/api/authoring/worlds/${encodeURIComponent(worldId)}/export`),
-  buildWorldDemo: (worldId: string) =>
-    http(`/api/authoring/worlds/${encodeURIComponent(worldId)}/build`, {
-      method: "POST",
-      body: JSON.stringify({ memos: [], structured_maps: [] }),
-    }),
+  // Builds the bundled demo world server-side. with_map=false keeps it fast
+  // (structured map + memo, no VLM); pass with_map=true to also run the VLM.
+  buildWorldDemo: (worldId: string, withMap = false) =>
+    http(
+      `/api/authoring/worlds/${encodeURIComponent(worldId)}/build/demo?with_map=${withMap}`,
+      { method: "POST" },
+    ),
   buildWiki: () => http(`/api/authoring/wiki/build`, { method: "POST", body: "null" }),
   upsertRegion: (worldId: string, region: Region) =>
     http<Region>(

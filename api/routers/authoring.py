@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 
 from locus.augmentation.types import AugmentationAnswer, AugmentationSession, ChangeSet
 from locus.commonsense_wiki import load_bundled_realworld
+from locus.demo import load_demo_world
 from locus.ingestion.service import WorldInputs
 from locus.models import (
     BuildReport,
@@ -29,6 +30,14 @@ def _svc(request: Request, name: str):
 @router.post("/worlds/{world_id}/build", response_model=BuildReport)
 def build_world(world_id: str, inputs: WorldInputs, request: Request) -> BuildReport:
     return _svc(request, "orchestrator").build_world(world_id, inputs)
+
+
+@router.post("/worlds/{world_id}/build/demo", response_model=BuildReport)
+def build_demo_world(world_id: str, request: Request, with_map: bool = True) -> BuildReport:
+    """Build the bundled demo world (memo + structured map [+ map image for VLM])."""
+    return _svc(request, "orchestrator").build_world(
+        world_id, load_demo_world(include_map=with_map)
+    )
 
 
 @router.post("/wiki/build", response_model=WikiBuildReport)

@@ -1,0 +1,8 @@
+# Dev dependencies (canonical source is pyproject.toml [project.optional-dependencies].dev).
+-r requirements.txt
+pytest>=8.0.0
+pytest-cov>=4.1.0
+hypothesis>=6.90.0
+black>=24.0.0
+ruff>=0.3.0
+mypy>=1.8.0

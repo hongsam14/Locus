@@ -1,0 +1,13 @@
+# Runtime dependencies (canonical source is pyproject.toml [project.dependencies]).
+# Provided for convenience; prefer `pip install -e .`.
+pydantic>=2.0,<3
+pydantic-settings>=2.0,<3
+neo4j>=5.0.0,<6
+opensearch-py>=2.0.0,<3
+langchain>=0.1.0
+langchain-openai>=0.0.5
+langgraph>=0.0.30
+openai>=1.0.0
+tenacity>=8.0.0
+fastapi>=0.110.0
+uvicorn>=0.27.0

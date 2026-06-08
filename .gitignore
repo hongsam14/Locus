@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+
+# Env / secrets
+.env
+
+# Data volumes (docker bind mounts)
+data/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Claude Code local settings (machine-specific)
+.claude/

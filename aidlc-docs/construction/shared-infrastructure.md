@@ -21,6 +21,7 @@ U1 Foundation에서 정의된 인프라는 모든 Unit이 공유한다. 이후 U
 - **프로파일**: 기본=인프라(neo4j/opensearch); `service`=app(uvicorn)+web(nginx); `tools`=OpenSearch Dashboards.
 - **볼륨**: 바인드마운트 `./data/{neo4j/data, neo4j/logs, opensearch}` (호스트 영속·검사). `./scripts/setup-volumes.sh`로 생성.
 - **버전 핀**: `neo4j:5.15-community`, `opensearchproject/opensearch:2.13.0`.
+- **Neo4j APOC**: `NEO4J_PLUGINS=["apoc"]`(부팅 시 자동 다운로드) + apoc export/import 허용 + `dbms_security_procedures_unrestricted=apoc.*`. import/plugins 바인드마운트(`./data/neo4j/{import,plugins}`). (MVP 코드는 plain Cypher만 사용 — APOC는 향후 export/import·고급 절차용 사전 탑재.)
 - **app**: `init-schema` 후 `uvicorn api.main:app` 실행, `/health` 헬스체크, `OPENAI_API_KEY` 필요.
 - **web**: `web/Dockerfile`(node build → nginx) + `/api` 프록시 → app:8000.
 

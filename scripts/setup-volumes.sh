@@ -6,18 +6,22 @@ echo "Setting up Locus data directories..."
 
 mkdir -p data/neo4j/data
 mkdir -p data/neo4j/logs
+mkdir -p data/neo4j/import
+mkdir -p data/neo4j/plugins
 mkdir -p data/opensearch
 
 # Permissions: Neo4j runs as UID 7474, OpenSearch as UID 1000.
-chmod -R 755 data/neo4j
+chmod -R 777 data/neo4j        # Neo4j writes data/logs/plugins (apoc auto-download)
 chmod -R 777 data/opensearch   # OpenSearch needs write access to its data dir
 
 echo "✓ Data directories created:"
 echo "  data/"
 echo "  ├── neo4j/"
-echo "  │   ├── data/   (Neo4j database files)"
-echo "  │   └── logs/   (Neo4j logs)"
-echo "  └── opensearch/ (OpenSearch data)"
+echo "  │   ├── data/    (Neo4j database files)"
+echo "  │   ├── logs/    (Neo4j logs)"
+echo "  │   ├── import/  (APOC import dir)"
+echo "  │   └── plugins/ (APOC plugin jar)"
+echo "  └── opensearch/  (OpenSearch data)"
 echo ""
 echo "Next steps:"
 echo "  1. cp env.example .env   # set OPENAI_API_KEY, NEO4J_PASSWORD, ..."

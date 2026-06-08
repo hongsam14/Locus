@@ -21,11 +21,19 @@ services:
       - "7687:7687" # Bolt
     environment:
       - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-locus-dev-password}
+      # APOC plugin (auto-downloaded into /plugins on first start)
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_apoc_import_file_enabled=true
+      - NEO4J_apoc_import_file_use__neo4j__config=true
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
       - NEO4J_server_memory_heap_initial__size=512m
       - NEO4J_server_memory_heap_max__size=2G
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+      - neo4j_plugins:/plugins
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
       interval: 10s
@@ -45,6 +53,7 @@ services:
       - plugins.security.disabled=true # local dev only (ID-Q2=A)
       - bootstrap.memory_lock=true
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
     ulimits:
       memlock:
         soft: -1
@@ -143,6 +152,18 @@ volumes:
       type: none
       o: bind
       device: ./data/neo4j/logs
+  neo4j_import:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/neo4j/import
+  neo4j_plugins:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/neo4j/plugins
   opensearch_data:
     driver: local
     driver_opts:

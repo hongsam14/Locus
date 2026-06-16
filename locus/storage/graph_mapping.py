@@ -17,10 +17,11 @@ from ..models import (
     Provenance,
     Region,
     Relation,
-    Rumor,
     ScopeLink,
     SearchDoc,
     WikiPrior,
+    WikiPriorLink,
+    fallback_title,
 )
 from .base import Edge, Node
 
@@ -61,12 +62,10 @@ def knowledge_to_node(k: Knowledge) -> Node:
     )
 
 
-def rumor_to_node(r: Rumor) -> Node:
-    return Node(id=r.id, label="Rumor", world_id=r.world_id, properties=_flatten(r.model_dump()))
-
-
-def wikiprior_to_node(p: WikiPrior, world_id: str) -> Node:
-    return Node(id=p.id, label="WikiPrior", world_id=world_id, properties=_flatten(p.model_dump()))
+def wikiprior_to_node(p: WikiPrior) -> Node:
+    return Node(
+        id=p.id, label="WikiPrior", world_id=p.world_id, properties=_flatten(p.model_dump())
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -135,6 +134,15 @@ def derived_from_edges(knowledge: list[Knowledge]) -> list[Edge]:
     return edges
 
 
+def located_in_edges(entities: list[Entity]) -> list[Edge]:
+    """LOCATED_IN edges (entity -> region) for entities with a resolved region (BR-B5)."""
+    return [
+        Edge(type="LOCATED_IN", source_id=e.id, target_id=e.located_in, world_id=e.world_id)
+        for e in entities
+        if e.located_in
+    ]
+
+
 def relation_edges(relations: list[Relation]) -> list[Edge]:
     return [
         Edge(
@@ -148,16 +156,20 @@ def relation_edges(relations: list[Relation]) -> list[Edge]:
     ]
 
 
-def distorted_from_edges(rumors: list[Rumor]) -> list[Edge]:
+def prior_link_edges(links: list[WikiPriorLink]) -> list[Edge]:
     return [
         Edge(
-            type="DISTORTED_FROM",
-            source_id=r.id,
-            target_id=r.distorted_from_id,
-            world_id=r.world_id,
-            properties={"distortion_degree": r.distortion_degree},
+            type="PRIOR_RELATED_TO",
+            source_id=link.source_id,
+            target_id=link.target_id,
+            world_id=link.world_id,
+            properties={
+                "relation": link.relation,
+                "weight": link.weight,
+                "cross_domain": link.cross_domain,
+            },
         )
-        for r in rumors
+        for link in links
     ]
 
 
@@ -165,12 +177,13 @@ def distorted_from_edges(rumors: list[Rumor]) -> list[Edge]:
 # Search docs (embedding filled by caller)
 # --------------------------------------------------------------------------- #
 def knowledge_doc(k: Knowledge) -> SearchDoc:
+    text = f"{k.title} {k.statement}" + (f" {k.topic}" if k.topic else "")  # BR-A3
     return SearchDoc(
         id=k.id,
         world_id=k.world_id,
         label="Knowledge",
-        text=k.statement + (f" {k.topic}" if k.topic else ""),
-        meta={"is_global": k.is_global, "confidence": k.confidence},
+        text=text.strip(),
+        meta={"is_global": k.is_global, "confidence": k.confidence, "title": k.title},
     )
 
 
@@ -241,6 +254,7 @@ def node_to_knowledge(node: Node) -> Knowledge:
         id=p["id"],
         world_id=node.world_id,
         statement=p["statement"],
+        title=p.get("title") or fallback_title(p["statement"]),
         topic=p.get("topic"),
         confidence=p.get("confidence", 1.0),
         is_global=p.get("is_global", False),
@@ -251,30 +265,31 @@ def node_to_knowledge(node: Node) -> Knowledge:
     )
 
 
-def node_to_rumor(node: Node) -> Rumor:
-    p = node.properties
-    return Rumor(
-        id=p["id"],
-        world_id=node.world_id,
-        statement=p["statement"],
-        distorted_from_id=p["distorted_from_id"],
-        distortion_degree=p.get("distortion_degree", 0.5),
-        distortion_note=p.get("distortion_note"),
-        confidence=p.get("confidence", 0.5),
-        provenance=_provenance(p),
-    )
-
-
 def node_to_wikiprior(node: Node) -> WikiPrior:
     p = node.properties
     return WikiPrior(
         id=p["id"],
+        world_id=node.world_id,
         prior_type=p["prior_type"],
         condition=p["condition"],
         effect=p["effect"],
+        domains=_json_field(p, "domains", []),
         description=p.get("description"),
         confidence=p.get("confidence", 1.0),
         provenance=_provenance(p),
+    )
+
+
+def edge_to_prior_link(edge: Edge) -> WikiPriorLink:
+    p = edge.properties
+    return WikiPriorLink(
+        world_id=edge.world_id,
+        source_id=edge.source_id,
+        target_id=edge.target_id,
+        relation=p.get("relation", "related"),
+        weight=p.get("weight", 0.5),
+        cross_domain=p.get("cross_domain", False),
+        provenance=Provenance(source="input", generated_by="wiki-linker"),
     )
 
 
@@ -304,16 +319,17 @@ def edge_to_scope(edge: Edge) -> ScopeLink:
     )
 
 
-def wikiprior_doc(p: WikiPrior, world_id: str) -> SearchDoc:
+def wikiprior_doc(p: WikiPrior) -> SearchDoc:
     return SearchDoc(
         id=p.id,
-        world_id=world_id,
+        world_id=p.world_id,
         label="WikiPrior",
         text=f"{p.condition} {p.effect} {p.description or ''}".strip(),
         meta={
             "prior_type": p.prior_type,
             "condition": p.condition,
             "effect": p.effect,
+            "domains": [str(d) for d in p.domains],
             "description": p.description,
             "confidence": p.confidence,
         },

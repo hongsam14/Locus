@@ -59,7 +59,7 @@ class _SearchRepo:
 def test_persist_graph_writes_nodes_edges_docs() -> None:
     g, s = _GraphRepo(), _SearchRepo()
     a = Region(world_id="w", name="A", level=RegionLevel.TOWN, provenance=_prov())
-    k = Knowledge(world_id="w", statement="fact", provenance=_prov())
+    k = Knowledge(world_id="w", statement="fact", title="fact", provenance=_prov())
     conn = ConnectionEdge(
         world_id="w",
         source_region_id=a.id,
@@ -91,7 +91,7 @@ class _Ingest:
                     world_id=world_id, name="E", entity_type=EntityType.PLACE, provenance=_prov()
                 )
             ],
-            knowledge=[Knowledge(world_id=world_id, statement="k", provenance=_prov())],
+            knowledge=[Knowledge(world_id=world_id, statement="k", title="k", provenance=_prov())],
         )
 
 
@@ -108,7 +108,10 @@ class _Topo:
 class _Onto:
     def build(self, ingestion, topology, *, world_id):
         corr = Knowledge(
-            world_id=world_id, statement="hot basin", provenance=_prov(SourceKind.INFERRED_WIKI)
+            world_id=world_id,
+            statement="hot basin",
+            title="hot basin",
+            provenance=_prov(SourceKind.INFERRED_WIKI),
         )
         return KnowledgeGraph(
             world_id=world_id,
@@ -129,13 +132,65 @@ def test_orchestrator_build_world_counts() -> None:
     assert {"Region", "Entity", "Knowledge"} <= {n.label for n in g.nodes}
 
 
+class _StubDistiller:
+    def distill(self, ingestion, topology, *, world_id):
+        from locus.models import PriorType, WikiDomain, WikiPrior
+
+        return [
+            WikiPrior(
+                world_id=world_id,
+                prior_type=PriorType.FACT,
+                condition="river",
+                effect="trade",
+                domains=[WikiDomain.GEOGRAPHY],
+                provenance=_prov(SourceKind.INFERRED_WIKI),
+            )
+        ]
+
+
+class _StubLinker:
+    def link(self, priors, *, world_id):
+        from locus.models import WikiPriorLink
+
+        if len(priors) < 1:
+            return []
+        return [
+            WikiPriorLink(
+                world_id=world_id,
+                source_id=priors[0].id,
+                target_id=priors[0].id,
+                relation="self",
+                weight=0.9,
+                provenance=_prov(SourceKind.INFERRED_WIKI),
+            )
+        ]
+
+
+def test_orchestrator_distills_priors_and_links_per_world() -> None:
+    g, s = _GraphRepo(), _SearchRepo()
+    orch = PipelineOrchestrator(
+        _Ingest(),
+        _Topo(),
+        _Onto(),
+        g,
+        s,
+        embedding=None,
+        distiller=_StubDistiller(),
+        linker=_StubLinker(),
+    )
+    orch.build_world("w", inputs=None)
+    # this world's own WikiPrior node + PRIOR_RELATED_TO edge persisted (BR-A12)
+    assert any(n.label == "WikiPrior" and n.world_id == "w" for n in g.nodes)
+    assert any(e.type == "PRIOR_RELATED_TO" for e in g.edges)
+
+
 # --------------------------------------------------------------------------- #
 # GraphEditor
 # --------------------------------------------------------------------------- #
 def test_graph_editor_upsert_and_delete() -> None:
     g, s = _GraphRepo(), _SearchRepo()
     editor = GraphEditor(g, s, embedding=None)
-    k = Knowledge(world_id="w", statement="new fact", provenance=_prov())
+    k = Knowledge(world_id="w", statement="new fact", title="new fact", provenance=_prov())
     editor.upsert_knowledge(k)
     assert g.nodes[0].label == "Knowledge"
     assert s.docs and s.docs[0].id == k.id
@@ -150,7 +205,7 @@ class _Loader:
     def load(self, world_id):
         kg = KnowledgeGraph(
             world_id=world_id,
-            knowledge=[Knowledge(world_id=world_id, statement="x", provenance=_prov())],
+            knowledge=[Knowledge(world_id=world_id, statement="x", title="x", provenance=_prov())],
         )
         topo = RegionTopology(
             world_id=world_id,

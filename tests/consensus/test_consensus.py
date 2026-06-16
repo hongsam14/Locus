@@ -53,7 +53,12 @@ def _conn(a: str, b: str, w: float) -> list[ConnectionEdge]:
 
 def _k(text: str, conf: float = 0.9, glob: bool = False) -> Knowledge:
     return Knowledge(
-        world_id="w", statement=text, confidence=conf, is_global=glob, provenance=_prov()
+        world_id="w",
+        statement=text,
+        title=text,
+        confidence=conf,
+        is_global=glob,
+        provenance=_prov(),
     )
 
 

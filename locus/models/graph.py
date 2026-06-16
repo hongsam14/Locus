@@ -22,12 +22,26 @@ from .enums import (
     RegionLevel,
     ScopeType,
     SourceKind,
+    WikiDomain,
 )
 
 
 def new_id() -> str:
     """Generate a fresh immutable node id (BR-1)."""
     return str(uuid4())
+
+
+def fallback_title(statement: str, *, max_len: int = 60) -> str:
+    """Derive a one-line title from a statement (BR-A2).
+
+    Used when the LLM omits a title so ``Knowledge.title`` (required, BR-A1) is
+    always satisfiable. Truncates on a word boundary near ``max_len``.
+    """
+    text = " ".join(statement.strip().split())
+    if len(text) <= max_len:
+        return text or "(untitled)"
+    cut = text[:max_len].rsplit(" ", 1)[0]
+    return (cut or text[:max_len]).rstrip() + "…"
 
 
 class LocusModel(BaseModel):
@@ -56,11 +70,15 @@ class Coord(LocusModel):
 # Nodes
 # --------------------------------------------------------------------------- #
 class World(LocusModel):
-    """A game world (or the real-world wiki partition)."""
+    """A world. Each world holds its own WikiPriors (no reserved partition).
+
+    Lightweight DTO for reports/export; not persisted as a graph node (CL-A1=A).
+    A world's domain tags are derived on demand from its WikiPriors (BR-A11).
+    """
 
     world_id: str
     name: str
-    kind: str = "game"  # "game" | "realworld"
+    kind: str = "game"
     description: str | None = None
 
 
@@ -110,6 +128,7 @@ class Knowledge(LocusModel):
     id: str = Field(default_factory=new_id)
     world_id: str
     statement: str
+    title: str  # required one-line title / UI label (BR-A1; LLM-generated, BR-A2 fallback)
     topic: str | None = None
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     is_global: bool = False  # world-wide fact, known in every region (U4, CL1=A)
@@ -120,33 +139,39 @@ class Knowledge(LocusModel):
     provenance: Provenance
 
 
-class Rumor(LocusModel):
-    """A distorted variant of a Knowledge/Rumor (separate label, FD1-Q4=B).
+class WikiPrior(LocusModel):
+    """A common-sense prior in a world's Wiki (FR-IM1.2).
 
-    Always references exactly one origin via ``distorted_from_id`` (BR-13).
+    Belongs to a world (``world_id``); no reserved partition. ``domains`` place it
+    in the shared taxonomy for community/cross-domain linking and the designer's
+    cross-world reference (FR-IM2.1).
     """
 
     id: str = Field(default_factory=new_id)
     world_id: str
-    statement: str
-    distorted_from_id: str  # -> Knowledge or Rumor id (required, BR-13)
-    distortion_degree: float = Field(default=0.5, ge=0.0, le=1.0)
-    distortion_note: str | None = None
-    confidence: float = Field(default=0.5, ge=0.0, le=1.0)
+    prior_type: PriorType
+    condition: str  # e.g. "mountain range between two regions"
+    effect: str  # e.g. "connection weight x0.3, slower information flow"
+    domains: list[WikiDomain] = Field(default_factory=list)  # shared taxonomy (BR-A5)
+    description: str | None = None
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     embedding_ref: str | None = None
     provenance: Provenance
 
 
-class WikiPrior(LocusModel):
-    """A real-world prior in the Common-sense Wiki (world_id=__realworld__)."""
+class WikiPriorLink(LocusModel):
+    """A PRIOR_RELATED_TO edge between two WikiPriors in the same world (FR-IM2.3).
 
-    id: str = Field(default_factory=new_id)
-    prior_type: PriorType
-    condition: str  # e.g. "mountain range between two regions"
-    effect: str  # e.g. "connection weight x0.3, slower information flow"
-    description: str | None = None
-    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
-    embedding_ref: str | None = None
+    Stored as a graph edge only (no node, FD-A Q5=A). Single-direction storage,
+    undirected semantics. Never crosses a world boundary (BR-A6).
+    """
+
+    world_id: str
+    source_id: str
+    target_id: str
+    relation: str  # LLM-named relation label, e.g. "reinforces" / "implies"
+    weight: float = Field(default=0.5, ge=0.0, le=1.0)
+    cross_domain: bool = False  # source/target domains disjoint (search/viz flag)
     provenance: Provenance
 
 

@@ -1,4 +1,8 @@
-"""PriorDistiller — distill real-world ingestion into WikiPriors (U6, Q3=A)."""
+"""PriorDistiller — distill a world's ingestion into WikiPriors (FR-IM1.3).
+
+Generalized from the old real-world-only distiller: applies to any world and
+classifies each prior into the shared ``WikiDomain`` taxonomy in the same call.
+"""
 
 from __future__ import annotations
 
@@ -9,14 +13,17 @@ from ..models import (
     Provenance,
     RegionTopology,
     SourceKind,
+    WikiDomain,
     WikiPrior,
 )
 from .schemas import PriorBatch
 
 _SYSTEM = (
-    "You distill general, reusable real-world common-sense priors (geography, "
-    "geology, climate, logistics) as condition->effect rules, plus salient facts. "
-    "Keep each prior general enough to apply to fictional worlds."
+    "You distill general, reusable common-sense priors (geography, geology, "
+    "climate, ecology, economy, logistics, culture, history, politics, religion, "
+    "military, technology) as condition->effect rules, plus salient facts. Keep "
+    "each prior general enough to apply across worlds, and tag each with one or "
+    "more domains from the shared taxonomy."
 )
 
 
@@ -39,9 +46,11 @@ class PriorDistiller:
                 continue  # BR-U6-4
             priors.append(
                 WikiPrior(
+                    world_id=world_id,
                     prior_type=s.prior_type,
                     condition=s.condition,
                     effect=s.effect,
+                    domains=s.domains or [WikiDomain.OTHER],  # BR-A5
                     description=s.description,
                     confidence=s.confidence,
                     provenance=Provenance(source=SourceKind.INFERRED_WIKI, generated_by="llm"),

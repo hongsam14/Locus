@@ -31,13 +31,19 @@ class Settings(BaseSettings):
     # --- Neo4j ---
     neo4j_uri: str = Field(default="bolt://localhost:7687", alias="NEO4J_URI")
     neo4j_user: str = Field(default="neo4j", alias="NEO4J_USER")
-    neo4j_password: SecretStr = Field(
-        default=SecretStr("locus-dev-password"), alias="NEO4J_PASSWORD"
-    )
+    # No hardcoded default — set NEO4J_PASSWORD in the environment / .env.
+    neo4j_password: SecretStr = Field(default=SecretStr(""), alias="NEO4J_PASSWORD")
 
     # --- OpenSearch ---
     opensearch_url: str = Field(default="http://localhost:9200", alias="OPENSEARCH_URL")
     opensearch_index: str = Field(default="locus_search", alias="OPENSEARCH_INDEX")
+
+    # --- Session layer (PostgreSQL) ---
+    # No embedded credentials — set SESSION_DB_URL (incl. password) in the env / .env.
+    session_db_url: str = Field(
+        default="postgresql+psycopg://localhost:5432/locus_session",
+        alias="SESSION_DB_URL",
+    )
 
     # --- App ---
     debug: bool = Field(default=False, alias="LOCUS_DEBUG")

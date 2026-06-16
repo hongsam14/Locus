@@ -76,6 +76,10 @@ class TopologyBuilder:
     def __init__(self, wiki: CommonsenseWiki | None = None) -> None:
         self._wiki = wiki
 
+    def set_wiki(self, wiki: CommonsenseWiki | None) -> None:
+        """Inject the world-scoped wiki at build time (single-world, BR-A9)."""
+        self._wiki = wiki
+
     def build(self, ingestion: IngestionResult, *, world_id: str) -> RegionTopology:
         regions = list(ingestion.region_hints)
         assign_hierarchy(regions)

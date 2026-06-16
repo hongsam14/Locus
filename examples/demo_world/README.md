@@ -13,8 +13,7 @@ on the image (live, needs `OPENAI_API_KEY`) in addition to the structured map + 
 Build and query it:
 
 ```bash
-locus build-wiki                      # bootstrap real-world priors (bundled)
-locus build-world --world aldermoor --demo
+locus build-world --world aldermoor --demo   # also distills this world's own commonsense priors
 # then query via the serving API:
 #   GET /api/query/regions/<region_id>/knowledge?world_id=aldermoor
 locus export --world aldermoor --out aldermoor.json

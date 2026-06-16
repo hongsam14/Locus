@@ -11,7 +11,6 @@ from .graph import (
     LocusModel,
     Region,
     Relation,
-    Rumor,
     ScopeLink,
 )
 
@@ -37,14 +36,15 @@ class RegionTopology(LocusModel):
 
 
 class KnowledgeGraph(LocusModel):
-    """Entities, relations, knowledge, rumors and their region scoping (FR-C/D)."""
+    """Entities, relations, knowledge and their region scoping (FR-C/D)."""
 
     world_id: str
     entities: list[Entity] = Field(default_factory=list)
     relations: list[Relation] = Field(default_factory=list)
     knowledge: list[Knowledge] = Field(default_factory=list)
-    rumors: list[Rumor] = Field(default_factory=list)
     scopes: list[ScopeLink] = Field(default_factory=list)
+    # entities that could not be connected to any region/entity (augmentation candidates, BR-B8)
+    unconnected_entity_ids: list[str] = Field(default_factory=list)
 
 
 class SearchDoc(LocusModel):
@@ -52,7 +52,7 @@ class SearchDoc(LocusModel):
 
     id: str
     world_id: str
-    label: str  # "Knowledge" | "Entity" | "WikiPrior" | "Rumor"
+    label: str  # "Knowledge" | "Entity" | "WikiPrior"
     text: str
     embedding: list[float] = Field(default_factory=list)
     meta: dict = Field(default_factory=dict)
@@ -74,6 +74,7 @@ class KnowledgeView(LocusModel):
 
     knowledge_id: str
     statement: str
+    title: str | None = None  # one-line label for UI/export (FR-IM3.1)
     scope_type: str  # ScopeType value
     is_rumor: bool = False
     confidence: float

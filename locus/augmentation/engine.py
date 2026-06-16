@@ -10,17 +10,19 @@ from .types import AugmentationAnswer, AugmentationQuestion, ChangeSet, Issue
 
 
 class AugmentationEngine:
-    def __init__(self, loader, editor, graph_repo, wiki=None, llm=None) -> None:
+    def __init__(self, loader, editor, graph_repo, wiki=None, llm=None, wiki_provider=None) -> None:
         self._loader = loader
         self._editor = editor
         self._graph = graph_repo
         self._wiki = wiki
+        self._wiki_provider = wiki_provider  # (world_id) -> CommonsenseWiki (single-world, BR-A9)
         self._llm = llm
         self._qgen = QuestionGenerator(llm)
 
     def detect_issues(self, world_id: str) -> list[Issue]:
         kg, topo = self._loader.load(world_id)
-        return detect_all(kg, topo, wiki=self._wiki, llm=self._llm)
+        wiki = self._wiki_provider(world_id) if self._wiki_provider else self._wiki
+        return detect_all(kg, topo, wiki=wiki, llm=self._llm)
 
     def generate_questions(self, issues: list[Issue]) -> list[AugmentationQuestion]:
         return [self._qgen.generate(i) for i in issues]

@@ -1,4 +1,15 @@
-import type { AugAnswer, AugSession, QueryResult, Region, WorldExport } from "./types";
+import type {
+  AugAnswer,
+  AugSession,
+  GameSession,
+  QueryResult,
+  Region,
+  RegionDistortion,
+  SessionRumor,
+  TimelineEntry,
+  TurnResult,
+  WorldExport,
+} from "./types";
 
 const BASE = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL ?? "";
 
@@ -26,12 +37,13 @@ export const api = {
   // authoring
   exportWorld: (worldId: string) =>
     http<WorldExport>(`/api/authoring/worlds/${encodeURIComponent(worldId)}/export`),
-  buildWorldDemo: (worldId: string) =>
-    http(`/api/authoring/worlds/${encodeURIComponent(worldId)}/build`, {
-      method: "POST",
-      body: JSON.stringify({ memos: [], structured_maps: [] }),
-    }),
-  buildWiki: () => http(`/api/authoring/wiki/build`, { method: "POST", body: "null" }),
+  // Builds the bundled demo world server-side. with_map=false keeps it fast
+  // (structured map + memo, no VLM); pass with_map=true to also run the VLM.
+  buildWorldDemo: (worldId: string, withMap = false) =>
+    http(
+      `/api/authoring/worlds/${encodeURIComponent(worldId)}/build/demo?with_map=${withMap}`,
+      { method: "POST" },
+    ),
   upsertRegion: (worldId: string, region: Region) =>
     http<Region>(
       `/api/authoring/worlds/${encodeURIComponent(worldId)}/regions/${encodeURIComponent(region.id)}`,
@@ -59,5 +71,65 @@ export const api = {
         changeId,
       )}`,
       { method: "POST" },
+    ),
+
+  // --- session layer (S3) ---
+  listSessions: (worldId: string) =>
+    http<GameSession[]>(
+      `/api/session/worlds/${encodeURIComponent(worldId)}/sessions`,
+    ),
+  startSession: (worldId: string) =>
+    http<GameSession>(`/api/session/worlds/${encodeURIComponent(worldId)}/sessions`, {
+      method: "POST",
+    }),
+  closeSession: (sid: string) =>
+    http<GameSession>(`/api/session/sessions/${encodeURIComponent(sid)}/close`, {
+      method: "POST",
+    }),
+  getTimeline: (sid: string) =>
+    http<TimelineEntry[]>(`/api/session/sessions/${encodeURIComponent(sid)}/timeline`),
+  listRumors: (sid: string, regionId: string) =>
+    http<SessionRumor[]>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/regions/${encodeURIComponent(
+        regionId,
+      )}/rumors`,
+    ),
+  generateRumors: (sid: string, regionId: string) =>
+    http<SessionRumor[]>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/regions/${encodeURIComponent(
+        regionId,
+      )}/rumors`,
+      { method: "POST" },
+    ),
+  regenRumors: (sid: string, regionId: string) =>
+    http<SessionRumor[]>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/regions/${encodeURIComponent(
+        regionId,
+      )}/rumors/regen`,
+      { method: "POST" },
+    ),
+  setSupport: (sid: string, rumorId: string, support: number) =>
+    http<SessionRumor>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/rumors/${encodeURIComponent(
+        rumorId,
+      )}/support`,
+      { method: "PUT", body: JSON.stringify({ support }) },
+    ),
+  setDistortion: (sid: string, regionId: string, degree: number) =>
+    http<RegionDistortion>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/regions/${encodeURIComponent(
+        regionId,
+      )}/distortion`,
+      { method: "PUT", body: JSON.stringify({ degree }) },
+    ),
+  advanceTurn: (sid: string) =>
+    http<TurnResult>(`/api/session/sessions/${encodeURIComponent(sid)}/advance-turn`, {
+      method: "POST",
+    }),
+  sessionKnowledge: (sid: string, regionId: string) =>
+    http<QueryResult>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/regions/${encodeURIComponent(
+        regionId,
+      )}/knowledge`,
     ),
 };

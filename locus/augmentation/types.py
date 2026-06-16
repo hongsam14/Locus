@@ -13,6 +13,7 @@ class IssueType(StrEnum):
     DANGLING = "dangling"
     WIKI_CONFLICT = "wiki_conflict"
     LOW_CONFIDENCE = "low_confidence"
+    ORPHAN = "orphan"  # entity with no LOCATED_IN / RELATED_TO / ABOUT edge (FR-IM4.3)
 
 
 class AnswerAction(StrEnum):
@@ -55,6 +56,7 @@ class AugmentationAnswer(_Aug):
     action: AnswerAction
     target_id: str | None = None
     statement: str | None = None
+    title: str | None = None  # optional one-line title for added knowledge (FR-IM3.1)
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     region_id: str | None = None
 

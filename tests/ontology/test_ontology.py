@@ -36,6 +36,7 @@ def _k(
     return Knowledge(
         world_id="w",
         statement=statement,
+        title=statement,
         confidence=conf,
         region_hint=region,
         is_global=glob,

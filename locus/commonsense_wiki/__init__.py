@@ -1,15 +1,15 @@
-"""Common-sense Wiki (real-world prior KB) — lookup (U1) + build/admin (U6)."""
+"""Common-sense Wiki — per-world prior KB: lookup, distill, link, admin, cross-world."""
 
 from .admin import WikiAdmin
 from .base import CommonsenseWiki
-from .builder import WikiBuilder
-from .bundled import load_bundled_realworld
+from .cross_world import CrossWorldWikiExplorer
 from .distiller import PriorDistiller
+from .linker import WikiPriorLinker
 
 __all__ = [
     "CommonsenseWiki",
-    "WikiBuilder",
     "WikiAdmin",
     "PriorDistiller",
-    "load_bundled_realworld",
+    "WikiPriorLinker",
+    "CrossWorldWikiExplorer",
 ]

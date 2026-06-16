@@ -22,6 +22,7 @@ class RegionLevel(StrEnum):
     PROVINCE = "province"
     TOWN = "town"
     DISTRICT = "district"
+    TERRAIN = "terrain"  # promoted VLM area terrain (FR-IM4.1, FD-B Q2=A)
 
 
 class EntityType(StrEnum):
@@ -54,12 +55,34 @@ class ConnectionKind(StrEnum):
 
 
 class PriorType(StrEnum):
-    """Type of a real-world Common-sense Wiki prior."""
+    """Type of a Common-sense Wiki prior."""
 
     TERRAIN_RULE = "terrain_rule"
     CLIMATE = "climate"
     LOGISTICS = "logistics"
     FACT = "fact"
+
+
+class WikiDomain(StrEnum):
+    """Shared domain taxonomy for WikiPriors and (derived) world domain tags.
+
+    Fixed vocabulary the LLM classifies a prior into (FD-A Q4=A). ``OTHER`` is the
+    safety net when classification yields nothing (BR-A5).
+    """
+
+    GEOGRAPHY = "geography"
+    GEOLOGY = "geology"
+    CLIMATE = "climate"
+    ECOLOGY = "ecology"
+    ECONOMY = "economy"
+    LOGISTICS = "logistics"
+    CULTURE = "culture"
+    HISTORY = "history"
+    POLITICS = "politics"
+    RELIGION = "religion"
+    MILITARY = "military"
+    TECHNOLOGY = "technology"
+    OTHER = "other"
 
 
 class SourceKind(StrEnum):
@@ -68,3 +91,4 @@ class SourceKind(StrEnum):
     INPUT = "input"
     INFERRED_WIKI = "inferred-wiki"
     AUGMENTATION = "augmentation"
+    SESSION_RUMOR = "session-rumor"  # session-layer rumor (S2), not canonical

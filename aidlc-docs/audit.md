@@ -555,3 +555,331 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **Context**: OPERATIONS — demo asset for VLM e2e.
 
 ---
+
+## New Improvement Cycle (MVP improvements) — Workspace Detection + Requirements Analysis START
+**Timestamp**: 2026-06-09T00:00:00Z
+**User Input**: "ai-dlc를 사용해서 다음 작업을 하고 싶어.\n\n# 초기 MVP 개선\n\n현재 초기 MVP에서는 다음과 같은 개선점들이 발견됨.\n\n## real_world 개념 삭제\n다양한 world를 저장하게 되고(이미 구현되어 있음), world끼리 상식 위키를 구성하고(이미 구현되어 있는 기능을 확장) 서로 참고하게 됨. (새로 구현)\n\n## WikiPrior 타입 관리 강화 필요\n현재 WikiPrior타입 노드는 orphan 노드. 분야별 커뮤니티를 형성하고, 분야를 넘나드는 연결성울 구현하면 더 좋을 것.\n\n## knowledge title 추가\n현재 knowledge는 topic이 있지만, title은 없음.\n\n## 현재 vlm으로 추출된 entity는 edge가 없이 orphan node가 되고 있음"
+**AI Response**: Resumed AI-DLC on completed project (brownfield improvement cycle). Workspace Detection: existing aidlc-state.md found; brownfield with full prior design docs (aidlc-docs/ serves as RE-equivalent). Loaded core-workflow + common rules (welcome/requirements-analysis/question-format). Inspected code for all 4 improvement areas: (1) REALWORLD_WORLD_ID="__realworld__" reserved partition in locus/__init__.py + commonsense_wiki/*; (2) WikiPrior nodes upserted with no edges (orphans) in graph_mapping/admin; (3) Knowledge model has topic but no title (locus/models/graph.py:107); (4) VLM ingestors (concept_art/map_image) emit entities with no relations/LOCATED_IN → orphans, unlike text_ingestor. Assessed: New Feature + Refactoring/Enhancement mix; Multiple Components; Complex; Comprehensive depth. Generating clarifying questions.
+**Context**: INCEPTION (new cycle) — Workspace Detection complete; Requirements Analysis Step 6 (clarifying questions).
+
+---
+
+## Requirements Analysis (MVP improvements) — Answers Received + Clarification
+**Timestamp**: 2026-06-09T00:10:00Z
+**User Input**: "답변 완료" (mvp-improvements-verification-questions.md filled: Q1=B/Q2=C/Q3=A/Q4=B(dummy data, fully remove)/Q5=B/Q6=C/Q7=B/Q8=C/Q9=A+UI-label/Q10=A/Q11=B(no migration, wipe & rebuild)/Q12=X(VLM entity ≈ Region node; but VLM text may be mis-extracted; see Q13)/Q13=X(two cases: (1) name mis-extracted → fuzzy-search regions from other sources + LLM final decision; (2) terrain not in map.json/memo → VLM has coords, VLM reasons about connection)/Q14=X(mixed: case(1) in OntologyBuilder, case(2) inside ingestor)/Q15=B(clean refactor)/Q16=C(2 Units: ①model+wiki areas1+2+3 ②ingestion area4)/Q17=B(backend only))"
+**AI Response**: Analyzed answers. Detected 4 design-forking ambiguities at the intersection of area1(world cross-ref via domain tags, Q2=C) + area2(WikiPrior domain taxonomy, Q7=B) + area4(VLM terrain modeling, Q12/13/14=X). Created mvp-improvements-clarification-questions.md (CL1 domain taxonomy unification, CL2 world domain-tag assignment, CL3 per-world WikiPrior source, CL4 VLM terrain node modeling). Assumption stated (not asked): cross-world sharing scope = WikiPriors only (per Q1=B explicit wording), not game Knowledge/Entities.
+**Context**: INCEPTION (new cycle) — Requirements Analysis Step 6 (clarification round).
+
+---
+
+## Requirements Analysis (MVP improvements) — Clarifications Received
+**Timestamp**: 2026-06-09T00:20:00Z
+**User Input**: "답변 완료" (clarification: CL1=A(single shared taxonomy; world tags = auto-aggregate of its WikiPriors' domains)/CL2=C(LLM suggest + user edit)/CL3=C(PriorDistiller generalized + user authoring)/CL4=A(VLM new terrain promoted to Region node w/ position, joins topology); assumptions 1-3 accepted)
+**AI Response**: Reconciled CL1=A vs CL2=C: world domain tags are auto-aggregated (CL1=A); LLM-classify + user-edit (CL2=C) applies at the WikiPrior domain-assignment level (Q7=B). No contradiction. All ambiguities resolved. Writing mvp-improvements-requirements.md (comprehensive depth). 2-Unit split per Q16=C: Unit-A model+wiki structure (areas 1+2+3), Unit-B ingestion connection (area 4).
+**Context**: INCEPTION (new cycle) — Requirements Analysis Step 7 (requirements doc).
+
+---
+
+## Requirements Analysis (MVP improvements) — COMPLETE, awaiting approval
+**Timestamp**: 2026-06-09T00:25:00Z
+**Approval Prompt**: "Requirements Analysis complete (mvp-improvements-requirements.md). Approve & Continue / Request Changes / Add User Stories?"
+**AI Response**: Wrote mvp-improvements-requirements.md (comprehensive). FRs: area1 FR-IM1.1-1.7, area2 FR-IM2.1-2.5, area3 FR-IM3.1-3.3, area4 FR-IM4.1-4.4 + NFR-IM1-5 + data model summary + traceability. Updated aidlc-state.md (new cycle section). Recommending User Stories SKIP (brownfield enhancement, existing personas/stories cover actors) → Workflow Planning next.
+**Context**: INCEPTION (new cycle) — Requirements Analysis complete; awaiting user approval.
+
+---
+
+## Requirements Analysis (MVP improvements) — APPROVED
+**Timestamp**: 2026-06-09T00:30:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: Requirements APPROVED. User Stories SKIPPED (brownfield enhancement; existing personas/stories cover actors). Proceeding to Workflow Planning. Loaded workflow-planning.md.
+**Context**: INCEPTION (new cycle) — Requirements approved → Workflow Planning.
+
+---
+
+## Workflow Planning (MVP improvements) — COMPLETE, awaiting approval
+**Timestamp**: 2026-06-09T00:35:00Z
+**Approval Prompt**: "Workflow plan complete (mvp-improvements-execution-plan.md). Approve & Continue / Request Changes / Add Skipped Stages?"
+**AI Response**: Created execution-plan. Risk Medium / Rollback Easy / Testing Moderate-Complex. EXECUTE: Workflow Planning, per-unit Functional Design (Unit-A, Unit-B), Code Generation (A,B), Build&Test. SKIP: User Stories, Application Design, Units Generation (units defined in plan: Unit-A model+wiki areas1+2+3, Unit-B ingestion area4; order A→B), per-unit NFR-R/NFR-D/Infra. Package change sequence documented. Mermaid validated.
+**Context**: INCEPTION (new cycle) — Workflow Planning complete; awaiting approval → first stage = Unit-A Functional Design.
+
+---
+
+## Workflow Planning (MVP improvements) — APPROVED + Unit-A Functional Design START
+**Timestamp**: 2026-06-09T00:40:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: Execution plan APPROVED. Entering CONSTRUCTION — Unit-A (Model & Wiki Structure) Functional Design. Read Unit-A code surface (commonsense_wiki base/builder/distiller/admin/bundled, storage graph_mapping/base/persistence, query engine/loader, ontology corroboration, services orchestrator, CLI, __init__). KEY FINDING: World model exists but World nodes are NOT persisted by persist_graph → cross-world domain-tag discovery needs World node persistence. Created unitA-model-wiki-functional-design-plan.md with 6 residual design questions (FD-A Q1 World node persistence/index, Q2 cross-world lookup mechanism, Q3 edge world-boundary scope, Q4 domain taxonomy representation, Q5 WikiPriorLink model/direction, Q6 title in search text).
+**Context**: CONSTRUCTION (new cycle) — Unit-A Functional Design Step 3 (questions); awaiting answers.
+
+---
+
+## Unit-A Functional Design — clarifications + artifacts COMPLETE, awaiting approval
+**Timestamp**: 2026-06-09T00:55:00Z
+**User Input**: "답변 완료" ×2 — FD-A Q1=X(World node 불필요, 글로벌 도메인 검색)/Q2=A(다중 world는 기획자 전용, NPC 생성은 단일 world)/Q3=A/Q4=A/Q5=A/Q6=A; CL-A1=A(no World node)/CL-A2=A(cross-world=designer-only).
+**Approval Prompt**: "Unit-A Functional Design complete (domain-entities/business-logic-model/business-rules). Request Changes / Continue to Next Stage (Unit-A Code Generation)?"
+**AI Response**: Wrote 3 FD artifacts under construction/unitA-model-wiki/functional-design/. Design: Knowledge.title(required, LLM+fallback, in search); WikiDomain fixed enum; WikiPrior gains world_id+domains; WikiPriorLink(in-world edges, embedding-topk→LLM judge); no World graph node (world domains computed on demand); NPC paths (corroboration/runtime) strictly single-world (BR-A9); CrossWorldWikiExplorer = designer-only read-through global domain search (BR-A10); remove __realworld__/REALWORLD_WORLD_ID/load_bundled_realworld/realworld_sample/bundled.py + WikiBuilder/build-wiki (each world self-distills priors during build-world). 16 business rules BR-A1..A16.
+**Context**: CONSTRUCTION (new cycle) — Unit-A Functional Design complete; awaiting approval → Unit-A Code Generation.
+
+---
+
+## Unit-A Functional Design APPROVED + Code Generation Part 1 (Planning)
+**Timestamp**: 2026-06-09T01:05:00Z
+**User Input**: "Continue to Next Stage"
+**Approval Prompt**: "Unit-A code generation plan complete (unitA-model-wiki-code-generation-plan.md, 30 steps across 8 groups). Approve to begin generation?"
+**AI Response**: Unit-A FD APPROVED → Code Generation. Read remaining surface (text_ingestor/schemas, ontology/schemas, mapping.to_knowledge, api/main+authoring, augmentation/apply, io.KnowledgeView, tests dirs; realworld refs in tests/commonsense_wiki + examples/realworld_sample). Created 30-step plan grouped by layer: models→repository→wiki logic→title paths→pipeline/removal→API→tests→docs. Key new files: commonsense_wiki/{linker,cross_world}.py; deletions: bundled.py, builder.py(WikiBuilder), examples/realworld_sample, REALWORLD_WORLD_ID, build-wiki CLI/endpoint. SearchRepository.hybrid_search world_id→optional for global designer search.
+**Context**: CONSTRUCTION (new cycle) — Unit-A Code Generation Part 1 complete; awaiting plan approval.
+
+---
+
+## Unit-A Code Generation Part 2 (Generation) — START
+**Timestamp**: 2026-06-09T01:10:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: Code-gen plan APPROVED. Beginning generation per 30-step plan (groups 1-8). Will modify in-place, mark checkboxes, run pytest/ruff/black at end.
+**Context**: CONSTRUCTION (new cycle) — Unit-A Code Generation Part 2.
+
+---
+
+## Unit-A Code Generation Part 2 (Generation) — COMPLETE, awaiting approval
+**Timestamp**: 2026-06-09T02:00:00Z
+**Approval Prompt**: "Unit-A code generation complete (30 steps). 117 tests GREEN, ruff/black clean, __realworld__ residue 0. Request Changes / Continue to Next Stage (Unit-B Functional Design)?"
+**AI Response**: Executed all 30 steps. Created locus/commonsense_wiki/{linker,cross_world}.py. Deleted bundled.py/builder.py(WikiBuilder)/examples/realworld_sample/REALWORLD_WORLD_ID/build-wiki CLI+endpoint. Models: Knowledge.title(required+fallback), WikiDomain enum(13), WikiPrior(world_id+domains), WikiPriorLink. Repository: graph_mapping title/domains/PRIOR_RELATED_TO, hybrid_search world_id optional + domain terms filter, neo4j World-node removed, persistence prior_links. Wiki: distiller generalized(world_id+domains), CommonsenseWiki world_id required, WikiPriorLinker(embed top-k→LLM), CrossWorldWikiExplorer(designer-only global). title threaded through ingestion/corroboration/augmentation. Orchestrator: per-world distill→link→persist→single-world wiki. API rewired (from_factory orchestrator, wiki_explorer, per-world wiki_provider, /worlds/{id}/priors + /related-priors). Tests rewritten + new (fallback_title, WikiPriorLink, linker gate, cross-world exclude/global, orchestrator priors+links). Result: 117 pytest PASS, ruff/black clean, BR-A13 grep 0. Code summary written; CLAUDE.md/READMEs updated.
+**Context**: CONSTRUCTION (new cycle) — Unit-A Code Generation complete; awaiting approval → Unit-B Functional Design.
+
+---
+
+## Unit-A Code Generation APPROVED + Unit-B Functional Design START
+**Timestamp**: 2026-06-09T02:05:00Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: Unit-A Code Generation APPROVED. Entering Unit-B (Ingestion Connection) Functional Design — area 4 VLM entity orphan fix. Reading map_image_ingestor, concept_art_ingestor, mapping helpers, topology builder, ontology builder for design.
+**Context**: CONSTRUCTION (new cycle) — Unit-B Functional Design START.
+
+---
+
+## Unit-B Functional Design — answers + artifacts COMPLETE, awaiting approval
+**Timestamp**: 2026-06-09T02:25:00Z
+**User Input**: "답변 완료" — FD-B Q1=B(type-split: barrier kinds stay hints, area terrain promoted to Region)/Q2=A(add RegionLevel.TERRAIN)/Q3=A(fuzzy→embedding→LLM, non-VLM canonical, VLM absorbed)/Q4=A+Q&A loop/Q5=A(augmentation candidate, preserve+flag)/Q6=A(ExtractedTerrain x,y).
+**Approval Prompt**: "Unit-B Functional Design complete (domain-entities/business-logic-model/business-rules). Request Changes / Continue to Next Stage (Unit-B Code Generation)?"
+**AI Response**: Wrote 3 FD artifacts under construction/unitB-ingestion/functional-design/. KEY FINDING: LOCATED_IN edge does not exist (Entity.located_in is node-prop only, no edge mapping) → root cause of orphans; Unit-B adds located_in_edges. Design: ingester classifies terrain (barrier kinds→A-B hint as before; area terrain→Region(level=TERRAIN) with position+adjacency); OntologyBuilder EntityReconciler merges VLM-origin nodes into non-VLM canonical (fuzzy→embed→LLM); orphan connect order = semantic match→LOCATED_IN→augmentation candidate (unconnected_entity_ids, never drop); augmentation surfaces leftovers. 12 rules BR-B1..B12.
+**Context**: CONSTRUCTION (new cycle) — Unit-B Functional Design complete; awaiting approval → Unit-B Code Generation.
+
+---
+
+## Unit-B FD APPROVED + Code Generation Part 1 (Planning) START
+**Timestamp**: 2026-06-09T02:30:00Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: Unit-B FD APPROVED → Code Generation. Reading dedup/reconciler pattern, augmentation detectors, KnowledgeGraph model, structured_map_ingestor to author the plan.
+**Context**: CONSTRUCTION (new cycle) — Unit-B Code Generation Part 1.
+
+---
+
+## Unit-B Code Generation Part 1 (Planning) — COMPLETE, awaiting approval
+**Timestamp**: 2026-06-09T02:40:00Z
+**Approval Prompt**: "Unit-B code generation plan complete (unitB-ingestion-code-generation-plan.md, 20 steps across 7 groups). Approve to begin generation?"
+**AI Response**: Created 20-step plan. Groups: models/schemas(RegionLevel.TERRAIN, unconnected_entity_ids, ExtractedTerrain x/y) → repository(located_in_edges + persist) → ingester(terrain classify+promote) → OntologyBuilder(EntityReconciler reconciler.py + orphan connect) → augmentation(detect_orphans, ORPHAN issue) → tests → docs. New files: ontology/reconciler.py. Reuses similarity.cosine, dedup union-find/remap pattern.
+**Context**: CONSTRUCTION (new cycle) — Unit-B Code Generation Part 1 complete; awaiting plan approval.
+
+---
+
+## Unit-B Code Generation Part 2 (Generation) — COMPLETE, awaiting approval
+**Timestamp**: 2026-06-09T03:00:00Z
+**User Input**: "Approve & Continue" (plan)
+**Approval Prompt**: "Unit-B code generation complete (20 steps). 124 tests GREEN, ruff/black clean. Request Changes / Continue to Next Stage (Build & Test)?"
+**AI Response**: Executed all 20 steps. Created ontology/reconciler.py (EntityReconciler: fuzzy→embedding→LLM cross-source merge, non-VLM canonical; orphan→region LOCATED_IN; leftovers→unconnected_entity_ids, never drop). Models: RegionLevel.TERRAIN, KnowledgeGraph.unconnected_entity_ids, ExtractedTerrain x/y. Repository: located_in_edges (LOCATED_IN — previously absent, root cause of orphans) + persist. Ingester: terrain classify (barrier kind→A-B hint, area→Region(TERRAIN) promote+adjacency). OntologyBuilder integrates reconciler (remap relations + knowledge.about). Augmentation: IssueType.ORPHAN + detect_orphans + question template. Tests: new test_reconciler.py(5), located_in_edges, detect_orphans, ingester barrier/area rewrite. Result: 124 pytest PASS, ruff/black clean, realworld residue 0. Code summary written.
+**Context**: CONSTRUCTION (new cycle) — Unit-B Code Generation complete; awaiting approval → Build & Test (final stage).
+
+---
+
+## Unit-B Code Generation APPROVED + Build and Test START
+**Timestamp**: 2026-06-09T03:05:00Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: Unit-B Code Generation APPROVED. All MVP-improvement units (A,B) complete. Entering Build and Test. Reading build-and-test.md rule + existing build-and-test docs to update for this cycle.
+**Context**: CONSTRUCTION (new cycle) — Build and Test.
+
+---
+
+## Build and Test Stage (MVP improvements) — COMPLETE, awaiting approval
+**Timestamp**: 2026-06-09T03:20:00Z
+**Build Status**: Success (backend; frontend unchanged this cycle, Q17=B)
+**Test Status**: PASS — backend **124 pytest**, 82% cov, ruff/black clean; frontend 9 vitest unchanged = **133 offline**. `__realworld__` residue 0.
+**Files Updated**: build-and-test-summary.md (added "MVP Improvements Cycle" authoritative section; live scenarios I=cross-world reference, J=VLM orphan-zero).
+**Approval Prompt**: "Build and test complete (133 offline GREEN). Approve & Continue to Operations?"
+**Context**: CONSTRUCTION (new cycle) — Build and Test complete; awaiting approval → Operations.
+
+---
+
+## Build and Test APPROVED + Operations (MVP IMPROVEMENTS CYCLE COMPLETE)
+**Timestamp**: 2026-06-09T03:30:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: Build and Test APPROVED. Operations (placeholder) — updated operations.md (build-wiki removed → build-world self-distills; designer related-priors workflow; no infra/deploy change). **MVP IMPROVEMENTS CYCLE COMPLETE**: Inception (Requirements→Workflow Planning; User Stories/App Design/Units skipped) → Construction (Unit-A model&wiki, Unit-B ingestion; per-unit FD + CodeGen) → Build&Test → Operations. 4 improvements delivered: (1) __realworld__ removed + per-world wiki + cross-world designer reference, (2) WikiPrior domains + WikiPriorLink community, (3) Knowledge.title, (4) VLM orphan fix (LOCATED_IN edge + terrain→Region promotion + EntityReconciler + detect_orphans). 133 offline tests GREEN, 82% cov, ruff/black clean. Live integration (incl. new scenarios I/J) operator-run.
+**Context**: OPERATIONS (placeholder) — MVP improvements cycle complete.
+
+---
+
+## New Improvement Cycle (Rumor Content Distortion) — Workspace Detection + Requirements START
+**Timestamp**: 2026-06-09T04:00:00Z
+**User Input**: "소문 내용 실제 왜곡 기능 ai-dlc로 설계해줘. web에서 rumor 생성 버튼을 누르면 생성이 되는거지"
+**AI Response**: New brownfield cycle. Workspace Detection: resume on completed project. Explored surface (Rumor model/flow, authoring API, exporter, web UI, LLMProvider, tests). Findings: Rumor infra mostly ready (model, persistence, DISTORTED_FROM edges, export includes rumors, WorldLoader loads rumors); MISSING: rumor-generation service (LLM rewrites statement per distortion_degree), authoring API endpoint, GraphEditor.upsert_rumor (+ optional search indexing), web "generate rumor" button + api client + display. Note: web/src/api.ts still calls removed wiki/build (web out of scope last cycle). Request type: New Feature (user-facing UI). Comprehensive depth. Generating clarifying questions.
+**Context**: INCEPTION (rumor cycle) — Requirements Analysis (clarifying questions).
+
+---
+
+## Requirements (Rumor Distortion) — Answers reveal large new concept set; CLARIFICATION needed
+**Timestamp**: 2026-06-09T04:15:00Z
+**User Input**: "답변 완료. 새로운 개념들이 많이 추가되었음으로 유의해서 분석" — Q1=B(per-region)/Q2=B(Knowledge+Rumor chain)/Q3=C(multi-degree chain)/Q4=X(GameMaster decides; per-region distortion_degree; dynamic via Events; needs Event+Rumor timeline concept[future])/Q5=A + NEW Rumor "지지도"(support) field; support>threshold → promote to direct Knowledge but NOT permanent; NEW Game/GameSession concept — new game resets prior Rumors/Events/promoted-Knowledge; store in Game Session DB(PostgreSQL)/Q6=A/Q7=A + NPC cannot access propagated knowledge directly, only as Rumor/Q8=A + Rumors regenerate per Game Session, auto-rumor does not/Q9=X(not in graph; store in Game Session DB)/Q10=X(session DB)/Q11=A + browse past Game Sessions/Q12=A(clean dead buildWiki).
+**AI Response**: Scope ballooned far beyond initial request. New concepts: Game/GameSession (ephemeral play-through), Game Session DB (PostgreSQL, separate from canonical Neo4j world), Event + Rumor timeline (dynamic per-region distortion_degree, marked future), GameMaster (sets/evolves distortion), Rumor support(지지도) + promotion-to-Knowledge (non-permanent), NPC access rule (propagated knowledge only via Rumor), per-session regeneration, web session-browse. Decided NOT to jump to requirements.md; created clarification round (concept model reflect-back + scope/phasing + architecture forks).
+**Context**: INCEPTION (rumor cycle) — Requirements clarification round.
+
+---
+
+## Requirements (Rumor Distortion) — Clarifications received; concept model refined
+**Timestamp**: 2026-06-09T04:35:00Z
+**User Input**: "답변 완료" — A=B(model correct; GameMaster=per-turn agent that (1) Event interaction[Phase2] (2) generates/regenerates/promotes/demotes Rumors; Timeline=record of those per-turn changes)/B=X(rewrite phasing reflecting A's GameMaster+Timeline refinement)/C1=A(per-world start/end, multiple session history)/C2=A(reference canonical node ids, no copy)/D1=A(support manual this cycle)/D2=A(session-only promotion w/ demotion)/E=A(NPC view = direct/inherited/global Knowledge(+promoted) + Rumor; propagated/auto-rumor designer-only)/F1=A(PostgreSQL new infra)/F2=A(SessionRepository port + PG adapter + in-memory mock)/G=A(GameMaster minimal: holds per-region distortion_degree; but turn-based rumor lifecycle + timeline are in scope).
+**AI Response**: Refined phasing. Phase 1 (this cycle) = GameSession + turn + GameMaster(generate/regenerate/promote/demote Rumors per turn, holds per-region distortion_degree manual) + Timeline(records turns) + LLM rumor distortion(degree chain) + support + promotion/demotion + NPC access rule + PostgreSQL session store + SessionRepository port + web(session create/select, per-region generate button, support/distortion display, browse past sessions+timeline) + dead buildWiki cleanup. Phase 2 (next) = Event + Event interaction driving GameMaster dynamics. Writing rumor-distortion-requirements.md (comprehensive). New infra (PostgreSQL) → Infrastructure Design will execute; new components → Application Design likely.
+**Context**: INCEPTION (rumor cycle) — Requirements doc.
+
+---
+
+## Requirements (Rumor Distortion / Game Session) — COMPLETE, awaiting approval
+**Timestamp**: 2026-06-09T04:45:00Z
+**Approval Prompt**: "Requirements complete (rumor-distortion-requirements.md, Phase 1 scoped; Event/timeline-dynamics = Phase 2). Approve & Continue / Request Changes / Add User Stories?"
+**AI Response**: Wrote rumor-distortion-requirements.md (comprehensive) with glossary + 2-layer architecture + FR-R1..R6 + NFR-R1..6 + data model sketch + Phase-2 out-of-scope. Recommending: User Stories SKIP (designer-facing, existing personas cover); Workflow Planning next with Application Design + Infrastructure Design (PostgreSQL) + Units EXECUTE.
+**Context**: INCEPTION (rumor cycle) — Requirements complete; awaiting approval.
+
+---
+
+## Requirements (Rumor Distortion) APPROVED + Workflow Planning START
+**Timestamp**: 2026-06-09T04:50:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: Requirements APPROVED. User Stories SKIP (designer-facing, existing personas). Workflow Planning: this cycle EXECUTEs Application Design + Units Generation + per-unit Functional Design + Infrastructure Design (PostgreSQL, on the foundation unit) + Code Gen + Build&Test. Proposing 3 units: S1 Session Foundation & Infra, S2 Rumor Engine (generation/support/promotion/GameMaster/timeline/NPC-rule), S3 Web UI. Order S1→S2→S3.
+**Context**: INCEPTION (rumor cycle) — Workflow Planning.
+
+---
+
+## Workflow Planning (Rumor Distortion) — COMPLETE, awaiting approval
+**Timestamp**: 2026-06-09T04:55:00Z
+**Approval Prompt**: "Execution plan complete (rumor-distortion-execution-plan.md). Approve & Continue / Request Changes / Add Skipped Stages?"
+**AI Response**: Created execution-plan. Risk Medium-High / Rollback Easy / Testing Moderate-Complex. EXECUTE: Application Design, Units Generation, per-unit FD, NFR-R/D(light S1·S2), Infrastructure Design(S1 PostgreSQL), CodeGen, Build&Test. SKIP: User Stories. 3 units S1(Session Foundation&Infra)→S2(Rumor Engine)→S3(Web UI). Package sequence documented. Mermaid validated.
+**Context**: INCEPTION (rumor cycle) — Workflow Planning complete; awaiting approval → Application Design.
+
+---
+
+## Workflow Planning APPROVED + Application Design START
+**Timestamp**: 2026-06-09T05:00:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: Execution plan APPROVED. Entering Application Design. Created rumor-distortion-application-design-plan.md with 6 component/service-level questions (AD-R Q1 PG access tech, Q2 schema bootstrap, Q3 GameMaster service shape, Q4 session-aware query location, Q5 turn model, Q6 SessionRumor vs canonical Rumor model).
+**Context**: INCEPTION (rumor cycle) — Application Design (questions); awaiting answers.
+
+---
+
+## Application Design (Rumor Distortion) — answers received, generating artifacts
+**Timestamp**: 2026-06-09T05:10:00Z
+**User Input**: "답변 완료" — AD-R Q1=A(SQLAlchemy)/Q2=A(idempotent ensure_schema)/Q3=A(single GameMasterService orchestrator)/Q4=A(new SessionQueryEngine composes canonical QueryEngine + session overlay)/Q5=A(explicit advance_turn; each action appends timeline, turn counter increments on advance)/Q6=A(new SessionRumor model in locus/session/ + DELETE the unused Neo4j Rumor model/mapping).
+**AI Response**: All A. Generating Application Design artifacts under inception/application-design/rumor-session/ (components, component-methods, services, component-dependency, application-design). New package locus/session/. Note: deletes unused Neo4j Rumor node model + rumor_to_node/node_to_rumor/distorted_from_edges/KnowledgeGraph.rumors/loader/exporter/persist rumor paths (consensus auto-rumor KnowledgeView stays — separate).
+**Context**: INCEPTION (rumor cycle) — Application Design artifacts.
+
+---
+
+## Application Design (Rumor Distortion) — COMPLETE, awaiting approval
+**Timestamp**: 2026-06-09T05:20:00Z
+**Approval Prompt**: "Application Design complete (rumor-session/ components, component-methods, services, component-dependency, application-design). Approve & Continue to Units Generation?"
+**AI Response**: Generated 5 artifacts under inception/application-design/rumor-session/. Components: session models, SessionRepository(port)+PostgresSessionRepository(SQLAlchemy)+InMemorySessionRepository, RumorGenerator(LLM), PromotionPolicy(pure), GameMasterService(turn orchestrator, advance_turn), SessionService, SessionQueryEngine(canonical QueryEngine + session overlay; excludes propagated/auto-rumor), session API router. Deletes unused Neo4j Rumor model. Unit placement: S1(foundation+infra+Rumor removal), S2(rumor engine+query), S3(web). 
+**Context**: INCEPTION (rumor cycle) — Application Design complete; awaiting approval → Units Generation.
+
+---
+
+## Application Design APPROVED + Units Generation Part 1 (Planning)
+**Timestamp**: 2026-06-09T05:25:00Z
+**User Input**: "Approve & Continue"
+**Approval Prompt**: "Unit of work plan complete (rumor-distortion-unit-of-work-plan.md). 3-unit split S1/S2/S3 confirm? Ready to proceed to generation?"
+**AI Response**: App Design APPROVED. Units Generation Part 1: created UOW plan with confirmed 3-unit decomposition (S1 Foundation&Infra / S2 Rumor Engine / S3 Web), build order S1→S2→S3, + single boundary-confirm question UOW-R Q1.
+**Context**: INCEPTION (rumor cycle) — Units Generation planning; awaiting confirmation.
+
+---
+
+## Units Generation (Rumor Distortion) — COMPLETE, awaiting approval
+**Timestamp**: 2026-06-09T05:30:00Z
+**User Input**: "A. 그대로 진행" (UOW-R Q1=A)
+**Approval Prompt**: "Units Generation complete (unit-of-work, -dependency, -story-map under rumor-session/). Approve & Continue to CONSTRUCTION (S1)?"
+**AI Response**: Generated 3 unit artifacts. 3 units: S1 Session Foundation & Infra (R1/NFR + Infra Design + delete Neo4j Rumor), S2 Rumor Engine (R2-R5: RumorGenerator/PromotionPolicy/GameMasterService/SessionQueryEngine + API), S3 Web UI (R6). Linear build order S1→S2→S3. FR↔unit story map complete (no gaps).
+**Context**: INCEPTION (rumor cycle) — Units Generation complete; awaiting approval → CONSTRUCTION (S1 Functional Design).
+
+---
+
+## Units Generation APPROVED + S1 Functional Design START
+**Timestamp**: 2026-06-09T05:35:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: Units APPROVED. Entering CONSTRUCTION — S1 (Session Foundation & Infra) Functional Design. Read config/settings.py (BaseSettings alias pattern) for session_db_url. Created S1 FD plan with 5 questions (FD-S1 Q1 region distortion default, Q2 world validation on start, Q3 PG schema style, Q4 id/timestamp, Q5 Neo4j Rumor removal test impact).
+**Context**: CONSTRUCTION (rumor cycle) — S1 Functional Design (questions); awaiting answers.
+
+---
+
+## 2026-06-15 — S1 (Session Foundation & Infra) Functional Design
+- Stage: CONSTRUCTION / per-unit Functional Design (Rumor Distortion / Game Session cycle, Phase 1).
+- Input: design answers recorded in `construction/plans/S1-session-foundation-functional-design-plan.md` (FD-S1 Q1=B / Q2=A / Q3=A / Q4=A / Q5=A).
+- Generated: `construction/S1-session-foundation/functional-design/domain-entities.md`, `business-logic-model.md`, `business-rules.md`.
+- Scope: FR-R1 + NFR-R1/R2/R3 — GameSession/SessionRumor/RegionDistortion/TimelineEntry models + enums, SessionRepository port (+Postgres/InMemory adapters), SessionService lifecycle (world validation + default-distortion seeding), session API (lifecycle/timeline), config/docker-compose/pyproject wiring, and removal of unused Neo4j `Rumor` model/mapping (consensus auto-rumor view retained).
+- Status: awaiting approval. Canonical layer unchanged; next: Infrastructure Design (PostgreSQL).
+
+## 2026-06-15 — S1 Functional Design APPROVED + Infrastructure Design
+- S1 Functional Design: **APPROVED** ("Approve & Continue").
+- Stage: CONSTRUCTION / Infrastructure Design (S1, Rumor/Game-Session cycle Phase 1, NFR-R3).
+- Input: SI-Q1=A / Q2=A / Q3=A / Q4=A / Q5=A / Q6=A (plan: `construction/plans/S1-session-foundation-infrastructure-design-plan.md`).
+- Generated: `construction/S1-session-foundation/infrastructure-design/{infrastructure-design,deployment-architecture}.md`; updated `construction/shared-infrastructure.md`.
+- Decision: add session-only `postgres:16-alpine` to default infra tier (bind-mount ./data/postgres; psycopg3 + SQLAlchemy sync; single SESSION_DB_URL; ensure_schema via init-schema + app boot; app depends_on postgres service_healthy). Canonical Neo4j/OpenSearch unchanged (NFR-R2). pyproject adds sqlalchemy>=2 / psycopg[binary]>=3.
+- Status: awaiting approval. Next: NFR-R/D (light) → Code Generation → Build & Test.
+
+## 2026-06-15 — S1 Infra APPROVED + NFR (light) + Code Generation Plan
+- S1 Infrastructure Design: **APPROVED** ("Approve & Continue").
+- NFR (light): single consolidated note `construction/S1-session-foundation/nfr/nfr-light.md` fixing NFR-R1~R6 to design decisions + verification (no new questions; already specified in requirements/FD/Infra). NFR-R4 graceful + promotion/confidence pure logic deferred to S2.
+- Code Generation Plan: `construction/plans/S1-session-foundation-code-generation-plan.md` — 17 steps (domain models → SessionRepository port → InMemory + Postgres adapters → SessionService(world validation + default-distortion seeding) → session API(lifecycle/timeline) → wiring → infra files → Neo4j Rumor removal + regression cleanup). Tests written-only; offline mocks; live postgres = operator.
+- Status: plan awaiting approval to execute (no code written yet). Next: execute Code Generation → Build & Test.
+
+## 2026-06-15 — S1 Code Generation EXECUTED
+- Stage: CONSTRUCTION / Code Generation (S1, Rumor/Game-Session cycle Phase 1). Plan approved ("Approve & Continue").
+- Implemented 17 steps: new `locus/session/` (models, SessionRepository port, InMemory adapter, SessionService) + `locus/storage/postgres_session_repo.py` (SQLAlchemy) + `api/routers/session.py` + main.py wiring + config session_db_url + CLI init-schema; infra (docker-compose postgres, pyproject sqlalchemy/psycopg, setup-volumes, env.example); removed unused Neo4j Rumor (model/mapping/persist/loader/exporter/orchestrator/neo4j NODE_LABELS) keeping consensus auto-rumor view.
+- Verification: **153 backend tests GREEN** (was 124), ruff + black clean, compileall clean. Postgres adapter tested offline against SQLite; live PostgreSQL operator-run.
+- Code summary: `construction/S1-session-foundation/code/code-summary.md`. Status: awaiting code approval. Next: S1 Build & Test, then S2 (Rumor Engine).
+
+## 2026-06-15 — S1 Build & Test (offline GREEN) — S1 UNIT COMPLETE
+- S1 Code Generation: APPROVED ("Approve & Continue").
+- Build & Test: offline GREEN — 153 backend pytest, ruff/black/compileall clean; import smoke OK (api.main mounts 5 session routes). Live PostgreSQL integration scenarios S1-A..G documented for operator run (schema bootstrap, world-validated start + distortion seeding, 404, lifecycle/history, persistence across restart, app health gating, canonical isolation).
+- Artifact: `construction/S1-session-foundation/build-and-test/build-and-test-summary.md`.
+- Status: S1 (Session Foundation & Infra) UNIT COMPLETE. Next: S2 Rumor Engine (FR-R2..R5).
+
+## 2026-06-15 — S2 (Rumor Engine) Functional Design
+- Stage: CONSTRUCTION / per-unit Functional Design (Rumor/Game-Session cycle Phase 1). Scope: FR-R2/R3/R4/R5.
+- Input: FD-S2 Q1=A / Q2=direct+propagated+session-rumor (clarified from X) / Q3=A / Q4=A / Q5=A / Q6=A / Q7=A. Plan: `construction/plans/S2-rumor-engine-functional-design-plan.md` (2 clarification questions resolved via AskUserQuestion: Q4 + Q7 explained + Q2 confirmed).
+- Generated: `construction/S2-rumor-engine/functional-design/{domain-entities,business-logic-model,business-rules}.md`.
+- Key decisions: rumor chain degrees = [d/3, 2d/3, d] scaled by region distortion (cap); sources = direct + propagated + existing session rumors; chain re-distorts previous text (distorted_from lineage); confidence = source_conf*(1-degree); support init 0.0 / promote threshold 0.6; promoted rumor exposed as direct-like KnowledgeView with is_rumor=True; new pure helper canonical_known in query/engine.py (QueryEngine class unchanged). SessionRumor model unchanged. New types: RumorDraft, PromotionResult, TurnResult.
+- Status: awaiting approval. Next: S2 Code Generation Plan. No infra change; NFR via S1 nfr-light.
+
+## 2026-06-15 — S2 (Rumor Engine) Code Generation EXECUTED
+- Stage: CONSTRUCTION / Code Generation (S2, Rumor/Game-Session Phase 1). Plan approved ("Approve & Continue").
+- Implemented 15 steps: new locus/session/{rumor_generator,promotion,game_master,query}.py + pure canonical_known helper in query/engine.py (QueryEngine unchanged) + session router +6 routes + main.py wiring + __init__ exports. Added SourceKind.SESSION_RUMOR (additive).
+- Key: chain degrees=[d/3,2d/3,d] (region distortion=cap); sources=direct+propagated+existing session rumors; text lineage; confidence=src*(1-degree); promotion threshold 0.6 transitions (pure); promoted rumor=direct-like KnowledgeView(is_rumor=True); SessionQueryEngine drops propagated+auto-rumor.
+- Verification: **177 backend tests GREEN** (was 153), ruff + black clean; 11 session routes mounted; canonical/S1 regression 0. LLM/DB mocked offline.
+- Code summary: construction/S2-rumor-engine/code/code-summary.md. Status: awaiting code approval. Next: S2 Build & Test, then S3 (Web UI).
+
+## 2026-06-15 — S2 Build & Test (offline GREEN) — S2 UNIT COMPLETE
+- S2 Code Generation: APPROVED ("Approve & Continue").
+- Build & Test: offline GREEN — 177 backend pytest, ruff/black clean; 11 session routes mounted. Live LLM+PostgreSQL scenarios S2-A..H documented (generation/distortion/promotion/NPC-query/regenerate/graceful/isolation/regression).
+- Artifact: construction/S2-rumor-engine/build-and-test/build-and-test-summary.md.
+- Status: S2 (Rumor Engine) UNIT COMPLETE. Next: S3 Web UI (FR-R6).
+
+## 2026-06-15 — S3 (Web UI) Functional Design
+- Stage: CONSTRUCTION / per-unit Functional Design (Rumor/Game-Session Phase 1, final unit). Scope: FR-R6 + dead buildWiki cleanup.
+- Input: FD-S3 Q1=A / Q2=GameMaster(SessionPanel)-centric (clarified from X via AskUserQuestion) / Q3=A / Q4=A / Q5=A / Q6=A. Plan: construction/plans/S3-web-ui-functional-design-plan.md.
+- Generated: construction/S3-web-ui/functional-design/{domain-entities,business-logic-model,business-rules}.md.
+- Key decisions: SessionBar (create/select/close) + SessionPanel as GameMaster hub (generate/regenerate/support-slider/distortion-slider/advance-turn/timeline, target=map-selected region); RegionPanel shows session NPC knowledge when a session is active; promoted badge; remove dead buildWiki (api.ts+App+Toolbar). Additive backend read endpoint GET /api/session/sessions/{sid}/regions/{rid}/rumors (reuses repo.list_rumors) to reload region rumors with support/promoted.
+- Status: awaiting approval. Next: S3 Code Generation Plan.
+
+## 2026-06-15 — S3 (Web UI) Code Generation + Build & Test — PHASE 1 COMPLETE
+- S3 Functional Design + Code Generation Plan: APPROVED ("Approve & Continue").
+- Code Generation (11 steps): backend additive GET /api/session/sessions/{sid}/regions/{rid}/rumors (GameMasterService.list_rumors). Frontend web/src: session TS types; api.ts session methods + buildWiki removed; SessionBar (create/select/close); SessionPanel (GameMaster hub: advance-turn, timeline, distortion slider, generate/regenerate, rumor list w/ support slider + PROMOTED badge); RegionPanel sessionId→sessionKnowledge; App/Toolbar updated (buildWiki removed).
+- Build & Test: offline GREEN — 177 backend pytest + 14 frontend vitest (191 total), tsc clean, vite build OK, ruff/black clean, buildWiki residue 0. Live full-UI scenarios S3-A..H documented.
+- Artifacts: construction/S3-web-ui/code/code-summary.md, construction/S3-web-ui/build-and-test/build-and-test-summary.md.
+- 🎉 RUMOR / GAME-SESSION PHASE 1 CODE COMPLETE — S1 + S2 + S3. Phase 2 (Event interaction) deferred. Optional remaining: Operations doc update for the PostgreSQL session stack.
+
+## 2026-06-15 — Operations doc + CLAUDE.md updated (Phase 1 PostgreSQL session stack)
+- operations/operations.md: added PostgreSQL to infra tier + "Game Session layer" section (init-schema session tables, session/GameMaster/NPC-query/timeline workflow, web SessionBar/SessionPanel); pg_isready healthcheck + Postgres volume backup in future ops.
+- CLAUDE.md Status: 191 offline tests (177 backend + 14 frontend); Rumor/Game-Session Phase 1 (S1+S2+S3) summary; Tech Stack adds PostgreSQL + locus/session + session router; Build/Run adds postgres; init-schema note.
+- RUMOR / GAME-SESSION PHASE 1: documentation complete.

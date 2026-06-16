@@ -1,4 +1,4 @@
-"""U1 Common-sense Wiki tests — hit vs miss->LLM fallback (mocked)."""
+"""Common-sense Wiki lookup tests — single-world hit vs miss->LLM fallback (mocked)."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ class _FakeLLM:
         return _PriorSuggestion(
             condition="mountain range between regions",
             effect="connection weight reduced; slower information flow",
-            description="real-world logistics prior",
+            description="logistics prior",
             confidence=0.7,
         )
 
@@ -36,7 +36,7 @@ class _FakeLLM:
 def test_lookup_hit_returns_wiki_prior_without_llm() -> None:
     hit = SearchHit(
         id="p1",
-        world_id="__realworld__",
+        world_id="w1",
         label="WikiPrior",
         text="mountain blocks travel",
         score=2.5,
@@ -44,32 +44,36 @@ def test_lookup_hit_returns_wiki_prior_without_llm() -> None:
             "prior_type": "terrain_rule",
             "condition": "mountain range",
             "effect": "slower exchange",
+            "domains": ["geography", "logistics"],
             "confidence": 1.0,
         },
     )
     search = _FakeSearch([hit])
     llm = _FakeLLM()
-    wiki = CommonsenseWiki(search, llm, embedding=None)
+    wiki = CommonsenseWiki(search, llm, embedding=None, world_id="w1")
 
     priors = wiki.lookup_terrain_rule("mountain range between A and B")
 
     assert len(priors) == 1
     assert priors[0].id == "p1"
+    assert priors[0].world_id == "w1"
+    assert "geography" in [str(d) for d in priors[0].domains]
     assert priors[0].provenance.source == SourceKind.INPUT
     assert llm.called is False
-    # always scoped to the real-world partition + filtered to WikiPrior label
-    assert search.calls[0]["world_id"] == "__realworld__"
+    # scoped to THIS world's partition + filtered to WikiPrior label (BR-A9)
+    assert search.calls[0]["world_id"] == "w1"
     assert search.calls[0]["filters"] == {"label": "WikiPrior"}
 
 
 def test_lookup_miss_triggers_llm_fallback() -> None:
     search = _FakeSearch([])  # no hits
     llm = _FakeLLM()
-    wiki = CommonsenseWiki(search, llm, embedding=None)
+    wiki = CommonsenseWiki(search, llm, embedding=None, world_id="w1")
 
     priors = wiki.lookup_similar("climate of a basin region")
 
     assert len(priors) == 1
     assert llm.called is True
+    assert priors[0].world_id == "w1"
     assert priors[0].provenance.source == SourceKind.INFERRED_WIKI
     assert priors[0].effect.startswith("connection weight")

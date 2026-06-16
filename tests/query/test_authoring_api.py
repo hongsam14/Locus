@@ -78,7 +78,7 @@ def test_delete_node_endpoint() -> None:
 
 
 def test_upsert_knowledge_endpoint() -> None:
-    k = Knowledge(world_id="w", statement="fact", provenance=_prov())
+    k = Knowledge(world_id="w", statement="fact", title="fact", provenance=_prov())
     r = _client().put(f"/api/authoring/worlds/w/knowledge/{k.id}", json=k.model_dump())
     assert r.status_code == 200
     assert r.json()["statement"] == "fact"

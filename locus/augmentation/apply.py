@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..models import Knowledge, Provenance, ScopeLink, ScopeType, SourceKind
+from ..models import Knowledge, Provenance, ScopeLink, ScopeType, SourceKind, fallback_title
 from ..storage import graph_mapping as gm
 from ..storage.base import Node
 from .types import AnswerAction, AugmentationAnswer, ChangeSet, NodeSnapshot
@@ -23,6 +23,7 @@ def apply_answer(answer: AugmentationAnswer, *, world_id: str, graph_repo, edito
         k = Knowledge(
             world_id=world_id,
             statement=answer.statement or "",
+            title=answer.title or fallback_title(answer.statement or "(untitled)"),
             confidence=answer.confidence if answer.confidence is not None else 0.8,
             region_hint=answer.region_id,
             provenance=Provenance(

@@ -184,24 +184,46 @@ def test_concept_art_confidence_capped() -> None:
     assert res.entities[0].id in res.low_confidence_item_ids
 
 
-def test_map_image_ingestor_terrain_and_regions() -> None:
+def test_map_image_ingestor_barrier_hint_and_area_promotion() -> None:
     from locus.ingestion.schemas import ExtractedRegion, ExtractedTerrain
     from locus.models import RegionLevel
 
     mp = MapExtraction(
-        regions=[ExtractedRegion(name="East Reach", level=RegionLevel.PROVINCE, confidence=0.8)],
+        regions=[
+            ExtractedRegion(name="East Reach", level=RegionLevel.PROVINCE, x=0.8, y=0.5),
+            ExtractedRegion(name="West Reach", level=RegionLevel.PROVINCE, x=0.2, y=0.5),
+        ],
         terrain=[
+            # barrier kind -> A-B connection hint, NOT promoted (no entity, no region)
             ExtractedTerrain(
                 name="Spine Mts",
                 kind="mountain",
                 between=["East Reach", "West Reach"],
                 confidence=0.7,
-            )
+            ),
+            # area kind -> promoted to a Region(level=TERRAIN) with position (FR-IM4.1)
+            ExtractedTerrain(
+                name="Mire Swamp",
+                kind="swamp",
+                between=["East Reach"],
+                x=0.6,
+                y=0.6,
+                confidence=0.7,
+            ),
         ],
     )
     res = MapImageIngestor(_FakeVLM(), _FakeLLM(mp)).extract(b"img", world_id="w")
-    assert len(res.region_hints) == 1
-    assert len(res.entities) == 1 and res.entities[0].entity_type == EntityType.TERRAIN
+    # no orphan terrain entities anymore (BR-B4)
+    assert res.entities == []
+    # 2 named regions + 1 promoted terrain region
+    levels = {r.name: r.level for r in res.region_hints}
+    assert levels["Mire Swamp"] == RegionLevel.TERRAIN.value
+    swamp = next(r for r in res.region_hints if r.name == "Mire Swamp")
+    assert swamp.position is not None and swamp.attributes["terrain_kind"] == "swamp"
+    # connection hints: mountain barrier (East-West) + swamp adjacency (Mire Swamp-East Reach)
+    hints = res.region_hints[0].attributes.get("connection_hints", [])
+    assert any(h.get("terrain_kind") == "mountain" for h in hints)
+    assert any(h.get("from") == "Mire Swamp" for h in hints)
 
 
 # --------------------------------------------------------------------------- #

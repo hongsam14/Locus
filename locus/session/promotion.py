@@ -8,6 +8,8 @@ deterministic — PBT target (NFR-R5).
 
 from __future__ import annotations
 
+from pydantic import Field
+
 from ..models import LocusModel
 from .models import SessionRumor
 
@@ -17,8 +19,8 @@ DEFAULT_PROMOTION_THRESHOLD = 0.6
 class PromotionResult(LocusModel):
     """Promotion transitions to apply this turn."""
 
-    promoted_ids: list[str] = []
-    demoted_ids: list[str] = []
+    promoted_ids: list[str] = Field(default_factory=list)
+    demoted_ids: list[str] = Field(default_factory=list)
 
 
 def evaluate(

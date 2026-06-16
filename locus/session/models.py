@@ -66,7 +66,7 @@ class SessionRumor(LocusModel):
     distortion_degree: float = Field(default=DEFAULT_DISTORTION_DEGREE, ge=0.0, le=1.0)
     support: float = Field(default=0.0, ge=0.0, le=1.0)
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
-    promoted: bool = False  # session-only, non-persistent (FR-R3.2/3.3)
+    promoted: bool = False  # promotion state (FR-R3.2/3.3); persisted in the session store
     provenance: Provenance
 
 

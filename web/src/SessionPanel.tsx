@@ -74,7 +74,11 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
               value={distortion}
               disabled={closed}
               onChange={(e) => setDistortion(Number(e.target.value))}
-              onMouseUp={() => run(() => api.setDistortion(session.id, regionId, distortion))}
+              onMouseUp={(e) =>
+                run(() =>
+                  api.setDistortion(session.id, regionId, Number((e.target as HTMLInputElement).value)),
+                )
+              }
             />
           </label>
           <button
@@ -113,6 +117,9 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
                   <label style={{ fontSize: 11, color: "#666" }}>
                     support {r.support.toFixed(2)}
                     <input
+                      // remount when support changes after a refresh so the
+                      // uncontrolled thumb reflects the latest value
+                      key={`${r.id}-${r.support}`}
                       data-testid={`support-${r.id}`}
                       type="range"
                       min={0}

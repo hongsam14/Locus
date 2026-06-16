@@ -16,6 +16,22 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<GameSession | null>(null);
+  const [sessionRev, setSessionRev] = useState(0);
+
+  // After a SessionPanel write (advance turn / generate / support / distortion),
+  // refresh the parent session (turn may have changed) and force RegionPanel to
+  // reload the session NPC view.
+  async function onSessionChanged() {
+    setSessionRev((n) => n + 1);
+    if (!session) return;
+    try {
+      const sessions = await api.listSessions(worldId);
+      const fresh = sessions.find((s) => s.id === session.id);
+      if (fresh) setSession(fresh);
+    } catch {
+      // non-fatal: the panel surfaces its own errors
+    }
+  }
 
   async function run<T>(fn: () => Promise<T>) {
     setBusy(true);
@@ -83,6 +99,7 @@ export function App() {
         <div>
           {selected && (
             <RegionPanel
+              key={`${selected}-${session?.id ?? "none"}-${sessionRev}`}
               worldId={worldId}
               regionId={selected}
               sessionId={session?.id ?? null}
@@ -90,7 +107,7 @@ export function App() {
             />
           )}
           {session && (
-            <SessionPanel session={session} regionId={selected} onChanged={() => undefined} />
+            <SessionPanel session={session} regionId={selected} onChanged={onSessionChanged} />
           )}
           <AugmentPanel worldId={worldId} />
         </div>

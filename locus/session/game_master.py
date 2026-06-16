@@ -8,6 +8,8 @@ Canonical access (source collection via ConsensusEngine) is read-only (NFR-R2).
 
 from __future__ import annotations
 
+from pydantic import Field
+
 from ..consensus.engine import DEFAULT_PARAMS, ConsensusEngine, ConsensusParams
 from ..models import LocusModel
 from ..query.loader import WorldLoader
@@ -36,8 +38,8 @@ class TurnResult(LocusModel):
 
     session_id: str
     turn: int
-    promoted_ids: list[str] = []
-    demoted_ids: list[str] = []
+    promoted_ids: list[str] = Field(default_factory=list)
+    demoted_ids: list[str] = Field(default_factory=list)
 
 
 class GameMasterService:

@@ -9,7 +9,15 @@ from __future__ import annotations
 
 from locus.models import Provenance, SourceKind
 from locus.session import InMemorySessionRepository, SessionRepository
-from locus.session.models import SessionRumor, SessionStatus, TimelineEntry, TimelineKind
+from locus.session.models import (
+    EventCategory,
+    EventStatus,
+    SessionEvent,
+    SessionRumor,
+    SessionStatus,
+    TimelineEntry,
+    TimelineKind,
+)
 
 
 def _repo() -> InMemorySessionRepository:
@@ -110,6 +118,40 @@ def test_session_isolation() -> None:
     )
     repo.set_region_distortion(a.id, "r", 0.4)
     repo.append_timeline(TimelineEntry(session_id=a.id, turn=0, kind=TimelineKind.GENERATE))
+    repo.create_event(_event(a.id))
     assert repo.list_rumors(b.id) == []
     assert repo.list_region_distortions(b.id) == []
     assert repo.list_timeline(b.id) == []
+    assert repo.list_events(b.id) == []
+
+
+def _event(session_id: str, *, region_id: str = "rA", turn: int = 0) -> SessionEvent:
+    return SessionEvent(
+        session_id=session_id,
+        region_id=region_id,
+        category=EventCategory.WAR,
+        magnitude=0.6,
+        created_turn=turn,
+        provenance=Provenance(source=SourceKind.SESSION_EVENT),
+    )
+
+
+def test_event_crud_and_status_filter() -> None:
+    repo = _repo()
+    s = repo.create_session("w")
+    e1 = repo.create_event(_event(s.id, turn=0))
+    e2 = repo.create_event(_event(s.id, region_id="rB", turn=1))
+    assert {e.id for e in repo.list_events(s.id)} == {e1.id, e2.id}
+    assert [e.id for e in repo.list_events(s.id)] == [e1.id, e2.id]  # created_turn order
+    assert repo.get_event(s.id, e1.id).region_id == "rA"
+    # update: status transition + resolved_turn + contributions
+    e1.status = EventStatus.RESOLVED
+    e1.resolved_turn = 2
+    e1.contributions = {"rA": 0.2}
+    repo.update_event(e1)
+    got = repo.get_event(s.id, e1.id)
+    assert got.status == EventStatus.RESOLVED.value and got.resolved_turn == 2
+    assert got.contributions == {"rA": 0.2}
+    assert [e.id for e in repo.list_events(s.id, status="active")] == [e2.id]
+    repo.delete_event(s.id, e2.id)
+    assert repo.get_event(s.id, e2.id) is None

@@ -12,7 +12,15 @@ from pydantic import BaseModel
 
 from locus.models import QueryResult
 from locus.session.game_master import SessionClosedError, TurnResult
-from locus.session.models import GameSession, RegionDistortion, SessionRumor, TimelineEntry
+from locus.session.models import (
+    EventCategory,
+    EventLifecycle,
+    GameSession,
+    RegionDistortion,
+    SessionEvent,
+    SessionRumor,
+    TimelineEntry,
+)
 from locus.session.service import WorldNotFoundError
 
 router = APIRouter(prefix="/api/session", tags=["session"])
@@ -24,6 +32,14 @@ class SupportUpdate(BaseModel):
 
 class DistortionUpdate(BaseModel):
     degree: float
+
+
+class EventCreate(BaseModel):
+    region_id: str
+    category: EventCategory
+    description: str = ""
+    magnitude: float
+    lifecycle: EventLifecycle | None = None
 
 
 def _svc(request: Request, name: str = "session_service"):
@@ -144,5 +160,73 @@ def advance_turn(session_id: str, request: Request) -> TurnResult:
 def session_knowledge(session_id: str, region_id: str, request: Request) -> QueryResult:
     try:
         return _svc(request, "session_query").knowledge_for_region(session_id, region_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+# --- Phase 2: events -------------------------------------------------------- #
+@router.get("/sessions/{session_id}/events", response_model=list[SessionEvent])
+def list_events(session_id: str, request: Request, status: str | None = None) -> list[SessionEvent]:
+    try:
+        return _svc(request, "game_master").list_events(session_id, status=status)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/sessions/{session_id}/events", response_model=SessionEvent)
+def create_event(session_id: str, body: EventCreate, request: Request) -> SessionEvent:
+    try:
+        return _svc(request, "game_master").create_event(
+            session_id,
+            body.region_id,
+            category=body.category,
+            description=body.description,
+            magnitude=body.magnitude,
+            lifecycle=body.lifecycle,
+        )
+    except (LookupError, SessionClosedError) as exc:
+        raise _session_error(exc) from exc
+
+
+@router.post("/sessions/{session_id}/events/{event_id}/resolve", response_model=SessionEvent)
+def resolve_event(session_id: str, event_id: str, request: Request) -> SessionEvent:
+    try:
+        return _svc(request, "game_master").resolve_event(session_id, event_id)
+    except (LookupError, SessionClosedError) as exc:
+        raise _session_error(exc) from exc
+
+
+@router.delete("/sessions/{session_id}/events/{event_id}", status_code=204)
+def discard_event(session_id: str, event_id: str, request: Request) -> None:
+    try:
+        _svc(request, "game_master").discard_event(session_id, event_id)
+    except (LookupError, SessionClosedError) as exc:
+        raise _session_error(exc) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/sessions/{session_id}/suggest-events", response_model=list[SessionEvent])
+def suggest_events(session_id: str, request: Request, n: int = 1) -> list[SessionEvent]:
+    try:
+        return _svc(request, "game_master").suggest_events(session_id, n=n)
+    except (LookupError, SessionClosedError) as exc:
+        raise _session_error(exc) from exc
+
+
+@router.post("/sessions/{session_id}/events/{event_id}/approve", response_model=SessionEvent)
+def approve_event(session_id: str, event_id: str, request: Request) -> SessionEvent:
+    try:
+        return _svc(request, "game_master").approve_event(session_id, event_id)
+    except (LookupError, SessionClosedError) as exc:
+        raise _session_error(exc) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/sessions/{session_id}/distortions", response_model=list[RegionDistortion])
+def list_distortions(session_id: str, request: Request) -> list[RegionDistortion]:
+    try:
+        return _svc(request, "game_master").list_distortions(session_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

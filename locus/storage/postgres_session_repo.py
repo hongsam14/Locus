@@ -11,6 +11,8 @@ SQLite in offline tests). Ids are application-generated (``new_id``);
 
 from __future__ import annotations
 
+from enum import Enum
+
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -35,6 +37,7 @@ from ..models import Provenance
 from ..session.models import (
     GameSession,
     RegionDistortion,
+    SessionEvent,
     SessionRumor,
     SessionStatus,
     TimelineEntry,
@@ -91,6 +94,24 @@ timeline_entries = Table(
     Column("summary", Text, nullable=False, default=""),
     Column("payload", _JSON, nullable=False, default=dict),
     Column("created_at", DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP")),
+)
+
+# Phase 2 — hybrid: core fields = indexed columns, contributions/provenance = JSON(B).
+session_events = Table(
+    "session_events",
+    _metadata,
+    Column("id", String, primary_key=True),
+    Column("session_id", String, nullable=False, index=True),
+    Column("region_id", String, nullable=False, index=True),
+    Column("category", String, nullable=False),
+    Column("description", Text, nullable=False, default=""),
+    Column("magnitude", Float, nullable=False),
+    Column("lifecycle", String, nullable=False),
+    Column("status", String, nullable=False, index=True),
+    Column("created_turn", Integer, nullable=False, default=0),
+    Column("resolved_turn", Integer, nullable=True),
+    Column("contributions", _JSON, nullable=False, default=dict),
+    Column("provenance", _JSON, nullable=False),
 )
 
 
@@ -332,6 +353,58 @@ class PostgresSessionRepository:
             )
         return [_row_to_timeline(r) for r in rows]
 
+    # -- events (Phase 2) ------------------------------------------------- #
+    def create_event(self, event: SessionEvent) -> SessionEvent:
+        with self._require_engine().begin() as conn:
+            conn.execute(session_events.insert().values(**_event_to_values(event)))
+        return event.model_copy(deep=True)
+
+    def get_event(self, session_id: str, event_id: str) -> SessionEvent | None:
+        with self._require_engine().connect() as conn:
+            row = (
+                conn.execute(
+                    select(session_events).where(
+                        session_events.c.session_id == session_id,
+                        session_events.c.id == event_id,
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
+        return _row_to_event(row) if row else None
+
+    def list_events(self, session_id: str, status: str | None = None) -> list[SessionEvent]:
+        stmt = select(session_events).where(session_events.c.session_id == session_id)
+        if status is not None:
+            stmt = stmt.where(session_events.c.status == status)
+        stmt = stmt.order_by(session_events.c.created_turn, session_events.c.id)
+        with self._require_engine().connect() as conn:
+            rows = conn.execute(stmt).mappings().all()
+        return [_row_to_event(r) for r in rows]
+
+    def update_event(self, event: SessionEvent) -> SessionEvent:
+        values = _event_to_values(event)
+        with self._require_engine().begin() as conn:
+            exists = conn.execute(
+                select(session_events.c.id).where(session_events.c.id == event.id)
+            ).scalar_one_or_none()
+            if exists:
+                conn.execute(
+                    update(session_events).where(session_events.c.id == event.id).values(**values)
+                )
+            else:
+                conn.execute(session_events.insert().values(**values))
+        return event.model_copy(deep=True)
+
+    def delete_event(self, session_id: str, event_id: str) -> None:
+        with self._require_engine().begin() as conn:
+            conn.execute(
+                delete(session_events).where(
+                    session_events.c.session_id == session_id,
+                    session_events.c.id == event_id,
+                )
+            )
+
     # -- helpers ---------------------------------------------------------- #
     def _require_engine(self) -> Engine:
         if self._engine is None:
@@ -399,3 +472,42 @@ def _row_to_timeline(row) -> TimelineEntry:
 
 def _kind_value(kind) -> str:
     return kind.value if isinstance(kind, TimelineKind) else str(kind)
+
+
+def _event_to_values(e: SessionEvent) -> dict:
+    return {
+        "id": e.id,
+        "session_id": e.session_id,
+        "region_id": e.region_id,
+        "category": _enum_value(e.category),
+        "description": e.description,
+        "magnitude": e.magnitude,
+        "lifecycle": _enum_value(e.lifecycle),
+        "status": _enum_value(e.status),
+        "created_turn": e.created_turn,
+        "resolved_turn": e.resolved_turn,
+        "contributions": e.contributions,
+        "provenance": e.provenance.model_dump(),
+    }
+
+
+def _row_to_event(row) -> SessionEvent:
+    return SessionEvent(
+        id=row["id"],
+        session_id=row["session_id"],
+        region_id=row["region_id"],
+        category=row["category"],
+        description=row["description"],
+        magnitude=row["magnitude"],
+        lifecycle=row["lifecycle"],
+        status=row["status"],
+        created_turn=row["created_turn"],
+        resolved_turn=row["resolved_turn"],
+        contributions=row["contributions"] or {},
+        provenance=Provenance.model_validate(row["provenance"]),
+    )
+
+
+def _enum_value(v) -> str:
+    """Enum field values are already strings (use_enum_values=True), but accept enums too."""
+    return v.value if isinstance(v, Enum) else str(v)

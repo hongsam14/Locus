@@ -11,7 +11,14 @@ from __future__ import annotations
 from copy import deepcopy
 from datetime import datetime, timezone
 
-from .models import GameSession, RegionDistortion, SessionRumor, SessionStatus, TimelineEntry
+from .models import (
+    GameSession,
+    RegionDistortion,
+    SessionEvent,
+    SessionRumor,
+    SessionStatus,
+    TimelineEntry,
+)
 
 
 class InMemorySessionRepository:
@@ -22,6 +29,7 @@ class InMemorySessionRepository:
         self._rumors: dict[str, dict[str, SessionRumor]] = {}  # session_id -> {rumor_id: rumor}
         self._distortions: dict[tuple[str, str], float] = {}  # (session_id, region_id) -> degree
         self._timeline: dict[str, list[TimelineEntry]] = {}  # session_id -> entries
+        self._events: dict[str, dict[str, SessionEvent]] = {}  # session_id -> {event_id: event}
         self._clock = 0
 
     # --- internal ---
@@ -54,6 +62,7 @@ class InMemorySessionRepository:
         self._sessions[session.id] = session
         self._rumors[session.id] = {}
         self._timeline[session.id] = []
+        self._events[session.id] = {}
         return deepcopy(session)
 
     def get_session(self, session_id: str) -> GameSession | None:
@@ -125,6 +134,30 @@ class InMemorySessionRepository:
             key=lambda e: (e.turn, e.created_at or datetime.min.replace(tzinfo=timezone.utc)),
         )
         return [deepcopy(e) for e in ordered]
+
+    # --- events (Phase 2) ---
+    def create_event(self, event: SessionEvent) -> SessionEvent:
+        self._require_session(event.session_id)
+        self._events.setdefault(event.session_id, {})[event.id] = deepcopy(event)
+        return deepcopy(event)
+
+    def get_event(self, session_id: str, event_id: str) -> SessionEvent | None:
+        e = self._events.get(session_id, {}).get(event_id)
+        return deepcopy(e) if e else None
+
+    def list_events(self, session_id: str, status: str | None = None) -> list[SessionEvent]:
+        events = self._events.get(session_id, {}).values()
+        out = [deepcopy(e) for e in events if status is None or e.status == status]
+        out.sort(key=lambda e: (e.created_turn, e.id))
+        return out
+
+    def update_event(self, event: SessionEvent) -> SessionEvent:
+        self._require_session(event.session_id)
+        self._events.setdefault(event.session_id, {})[event.id] = deepcopy(event)
+        return deepcopy(event)
+
+    def delete_event(self, session_id: str, event_id: str) -> None:
+        self._events.get(session_id, {}).pop(event_id, None)
 
     # --- helpers ---
     def _require_session(self, session_id: str) -> GameSession:

@@ -48,7 +48,25 @@ locus init-schema          # now also creates the PostgreSQL session tables (ide
 
 > This cycle ADDS PostgreSQL (session-only) to the infra tier; Neo4j/OpenSearch stack unchanged.
 > LLM rumor generation needs `OPENAI_API_KEY` and is graceful (a failed step is skipped, the turn proceeds).
-> Phase 2 (Event interaction → dynamic distortion) is deferred.
+
+## Game Session layer — Phase 2 (Event → dynamic distortion, 2026-06-19)
+Adds **Events** that dynamically evolve per-region distortion over turns. **No new infra** — the
+`session_events` table is created by `locus init-schema` (idempotent, additive); docker-compose unchanged.
+1. Create an event (GameMaster): `POST …/sessions/{sid}/events` (region, category [war/plague/politics/
+   disaster/festival/discovery], magnitude, optional lifecycle). LLM suggestions: `POST …/suggest-events?n=`
+   → SUGGESTED; approve `POST …/events/{eid}/approve` (→ ACTIVE) or discard `DELETE …/events/{eid}`.
+2. `POST …/advance-turn` now also: applies ACTIVE events to distortion (deterministic delta + topology-decayed
+   propagation; persistent accumulates, one_shot auto-resolves), appends rumors in target regions (existing +
+   support preserved), auto-evolves support (event-influenced +, others −), then re-evaluates promotion.
+3. Resolve a persistent event `POST …/events/{eid}/resolve` → restores its accumulated distortion. Inspect
+   live values `GET …/sessions/{sid}/distortions`; events `GET …/sessions/{sid}/events?status=`.
+4. Web: SessionPanel adds an event create form, session-wide event list (Approve/Discard/Resolve), a
+   "Suggest events" button, and shows the real per-region distortion. Timeline records EVENT_* entries.
+
+> Distortion/propagation/support evolution are **deterministic** (LLM-independent); only event *suggestion*
+> uses the LLM and is graceful (no suggester / failure → no suggestions, the turn still advances).
+> Rumor count grows each turn (append semantics) — use `regenerate` to bound long sessions.
+> Phase 3 (rumor→region feedback loop, event-to-event interaction) is deferred.
 
 ## Web UI (U10)
 ```bash

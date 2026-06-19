@@ -17,11 +17,14 @@ from locus.models import (
     SourceKind,
 )
 from locus.session import (
+    EventSuggester,
     GameMasterService,
     InMemorySessionRepository,
     SessionQueryEngine,
     SessionService,
 )
+from locus.session.event_suggester import EventDraft, EventDraftList
+from locus.session.models import EventCategory
 from locus.session.rumor_generator import RumorDraft, RumorGenerator
 from locus.storage.base import Node
 
@@ -60,13 +63,26 @@ class _Loader:
         return self._kg, self._topo
 
 
-def _client() -> TestClient:
+class _SuggestLLM:
+    def structured(self, prompt, schema, *, system=None):
+        return EventDraftList(
+            drafts=[EventDraft(region_id="r1", category=EventCategory.WAR, magnitude=0.5)]
+        )
+
+    def complete(self, prompt, *, system=None):  # pragma: no cover
+        return ""
+
+
+def _client(*, with_suggester: bool = False) -> TestClient:
     repo = InMemorySessionRepository()
     loader = _Loader()
+    suggester = EventSuggester(_SuggestLLM()) if with_suggester else None
     return TestClient(
         create_app(
             session_service=SessionService(repo, _GraphRepo()),
-            game_master=GameMasterService(repo, RumorGenerator(_FakeLLM()), loader),
+            game_master=GameMasterService(
+                repo, RumorGenerator(_FakeLLM()), loader, suggester=suggester
+            ),
             session_query=SessionQueryEngine(repo, loader),
         )
     )
@@ -158,3 +174,111 @@ def test_s2_validation_and_status_codes() -> None:
     client.post(f"/api/session/sessions/{sid}/close")
     assert client.post(f"/api/session/sessions/{sid}/regions/r1/rumors").status_code == 409
     assert client.post(f"/api/session/sessions/{sid}/advance-turn").status_code == 409
+
+
+# --- Phase 2: event routes -------------------------------------------------- #
+def test_event_create_list_resolve_flow() -> None:
+    client = _client()
+    sid = _new_session(client)
+
+    created = client.post(
+        f"/api/session/sessions/{sid}/events",
+        json={"region_id": "r1", "category": "war", "description": "siege", "magnitude": 0.7},
+    )
+    assert created.status_code == 200
+    ev = created.json()
+    assert ev["status"] == "active" and ev["lifecycle"] == "persistent" and ev["category"] == "war"
+    eid = ev["id"]
+
+    listed = client.get(f"/api/session/sessions/{sid}/events")
+    assert listed.status_code == 200 and len(listed.json()) == 1
+    assert client.get(f"/api/session/sessions/{sid}/events?status=active").json()[0]["id"] == eid
+
+    resolved = client.post(f"/api/session/sessions/{sid}/events/{eid}/resolve")
+    assert resolved.status_code == 200 and resolved.json()["status"] == "resolved"
+    assert client.get(f"/api/session/sessions/{sid}/events?status=active").json() == []
+
+
+def test_event_validation_and_status_codes() -> None:
+    client = _client()
+    sid = _new_session(client)
+    # unknown region -> 404
+    bad = client.post(
+        f"/api/session/sessions/{sid}/events",
+        json={"region_id": "ghost", "category": "war", "magnitude": 0.5},
+    )
+    assert bad.status_code == 404
+    # out-of-range magnitude is clamped in service (same convention as support/distortion)
+    clamped = client.post(
+        f"/api/session/sessions/{sid}/events",
+        json={"region_id": "r1", "category": "war", "magnitude": 9.0},
+    )
+    assert clamped.status_code == 200 and clamped.json()["magnitude"] == 1.0
+    # unknown enum category -> 422 (pydantic)
+    assert (
+        client.post(
+            f"/api/session/sessions/{sid}/events",
+            json={"region_id": "r1", "category": "nonsense", "magnitude": 0.5},
+        ).status_code
+        == 422
+    )
+    # discard ACTIVE -> 400
+    ev = client.post(
+        f"/api/session/sessions/{sid}/events",
+        json={"region_id": "r1", "category": "war", "magnitude": 0.5},
+    ).json()
+    assert client.delete(f"/api/session/sessions/{sid}/events/{ev['id']}").status_code == 400
+    # missing session -> 404
+    assert client.get("/api/session/sessions/nope/events").status_code == 404
+    # closed session write -> 409
+    client.post(f"/api/session/sessions/{sid}/close")
+    assert (
+        client.post(
+            f"/api/session/sessions/{sid}/events",
+            json={"region_id": "r1", "category": "war", "magnitude": 0.5},
+        ).status_code
+        == 409
+    )
+
+
+def test_suggest_approve_advance_flow() -> None:
+    client = _client(with_suggester=True)
+    sid = _new_session(client)
+    sug = client.post(f"/api/session/sessions/{sid}/suggest-events?n=1")
+    assert sug.status_code == 200 and len(sug.json()) == 1
+    ev = sug.json()[0]
+    assert ev["status"] == "suggested"
+
+    ap = client.post(f"/api/session/sessions/{sid}/events/{ev['id']}/approve")
+    assert ap.status_code == 200 and ap.json()["status"] == "active"
+
+    turn = client.post(f"/api/session/sessions/{sid}/advance-turn")
+    assert turn.status_code == 200
+    body = turn.json()
+    assert body["turn"] == 1 and ev["id"] in body["applied_event_ids"]
+
+
+def test_suggest_without_suggester_empty() -> None:
+    client = _client()  # no suggester
+    sid = _new_session(client)
+    r = client.post(f"/api/session/sessions/{sid}/suggest-events")
+    assert r.status_code == 200 and r.json() == []
+
+
+def test_approve_missing_event_404() -> None:
+    client = _client()
+    sid = _new_session(client)
+    assert client.post(f"/api/session/sessions/{sid}/events/nope/approve").status_code == 404
+
+
+def test_list_distortions() -> None:
+    client = _client()
+    sid = _new_session(client)
+    # session start seeds a default distortion row per region (FD-S1 Q1=B)
+    seeded = client.get(f"/api/session/sessions/{sid}/distortions").json()
+    assert {r["region_id"] for r in seeded} == {"r1"}
+    client.put(f"/api/session/sessions/{sid}/regions/r1/distortion", json={"degree": 0.7})
+    rows = client.get(f"/api/session/sessions/{sid}/distortions").json()
+    r1 = next(r for r in rows if r["region_id"] == "r1")
+    assert r1["distortion_degree"] == 0.7
+    assert client.get("/api/session/sessions/nope/distortions").status_code == 404

@@ -92,3 +92,4 @@ class SourceKind(StrEnum):
     INFERRED_WIKI = "inferred-wiki"
     AUGMENTATION = "augmentation"
     SESSION_RUMOR = "session-rumor"  # session-layer rumor (S2), not canonical
+    SESSION_EVENT = "session-event"  # session-layer event (Phase 2), not canonical

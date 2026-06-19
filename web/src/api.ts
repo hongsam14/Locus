@@ -1,10 +1,13 @@
 import type {
   AugAnswer,
   AugSession,
+  EventCategory,
+  EventLifecycle,
   GameSession,
   QueryResult,
   Region,
   RegionDistortion,
+  SessionEvent,
   SessionRumor,
   TimelineEntry,
   TurnResult,
@@ -131,5 +134,51 @@ export const api = {
       `/api/session/sessions/${encodeURIComponent(sid)}/regions/${encodeURIComponent(
         regionId,
       )}/knowledge`,
+    ),
+
+  // --- session events (Phase 2) ---
+  listEvents: (sid: string, status?: string) =>
+    http<SessionEvent[]>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/events${
+        status ? `?status=${encodeURIComponent(status)}` : ""
+      }`,
+    ),
+  createEvent: (
+    sid: string,
+    body: {
+      region_id: string;
+      category: EventCategory;
+      description: string;
+      magnitude: number;
+      lifecycle?: EventLifecycle | null;
+    },
+  ) =>
+    http<SessionEvent>(`/api/session/sessions/${encodeURIComponent(sid)}/events`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  suggestEvents: (sid: string, n = 1) =>
+    http<SessionEvent[]>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/suggest-events?n=${n}`,
+      { method: "POST" },
+    ),
+  approveEvent: (sid: string, eid: string) =>
+    http<SessionEvent>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/events/${encodeURIComponent(eid)}/approve`,
+      { method: "POST" },
+    ),
+  resolveEvent: (sid: string, eid: string) =>
+    http<SessionEvent>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/events/${encodeURIComponent(eid)}/resolve`,
+      { method: "POST" },
+    ),
+  discardEvent: (sid: string, eid: string) =>
+    http<void>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/events/${encodeURIComponent(eid)}`,
+      { method: "DELETE" },
+    ),
+  listDistortions: (sid: string) =>
+    http<RegionDistortion[]>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/distortions`,
     ),
 };

@@ -8,9 +8,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-AI-DLC build complete. MVP (10 units) + MVP-improvements + **Rumor / Game-Session Phase 1** (S1+S2+S3, 2026-06-15). **191 offline tests GREEN** (177 pytest backend + 14 vitest frontend); live Neo4j/OpenSearch/PostgreSQL/OpenAI integration is operator-run (see `aidlc-docs/construction/**/build-and-test/`).
+AI-DLC build complete. MVP (10 units) + MVP-improvements + **Rumor / Game-Session Phase 1** (S1+S2+S3, 2026-06-15) + **Phase 2** (P1+P2+P3, 2026-06-19). **236 offline tests GREEN** (219 pytest backend + 17 vitest frontend); live Neo4j/OpenSearch/PostgreSQL/OpenAI integration is operator-run (see `aidlc-docs/construction/**/build-and-test/`).
 
-The latest cycle adds a dynamic **game-session layer** (PostgreSQL) over the static canonical world: GameMaster turns, LLM rumor distortion (degree chains), support/promotion, timeline, and a session NPC query — see `locus/session/`, `api/routers/session.py`, and `web/` SessionBar/SessionPanel. Phase 2 (Event interaction → dynamic distortion) deferred.
+The game-session layer (PostgreSQL) over the static canonical world provides GameMaster turns, LLM rumor distortion (degree chains), support/promotion, timeline, and a session NPC query. **Phase 2 adds Events** (`SessionEvent`, category/magnitude/lifecycle) that **dynamically evolve per-region distortion** each turn: deterministic delta + topology-decayed propagation, persistent accumulation / one_shot, resolve-restore, support auto-evolution, and LLM event suggestion (suggest→approve) — see `locus/session/{dynamics,event_suggester,game_master}.py`, `api/routers/session.py`, and `web/` SessionPanel. Phase 3 (rumor→region feedback loop, event-to-event interaction) deferred.
 
 ## Tech Stack & Layout
 - **Backend**: Python 3.11+, Pydantic v2, FastAPI, Neo4j (graph) + OpenSearch (hybrid search) for the canonical world, **PostgreSQL (SQLAlchemy) for the game-session layer**, LangChain/LangGraph, OpenAI (provider-abstracted). Docker Compose.

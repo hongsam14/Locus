@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
-import type { GameSession, SessionRumor, TimelineEntry } from "./types";
+import type {
+  EventCategory,
+  EventLifecycle,
+  GameSession,
+  SessionEvent,
+  SessionRumor,
+  TimelineEntry,
+} from "./types";
 
 interface Props {
   session: GameSession;
@@ -8,10 +15,25 @@ interface Props {
   onChanged?: () => void; // notify parent (e.g. refresh RegionPanel/session)
 }
 
+const CATEGORIES: EventCategory[] = [
+  "war",
+  "plague",
+  "politics",
+  "disaster",
+  "festival",
+  "discovery",
+];
+
 export function SessionPanel({ session, regionId, onChanged }: Props) {
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [rumors, setRumors] = useState<SessionRumor[]>([]);
+  const [events, setEvents] = useState<SessionEvent[]>([]);
+  const [distortions, setDistortions] = useState<Record<string, number>>({});
   const [distortion, setDistortion] = useState(0.3);
+  const [evCategory, setEvCategory] = useState<EventCategory>("war");
+  const [evDescription, setEvDescription] = useState("");
+  const [evMagnitude, setEvMagnitude] = useState(0.5);
+  const [evLifecycle, setEvLifecycle] = useState<EventLifecycle | "">("");
   const [error, setError] = useState<string | null>(null);
   const closed = session.status === "closed";
 
@@ -19,8 +41,17 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
     setError(null);
     try {
       setTimeline(await api.getTimeline(session.id));
-      if (regionId) setRumors(await api.listRumors(session.id, regionId));
-      else setRumors([]);
+      setEvents(await api.listEvents(session.id));
+      const dist = await api.listDistortions(session.id);
+      const map: Record<string, number> = {};
+      for (const d of dist) map[d.region_id] = d.distortion_degree;
+      setDistortions(map);
+      if (regionId) {
+        setRumors(await api.listRumors(session.id, regionId));
+        setDistortion(map[regionId] ?? 0.3); // reflect real per-region distortion
+      } else {
+        setRumors([]);
+      }
     } catch (e) {
       setError(String(e));
     }
@@ -53,11 +84,79 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
       >
         Advance Turn
       </button>
+      <button
+        data-testid="suggest-events-btn"
+        onClick={() => run(() => api.suggestEvents(session.id, 1))}
+        disabled={closed}
+        style={{ marginLeft: 6 }}
+      >
+        Suggest events
+      </button>
+
+      {/* Session-wide event list (FD-P3 Q3=A) */}
+      <h4 style={{ marginBottom: 4, marginTop: 12 }}>Events</h4>
+      <ul data-testid="events" style={{ listStyle: "none", padding: 0, fontSize: 13 }}>
+        {events.map((ev) => (
+          <li
+            key={ev.id}
+            data-testid={`event-${ev.id}`}
+            style={{ borderBottom: "1px solid #eee", padding: "6px 0" }}
+          >
+            <span
+              data-testid={`event-status-${ev.id}`}
+              style={{
+                background:
+                  ev.status === "active" ? "#2980b9" : ev.status === "suggested" ? "#f39c12" : "#888",
+                color: "#fff",
+                borderRadius: 4,
+                padding: "1px 6px",
+                fontSize: 11,
+                marginRight: 6,
+              }}
+            >
+              {ev.status}
+            </span>
+            <span style={{ color: "#999", fontSize: 11 }}>
+              {ev.region_id} · {ev.category} · m{ev.magnitude.toFixed(2)} · {ev.lifecycle}{" "}
+            </span>
+            {ev.description}
+            <span style={{ marginLeft: 6 }}>
+              {ev.status === "suggested" && (
+                <>
+                  <button
+                    data-testid={`approve-${ev.id}`}
+                    onClick={() => run(() => api.approveEvent(session.id, ev.id))}
+                    disabled={closed}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    data-testid={`discard-${ev.id}`}
+                    onClick={() => run(() => api.discardEvent(session.id, ev.id))}
+                    disabled={closed}
+                  >
+                    Discard
+                  </button>
+                </>
+              )}
+              {ev.status === "active" && (
+                <button
+                  data-testid={`resolve-${ev.id}`}
+                  onClick={() => run(() => api.resolveEvent(session.id, ev.id))}
+                  disabled={closed}
+                >
+                  Resolve
+                </button>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
 
       {/* GameMaster region controls (target = selected map region) */}
       {!regionId && (
         <div data-testid="gm-no-region" style={{ color: "#888", fontSize: 12, marginTop: 8 }}>
-          Select a region on the map to manage its rumors.
+          Select a region on the map to manage its rumors and events.
         </div>
       )}
       {regionId && (
@@ -95,6 +194,69 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
           >
             Regenerate
           </button>
+
+          {/* Event create form (target = selected region) */}
+          <div data-testid="event-form" style={{ marginTop: 8, fontSize: 12 }}>
+            <select
+              data-testid="event-category"
+              value={evCategory}
+              disabled={closed}
+              onChange={(e) => setEvCategory(e.target.value as EventCategory)}
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <input
+              data-testid="event-description"
+              placeholder="description"
+              value={evDescription}
+              disabled={closed}
+              onChange={(e) => setEvDescription(e.target.value)}
+            />
+            <label>
+              m{evMagnitude.toFixed(2)}
+              <input
+                data-testid="event-magnitude"
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={evMagnitude}
+                disabled={closed}
+                onChange={(e) => setEvMagnitude(Number(e.target.value))}
+              />
+            </label>
+            <select
+              data-testid="event-lifecycle"
+              value={evLifecycle}
+              disabled={closed}
+              onChange={(e) => setEvLifecycle(e.target.value as EventLifecycle | "")}
+            >
+              <option value="">default</option>
+              <option value="one_shot">one_shot</option>
+              <option value="persistent">persistent</option>
+            </select>
+            <button
+              data-testid="event-create-btn"
+              disabled={closed}
+              onClick={() =>
+                run(() =>
+                  api.createEvent(session.id, {
+                    region_id: regionId,
+                    category: evCategory,
+                    description: evDescription,
+                    magnitude: evMagnitude,
+                    lifecycle: evLifecycle || null,
+                  }),
+                )
+              }
+            >
+              Create event
+            </button>
+          </div>
 
           <ul style={{ listStyle: "none", padding: 0, marginTop: 8 }}>
             {rumors.map((r) => (

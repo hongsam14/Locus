@@ -25,6 +25,13 @@ vi.mock("../api", () => ({
     setSupport: vi.fn(),
     setDistortion: vi.fn(),
     advanceTurn: vi.fn(),
+    listEvents: vi.fn(),
+    createEvent: vi.fn(),
+    suggestEvents: vi.fn(),
+    approveEvent: vi.fn(),
+    resolveEvent: vi.fn(),
+    discardEvent: vi.fn(),
+    listDistortions: vi.fn(),
   },
 }));
 import { api } from "../api";
@@ -117,7 +124,12 @@ describe("SessionBar", () => {
 });
 
 describe("SessionPanel (GameMaster hub)", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // safe defaults for the Phase 2 reads SessionPanel issues on refresh
+    (api.listEvents as Mock).mockResolvedValue([]);
+    (api.listDistortions as Mock).mockResolvedValue([]);
+  });
 
   it("renders rumors with promoted badge and generates", async () => {
     (api.getTimeline as Mock).mockResolvedValue([
@@ -159,6 +171,63 @@ describe("SessionPanel (GameMaster hub)", () => {
     );
     await waitFor(() => expect(screen.getByTestId("generate-btn")).toBeDisabled());
     expect(screen.getByTestId("advance-turn-btn")).toBeDisabled();
+    expect(screen.getByTestId("event-create-btn")).toBeDisabled();
+    expect(screen.getByTestId("suggest-events-btn")).toBeDisabled();
+  });
+
+  it("creates an event for the selected region", async () => {
+    (api.getTimeline as Mock).mockResolvedValue([]);
+    (api.listRumors as Mock).mockResolvedValue([]);
+    (api.createEvent as Mock).mockResolvedValue({});
+    render(<SessionPanel session={OPEN_SESSION} regionId="r1" />);
+    await waitFor(() => expect(screen.getByTestId("event-form")).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId("event-create-btn"));
+    await waitFor(() =>
+      expect(api.createEvent).toHaveBeenCalledWith(
+        "s1",
+        expect.objectContaining({ region_id: "r1", category: "war" }),
+      ),
+    );
+  });
+
+  it("suggests, then approves/discards/resolves events", async () => {
+    (api.getTimeline as Mock).mockResolvedValue([]);
+    (api.listRumors as Mock).mockResolvedValue([]);
+    (api.listEvents as Mock).mockResolvedValue([
+      {
+        id: "e1", session_id: "s1", region_id: "r1", category: "war", description: "siege",
+        magnitude: 0.7, lifecycle: "persistent", status: "suggested", created_turn: 0, contributions: {},
+      },
+      {
+        id: "e2", session_id: "s1", region_id: "r2", category: "festival", description: "fair",
+        magnitude: 0.3, lifecycle: "one_shot", status: "active", created_turn: 1, contributions: {},
+      },
+    ]);
+    (api.suggestEvents as Mock).mockResolvedValue([]);
+    (api.approveEvent as Mock).mockResolvedValue({});
+    (api.resolveEvent as Mock).mockResolvedValue({});
+    render(<SessionPanel session={OPEN_SESSION} regionId={null} />);
+    await waitFor(() => expect(screen.getByTestId("event-e1")).toBeInTheDocument());
+    expect(screen.getByTestId("event-status-e1")).toHaveTextContent("suggested");
+
+    fireEvent.click(screen.getByTestId("suggest-events-btn"));
+    await waitFor(() => expect(api.suggestEvents).toHaveBeenCalledWith("s1", 1));
+
+    fireEvent.click(screen.getByTestId("approve-e1"));
+    await waitFor(() => expect(api.approveEvent).toHaveBeenCalledWith("s1", "e1"));
+
+    fireEvent.click(screen.getByTestId("resolve-e2"));
+    await waitFor(() => expect(api.resolveEvent).toHaveBeenCalledWith("s1", "e2"));
+  });
+
+  it("reflects real per-region distortion from listDistortions", async () => {
+    (api.getTimeline as Mock).mockResolvedValue([]);
+    (api.listRumors as Mock).mockResolvedValue([]);
+    (api.listDistortions as Mock).mockResolvedValue([
+      { session_id: "s1", region_id: "r1", distortion_degree: 0.75 },
+    ]);
+    render(<SessionPanel session={OPEN_SESSION} regionId="r1" />);
+    await waitFor(() => expect(screen.getByText(/distortion 0\.75/)).toBeInTheDocument());
   });
 });
 

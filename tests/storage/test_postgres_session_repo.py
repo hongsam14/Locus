@@ -17,6 +17,10 @@ from sqlalchemy import create_engine  # noqa: E402
 from locus.models import Provenance, SourceKind  # noqa: E402
 from locus.session import SessionRepository  # noqa: E402
 from locus.session.models import (  # noqa: E402
+    EventCategory,
+    EventLifecycle,
+    EventStatus,
+    SessionEvent,
     SessionRumor,
     SessionStatus,
     TimelineEntry,
@@ -123,3 +127,43 @@ def test_session_isolation(repo: PostgresSessionRepository) -> None:
         SessionRumor(session_id=a.id, region_id="r", distorted_from_id="k", provenance=_prov())
     )
     assert repo.list_rumors(b.id) == []
+
+
+def test_event_roundtrip_update_and_filter(repo: PostgresSessionRepository) -> None:
+    s = repo.create_session("w")
+    e = SessionEvent(
+        session_id=s.id,
+        region_id="rA",
+        category=EventCategory.WAR,
+        description="border skirmish",
+        magnitude=0.7,
+        lifecycle=EventLifecycle.PERSISTENT,
+        status=EventStatus.ACTIVE,
+        created_turn=0,
+        provenance=Provenance(source=SourceKind.SESSION_EVENT, generated_by="gm:event"),
+    )
+    repo.create_event(e)
+    assert repo.get_event(s.id, e.id) == e
+    # update: resolve + contributions (JSONB roundtrip)
+    e.status = EventStatus.RESOLVED
+    e.resolved_turn = 3
+    e.contributions = {"rA": 0.23, "rB": 0.1}
+    repo.update_event(e)
+    got = repo.get_event(s.id, e.id)
+    assert got.status == EventStatus.RESOLVED.value and got.resolved_turn == 3
+    assert got.contributions == {"rA": 0.23, "rB": 0.1}
+    # status filter + ordering
+    repo.create_event(
+        SessionEvent(
+            session_id=s.id,
+            region_id="rB",
+            category=EventCategory.FESTIVAL,
+            magnitude=0.2,
+            created_turn=1,
+            provenance=Provenance(source=SourceKind.SESSION_EVENT),
+        )
+    )
+    assert [ev.region_id for ev in repo.list_events(s.id, status="active")] == ["rB"]
+    assert [ev.created_turn for ev in repo.list_events(s.id)] == [0, 1]
+    repo.delete_event(s.id, e.id)
+    assert repo.get_event(s.id, e.id) is None

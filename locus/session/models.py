@@ -41,6 +41,10 @@ class TimelineKind(str, Enum):
     ADJUST_SUPPORT = "adjust_support"
     ADVANCE_TURN = "advance_turn"
     SET_DISTORTION = "set_distortion"
+    # Phase 2 — event lifecycle (additive; existing values/order unchanged, BR-P1-13)
+    EVENT_CREATED = "event_created"
+    EVENT_APPLIED = "event_applied"  # produced by P2 advance_turn
+    EVENT_RESOLVED = "event_resolved"
 
 
 class GameSession(LocusModel):
@@ -92,3 +96,71 @@ class TimelineEntry(LocusModel):
     summary: str = ""
     payload: dict = Field(default_factory=dict)
     created_at: datetime | None = None  # set by DB server time (BR-S1-8)
+
+
+# --------------------------------------------------------------------------- #
+# Phase 2 — Event + dynamic distortion (P1 Event Foundation)
+# --------------------------------------------------------------------------- #
+class EventCategory(str, Enum):
+    """Pre-defined classification of a SessionEvent (FD-P1 Q1=A)."""
+
+    WAR = "war"
+    PLAGUE = "plague"
+    POLITICS = "politics"
+    DISASTER = "disaster"
+    FESTIVAL = "festival"
+    DISCOVERY = "discovery"
+
+
+class EventLifecycle(str, Enum):
+    """Whether an event applies once or persists each turn until resolved (CL1)."""
+
+    ONE_SHOT = "one_shot"
+    PERSISTENT = "persistent"
+
+
+class EventStatus(str, Enum):
+    """Lifecycle state of a SessionEvent (AD-P Q4=A)."""
+
+    SUGGESTED = "suggested"  # LLM proposal awaiting approval (P2)
+    ACTIVE = "active"  # in effect (manual create = active directly)
+    RESOLVED = "resolved"
+
+
+# category -> default lifecycle (BR-P1-3 / CL1.3). Overridable at creation.
+CATEGORY_DEFAULT_LIFECYCLE: dict[EventCategory, EventLifecycle] = {
+    EventCategory.WAR: EventLifecycle.PERSISTENT,
+    EventCategory.PLAGUE: EventLifecycle.PERSISTENT,
+    EventCategory.POLITICS: EventLifecycle.PERSISTENT,
+    EventCategory.DISASTER: EventLifecycle.ONE_SHOT,
+    EventCategory.FESTIVAL: EventLifecycle.ONE_SHOT,
+    EventCategory.DISCOVERY: EventLifecycle.ONE_SHOT,
+}
+
+
+def default_lifecycle(category: EventCategory) -> EventLifecycle:
+    """Default lifecycle for a category (pure; BR-P1-3). PERSISTENT if unmapped."""
+    return CATEGORY_DEFAULT_LIFECYCLE.get(EventCategory(category), EventLifecycle.PERSISTENT)
+
+
+class SessionEvent(LocusModel):
+    """A session-scoped event affecting a region's distortion (FR-P1, Phase 2).
+
+    Canonical ``region_id`` is referenced by string only (BR-P1-11). Distortion
+    application and accumulated-delta restore live in P2; in P1 ``contributions``
+    stays empty (BR-P1-12).
+    """
+
+    id: str = Field(default_factory=new_id)
+    session_id: str
+    region_id: str  # primary target region (canonical id, reference only)
+    category: EventCategory
+    description: str = ""
+    magnitude: float = Field(ge=0.0, le=1.0)  # required, BR-P1-1
+    lifecycle: EventLifecycle = EventLifecycle.ONE_SHOT  # set by default_lifecycle at create
+    status: EventStatus = EventStatus.ACTIVE
+    created_turn: int = Field(default=0, ge=0)
+    resolved_turn: int | None = None
+    # region_id -> accumulated applied delta (restore on resolve); filled in P2 (BR-P1-12)
+    contributions: dict[str, float] = Field(default_factory=dict)
+    provenance: Provenance

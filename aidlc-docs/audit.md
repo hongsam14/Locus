@@ -883,3 +883,209 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 - operations/operations.md: added PostgreSQL to infra tier + "Game Session layer" section (init-schema session tables, session/GameMaster/NPC-query/timeline workflow, web SessionBar/SessionPanel); pg_isready healthcheck + Postgres volume backup in future ops.
 - CLAUDE.md Status: 191 offline tests (177 backend + 14 frontend); Rumor/Game-Session Phase 1 (S1+S2+S3) summary; Tech Stack adds PostgreSQL + locus/session + session router; Build/Run adds postgres; init-schema note.
 - RUMOR / GAME-SESSION PHASE 1: documentation complete.
+
+## 2026-06-18 — RUMOR / GAME-SESSION PHASE 2 cycle START (Requirements Analysis)
+**Timestamp**: 2026-06-18T00:00:00Z
+**User Input**: "ai-dlc를 사용해서 phase 2를 구현하고 싶어"
+**AI Response**: Resumed AI-DLC (brownfield). Phase 1 (S1+S2+S3) COMPLETE / 191 offline tests GREEN. Starting Phase 2 = Event + Event interaction → dynamic distortion (deferred from prior cycle, see rumor-distortion-requirements.md §7 Out of Scope). Loaded core-workflow + requirements-analysis + question-format-guide + welcome-message rule details; reviewed locus/session/{models,game_master,rumor_generator}.py. Stage: INCEPTION / Requirements Analysis (comprehensive depth, brownfield). Generating rumor-phase2-verification-questions.md.
+**Context**: Workspace Detection = brownfield resume. Requirements Analysis begins.
+
+---
+
+## 2026-06-18 — Phase 2 Requirements: verification answers received
+**Timestamp**: 2026-06-18T00:30:00Z
+**User Input**: "대답 완료" (rumor-phase2-verification-questions.md filled): Q1=A/Q2=B/Q3=C/Q4=C/Q5=C/Q6=A/Q7=B(advance_turn 내 재평가+재생성)/Q8=B/Q9=B/Q10=X(이벤트 타입에 따라 일회성/지속성 다름)/Q11=A/Q12=A/Q13=A; Security=B(No)/PBT=B(Partial).
+**AI Response**: Analyzed for contradictions/ambiguities per question-format-guide. Found 4 genuine ambiguities → created rumor-phase2-clarification-questions.md: CL1 (Q10=X event lifecycle by category — one-shot vs persistent mechanics/expiry), CL2 (Q4=C LLM generation mode — suggest-then-approve vs auto-commit + cadence), CL3 (Q7=B × Q9=B — does event regeneration wipe support? what counts as reinforcement?), CL4 (Q3=C/Q5=C × Q7=B — do topology-propagated neighbor regions also auto-regenerate rumors or only distortion?). Awaiting answers.
+**Context**: Requirements Analysis — clarification round.
+
+---
+
+## 2026-06-18 — Phase 2 Requirements: clarification answers received
+**Timestamp**: 2026-06-18T01:00:00Z
+**User Input**: "답변 완료" (rumor-phase2-clarification-questions.md): CL1.1=X(persistent until resolved; resolution is itself an event, GM/LLM-created same as creation — no fixed duration)/CL1.2=A(per-turn cumulative delta while active, restore accumulated on resolve)/CL1.3=A(category-default lifecycle, override at creation)/CL2.1=A(suggest-then-approve)/CL2.2=B(LLM auto-proposes each advance_turn)/CL3.1=B(preserve existing rumors+support, add/update — NOT full wipe)/CL3.2=A(event-influenced region rumors reinforced support↑, others decay↓)/CL4.1=A(only primary target region regenerates rumors; propagated neighbors get distortion+support only).
+**AI Response**: Re-validated — no residual contradictions; answers converge on a single coherent turn-processing algorithm. Resolution unified: a resolve event reverses the target event's accumulated_delta (honors CL1.1=X + CL1.2=A). Writing rumor-phase2-requirements.md (FR-P1..P8 + NFR-P1..P6). Detailed formulas/category-mapping deferred to Functional Design. Extension config unchanged: Security=No, PBT=Partial.
+**Context**: Requirements Analysis — clarifications resolved, generating requirements document.
+
+---
+
+## 2026-06-18 — Phase 2 Requirements Document generated
+**Timestamp**: 2026-06-18T01:15:00Z
+**AI Response**: Wrote inception/requirements/rumor-phase2-requirements.md (FR-P1 Event entity/persistence · FR-P2 creation manual+LLM suggest-approve · FR-P3 dynamic distortion deterministic+topology, advance_turn batch, persistent cumulative/resolve · FR-P4 event→rumor preserve+update primary only · FR-P5 support auto-evolution · FR-P6 timeline/turn additive · FR-P7 NPC rule unchanged · FR-P8 full web UI; NFR-P1..P6; out-of-scope=rumor-feedback+event-interaction=Phase 3). Extension config recorded (Security=No, PBT=Partial). aidlc-state.md Requirements Analysis marked complete pending approval.
+**Approval Prompt**: "Requirements Analysis Complete — Approve & Continue to Workflow Planning, Add User Stories, or Request Changes?"
+**Context**: Requirements Analysis — awaiting explicit user approval.
+
+---
+
+## 2026-06-19 — Phase 2 Requirements Analysis APPROVED
+**Timestamp**: 2026-06-19T00:00:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: Requirements Analysis APPROVED. User Stories proposed SKIP (existing personas cover actors). Proceeding to Workflow Planning (ALWAYS). Loading workflow-planning.md rule detail.
+**Context**: INCEPTION — Requirements Analysis complete → Workflow Planning.
+
+---
+
+## 2026-06-19 — Phase 2 Workflow Planning complete
+**Timestamp**: 2026-06-19T00:30:00Z
+**AI Response**: Wrote inception/plans/rumor-phase2-execution-plan.md. EXECUTE = Workflow Planning, Application Design, Units Generation, per-unit (Functional Design + NFR-light + Code Gen), Build&Test, Operations note. SKIP = User Stories (personas cover actors), Infrastructure Design (no new infra; session_events additive via ensure_schema). Risk=Medium, Rollback=Moderate, Testing=Moderate. Proposed 3 units P1 Event Foundation → P2 Dynamic Engine → P3 Web UI (sequential, mirrors Phase 1 S1/S2/S3). Mermaid validated.
+**Approval Prompt**: "Workflow Planning complete — Approve & Continue to Application Design, Add Skipped Stages, or Request Changes?"
+**Context**: INCEPTION — Workflow Planning → awaiting approval.
+
+---
+
+## 2026-06-19 — Phase 2 Workflow Planning APPROVED; Application Design started
+**Timestamp**: 2026-06-19T01:00:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: Workflow Planning APPROVED. Entered Application Design (EXECUTE). Reviewed locus/session/repository.py + consensus/{engine,propagation}.py (best_path_weights = topology-decay mechanism to reuse for event propagation). Wrote inception/plans/rumor-phase2-application-design-plan.md with 6 embedded design questions (AD-P Q1 dynamics module placement / Q2 EventSuggester placement / Q3 suggest→approve→advance endpoints / Q4 SessionEvent.status model / Q5 multi-region accumulated restore / Q6 unit split confirm). Awaiting answers.
+**Context**: INCEPTION — Application Design, design questions posed.
+
+---
+
+## 2026-06-19 — Phase 2 Application Design complete
+**Timestamp**: 2026-06-19T01:30:00Z
+**User Input**: "답변완료" (rumor-phase2-application-design-plan.md): AD-P Q1=A/Q2=A/Q3=A/Q4=A/Q5=A/Q6=A.
+**AI Response**: No ambiguities (all A, consistent with Phase 1 patterns). Generated inception/application-design/rumor-phase2/{components,component-methods,services,component-dependency,application-design}.md. Components: C1 SessionEvent model / C2 EventCategory+Lifecycle+Status enums + CATEGORY_DEFAULT_LIFECYCLE + TimelineKind(EVENT_*) / C3 dynamics.py pure (distortion_delta, propagate_delta via best_path_weights reuse, apply_deltas, restore_contributions, evolve_support) / C4 EventSuggester(LLM)+EventDraft / C5 GameMasterService ext (create/suggest/approve/discard/resolve event + advance_turn 6-step sequence) / C6 SessionRepository Event CRUD (+postgres ensure_schema session_events) / C7 session API additive routes / C8 web. No new infra; canonical immutable; NPC rule unchanged. Unit map P1/P2/P3.
+**Approval Prompt**: "Application Design complete — Approve & Continue to Units Generation, or Request Changes?"
+**Context**: INCEPTION — Application Design → awaiting approval.
+
+---
+
+## 2026-06-19 — Phase 2 Application Design APPROVED; Units Generation started
+**Timestamp**: 2026-06-19T02:00:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: Application Design APPROVED. Entering Units Generation (EXECUTE). Units P1 Event Foundation → P2 Dynamic Engine → P3 Web UI (per execution plan + AD-P Q6=A). Loading units-generation.md.
+**Context**: INCEPTION — Application Design complete → Units Generation.
+
+---
+
+## 2026-06-19 — Phase 2 Units Generation complete
+**Timestamp**: 2026-06-19T02:30:00Z
+**User Input**: "답변완료" (rumor-phase2-unit-of-work-plan.md): UOW-P Q1=A (P1 includes manual Event CRUD API; resolve restore completed in P2).
+**AI Response**: Generated inception/application-design/rumor-phase2/{unit-of-work,unit-of-work-dependency,unit-of-work-story-map}.md. Units P1 Event Foundation (C1/C2/C6/C7-manual; FR-P1,P2.1,P2.4,P6.1) → P2 Dynamic Engine (C3/C4/C5/C7-suggest+advance; FR-P2.2/2.3,P3,P4,P5,P6.2,P7) → P3 Web UI (C8; FR-P8). Sequential build, linear deps, rollback reverse-order. All FR-P*/NFR-P* mapped, 0 unassigned. User Stories SKIP (existing personas).
+**Approval Prompt**: "Units Generation complete — Approve & Continue to CONSTRUCTION PHASE (P1 Functional Design), or Request Changes?"
+**Context**: INCEPTION — Units Generation → awaiting approval (INCEPTION→CONSTRUCTION boundary).
+
+---
+
+## 2026-06-19 — Phase 2 Units Generation APPROVED; CONSTRUCTION P1 Functional Design started
+**Timestamp**: 2026-06-19T03:00:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: Units Generation APPROVED. INCEPTION complete. Entered CONSTRUCTION / P1 Event Foundation / Functional Design. Reviewed memory_repo.py + postgres_session_repo.py (hybrid columns + JSONB-variant, app-generated id, DB server time patterns). Wrote construction/plans/P1-event-foundation-functional-design-plan.md with 4 FD-P1 questions (Q1 EventCategory set + default lifecycle mapping / Q2 region validation on create / Q3 field conventions confirm / Q4 P1 resolve scope=state transition only). Awaiting answers.
+**Context**: CONSTRUCTION — P1 Functional Design questions posed.
+
+---
+
+## 2026-06-19 — P1 Functional Design complete
+**Timestamp**: 2026-06-19T03:30:00Z
+**User Input**: "답변완료" (P1-event-foundation-functional-design-plan.md): FD-P1 Q1=A/Q2=A/Q3=A/Q4=A.
+**AI Response**: No ambiguities (all A). Generated construction/P1-event-foundation/functional-design/{domain-entities,business-logic-model,business-rules}.md. SessionEvent entity + EventCategory(WAR/PLAGUE/POLITICS/DISASTER/FESTIVAL/DISCOVERY) + EventLifecycle(ONE_SHOT/PERSISTENT) + EventStatus(SUGGESTED/ACTIVE/RESOLVED) + CATEGORY_DEFAULT_LIFECYCLE + TimelineKind ext(EVENT_CREATED/EVENT_APPLIED/EVENT_RESOLVED). Event CRUD port+adapters (session_events hybrid table). GameMasterService manual create/list/resolve(state-transition)/discard + 4 additive API routes. BR-P1-1..14 (region validation→404, lifecycle default, idempotent resolve, closed-session guard, discard SUGGESTED-only, session isolation, ensure_schema idempotent, canonical reference-only, contributions={} until P2). NFR for P1 = light.
+**Approval Prompt**: "P1 Functional Design complete — Continue to P1 Code Generation, or Request Changes?"
+**Context**: CONSTRUCTION — P1 Functional Design → awaiting approval.
+
+---
+
+## 2026-06-19 — P1 Functional Design APPROVED; P1 Code Generation Plan (Part 1)
+**Timestamp**: 2026-06-19T04:00:00Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: P1 Functional Design APPROVED. Code Generation Part 1 (Planning). Reviewed session/__init__.py, api/routers/session.py, postgres/memory repos. Wrote construction/plans/P1-event-foundation-code-generation-plan.md (12 steps): NFR-light note, models(enums+SessionEvent+TimelineKind), repository port Event CRUD, in-memory adapter, postgres adapter(session_events table), GameMasterService manual event methods, API routes, __init__ exports, tests(business/repo/service+API), code summary. No main.py/CLI change for P1 (ensure_schema auto-creates table via metadata; EventSuggester wiring is P2). All additive, Phase 1 regression 0.
+**Approval Prompt**: "P1 Code Generation Plan (12 steps) complete — Approve to execute, or Request Changes?"
+**Context**: CONSTRUCTION — P1 Code Generation planning → awaiting approval.
+
+---
+
+## 2026-06-19 — P1 Code Generation Plan APPROVED + EXECUTED
+**Timestamp**: 2026-06-19T05:00:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: P1 code-gen plan APPROVED; executed all 12 steps. Modified (in-place): locus/models/enums.py (SourceKind.SESSION_EVENT), locus/session/models.py (EventCategory/EventLifecycle/EventStatus + CATEGORY_DEFAULT_LIFECYCLE + default_lifecycle + SessionEvent + TimelineKind EVENT_*), repository.py (Event CRUD port), memory_repo.py (in-memory Event CRUD), storage/postgres_session_repo.py (session_events table + Event CRUD + mappers), game_master.py (create/list/resolve/discard event + _require_region), api/routers/session.py (EventCreate + 4 routes), session/__init__.py (exports). Created tests/session/test_events.py + extended repo-contract/postgres/api tests. NFR-light note + code-summary written. Result: 194 backend pytest GREEN (177+17), ruff/black/compileall clean, 4 new event routes. One test fixed during gen (API magnitude clamps not 422 — aligned to support/distortion convention; BR-P1-1 reworded). Canonical/Phase 1 regression 0.
+**Approval Prompt**: "P1 Code Generation complete — Continue to P2 (Dynamic Engine), or Request Changes?"
+**Context**: CONSTRUCTION — P1 Code Generation executed → awaiting approval.
+
+---
+
+## 2026-06-19 — P1 Code APPROVED; P2 Dynamic Engine Functional Design started
+**Timestamp**: 2026-06-19T05:30:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: P1 Event Foundation code APPROVED. P1 UNIT COMPLETE (194 backend GREEN). Entered P2 Dynamic Engine / Functional Design (core unit: dynamics pure logic + EventSuggester + advance_turn integration). Writing construction/plans/P2-dynamic-engine-functional-design-plan.md with FD-P2 questions (delta formula, propagation threshold, one_shot/persistent mechanics, support rates, primary-region rumor handling, EventSuggester output).
+**Context**: CONSTRUCTION — P2 Functional Design questions.
+
+---
+
+## 2026-06-19 — P2 Functional Design complete
+**Timestamp**: 2026-06-19T06:00:00Z
+**User Input**: "답변완료" (no inline edits detected → proceeded with offered shortcut: all A; recorded A into P2 FD plan for audit consistency). FD-P2 Q1=A(linear delta MAX_EVENT_DELTA=0.3)/Q2=A(propagate min_weight 0.15)/Q3=A(one_shot permanent bump, no decay)/Q4=A(support +0.1/-0.05 then promotion)/Q5=A(append generation, preserve existing+support)/Q6=A(suggest_events n, graceful, persisted SUGGESTED).
+**AI Response**: Generated construction/P2-dynamic-engine/functional-design/{domain-entities,business-logic-model,business-rules}.md. dynamics constants (MAX_EVENT_DELTA/PROPAGATE_MIN_WEIGHT/SUPPORT_REINFORCE/SUPPORT_DECAY) + pure fns (distortion_delta/propagate_delta/apply_deltas/restore_contributions/evolve_support). advance_turn 6-step sequence pseudocode. resolve_event restore extension. EventSuggester+EventDraft+suggest/approve. TurnResult +applied_event_ids/+resolved_event_ids. main.py optional EventSuggester injection. BR-P2-1..16. Noted: rumor count grows each turn (Q5=A accepted); one_shot permanent (no baseline decay in scope).
+**Approval Prompt**: "P2 Functional Design complete — Continue to P2 Code Generation, or Request Changes?"
+**Context**: CONSTRUCTION — P2 Functional Design → awaiting approval.
+
+---
+
+## 2026-06-19 — P2 Functional Design APPROVED; P2 Code Generation Plan (Part 1)
+**Timestamp**: 2026-06-19T06:30:00Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: P2 Functional Design APPROVED. Code Generation Part 1. Confirmed main.py:82 GameMasterService wiring. Wrote construction/plans/P2-dynamic-engine-code-generation-plan.md (11 steps): NFR-light, dynamics.py(pure+constants), event_suggester.py, game_master.py extension(advance_turn 6-step + resolve restore + suggest/approve + TurnResult fields + suggester param), API(suggest-events/approve), main.py inject EventSuggester, exports, tests(dynamics PBT / advance_turn integration / API), code summary.
+**Approval Prompt**: "P2 Code Generation Plan (11 steps) complete — Approve to execute, or Request Changes?"
+**Context**: CONSTRUCTION — P2 Code Generation planning → awaiting approval.
+
+---
+
+## 2026-06-19 — P2 Code Generation Plan APPROVED + EXECUTED
+**Timestamp**: 2026-06-19T07:00:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: P2 plan APPROVED; executed all 11 steps. Created locus/session/dynamics.py (pure: distortion_delta/propagate_delta/apply_deltas/restore_contributions/evolve_support/merge_add + constants) + event_suggester.py (EventDraft/EventDraftList/EventSuggester graceful). Modified game_master.py (suggester param, TurnResult +applied/resolved ids, advance_turn 6-step rewrite + _apply_active_events, resolve_event restore, suggest_events/approve_event), api/routers/session.py (suggest-events + approve routes), api/main.py (EventSuggester inject), session/__init__.py (exports). New tests test_dynamics.py (PBT) + test_advance_turn.py. Fixed during gen: ConnectionEdge needs kind+provenance in test fixtures; float-eq tolerance in merge_add test. Result: 218 backend pytest GREEN (194+24), ruff/black/compileall clean, +2 session routes (event routes=5). Phase 1/P1 regression 0; determinism (dynamics PBT) + LLM graceful verified. Code summary: construction/P2-dynamic-engine/code/code-summary.md.
+**Approval Prompt**: "P2 Code Generation complete — Continue to P3 (Web UI), or Request Changes?"
+**Context**: CONSTRUCTION — P2 Code Generation executed → awaiting approval.
+
+---
+
+## 2026-06-19 — P2 Code APPROVED; P3 Web UI started
+**Timestamp**: 2026-06-19T07:30:00Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: P2 Dynamic Engine code APPROVED. P2 UNIT COMPLETE (218 backend GREEN). Entered P3 Web UI (final unit) / Functional Design. Exploring web/src structure.
+**Context**: CONSTRUCTION — P3 Web UI start.
+
+---
+
+## 2026-06-19 — P3 Web UI Functional Design complete
+**Timestamp**: 2026-06-19T08:00:00Z
+**User Input**: "답변 완료" (P3-web-ui-functional-design-plan.md): FD-P3 Q1=A/Q2=A/Q3=A/Q4=A.
+**AI Response**: No ambiguities (all A). Generated construction/P3-web-ui/functional-design/{domain-entities,frontend-components,business-rules}.md. SessionPanel extension: Event create form (selected region) + session-wide event list (approve/discard/resolve + status badge) + Suggest-events button; distortion slider reflects real listDistortions value. TS types SessionEvent/EventDraft/enums + TurnResult ext; api.ts +7 methods. DISCOVERY (additive backend): GET /sessions/{sid}/distortions (list_region_distortions reuse) needed for FR-P8.5 distortion visualization. BR-P3-1..10. NFR light (regression: existing 14 vitest + tsc/vite clean).
+**Approval Prompt**: "P3 Functional Design complete — Continue to P3 Code Generation, or Request Changes?"
+**Context**: CONSTRUCTION — P3 Functional Design → awaiting approval.
+
+---
+
+## 2026-06-19 — P3 Functional Design APPROVED; P3 Code Generation Plan (Part 1)
+**Timestamp**: 2026-06-19T08:30:00Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: P3 Functional Design APPROVED. Code Generation Part 1. Wrote construction/plans/P3-web-ui-code-generation-plan.md (8 steps): NFR-light, backend GET distortions endpoint + test, TS types, api.ts methods, SessionPanel event UI, vitest, code summary.
+**Approval Prompt**: "P3 Code Generation Plan (8 steps) complete — Approve to execute, or Request Changes?"
+**Context**: CONSTRUCTION — P3 Code Generation planning → awaiting approval.
+
+---
+
+## 2026-06-19 — P3 Code Generation Plan APPROVED + EXECUTED (Phase 2 code complete)
+**Timestamp**: 2026-06-19T09:30:00Z
+**User Input**: "Approve & Continue" (via plan-mode ExitPlanMode approval of P3 plan).
+**AI Response**: Executed all 8 steps. Backend: game_master.list_distortions + GET /sessions/{sid}/distortions + test. Frontend: types.ts(SessionEvent/EventDraft/enums + TurnResult ext), api.ts(7 methods), SessionPanel.tsx(event create form + session-wide event list approve/discard/resolve + suggest button + real distortion + closed-session disabled), components.test.tsx(mock + 3 new tests). Result: 219 backend pytest + 17 frontend vitest GREEN (236 total), ruff/black/compileall clean, tsc/vite build clean, session route +1. Regression 0 (existing SessionPanel behavior preserved). Code summary: construction/P3-web-ui/code/code-summary.md.
+**Approval Prompt**: "P3 Code Generation complete — Continue to Build & Test, or Request Changes?"
+**Context**: CONSTRUCTION — P3 executed → PHASE 2 CODE COMPLETE (P1+P2+P3) → awaiting approval.
+
+---
+
+## 2026-06-19 — Phase 2 Build & Test
+**Timestamp**: 2026-06-19T10:00:00Z
+**User Input**: "Continue to Next Stage"
+**Build Status**: Success (compileall clean, vite build OK, init-schema additive)
+**Test Status**: Pass — 219 backend pytest (85% cov) + 17 frontend vitest = 236 offline GREEN; ruff/black/tsc clean; 0 regressions.
+**Files Generated**: construction/build-and-test/rumor-phase2/{build-instructions,unit-test-instructions,integration-test-instructions,performance-test-instructions,build-and-test-summary}.md. Live scenarios P2-A..G + P3-H documented (operator-run: real PostgreSQL + LLM + web UI).
+**Approval Prompt**: "Build and test instructions complete. Ready to proceed to Operations stage?"
+**Context**: CONSTRUCTION — Build & Test → awaiting approval (Operations next).
+
+---
+
+## 2026-06-19 — Phase 2 Build & Test APPROVED; Operations complete — PHASE 2 COMPLETE
+**Timestamp**: 2026-06-19T10:30:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: Build & Test APPROVED. Operations (placeholder) executed: operations/operations.md gained a "Game Session layer — Phase 2" section (event create/suggest/approve/resolve, advance-turn extended sequence, GET distortions, web SessionPanel event UI; no new infra, session_events via init-schema; deterministic engine + graceful LLM; Phase 3 deferred). CLAUDE.md Status updated (236 offline GREEN, Phase 2 summary, locus/session/{dynamics,event_suggester,game_master}). aidlc-state.md marked Phase 2 COMPLETE.
+**Context**: 🎉 RUMOR / GAME-SESSION PHASE 2 COMPLETE (P1 Event Foundation + P2 Dynamic Engine + P3 Web UI). AI-DLC cycle done.
+
+---

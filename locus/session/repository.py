@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from .models import GameSession, RegionDistortion, SessionRumor, TimelineEntry
+from .models import GameSession, RegionDistortion, SessionEvent, SessionRumor, TimelineEntry
 
 
 @runtime_checkable
@@ -44,3 +44,14 @@ class SessionRepository(Protocol):
     # --- timeline ---
     def append_timeline(self, entry: TimelineEntry) -> TimelineEntry: ...
     def list_timeline(self, session_id: str) -> list[TimelineEntry]: ...  # turn, then created_at
+
+    # --- events (Phase 2) ---
+    def create_event(self, event: SessionEvent) -> SessionEvent: ...
+    def get_event(self, session_id: str, event_id: str) -> SessionEvent | None: ...
+    def list_events(
+        self, session_id: str, status: str | None = None
+    ) -> list[SessionEvent]: ...  # created_turn, then id
+    def update_event(
+        self, event: SessionEvent
+    ) -> SessionEvent: ...  # status/resolved_turn/contributions
+    def delete_event(self, session_id: str, event_id: str) -> None: ...

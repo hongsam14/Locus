@@ -9,16 +9,24 @@ models, the ``SessionRepository`` port (+ in-memory adapter) and the
 
 from __future__ import annotations
 
+from . import dynamics
+from .event_suggester import EventDraft, EventSuggester
 from .game_master import GameMasterService, SessionClosedError, TurnResult
 from .memory_repo import InMemorySessionRepository
 from .models import (
+    CATEGORY_DEFAULT_LIFECYCLE,
     DEFAULT_DISTORTION_DEGREE,
+    EventCategory,
+    EventLifecycle,
+    EventStatus,
     GameSession,
     RegionDistortion,
+    SessionEvent,
     SessionRumor,
     SessionStatus,
     TimelineEntry,
     TimelineKind,
+    default_lifecycle,
 )
 from .promotion import PromotionResult
 from .query import SessionQueryEngine
@@ -34,6 +42,13 @@ __all__ = [
     "SessionStatus",
     "TimelineEntry",
     "TimelineKind",
+    # Phase 2 — events
+    "SessionEvent",
+    "EventCategory",
+    "EventLifecycle",
+    "EventStatus",
+    "CATEGORY_DEFAULT_LIFECYCLE",
+    "default_lifecycle",
     "SessionRepository",
     "InMemorySessionRepository",
     "SessionService",
@@ -46,4 +61,8 @@ __all__ = [
     "SessionClosedError",
     "TurnResult",
     "SessionQueryEngine",
+    # Phase 2 — dynamic engine
+    "EventSuggester",
+    "EventDraft",
+    "dynamics",
 ]

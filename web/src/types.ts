@@ -116,4 +116,38 @@ export interface TurnResult {
   turn: number;
   promoted_ids: string[];
   demoted_ids: string[];
+  applied_event_ids: string[];
+  resolved_event_ids: string[];
+}
+
+// --- Session events (Phase 2) --------------------------------------------- //
+export type EventCategory =
+  | "war"
+  | "plague"
+  | "politics"
+  | "disaster"
+  | "festival"
+  | "discovery";
+export type EventLifecycle = "one_shot" | "persistent";
+export type EventStatus = "suggested" | "active" | "resolved";
+
+export interface SessionEvent {
+  id: string;
+  session_id: string;
+  region_id: string;
+  category: EventCategory;
+  description: string;
+  magnitude: number;
+  lifecycle: EventLifecycle;
+  status: EventStatus;
+  created_turn: number;
+  resolved_turn?: number | null;
+  contributions: Record<string, number>;
+}
+
+export interface EventDraft {
+  region_id: string;
+  category: EventCategory;
+  description: string;
+  magnitude: number;
 }

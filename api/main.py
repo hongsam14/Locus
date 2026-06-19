@@ -67,6 +67,7 @@ def _wire_default(app: FastAPI) -> None:  # pragma: no cover - requires live ser
     )
 
     from locus.session import (
+        EventSuggester,
         GameMasterService,
         RumorGenerator,
         SessionQueryEngine,
@@ -79,7 +80,9 @@ def _wire_default(app: FastAPI) -> None:  # pragma: no cover - requires live ser
     session_repo.ensure_schema()
     app.state.session_repo = session_repo
     app.state.session_service = SessionService(session_repo, graph)
-    app.state.game_master = GameMasterService(session_repo, RumorGenerator(llm), loader)
+    app.state.game_master = GameMasterService(
+        session_repo, RumorGenerator(llm), loader, suggester=EventSuggester(llm)
+    )
     app.state.session_query = SessionQueryEngine(session_repo, loader)
 
 

@@ -143,6 +143,31 @@ def test_persistent_accumulates_then_resolve_restores() -> None:
     assert repo.get_event(session.id, ev.id).status == EventStatus.RESOLVED.value
 
 
+def test_resolve_restores_baseline_even_after_saturation() -> None:
+    """After distortion clamps to 1.0, resolve must restore to baseline (0.3),
+    not below it — contributions track the effective (post-clamp) applied delta."""
+    repo, _loader, gm, session = _setup()
+    ev = gm.create_event(session.id, "r1", category=EventCategory.WAR, magnitude=1.0)  # persistent
+    gm.advance_turn(session.id)  # r1: 0.6
+    gm.advance_turn(session.id)  # r1: 0.9
+    gm.advance_turn(session.id)  # r1: clamp(1.2) -> 1.0 (r2 also saturates)
+    assert abs(repo.get_region_distortion(session.id, "r1") - 1.0) < 1e-9
+    gm.resolve_event(session.id, ev.id)
+    # exactly back to baseline, never below (would drop to 0.1 with raw-delta restore)
+    assert abs(repo.get_region_distortion(session.id, "r1") - 0.3) < 1e-9
+    assert abs(repo.get_region_distortion(session.id, "r2") - 0.3) < 1e-9
+
+
+def test_empty_turn_does_not_decay_support() -> None:
+    """A turn with no active events must leave rumor support untouched (no blanket
+    decay that would silently demote promoted rumors)."""
+    repo, _loader, gm, session = _setup()
+    r = gm.generate_rumors(session.id, "r1")[0]
+    gm.adjust_support(session.id, r.id, 0.6)
+    gm.advance_turn(session.id)  # no active events
+    assert abs(repo.get_rumor(session.id, r.id).support - 0.6) < 1e-9
+
+
 # --- rumor append + support evolution + promotion --------------------------- #
 def test_primary_region_rumors_appended_preserving_existing() -> None:
     repo, _loader, gm, session = _setup()

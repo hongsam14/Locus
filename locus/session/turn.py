@@ -14,7 +14,7 @@ from ..models import LocusModel
 from ..query.loader import WorldLoader
 from . import dynamics, promotion
 from .base import SessionAppService
-from .models import EventStatus, GameSession, TimelineKind
+from .models import DEFAULT_DISTORTION_DEGREE, EventStatus, GameSession, TimelineKind
 from .repository import SessionRepository
 from .rumor_service import RumorService
 
@@ -70,13 +70,17 @@ class TurnAdvancer(SessionAppService):
         for region_id in events.target_regions:
             self._rumors.append_for_region(session, region_id)
 
-        # (3) support auto-evolution (FR-P5.1 / BR-P2-8)
+        # (3) support auto-evolution (FR-P5.1 / BR-P2-8) — only when events acted
+        #     this turn. A plain empty turn must not erode support (which would
+        #     silently demote promoted rumors the GM never touched).
         rumors = self._repo.list_rumors(session_id)
-        for r in dynamics.evolve_support(rumors, events.influenced_regions):
-            self._repo.upsert_rumor(r)
+        if events.influenced_regions:
+            for r in dynamics.evolve_support(rumors, events.influenced_regions):
+                self._repo.upsert_rumor(r)
 
-        # (4) promotion / demotion re-evaluation (Phase 1 reuse)
-        res = promotion.evaluate(self._repo.list_rumors(session_id), promotion_threshold)
+        # (4) promotion / demotion re-evaluation — reuses the step-3 list (already
+        #     current: evolve_support mutates in place)
+        res = promotion.evaluate(rumors, promotion_threshold)
         for rid in res.promoted_ids:
             self._set_promoted(session_id, rid, True)
             self._timeline(session, TimelineKind.PROMOTE, f"promoted {rid}", {"rumor_id": rid})
@@ -125,8 +129,16 @@ class TurnAdvancer(SessionAppService):
         for ev in active:
             base = dynamics.distortion_delta(ev.magnitude)
             deltas = dynamics.propagate_delta(ev.region_id, base, topo.connections)
-            cur = dynamics.apply_deltas(cur, deltas)
-            ev.accumulate(deltas)
+            updated = dynamics.apply_deltas(cur, deltas)
+            # Accumulate the *effective* (post-clamp) change, not the raw delta, so
+            # resolve restores exactly what was applied even when distortion
+            # saturated at 1.0 — otherwise the restore over-subtracts and drives
+            # the region below its pre-event baseline.
+            effective = {
+                rid: updated[rid] - cur.get(rid, DEFAULT_DISTORTION_DEGREE) for rid in deltas
+            }
+            cur = updated
+            ev.accumulate(effective)
             out.applied_ids.append(ev.id)
             out.target_regions.add(ev.region_id)
             out.influenced_regions |= set(deltas)
@@ -138,7 +150,7 @@ class TurnAdvancer(SessionAppService):
                 session,
                 TimelineKind.EVENT_APPLIED,
                 f"applied event {ev.id}",
-                {"event_id": ev.id, "region_id": ev.region_id, "deltas": deltas},
+                {"event_id": ev.id, "region_id": ev.region_id, "deltas": effective},
             )
         for rid, deg in cur.items():
             self._repo.set_region_distortion(session.id, rid, deg)

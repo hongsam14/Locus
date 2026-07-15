@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from urllib.parse import quote_plus
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -39,14 +40,31 @@ class Settings(BaseSettings):
     opensearch_index: str = Field(default="locus_search", alias="OPENSEARCH_INDEX")
 
     # --- Session layer (PostgreSQL) ---
-    # No embedded credentials — set SESSION_DB_URL (incl. password) in the env / .env.
-    session_db_url: str = Field(
-        default="postgresql+psycopg://localhost:5432/locus_session",
-        alias="SESSION_DB_URL",
-    )
+    # Either set SESSION_DB_URL directly (incl. password), or set the parts below and
+    # the URL is assembled. Host defaults to localhost (host-run app); use "postgres"
+    # when running inside docker-compose.
+    session_db_url: str | None = Field(default=None, alias="SESSION_DB_URL")
+    session_db_user: str = Field(default="locus", alias="SESSION_DB_USER")
+    session_db_password: SecretStr = Field(default=SecretStr(""), alias="SESSION_DB_PASSWORD")
+    session_db_name: str = Field(default="locus_session", alias="SESSION_DB_NAME")
+    session_db_host: str = Field(default="localhost", alias="SESSION_DB_HOST")
+    session_db_port: int = Field(default=5432, alias="SESSION_DB_PORT")
 
     # --- App ---
     debug: bool = Field(default=False, alias="LOCUS_DEBUG")
+
+    @model_validator(mode="after")
+    def _assemble_session_db_url(self) -> "Settings":
+        """If SESSION_DB_URL is not given explicitly, build it from the parts
+        (user[:password]@host:port/name). Password is URL-encoded."""
+        if not self.session_db_url:
+            pw = self.session_db_password.get_secret_value()
+            auth = f"{self.session_db_user}:{quote_plus(pw)}" if pw else self.session_db_user
+            self.session_db_url = (
+                f"postgresql+psycopg://{auth}@{self.session_db_host}:"
+                f"{self.session_db_port}/{self.session_db_name}"
+            )
+        return self
 
 
 @lru_cache

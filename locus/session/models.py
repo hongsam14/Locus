@@ -164,3 +164,36 @@ class SessionEvent(LocusModel):
     # region_id -> accumulated applied delta (restore on resolve); filled in P2 (BR-P1-12)
     contributions: dict[str, float] = Field(default_factory=dict)
     provenance: Provenance
+
+    # -- domain behavior (aggregate) ------------------------------------------
+    # Status/lifecycle are stored as string values (use_enum_values=True); these
+    # methods normalize back to enums so callers never compare against ``.value``
+    # by hand (which silently fails if the ``.value`` is forgotten).
+    def is_one_shot(self) -> bool:
+        """Whether this event applies once then auto-resolves (BR-P2-4)."""
+        return EventLifecycle(self.lifecycle) is EventLifecycle.ONE_SHOT
+
+    def is_suggested(self) -> bool:
+        """Whether this event is an unapproved LLM proposal (BR-P1-8)."""
+        return EventStatus(self.status) is EventStatus.SUGGESTED
+
+    def is_resolved(self) -> bool:
+        """Whether this event has already been resolved (idempotency guard)."""
+        return EventStatus(self.status) is EventStatus.RESOLVED
+
+    def approve(self) -> None:
+        """Transition a SUGGESTED proposal to ACTIVE (FR-P2.3, CL2.1)."""
+        self.status = EventStatus.ACTIVE
+
+    def resolve(self, turn: int) -> None:
+        """Mark the event resolved at ``turn`` (FR-P3.6 / BR-P2-4)."""
+        self.status = EventStatus.RESOLVED
+        self.resolved_turn = turn
+
+    def accumulate(self, deltas: dict[str, float]) -> None:
+        """Add this turn's applied per-region deltas to ``contributions`` so the
+        total can be symmetrically restored when the event resolves (BR-P2-3/5)."""
+        merged = dict(self.contributions)
+        for region_id, delta in deltas.items():
+            merged[region_id] = merged.get(region_id, 0.0) + delta
+        self.contributions = merged

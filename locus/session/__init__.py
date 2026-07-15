@@ -10,6 +10,8 @@ models, the ``SessionRepository`` port (+ in-memory adapter) and the
 from __future__ import annotations
 
 from . import dynamics
+from .distortion_service import DistortionService
+from .event_service import EventService
 from .event_suggester import EventDraft, EventSuggester
 from .game_master import GameMasterService, SessionClosedError, TurnResult
 from .memory_repo import InMemorySessionRepository
@@ -32,7 +34,9 @@ from .promotion import PromotionResult
 from .query import SessionQueryEngine
 from .repository import SessionRepository
 from .rumor_generator import RumorDraft, RumorGenerator
+from .rumor_service import RumorService
 from .service import SessionService, WorldNotFoundError
+from .turn import TurnAdvancer
 
 __all__ = [
     "DEFAULT_DISTORTION_DEGREE",
@@ -60,6 +64,11 @@ __all__ = [
     "GameMasterService",
     "SessionClosedError",
     "TurnResult",
+    # Phase 2 — single-responsibility session services (composed by GameMasterService)
+    "RumorService",
+    "EventService",
+    "DistortionService",
+    "TurnAdvancer",
     "SessionQueryEngine",
     # Phase 2 — dynamic engine
     "EventSuggester",

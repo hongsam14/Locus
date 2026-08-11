@@ -42,8 +42,13 @@ class RumorGenerator:
         region_id: str,
         session_id: str,
         degrees: list[float],
+        birth_support: float = 0.0,
     ) -> list[SessionRumor]:
-        """Build a chain of rumors, one per (ascending) degree. Graceful."""
+        """Build a chain of rumors, one per (ascending) degree. Graceful.
+
+        ``birth_support`` seeds each new rumor's support so it survives a few quiet
+        turns before decaying out (FD-H Q7=A / BR-H1-21); 0.0 keeps Phase 1/2
+        behaviour for callers that construct the generator directly."""
         rumors: list[SessionRumor] = []
         prev_text = source_text
         prev_id = source_id
@@ -63,7 +68,7 @@ class RumorGenerator:
                 distorted_from_kind=prev_kind,
                 statement=draft.statement,
                 distortion_degree=degree,
-                support=0.0,
+                support=_clamp(birth_support),
                 confidence=_clamp(source_confidence * (1.0 - degree)),
                 promoted=False,
                 provenance=Provenance(source=SourceKind.SESSION_RUMOR, generated_by="llm:rumor"),

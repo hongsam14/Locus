@@ -41,6 +41,7 @@ class TimelineKind(str, Enum):
     ADJUST_SUPPORT = "adjust_support"
     ADVANCE_TURN = "advance_turn"
     SET_DISTORTION = "set_distortion"
+    PRUNE = "prune"  # U-H1 — rumor pruned below support floor (BR-H1-5)
     # Phase 2 — event lifecycle (additive; existing values/order unchanged, BR-P1-13)
     EVENT_CREATED = "event_created"
     EVENT_APPLIED = "event_applied"  # produced by P2 advance_turn
@@ -71,6 +72,7 @@ class SessionRumor(LocusModel):
     support: float = Field(default=0.0, ge=0.0, le=1.0)
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     promoted: bool = False  # promotion state (FR-R3.2/3.3); persisted in the session store
+    active: bool = True  # soft-flag; prune sets False, row kept for history (BR-H1-5/6)
     provenance: Provenance
 
 

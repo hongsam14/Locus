@@ -81,6 +81,38 @@ def test_rumor_crud_and_region_filter() -> None:
     assert repo.get_rumor(s.id, r1.id) is None
 
 
+def test_batch_upsert_rumors_returns_stored() -> None:
+    """U-H1: upsert_rumors persists many rumors and returns them (FR-H5)."""
+    repo = _repo()
+    s = repo.create_session("w")
+    rumors = [
+        SessionRumor(session_id=s.id, region_id="rA", distorted_from_id="k", provenance=_prov())
+        for _ in range(3)
+    ]
+    saved = repo.upsert_rumors(rumors)
+    assert len(saved) == 3
+    assert len(repo.list_rumors(s.id)) == 3
+    # re-upsert updates in place (no duplicates)
+    rumors[0].support = 0.9
+    repo.upsert_rumors(rumors)
+    assert repo.get_rumor(s.id, rumors[0].id).support == 0.9
+    assert len(repo.list_rumors(s.id)) == 3
+
+
+def test_soft_flag_prune_excluded_by_default() -> None:
+    """U-H1: active=False rumors are hidden unless include_pruned (BR-H1-6)."""
+    repo = _repo()
+    s = repo.create_session("w")
+    live = SessionRumor(session_id=s.id, region_id="rA", distorted_from_id="k", provenance=_prov())
+    dead = SessionRumor(
+        session_id=s.id, region_id="rA", distorted_from_id="k", active=False, provenance=_prov()
+    )
+    repo.upsert_rumors([live, dead])
+    assert [r.id for r in repo.list_rumors(s.id)] == [live.id]  # active-only default
+    got = {r.id for r in repo.list_rumors(s.id, include_pruned=True)}
+    assert got == {live.id, dead.id}
+
+
 def test_region_distortion_upsert_unique() -> None:
     repo = _repo()
     s = repo.create_session("w")

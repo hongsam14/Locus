@@ -9,7 +9,7 @@ models, the ``SessionRepository`` port (+ in-memory adapter) and the
 
 from __future__ import annotations
 
-from . import dynamics
+from . import dynamics, rumor_dynamics
 from .distortion_service import DistortionService
 from .event_service import EventService
 from .event_suggester import EventDraft, EventSuggester
@@ -33,6 +33,8 @@ from .models import (
 from .promotion import PromotionResult
 from .query import SessionQueryEngine
 from .repository import SessionRepository
+from .rumor_dynamics import DEFAULT_RUMOR_DYNAMICS, RumorDynamicsParams
+from .rumor_feedback_service import RumorFeedbackService
 from .rumor_generator import RumorDraft, RumorGenerator
 from .rumor_service import RumorService
 from .service import SessionService, WorldNotFoundError
@@ -74,4 +76,9 @@ __all__ = [
     "EventSuggester",
     "EventDraft",
     "dynamics",
+    # U-H1 — rumor dynamics (hardening)
+    "rumor_dynamics",
+    "RumorDynamicsParams",
+    "DEFAULT_RUMOR_DYNAMICS",
+    "RumorFeedbackService",
 ]

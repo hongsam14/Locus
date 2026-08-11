@@ -32,8 +32,13 @@ class SessionRepository(Protocol):
 
     # --- rumors ---
     def upsert_rumor(self, rumor: SessionRumor) -> SessionRumor: ...
+    def upsert_rumors(
+        self, rumors: list[SessionRumor]
+    ) -> list[SessionRumor]: ...  # batch, one transaction (FR-H5)
     def get_rumor(self, session_id: str, rumor_id: str) -> SessionRumor | None: ...
-    def list_rumors(self, session_id: str, region_id: str | None = None) -> list[SessionRumor]: ...
+    def list_rumors(
+        self, session_id: str, region_id: str | None = None, *, include_pruned: bool = False
+    ) -> list[SessionRumor]: ...  # active-only by default (BR-H1-6)
     def delete_rumor(self, session_id: str, rumor_id: str) -> None: ...
 
     # --- region distortion ---

@@ -12,10 +12,12 @@ from pydantic import Field
 
 from ..models import LocusModel
 from ..query.loader import WorldLoader
-from . import dynamics, promotion
+from . import dynamics, promotion, rumor_dynamics
 from .base import SessionAppService
 from .models import DEFAULT_DISTORTION_DEGREE, EventStatus, GameSession, TimelineKind
 from .repository import SessionRepository
+from .rumor_dynamics import DEFAULT_RUMOR_DYNAMICS, RumorDynamicsParams
+from .rumor_feedback_service import RumorFeedbackService
 from .rumor_service import RumorService
 
 
@@ -29,6 +31,9 @@ class TurnResult(LocusModel):
     # Phase 2 (additive) — events applied / auto-resolved (one_shot) this turn
     applied_event_ids: list[str] = Field(default_factory=list)
     resolved_event_ids: list[str] = Field(default_factory=list)
+    # U-H1 (additive) — rumors pruned + regions moved by rumor feedback this turn
+    pruned_rumor_ids: list[str] = Field(default_factory=list)
+    feedback_regions: list[str] = Field(default_factory=list)
 
 
 class _EventApplication(LocusModel):
@@ -50,46 +55,80 @@ class TurnAdvancer(SessionAppService):
         repo: SessionRepository,
         loader: WorldLoader,
         rumors: RumorService,
+        feedback: RumorFeedbackService,
+        params: RumorDynamicsParams = DEFAULT_RUMOR_DYNAMICS,
     ) -> None:
         super().__init__(repo)
         self._loader = loader
         self._rumors = rumors
+        self._feedback = feedback
+        self._params = params
 
     def advance_turn(
         self, session_id: str, *, promotion_threshold: float = promotion.DEFAULT_PROMOTION_THRESHOLD
     ) -> TurnResult:
-        """Advance one turn (FR-P3.3): apply events -> update rumors -> evolve
-        support -> re-evaluate promotion -> bump. Each change is timelined."""
+        """Advance one turn (FR-P3.3 + U-H1): apply events -> append rumors
+        (support-gated) -> rumor→region feedback -> reinforce/decay support ->
+        prune -> re-evaluate promotion -> batch-persist -> bump. Each change is
+        timelined. Step order = feedback → decay → prune (BR-H1-12)."""
         session = self._require_open(session_id)
 
         # (1) apply ACTIVE events to per-region distortion
         events = self._apply_active_events(session)
 
         # (2) primary-region rumors: append at the new distortion, preserving
-        #     existing rumors + support (FR-P4.1 / BR-P2-7). Neighbours: distortion only.
+        #     existing rumors + support (FR-P4.1 / BR-P2-7). Support-gated so weak
+        #     rumors do not spawn new ones (FR-H2 / BR-H1-7).
         for region_id in events.target_regions:
-            self._rumors.append_for_region(session, region_id)
+            self._rumors.append_for_region(
+                session, region_id, min_source_support=self._params.min_source_support
+            )
 
-        # (3) support auto-evolution (FR-P5.1 / BR-P2-8) — only when events acted
-        #     this turn. A plain empty turn must not erode support (which would
-        #     silently demote promoted rumors the GM never touched).
-        rumors = self._repo.list_rumors(session_id)
+        # (3) rumor→region distortion feedback (FR-H3 / BR-H1-9/10). Runs before
+        #     decay so strong rumors reinforce their own regions this turn.
+        rumors = self._repo.list_rumors(session_id)  # ACTIVE only (BR-H1-6/11)
+        feedback_deltas = self._feedback.apply_feedback(session, rumors)
+        reinforced = events.influenced_regions | set(feedback_deltas)  # BR-H1-2
+
+        # (4) support evolution: event reinforcement first (Phase 2 gain, decay=0
+        #     so it does not double-decay), then rumor_dynamics owns all decay of
+        #     unreinforced rumors every turn (FR-H1 / BR-H1-1/2/3/20). Decay is the
+        #     survival lever; promoted + reinforced (event ∪ feedback) rumors exempt.
         if events.influenced_regions:
-            for r in dynamics.evolve_support(rumors, events.influenced_regions):
-                self._repo.upsert_rumor(r)
+            dynamics.evolve_support(rumors, events.influenced_regions, decay=0.0)
+        rumor_dynamics.decay_support(rumors, reinforced, decay=self._params.support_decay)
 
-        # (4) promotion / demotion re-evaluation — reuses the step-3 list (already
-        #     current: evolve_support mutates in place)
-        res = promotion.evaluate(rumors, promotion_threshold)
-        for rid in res.promoted_ids:
-            self._set_promoted(session_id, rid, True)
-            self._timeline(session, TimelineKind.PROMOTE, f"promoted {rid}", {"rumor_id": rid})
-        for rid in res.demoted_ids:
-            self._set_promoted(session_id, rid, False)
-            self._timeline(session, TimelineKind.DEMOTE, f"demoted {rid}", {"rumor_id": rid})
+        # (5) prune below the floor (soft-flag), promoted rumors exempt (FR-H1 /
+        #     BR-H1-4/5; Q7=A). Survivors feed promotion re-evaluation.
+        survivors, prunable = rumor_dynamics.partition_prunable(
+            rumors, floor=self._params.prune_floor
+        )
+        for r in prunable:
+            r.active = False
+            self._timeline(session, TimelineKind.PRUNE, f"pruned {r.id}", {"rumor_id": r.id})
 
-        # (5) bump turn + summary timeline
+        # (6) promotion / demotion re-evaluation over surviving rumors
+        res = promotion.evaluate(survivors, promotion_threshold)
+        promoted = set(res.promoted_ids)
+        demoted = set(res.demoted_ids)
+        for r in survivors:
+            if r.id in promoted:
+                r.promoted = True
+                self._timeline(
+                    session, TimelineKind.PROMOTE, f"promoted {r.id}", {"rumor_id": r.id}
+                )
+            elif r.id in demoted:
+                r.promoted = False
+                self._timeline(session, TimelineKind.DEMOTE, f"demoted {r.id}", {"rumor_id": r.id})
+
+        # (7) batch-persist all support/prune/promotion changes in one write (FR-H5 /
+        #     BR-H1-13)
+        self._repo.upsert_rumors(rumors)
+
+        # (8) bump turn + summary timeline
         new_turn = self._repo.bump_turn(session_id)
+        pruned_ids = [r.id for r in prunable]
+        feedback_regions = sorted(feedback_deltas)
         self._timeline(
             session,
             TimelineKind.ADVANCE_TURN,
@@ -99,6 +138,8 @@ class TurnAdvancer(SessionAppService):
                 "resolved": events.resolved_ids,
                 "promoted": res.promoted_ids,
                 "demoted": res.demoted_ids,
+                "pruned": pruned_ids,
+                "feedback_regions": feedback_regions,
             },
             turn=new_turn,
         )
@@ -109,6 +150,8 @@ class TurnAdvancer(SessionAppService):
             demoted_ids=res.demoted_ids,
             applied_event_ids=events.applied_ids,
             resolved_event_ids=events.resolved_ids,
+            pruned_rumor_ids=pruned_ids,
+            feedback_regions=feedback_regions,
         )
 
     # -- internals -----------------------------------------------------------
@@ -155,10 +198,3 @@ class TurnAdvancer(SessionAppService):
         for rid, deg in cur.items():
             self._repo.set_region_distortion(session.id, rid, deg)
         return out
-
-    def _set_promoted(self, session_id: str, rumor_id: str, promoted: bool) -> None:
-        rumor = self._repo.get_rumor(session_id, rumor_id)
-        if rumor is None:  # pragma: no cover - id came from list_rumors
-            return
-        rumor.promoted = promoted
-        self._repo.upsert_rumor(rumor)

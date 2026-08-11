@@ -73,6 +73,7 @@ session_rumors = Table(
     Column("support", Float, nullable=False),
     Column("confidence", Float, nullable=False),
     Column("promoted", Boolean, nullable=False, default=False),
+    Column("active", Boolean, nullable=False, default=True),  # soft-flag prune (BR-H1-5)
     Column("provenance", _JSON, nullable=False),
 )
 
@@ -145,7 +146,18 @@ class PostgresSessionRepository:
             return False
 
     def ensure_schema(self) -> None:
-        _metadata.create_all(self._require_engine(), checkfirst=True)
+        engine = self._require_engine()
+        _metadata.create_all(engine, checkfirst=True)
+        # Additive column for existing DBs (idempotent). Skipped on SQLite offline
+        # tests, where create_all already includes the column (NFR-H4 / BR-H1-16).
+        if engine.dialect.name != "sqlite":
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE session_rumors "
+                        "ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE"
+                    )
+                )
 
     # -- sessions --------------------------------------------------------- #
     def create_session(self, world_id: str) -> GameSession:
@@ -224,18 +236,29 @@ class PostgresSessionRepository:
 
     # -- rumors ----------------------------------------------------------- #
     def upsert_rumor(self, rumor: SessionRumor) -> SessionRumor:
-        values = _rumor_to_values(rumor)
         with self._require_engine().begin() as conn:
-            exists = conn.execute(
-                select(session_rumors.c.id).where(session_rumors.c.id == rumor.id)
-            ).scalar_one_or_none()
-            if exists:
-                conn.execute(
-                    update(session_rumors).where(session_rumors.c.id == rumor.id).values(**values)
-                )
-            else:
-                conn.execute(session_rumors.insert().values(**values))
+            self._upsert_rumor_conn(conn, rumor)
         return rumor.model_copy(deep=True)
+
+    def upsert_rumors(self, rumors: list[SessionRumor]) -> list[SessionRumor]:
+        """Batch upsert in a single transaction (FR-H5 / BR-H1-13)."""
+        with self._require_engine().begin() as conn:
+            for rumor in rumors:
+                self._upsert_rumor_conn(conn, rumor)
+        return [r.model_copy(deep=True) for r in rumors]
+
+    @staticmethod
+    def _upsert_rumor_conn(conn, rumor: SessionRumor) -> None:
+        values = _rumor_to_values(rumor)
+        exists = conn.execute(
+            select(session_rumors.c.id).where(session_rumors.c.id == rumor.id)
+        ).scalar_one_or_none()
+        if exists:
+            conn.execute(
+                update(session_rumors).where(session_rumors.c.id == rumor.id).values(**values)
+            )
+        else:
+            conn.execute(session_rumors.insert().values(**values))
 
     def get_rumor(self, session_id: str, rumor_id: str) -> SessionRumor | None:
         with self._require_engine().connect() as conn:
@@ -251,10 +274,14 @@ class PostgresSessionRepository:
             )
         return _row_to_rumor(row) if row else None
 
-    def list_rumors(self, session_id: str, region_id: str | None = None) -> list[SessionRumor]:
+    def list_rumors(
+        self, session_id: str, region_id: str | None = None, *, include_pruned: bool = False
+    ) -> list[SessionRumor]:
         stmt = select(session_rumors).where(session_rumors.c.session_id == session_id)
         if region_id is not None:
             stmt = stmt.where(session_rumors.c.region_id == region_id)
+        if not include_pruned:  # active-only by default (BR-H1-6)
+            stmt = stmt.where(session_rumors.c.active.is_(True))
         with self._require_engine().connect() as conn:
             rows = conn.execute(stmt).mappings().all()
         return [_row_to_rumor(r) for r in rows]
@@ -438,6 +465,7 @@ def _rumor_to_values(r: SessionRumor) -> dict:
         "support": r.support,
         "confidence": r.confidence,
         "promoted": r.promoted,
+        "active": r.active,
         "provenance": r.provenance.model_dump(),
     }
 
@@ -454,6 +482,7 @@ def _row_to_rumor(row) -> SessionRumor:
         support=row["support"],
         confidence=row["confidence"],
         promoted=row["promoted"],
+        active=row["active"],
         provenance=Provenance.model_validate(row["provenance"]),
     )
 

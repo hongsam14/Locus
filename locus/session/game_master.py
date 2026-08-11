@@ -28,6 +28,8 @@ from .models import (
     SessionRumor,
 )
 from .repository import SessionRepository
+from .rumor_dynamics import DEFAULT_RUMOR_DYNAMICS, RumorDynamicsParams
+from .rumor_feedback_service import RumorFeedbackService
 from .rumor_generator import RumorGenerator
 from .rumor_service import RumorService
 from .turn import TurnAdvancer, TurnResult
@@ -44,16 +46,23 @@ class GameMasterService:
         params: ConsensusParams = DEFAULT_PARAMS,
         *,
         suggester: EventSuggester | None = None,
+        rumor_params: RumorDynamicsParams = DEFAULT_RUMOR_DYNAMICS,
         rumors: RumorService | None = None,
         events: EventService | None = None,
         distortions: DistortionService | None = None,
+        feedback: RumorFeedbackService | None = None,
         turns: TurnAdvancer | None = None,
     ) -> None:
         self._repo = repo
-        self._rumors = rumors or RumorService(repo, generator, loader, params)
+        self._rumors = rumors or RumorService(
+            repo, generator, loader, params, birth_support=rumor_params.birth_support
+        )
         self._events = events or EventService(repo, loader, suggester=suggester)
         self._distortions = distortions or DistortionService(repo)
-        self._turns = turns or TurnAdvancer(repo, loader, self._rumors)
+        self._feedback = feedback or RumorFeedbackService(repo, rumor_params)
+        self._turns = turns or TurnAdvancer(
+            repo, loader, self._rumors, self._feedback, rumor_params
+        )
 
     # -- reads ------------------------------------------------------------ #
     def list_rumors(self, session_id: str, region_id: str) -> list[SessionRumor]:

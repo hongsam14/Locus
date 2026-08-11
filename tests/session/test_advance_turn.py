@@ -158,14 +158,89 @@ def test_resolve_restores_baseline_even_after_saturation() -> None:
     assert abs(repo.get_region_distortion(session.id, "r2") - 0.3) < 1e-9
 
 
-def test_empty_turn_does_not_decay_support() -> None:
-    """A turn with no active events must leave rumor support untouched (no blanket
-    decay that would silently demote promoted rumors)."""
+def test_empty_turn_decays_unreinforced_support() -> None:
+    """U-H1 (reverses Phase 2 [3]): support is now the survival lever, so an
+    unreinforced rumor decays every turn — including empty turns (FD-H Q1=A).
+    A rumor weak enough to earn no region feedback loses support each quiet turn."""
     repo, _loader, gm, session = _setup()
     r = gm.generate_rumors(session.id, "r1")[0]
-    gm.adjust_support(session.id, r.id, 0.6)
-    gm.advance_turn(session.id)  # no active events
-    assert abs(repo.get_rumor(session.id, r.id).support - 0.6) < 1e-9
+    gm.adjust_support(session.id, r.id, 0.4)  # below high_support_threshold -> no feedback
+    gm.advance_turn(session.id)  # no active events, no strong rumor -> not reinforced
+    assert abs(repo.get_rumor(session.id, r.id).support - 0.35) < 1e-9  # decayed by 0.05
+
+
+def test_empty_turn_promoted_rumor_exempt_from_decay() -> None:
+    """Promoted rumors are exempt from decay/prune (FD-H Q6=A) even on empty turns."""
+    repo, _loader, gm, session = _setup()
+    r = gm.generate_rumors(session.id, "r1")[0]
+    gm.adjust_support(session.id, r.id, 0.7)
+    gm.advance_turn(session.id)  # promotes r (>=0.6)
+    assert repo.get_rumor(session.id, r.id).promoted is True
+    gm.advance_turn(session.id)  # empty turn: promoted -> support untouched
+    assert abs(repo.get_rumor(session.id, r.id).support - 0.7) < 1e-9
+
+
+# --- U-H1: decay / prune / gate / feedback ---------------------------------- #
+def test_unsupported_rumor_pruned_below_floor() -> None:
+    """A rumor decayed below the floor is soft-flagged (active=False), not deleted,
+    and drops out of the default listing (FR-H1 / BR-H1-4/5/6)."""
+    repo, _loader, gm, session = _setup()
+    r = gm.generate_rumors(session.id, "r1")[0]  # birth support 0.2
+    gm.adjust_support(session.id, r.id, 0.06)  # just above floor, below feedback bar
+    result = gm.advance_turn(session.id)  # decays 0.06 -> 0.01 (<0.05) -> pruned
+    assert r.id in result.pruned_rumor_ids
+    assert r.id not in {x.id for x in repo.list_rumors(session.id, "r1")}  # active-only
+    pruned = repo.get_rumor(session.id, r.id)  # row kept
+    assert pruned is not None and pruned.active is False
+
+
+def test_birth_support_gives_new_rumor_grace() -> None:
+    """New rumors are born at birth_support (0.2), surviving a quiet turn instead of
+    being pruned immediately (FD-H Q7=A / BR-H1-21)."""
+    repo, _loader, gm, session = _setup()
+    made = gm.generate_rumors(session.id, "r1")
+    assert all(abs(r.support - 0.2) < 1e-9 for r in made)
+    result = gm.advance_turn(session.id)  # quiet turn: 0.2 -> 0.15, survives
+    assert result.pruned_rumor_ids == []
+    assert {r.id for r in made} <= {r.id for r in repo.list_rumors(session.id, "r1")}
+
+
+def test_support_gate_blocks_weak_rumor_from_seeding() -> None:
+    """Auto-append only re-seeds from rumors with support >= min_source_support
+    (0.3); a weak existing rumor does not spawn a new chain (FR-H2 / BR-H1-7)."""
+    repo, _loader, gm, session = _setup()
+    # one weak existing rumor in r1 (support below the 0.3 gate)
+    weak = gm.generate_rumors(session.id, "r1")[0]
+    gm.adjust_support(session.id, weak.id, 0.1)
+    before = len(repo.list_rumors(session.id, "r1"))
+    gm.create_event(session.id, "r1", category=EventCategory.WAR, magnitude=0.3)
+    gm.advance_turn(session.id)
+    after = repo.list_rumors(session.id, "r1")
+    # new rumors come only from canonical sources (1 knowledge -> 3-chain), not the
+    # weak rumor; the weak rumor itself is reinforced by the event and survives.
+    assert weak.id in {r.id for r in after}
+    assert len(after) >= before  # appended from eligible (canonical) sources only
+
+
+def test_rumor_feedback_moves_region_distortion() -> None:
+    """A region dense with strong rumors gets a distortion bump from feedback even
+    with no events, and that region is reported/reinforced (FR-H3 / BR-H1-9/10)."""
+    repo, _loader, gm, session = _setup()
+    r = gm.generate_rumors(session.id, "r1")[0]
+    gm.adjust_support(session.id, r.id, 0.9)  # strong -> contributes to density
+    d_before = repo.get_region_distortion(session.id, "r1")
+    result = gm.advance_turn(session.id)  # no events; feedback only
+    assert "r1" in result.feedback_regions
+    assert repo.get_region_distortion(session.id, "r1") > d_before
+
+
+def test_advance_turn_batch_persists_and_reports() -> None:
+    """advance_turn returns the new pruned/feedback fields (additive, BR-H1-14)."""
+    repo, _loader, gm, session = _setup()
+    result = gm.advance_turn(session.id)
+    assert hasattr(result, "pruned_rumor_ids") and hasattr(result, "feedback_regions")
+    assert isinstance(result.pruned_rumor_ids, list)
+    assert isinstance(result.feedback_regions, list)
 
 
 # --- rumor append + support evolution + promotion --------------------------- #

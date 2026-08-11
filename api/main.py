@@ -81,7 +81,11 @@ def _wire_default(app: FastAPI) -> None:  # pragma: no cover - requires live ser
     app.state.session_repo = session_repo
     app.state.session_service = SessionService(session_repo, graph)
     app.state.game_master = GameMasterService(
-        session_repo, RumorGenerator(llm), loader, suggester=EventSuggester(llm)
+        session_repo,
+        RumorGenerator(llm),
+        loader,
+        suggester=EventSuggester(llm),
+        rumor_params=get_settings().rumor_dynamics_params(),
     )
     app.state.session_query = SessionQueryEngine(session_repo, loader)
 

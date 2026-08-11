@@ -92,13 +92,23 @@ class InMemorySessionRepository:
         self._rumors[rumor.session_id][rumor.id] = deepcopy(rumor)
         return deepcopy(rumor)
 
+    def upsert_rumors(self, rumors: list[SessionRumor]) -> list[SessionRumor]:
+        """Batch upsert in one logical write (FR-H5). Returns the stored rumors."""
+        return [self.upsert_rumor(r) for r in rumors]
+
     def get_rumor(self, session_id: str, rumor_id: str) -> SessionRumor | None:
         r = self._rumors.get(session_id, {}).get(rumor_id)
         return deepcopy(r) if r else None
 
-    def list_rumors(self, session_id: str, region_id: str | None = None) -> list[SessionRumor]:
+    def list_rumors(
+        self, session_id: str, region_id: str | None = None, *, include_pruned: bool = False
+    ) -> list[SessionRumor]:
         rumors = self._rumors.get(session_id, {}).values()
-        return [deepcopy(r) for r in rumors if region_id is None or r.region_id == region_id]
+        return [
+            deepcopy(r)
+            for r in rumors
+            if (region_id is None or r.region_id == region_id) and (include_pruned or r.active)
+        ]
 
     def delete_rumor(self, session_id: str, rumor_id: str) -> None:
         self._rumors.get(session_id, {}).pop(rumor_id, None)

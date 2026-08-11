@@ -98,6 +98,22 @@ def test_rumor_roundtrip_and_upsert(repo: PostgresSessionRepository) -> None:
     assert repo.get_rumor(s.id, r.id) is None
 
 
+def test_batch_upsert_and_soft_flag(repo: PostgresSessionRepository) -> None:
+    """U-H1: batch upsert_rumors + active soft-flag round-trip via the real
+    adapter (SQLite). Pruned rumors are hidden unless include_pruned (FR-H5 / BR-H1-6)."""
+    s = repo.create_session("w")
+    live = SessionRumor(session_id=s.id, region_id="rA", distorted_from_id="k", provenance=_prov())
+    dead = SessionRumor(
+        session_id=s.id, region_id="rA", distorted_from_id="k", active=False, provenance=_prov()
+    )
+    saved = repo.upsert_rumors([live, dead])
+    assert len(saved) == 2
+    assert [r.id for r in repo.list_rumors(s.id)] == [live.id]  # active-only default
+    both = {r.id for r in repo.list_rumors(s.id, include_pruned=True)}
+    assert both == {live.id, dead.id}
+    assert repo.get_rumor(s.id, dead.id).active is False  # column round-trips
+
+
 def test_region_distortion_upsert(repo: PostgresSessionRepository) -> None:
     s = repo.create_session("w")
     repo.set_region_distortion(s.id, "r1", 0.3)

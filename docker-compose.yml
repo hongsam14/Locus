@@ -1,8 +1,6 @@
-# Default `docker compose up -d` brings up the infrastructure tier only:
-#   neo4j, opensearch.
+# Default `docker compose up -d` brings up the infrastructure tier:
+#   neo4j, opensearch, dashboard (OpenSearch Dashboards @ :5601).
 # Profiles:
-#   - tools:   adds OpenSearch Dashboards (index inspection).
-#       docker compose --profile tools up -d
 #   - service: production-ish deployment — adds the app (FastAPI) + web (UI).
 #       docker compose --profile service up -d --build
 #
@@ -20,7 +18,8 @@ services:
       - "7474:7474" # HTTP browser
       - "7687:7687" # Bolt
     environment:
-      - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-locus-dev-password}
+      # No hardcoded default — must be set in .env (see env.example).
+      - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?NEO4J_PASSWORD is required (set it in .env)}
       # APOC plugin (auto-downloaded into /plugins on first start)
       - NEO4J_PLUGINS=["apoc"]
       - NEO4J_apoc_export_file_enabled=true
@@ -53,7 +52,10 @@ services:
       - plugins.security.disabled=true # local dev only (ID-Q2=A)
       - bootstrap.memory_lock=true
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      # Sourced from env only (no hardcoded default). The security plugin is
+      # disabled above, so a value is not needed for local dev; set it in your
+      # (git-ignored) .env if you enable security.
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-}
     ulimits:
       memlock:
         soft: -1
@@ -68,7 +70,29 @@ services:
     networks:
       - locus-net
 
-  # Optional index inspection UI (profile: tools)
+  # PostgreSQL — game-session layer (S1). Canonical Neo4j/OpenSearch unchanged.
+  postgres:
+    image: postgres:16-alpine
+    container_name: locus-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${SESSION_DB_USER:-locus}
+      # No hardcoded default — must be set in .env (see env.example).
+      - POSTGRES_PASSWORD=${SESSION_DB_PASSWORD:?SESSION_DB_PASSWORD is required (set it in .env)}
+      - POSTGRES_DB=${SESSION_DB_NAME:-locus_session}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${SESSION_DB_USER:-locus} -d ${SESSION_DB_NAME:-locus_session}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - locus-net
+
+  # OpenSearch Dashboards (index inspection UI) — http://localhost:5601
   dashboard:
     image: opensearchproject/opensearch-dashboards:2.13.0
     container_name: locus-opensearch-dashboards
@@ -83,8 +107,6 @@ services:
         condition: service_healthy
     networks:
       - locus-net
-    profiles:
-      - tools
 
   # ---------------------------------------------------------------------------
   # Application (profile: service) — needs OPENAI_API_KEY in .env
@@ -98,12 +120,15 @@ services:
         condition: service_healthy
       opensearch:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     env_file:
       - .env
     environment:
       # container-network overrides (take precedence over .env)
       - NEO4J_URI=bolt://neo4j:7687
       - OPENSEARCH_URL=http://opensearch:9200
+      - SESSION_DB_URL=postgresql+psycopg://${SESSION_DB_USER:-locus}:${SESSION_DB_PASSWORD:?SESSION_DB_PASSWORD is required (set it in .env)}@postgres:5432/${SESSION_DB_NAME:-locus_session}
     ports:
       - "${API_PORT:-8000}:8000"
     # bootstrap schema (no API key needed) then serve the API
@@ -170,3 +195,9 @@ volumes:
       type: none
       o: bind
       device: ./data/opensearch
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/postgres

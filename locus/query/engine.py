@@ -14,6 +14,15 @@ def view_items(view: ConsensusView, include_rumors: bool = True) -> list[Knowled
     return items
 
 
+def canonical_known(view: ConsensusView) -> list[KnowledgeView]:
+    """Knowledge an NPC genuinely knows = direct + inherited + global.
+
+    Excludes distance-based ``propagated`` and the auto-rumor view (designer-only),
+    for the session NPC query (FR-R5.1, S2). Pure; the canonical ``QueryEngine``
+    is unchanged (BR-S2-22)."""
+    return view.direct + view.inherited + view.global_knowledge
+
+
 def split_shared_unique(
     view: ConsensusView, include_rumors: bool = True
 ) -> tuple[list[str], list[str]]:

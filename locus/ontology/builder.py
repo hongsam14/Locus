@@ -15,6 +15,7 @@ from ..models import (
 )
 from .corroboration import CorroborationGenerator
 from .dedup import Deduplicator
+from .reconciler import EntityReconciler
 
 
 def _norm(name: str) -> str:
@@ -80,6 +81,10 @@ class OntologyBuilder:
         self._wiki = wiki
         self._max_corr = max_corroborations_per_region
 
+    def set_wiki(self, wiki: CommonsenseWiki | None) -> None:
+        """Inject the world-scoped wiki at build time (single-world, BR-A9)."""
+        self._wiki = wiki
+
     def build(
         self, ingestion: IngestionResult, topology: RegionTopology, *, world_id: str
     ) -> KnowledgeGraph:
@@ -102,11 +107,21 @@ class OntologyBuilder:
         deduped, remap = deduper.dedupe(knowledge)
         scopes = remap_scopes(scopes, remap)
 
+        # 4. entity reconciliation (FR-IM4): cross-source merge + orphan connect
+        about_ids = {eid for k in deduped for eid in k.about_entity_ids}
+        reconciler = EntityReconciler(self._embedding, self._llm)
+        rec = reconciler.reconcile(
+            list(ingestion.entities), regions, list(ingestion.relations), about_ids
+        )
+        if rec.remap:
+            for k in deduped:
+                k.about_entity_ids = sorted({rec.remap.get(i, i) for i in k.about_entity_ids})
+
         return KnowledgeGraph(
             world_id=world_id,
-            entities=ingestion.entities,
-            relations=ingestion.relations,
+            entities=rec.entities,
+            relations=rec.relations,
             knowledge=deduped,
-            rumors=[],
             scopes=scopes,
+            unconnected_entity_ids=rec.unconnected_entity_ids,
         )

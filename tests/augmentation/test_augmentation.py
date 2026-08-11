@@ -45,7 +45,7 @@ def _prov() -> Provenance:
 # --------------------------------------------------------------------------- #
 def test_detect_gaps_empty_region_and_dangling() -> None:
     a = Region(world_id="w", name="A", level=RegionLevel.TOWN, provenance=_prov())
-    k = Knowledge(world_id="w", statement="x", provenance=_prov())
+    k = Knowledge(world_id="w", statement="x", title="x", provenance=_prov())
     rel = Relation(
         world_id="w",
         source_id="missing",
@@ -62,7 +62,9 @@ def test_detect_gaps_empty_region_and_dangling() -> None:
 
 
 def test_detect_low_confidence() -> None:
-    k = Knowledge(world_id="w", statement="maybe", confidence=0.3, provenance=_prov())
+    k = Knowledge(
+        world_id="w", statement="maybe", title="maybe", confidence=0.3, provenance=_prov()
+    )
     e = Entity(
         world_id="w", name="E", entity_type=EntityType.PLACE, confidence=0.2, provenance=_prov()
     )
@@ -70,6 +72,26 @@ def test_detect_low_confidence() -> None:
     issues = detect_low_confidence(kg)
     assert len(issues) == 2
     assert all(str(i.type) == IssueType.LOW_CONFIDENCE.value for i in issues)
+
+
+def test_detect_orphans() -> None:
+    from locus.augmentation.detectors import detect_orphans
+
+    linked = Entity(
+        world_id="w",
+        name="Tower",
+        entity_type=EntityType.PLACE,
+        located_in="r1",
+        provenance=_prov(),
+    )
+    orphan = Entity(
+        world_id="w", name="Floating Rock", entity_type=EntityType.OBJECT, provenance=_prov()
+    )
+    kg = KnowledgeGraph(world_id="w", entities=[linked, orphan])
+    issues = detect_orphans(kg)
+    assert len(issues) == 1
+    assert str(issues[0].type) == IssueType.ORPHAN.value
+    assert issues[0].target_ids == [orphan.id]
 
 
 def test_question_generator_template() -> None:
@@ -124,7 +146,7 @@ def test_apply_add_creates_knowledge_and_scope() -> None:
 
 
 def test_apply_remove_and_revert() -> None:
-    k = Knowledge(world_id="w", statement="bad", provenance=_prov())
+    k = Knowledge(world_id="w", statement="bad", title="bad", provenance=_prov())
     node = gm.knowledge_to_node(k)
     editor, graph = _Editor(), _GraphRepo(node=node)
     answer = AugmentationAnswer(question_id="q1", action=AnswerAction.REMOVE, target_id=k.id)

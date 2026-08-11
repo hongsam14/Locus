@@ -45,6 +45,7 @@ def test_knowledge_node_roundtrip_preserves_flags() -> None:
     k = Knowledge(
         world_id="w",
         statement="sun rises east",
+        title="Sunrise",
         is_global=True,
         region_hint="Town",
         about_entity_ids=["e1", "e2"],
@@ -74,12 +75,11 @@ class _FakeGraphRepo:
 def test_world_loader_reconstructs_graph_and_topology() -> None:
     a = Region(world_id="w", name="A", level=RegionLevel.TOWN, provenance=_prov())
     b = Region(world_id="w", name="B", level=RegionLevel.TOWN, provenance=_prov())
-    k = Knowledge(world_id="w", statement="b fact", provenance=_prov())
+    k = Knowledge(world_id="w", statement="b fact", title="b", provenance=_prov())
     nodes = {
         "Region": [gm.region_to_node(a), gm.region_to_node(b)],
         "Entity": [],
         "Knowledge": [gm.knowledge_to_node(k)],
-        "Rumor": [],
     }
     edges = gm.connection_edges(
         [
@@ -138,6 +138,24 @@ def test_diff_sets() -> None:
     assert shared == ["y"] and only_a == ["x"] and only_b == ["z"]
 
 
+def test_canonical_known_excludes_propagated_and_rumors() -> None:
+    from locus.query.engine import canonical_known, view_items
+
+    view = ConsensusView(
+        world_id="w",
+        region_id="r",
+        direct=[_kv("d1")],
+        inherited=[_kv("i1")],
+        global_knowledge=[_kv("g1")],
+        propagated=[_kv("p1")],
+        rumors=[_kv("ru1")],
+    )
+    known = {v.knowledge_id for v in canonical_known(view)}
+    assert known == {"d1", "i1", "g1"}  # propagated + auto-rumor excluded
+    # existing view_items behaviour unchanged (regression guard)
+    assert {v.knowledge_id for v in view_items(view)} == {"d1", "i1", "g1", "p1", "ru1"}
+
+
 # --------------------------------------------------------------------------- #
 # QueryEngine (mock loader)
 # --------------------------------------------------------------------------- #
@@ -153,7 +171,7 @@ def test_query_engine_region_knowledge_and_not_found() -> None:
     from locus.models import KnowledgeGraph, RegionTopology
 
     a = Region(world_id="w", name="A", level=RegionLevel.TOWN, provenance=_prov())
-    k = Knowledge(world_id="w", statement="a fact", confidence=0.9, provenance=_prov())
+    k = Knowledge(world_id="w", statement="a fact", title="a", confidence=0.9, provenance=_prov())
     kg = KnowledgeGraph(
         world_id="w",
         knowledge=[k],

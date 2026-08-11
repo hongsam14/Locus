@@ -45,16 +45,26 @@ def index_mapping(vector_dimension: int) -> dict:
 
 
 def build_search_body(
-    world_id: str,
+    world_id: str | None,
     query_text: str,
     query_embedding: list[float] | None,
     k: int,
     filters: dict | None,
 ) -> dict:
-    """Construct the hybrid (BM25 + kNN) search body with a world_id filter."""
-    filter_clauses: list[dict] = [{"term": {"world_id": world_id}}]
+    """Construct the hybrid (BM25 + kNN) search body.
+
+    ``world_id=None`` omits the partition filter for the designer's cross-world
+    prior search (FR-IM1.4). List-valued filters use ``terms`` (match-any), so a
+    ``domains`` overlap filter works.
+    """
+    filter_clauses: list[dict] = []
+    if world_id is not None:
+        filter_clauses.append({"term": {"world_id": world_id}})
     for key, val in (filters or {}).items():
-        filter_clauses.append({"term": {key: val}})
+        if isinstance(val, (list, tuple, set)):
+            filter_clauses.append({"terms": {key: list(val)}})
+        else:
+            filter_clauses.append({"term": {key: val}})
 
     should: list[dict] = []
     if query_text:
@@ -124,7 +134,7 @@ class OpenSearchRepository(SearchRepository):
 
     def hybrid_search(
         self,
-        world_id: str,
+        world_id: str | None,
         query_text: str,
         query_embedding: list[float] | None = None,
         k: int = 5,
@@ -139,7 +149,7 @@ class OpenSearchRepository(SearchRepository):
             hits.append(
                 SearchHit(
                     id=src.get("id", hit.get("_id", "")),
-                    world_id=src.get("world_id", world_id),
+                    world_id=src.get("world_id", world_id or ""),
                     label=src.get("label", ""),
                     text=src.get("text", ""),
                     score=float(hit.get("_score") or 0.0),

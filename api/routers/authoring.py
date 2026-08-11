@@ -5,7 +5,6 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request, Response
 
 from locus.augmentation.types import AugmentationAnswer, AugmentationSession, ChangeSet
-from locus.commonsense_wiki import load_bundled_realworld
 from locus.demo import load_demo_world
 from locus.ingestion.service import WorldInputs
 from locus.models import (
@@ -13,7 +12,6 @@ from locus.models import (
     GraphSummary,
     Knowledge,
     Region,
-    WikiBuildReport,
     WikiPrior,
 )
 
@@ -40,11 +38,6 @@ def build_demo_world(world_id: str, request: Request, with_map: bool = True) -> 
     )
 
 
-@router.post("/wiki/build", response_model=WikiBuildReport)
-def build_wiki(request: Request, inputs: WorldInputs | None = None) -> WikiBuildReport:
-    return _svc(request, "wiki_builder").build_wiki(inputs or load_bundled_realworld())
-
-
 @router.get("/worlds/{world_id}/graph", response_model=GraphSummary)
 def graph_summary(world_id: str, request: Request) -> GraphSummary:
     graph = _svc(request, "graph_repo")
@@ -65,9 +58,20 @@ def export_world(world_id: str, request: Request) -> dict:
     return _svc(request, "exporter").export_world(world_id)
 
 
-@router.post("/wiki/priors", response_model=WikiPrior)
-def upsert_prior(prior: WikiPrior, request: Request) -> WikiPrior:
+@router.post("/worlds/{world_id}/priors", response_model=WikiPrior)
+def upsert_prior(world_id: str, prior: WikiPrior, request: Request) -> WikiPrior:
+    if prior.world_id != world_id:
+        raise HTTPException(status_code=400, detail="prior.world_id must match path world_id")
     return _svc(request, "wiki_admin").upsert_prior(prior)
+
+
+@router.get("/worlds/{world_id}/related-priors", response_model=list[WikiPrior])
+def related_priors(
+    world_id: str, request: Request, query: str | None = None, k: int = 10
+) -> list[WikiPrior]:
+    """Designer-only cross-world reference: priors in OTHER worlds sharing this
+    world's domain tags (read-through, BR-A10). Not used by build/NPC paths."""
+    return _svc(request, "wiki_explorer").search_related_priors(world_id, query=query, k=k)
 
 
 @router.put("/worlds/{world_id}/regions/{region_id}", response_model=Region)

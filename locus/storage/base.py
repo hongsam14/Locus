@@ -86,10 +86,10 @@ class SearchRepository(Protocol):
     def index(self, docs: list[SearchDoc]) -> None: ...
     def hybrid_search(
         self,
-        world_id: str,
+        world_id: str | None,
         query_text: str,
         query_embedding: list[float] | None = None,
         k: int = 5,
         filters: dict | None = None,
-    ) -> list[SearchHit]: ...
+    ) -> list[SearchHit]: ...  # world_id=None -> search across all worlds (designer cross-world)
     def delete_world(self, world_id: str) -> None: ...

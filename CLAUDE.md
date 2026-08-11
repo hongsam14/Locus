@@ -8,26 +8,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-AI-DLC build complete (2026-06-08) — all 10 units across 2 cycles. **117 offline tests GREEN** (108 pytest backend + 9 vitest frontend); live Neo4j/OpenSearch/OpenAI integration is operator-run (see `aidlc-docs/construction/build-and-test/`).
+AI-DLC build complete. MVP (10 units) + MVP-improvements + **Rumor / Game-Session Phase 1** (S1+S2+S3, 2026-06-15) + **Phase 2** (P1+P2+P3, 2026-06-19). **236 offline tests GREEN** (219 pytest backend + 17 vitest frontend); live Neo4j/OpenSearch/PostgreSQL/OpenAI integration is operator-run (see `aidlc-docs/construction/**/build-and-test/`).
+
+The game-session layer (PostgreSQL) over the static canonical world provides GameMaster turns, LLM rumor distortion (degree chains), support/promotion, timeline, and a session NPC query. **Phase 2 adds Events** (`SessionEvent`, category/magnitude/lifecycle) that **dynamically evolve per-region distortion** each turn: deterministic delta + topology-decayed propagation, persistent accumulation / one_shot, resolve-restore, support auto-evolution, and LLM event suggestion (suggest→approve) — see `locus/session/{dynamics,event_suggester}.py`, the single-responsibility services `locus/session/{rumor_service,event_service,distortion_service,turn}.py` composed by the `game_master.py` coordinator (DI), `api/routers/session.py`, and `web/` SessionPanel. Phase 3 (rumor→region feedback loop, event-to-event interaction) deferred.
 
 ## Tech Stack & Layout
-- **Backend**: Python 3.11+, Pydantic v2, FastAPI, Neo4j (graph) + OpenSearch (hybrid search), LangChain/LangGraph, OpenAI (provider-abstracted). Docker Compose.
-- **Frontend**: `web/` — React + Vite + TypeScript (map-overlay topology, edit, augmentation Q&A).
-- **Code**: `locus/` (core package: models, config, llm, storage, ingestion, topology, ontology, consensus, commonsense_wiki, query, augmentation, services) · `api/` (FastAPI serving + authoring routers) · `web/` (UI) · `tests/`.
-- **CLI**: `locus init-schema | build-wiki | build-world [--demo] | export`.
+- **Backend**: Python 3.11+, Pydantic v2, FastAPI, Neo4j (graph) + OpenSearch (hybrid search) for the canonical world, **PostgreSQL (SQLAlchemy) for the game-session layer**, LangChain/LangGraph, OpenAI (provider-abstracted). Docker Compose.
+- **Frontend**: `web/` — React + Vite + TypeScript (map-overlay topology, edit, augmentation Q&A, **game sessions: SessionBar + SessionPanel GameMaster hub**).
+- **Code**: `locus/` (core package: models, config, llm, storage, ingestion, topology, ontology, consensus, commonsense_wiki, query, augmentation, services, **session**) · `api/` (FastAPI serving + authoring + **session** routers) · `web/` (UI) · `tests/`.
+- **CLI**: `locus init-schema | build-world [--demo] | export`. (`init-schema` also creates the PostgreSQL session tables; each world self-distills its own WikiPriors during `build-world`.)
 
 ## Build / Test / Run
 ```bash
-pip install -e ".[dev]" && pytest          # backend (offline, mocked)
-cd web && npm install && npm test          # frontend (vitest)
-docker-compose up -d neo4j opensearch      # deps for live use
-locus init-schema && locus build-wiki && locus build-world --world demo --demo
-uvicorn api.main:app --port 8000           # API ; cd web && npm run dev for UI
+pip install -e ".[dev]" && pytest              # backend (offline, mocked)
+cd web && npm install && npm test              # frontend (vitest)
+cp env.example .env                            # REQUIRED: set NEO4J_PASSWORD, SESSION_DB_PASSWORD (no insecure defaults)
+docker compose up -d neo4j opensearch postgres # deps for live use (postgres = session layer)
+locus init-schema && locus build-world --world demo --demo
+uvicorn api.main:app --port 8000               # API ; cd web && npm run dev for UI
 ```
 
 ## Conventions
 - All external I/O behind ports (GraphRepository/SearchRepository/LLMProvider) — mockable; offline tests mock them.
-- `world_id` partitions every graph; real-world Common-sense Wiki uses reserved id `__realworld__`.
+- `world_id` partitions every graph; each world holds its own Common-sense Wiki (WikiPriors). Cross-world prior reference is a designer-only, read-through search by shared domain tags (NPC build/query stays single-world).
 - ruff + black (line 100); PBT (Partial) via hypothesis on pure functions/serialization.
 
 ## AI-DLC

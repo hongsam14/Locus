@@ -17,6 +17,5 @@ class Exporter:
             "connections": [c.model_dump() for c in topo.connections],
             "entities": [e.model_dump() for e in kg.entities],
             "knowledge": [k.model_dump() for k in kg.knowledge],
-            "rumors": [r.model_dump() for r in kg.rumors],
             "scopes": [s.model_dump() for s in kg.scopes],
         }

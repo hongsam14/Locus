@@ -29,6 +29,10 @@ _TEMPLATES = {
         "This may contradict real-world common sense. Keep or fix?",
         ["confirm", "edit", "ignore"],
     ),
+    IssueType.ORPHAN: (
+        "This item isn't connected to any region or entity. Where does it belong?",
+        ["edit", "remove", "ignore"],
+    ),
 }
 
 

@@ -14,8 +14,10 @@ from ..models import (
     Knowledge,
     Provenance,
     Region,
+    RegionLevel,
     Relation,
     SourceKind,
+    fallback_title,
 )
 from .schemas import (
     ExtractedEntity,
@@ -73,6 +75,44 @@ def to_region(x: ExtractedRegion, world_id: str, *, generated_by: str = "llm") -
     )
 
 
+# terrain kinds that act as a connector/barrier BETWEEN regions (stay connection
+# hints, not promoted to a Region) (FD-B Q1=B, BR-B1).
+_BARRIER_KINDS = {
+    "mountain",
+    "mountains",
+    "range",
+    "sea",
+    "ocean",
+    "river",
+    "road",
+    "route",
+    "bridge",
+}
+
+
+def is_barrier_terrain(kind: str) -> bool:
+    return kind.strip().lower() in _BARRIER_KINDS
+
+
+def to_terrain_region(x: ExtractedTerrain, world_id: str, *, generated_by: str = "vlm") -> Region:
+    """Promote an area-form VLM terrain feature to a Region (FR-IM4.1, BR-B2)."""
+    position = None
+    if x.x is not None and x.y is not None:
+        position = Coord(x=_clamp01(x.x), y=_clamp01(x.y))
+    attributes: dict = {"terrain_kind": x.kind, "origin": "vlm"}
+    if x.between:
+        attributes["adjacent_names"] = list(x.between)
+    return Region(
+        world_id=world_id,
+        name=x.name,
+        level=RegionLevel.TERRAIN,
+        description=x.note,
+        attributes=attributes,
+        position=position,
+        provenance=_prov(generated_by),
+    )
+
+
 def to_terrain_entity(x: ExtractedTerrain, world_id: str, *, generated_by: str = "vlm") -> Entity:
     return Entity(
         world_id=world_id,
@@ -119,6 +159,7 @@ def to_knowledge(
     return Knowledge(
         world_id=world_id,
         statement=x.statement,
+        title=x.title or fallback_title(x.statement),
         topic=x.topic,
         is_global=x.is_global,
         region_hint=x.region_name,

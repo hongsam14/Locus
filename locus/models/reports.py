@@ -23,7 +23,6 @@ class BuildReport(LocusModel):
     connections_created: int = 0
     entities_created: int = 0
     knowledge_created: int = 0
-    rumors_created: int = 0
     corroborations_created: int = 0
     warnings: list[BuildWarning] = Field(default_factory=list)
 

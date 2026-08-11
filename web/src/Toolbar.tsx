@@ -3,7 +3,6 @@ interface Props {
   onWorldIdChange: (v: string) => void;
   onLoad: () => void;
   onBuildDemo: () => void;
-  onBuildWiki: () => void;
   onPickMap: (url: string) => void;
   busy?: boolean;
 }
@@ -13,7 +12,6 @@ export function Toolbar({
   onWorldIdChange,
   onLoad,
   onBuildDemo,
-  onBuildWiki,
   onPickMap,
   busy,
 }: Props) {
@@ -32,9 +30,6 @@ export function Toolbar({
       </button>
       <button data-testid="build-world-btn" onClick={onBuildDemo} disabled={busy}>
         Build World (demo)
-      </button>
-      <button data-testid="build-wiki-btn" onClick={onBuildWiki} disabled={busy}>
-        Build Wiki
       </button>
       <label style={{ fontSize: 12 }}>
         Map:

@@ -1,4 +1,18 @@
-import type { AugAnswer, AugSession, QueryResult, Region, WorldExport } from "./types";
+import type {
+  AugAnswer,
+  AugSession,
+  EventCategory,
+  EventLifecycle,
+  GameSession,
+  QueryResult,
+  Region,
+  RegionDistortion,
+  SessionEvent,
+  SessionRumor,
+  TimelineEntry,
+  TurnResult,
+  WorldExport,
+} from "./types";
 
 const BASE = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL ?? "";
 
@@ -33,7 +47,6 @@ export const api = {
       `/api/authoring/worlds/${encodeURIComponent(worldId)}/build/demo?with_map=${withMap}`,
       { method: "POST" },
     ),
-  buildWiki: () => http(`/api/authoring/wiki/build`, { method: "POST", body: "null" }),
   upsertRegion: (worldId: string, region: Region) =>
     http<Region>(
       `/api/authoring/worlds/${encodeURIComponent(worldId)}/regions/${encodeURIComponent(region.id)}`,
@@ -61,5 +74,111 @@ export const api = {
         changeId,
       )}`,
       { method: "POST" },
+    ),
+
+  // --- session layer (S3) ---
+  listSessions: (worldId: string) =>
+    http<GameSession[]>(
+      `/api/session/worlds/${encodeURIComponent(worldId)}/sessions`,
+    ),
+  startSession: (worldId: string) =>
+    http<GameSession>(`/api/session/worlds/${encodeURIComponent(worldId)}/sessions`, {
+      method: "POST",
+    }),
+  closeSession: (sid: string) =>
+    http<GameSession>(`/api/session/sessions/${encodeURIComponent(sid)}/close`, {
+      method: "POST",
+    }),
+  getTimeline: (sid: string) =>
+    http<TimelineEntry[]>(`/api/session/sessions/${encodeURIComponent(sid)}/timeline`),
+  listRumors: (sid: string, regionId: string) =>
+    http<SessionRumor[]>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/regions/${encodeURIComponent(
+        regionId,
+      )}/rumors`,
+    ),
+  generateRumors: (sid: string, regionId: string) =>
+    http<SessionRumor[]>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/regions/${encodeURIComponent(
+        regionId,
+      )}/rumors`,
+      { method: "POST" },
+    ),
+  regenRumors: (sid: string, regionId: string) =>
+    http<SessionRumor[]>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/regions/${encodeURIComponent(
+        regionId,
+      )}/rumors/regen`,
+      { method: "POST" },
+    ),
+  setSupport: (sid: string, rumorId: string, support: number) =>
+    http<SessionRumor>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/rumors/${encodeURIComponent(
+        rumorId,
+      )}/support`,
+      { method: "PUT", body: JSON.stringify({ support }) },
+    ),
+  setDistortion: (sid: string, regionId: string, degree: number) =>
+    http<RegionDistortion>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/regions/${encodeURIComponent(
+        regionId,
+      )}/distortion`,
+      { method: "PUT", body: JSON.stringify({ degree }) },
+    ),
+  advanceTurn: (sid: string) =>
+    http<TurnResult>(`/api/session/sessions/${encodeURIComponent(sid)}/advance-turn`, {
+      method: "POST",
+    }),
+  sessionKnowledge: (sid: string, regionId: string) =>
+    http<QueryResult>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/regions/${encodeURIComponent(
+        regionId,
+      )}/knowledge`,
+    ),
+
+  // --- session events (Phase 2) ---
+  listEvents: (sid: string, status?: string) =>
+    http<SessionEvent[]>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/events${
+        status ? `?status=${encodeURIComponent(status)}` : ""
+      }`,
+    ),
+  createEvent: (
+    sid: string,
+    body: {
+      region_id: string;
+      category: EventCategory;
+      description: string;
+      magnitude: number;
+      lifecycle?: EventLifecycle | null;
+    },
+  ) =>
+    http<SessionEvent>(`/api/session/sessions/${encodeURIComponent(sid)}/events`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  suggestEvents: (sid: string, n = 1) =>
+    http<SessionEvent[]>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/suggest-events?n=${n}`,
+      { method: "POST" },
+    ),
+  approveEvent: (sid: string, eid: string) =>
+    http<SessionEvent>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/events/${encodeURIComponent(eid)}/approve`,
+      { method: "POST" },
+    ),
+  resolveEvent: (sid: string, eid: string) =>
+    http<SessionEvent>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/events/${encodeURIComponent(eid)}/resolve`,
+      { method: "POST" },
+    ),
+  discardEvent: (sid: string, eid: string) =>
+    http<void>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/events/${encodeURIComponent(eid)}`,
+      { method: "DELETE" },
+    ),
+  listDistortions: (sid: string) =>
+    http<RegionDistortion[]>(
+      `/api/session/sessions/${encodeURIComponent(sid)}/distortions`,
     ),
 };

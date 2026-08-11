@@ -5,6 +5,7 @@ import type { QueryResult } from "./types";
 interface Props {
   worldId: string;
   regionId: string;
+  sessionId?: string | null; // when set, show the session NPC view (FR-R5.1)
   onDeleted?: () => void;
 }
 
@@ -15,7 +16,7 @@ const SCOPE_COLORS: Record<string, string> = {
   propagated: "#f39c12",
 };
 
-export function RegionPanel({ worldId, regionId, onDeleted }: Props) {
+export function RegionPanel({ worldId, regionId, sessionId, onDeleted }: Props) {
   const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,14 +24,17 @@ export function RegionPanel({ worldId, regionId, onDeleted }: Props) {
     let active = true;
     setResult(null);
     setError(null);
-    api
-      .regionKnowledge(worldId, regionId)
+    // Q3=A: in a session, use the session NPC view; otherwise the canonical query.
+    const query = sessionId
+      ? api.sessionKnowledge(sessionId, regionId)
+      : api.regionKnowledge(worldId, regionId);
+    query
       .then((r) => active && setResult(r))
       .catch((e) => active && setError(String(e)));
     return () => {
       active = false;
     };
-  }, [worldId, regionId]);
+  }, [worldId, regionId, sessionId]);
 
   async function remove(id: string) {
     try {

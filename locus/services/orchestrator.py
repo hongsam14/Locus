@@ -65,6 +65,20 @@ class PipelineOrchestrator:
     def build_world(self, world_id: str, inputs: WorldInputs) -> BuildReport:
         warnings: list = []
         ingestion = self._ingest.ingest_all(world_id, inputs)
+
+        # NPC-facing build uses ONLY this world's wiki (BR-A9). Inject the wiki
+        # BEFORE topology.build so topology weighting/rationale can reflect this
+        # world's already-persisted common-sense priors (FR-H7 / BR-H2-2). On a
+        # first build the wiki is empty, so topology behaves exactly as before;
+        # on a rebuild it now picks up persisted priors. (Previously set_wiki ran
+        # after topology.build, so topology never saw the wiki.)
+        if self._llm is not None:
+            wiki = CommonsenseWiki(self._search, self._llm, self._embedding, world_id=world_id)
+            if hasattr(self._topology, "set_wiki"):
+                self._topology.set_wiki(wiki)
+            if hasattr(self._ontology, "set_wiki"):
+                self._ontology.set_wiki(wiki)
+
         topology = self._topology.build(ingestion, world_id=world_id)
 
         # this world's own commonsense priors + their links (BR-A12)
@@ -89,13 +103,6 @@ class PipelineOrchestrator:
                 warnings=warnings,
             )
 
-        # NPC-facing build uses ONLY this world's wiki (BR-A9)
-        if self._llm is not None:
-            wiki = CommonsenseWiki(self._search, self._llm, self._embedding, world_id=world_id)
-            if hasattr(self._ontology, "set_wiki"):
-                self._ontology.set_wiki(wiki)
-            if hasattr(self._topology, "set_wiki"):
-                self._topology.set_wiki(wiki)
         kg = self._ontology.build(ingestion, topology, world_id=world_id)
 
         persist_graph(

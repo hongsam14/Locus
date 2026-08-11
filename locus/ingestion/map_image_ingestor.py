@@ -56,17 +56,26 @@ class MapImageIngestor:
             {"from": c.source_name, "to": c.target_name, "kind": "route"}
             for c in ex.connection_hints
         ]
+        errors: list[str] = []
         for t in ex.terrain:
-            if is_barrier_terrain(t.kind) and len(t.between) == 2:
-                hints.append(
-                    {
-                        "from": t.between[0],
-                        "to": t.between[1],
-                        "kind": _TERRAIN_TO_KIND.get(t.kind.strip().lower(), "adjacent"),
-                        "terrain_kind": t.kind,
-                    }
-                )
-            elif not is_barrier_terrain(t.kind):
+            if is_barrier_terrain(t.kind):
+                if len(t.between) == 2:
+                    hints.append(
+                        {
+                            "from": t.between[0],
+                            "to": t.between[1],
+                            "kind": _TERRAIN_TO_KIND.get(t.kind.strip().lower(), "adjacent"),
+                            "terrain_kind": t.kind,
+                        }
+                    )
+                else:
+                    # barrier connects exactly two regions (FD-B Q1=B); anything else
+                    # is surfaced instead of silently dropped (FR-H8 / BR-H2-3).
+                    errors.append(
+                        f"barrier terrain '{t.name}' ({t.kind}) skipped: expected 2 "
+                        f"bordering regions, got {len(t.between)}"
+                    )
+            else:
                 # area terrain -> promoted Region; connect it to each bordering region
                 region = to_terrain_region(t, world_id)
                 regions.append(region)
@@ -77,4 +86,4 @@ class MapImageIngestor:
         if hints and regions:
             regions[0].attributes.setdefault("connection_hints", hints)
 
-        return IngestionResult(world_id=world_id, region_hints=regions)
+        return IngestionResult(world_id=world_id, region_hints=regions, errors=errors)

@@ -40,17 +40,22 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
   const refresh = useCallback(async () => {
     setError(null);
     try {
-      setTimeline(await api.getTimeline(session.id));
-      setEvents(await api.listEvents(session.id));
-      const dist = await api.listDistortions(session.id);
+      // These reads are independent — load them in parallel (round-trip depth 1)
+      // instead of a 4-deep await waterfall (FR-H6 / BR-H2-1).
+      const [tl, ev, dist, rm] = await Promise.all([
+        api.getTimeline(session.id),
+        api.listEvents(session.id),
+        api.listDistortions(session.id),
+        regionId ? api.listRumors(session.id, regionId) : Promise.resolve([]),
+      ]);
+      setTimeline(tl);
+      setEvents(ev);
       const map: Record<string, number> = {};
       for (const d of dist) map[d.region_id] = d.distortion_degree;
       setDistortions(map);
+      setRumors(rm);
       if (regionId) {
-        setRumors(await api.listRumors(session.id, regionId));
         setDistortion(map[regionId] ?? 0.3); // reflect real per-region distortion
-      } else {
-        setRumors([]);
       }
     } catch (e) {
       setError(String(e));

@@ -226,6 +226,40 @@ def test_map_image_ingestor_barrier_hint_and_area_promotion() -> None:
     assert any(h.get("from") == "Mire Swamp" for h in hints)
 
 
+def test_map_image_ingestor_barrier_wrong_arity_surfaced() -> None:
+    """FR-H8 / BR-H2-3: a barrier terrain not bordering exactly 2 regions is
+    reported in errors instead of being silently dropped."""
+    from locus.ingestion.schemas import ExtractedRegion, ExtractedTerrain
+    from locus.models import RegionLevel
+
+    mp = MapExtraction(
+        regions=[
+            ExtractedRegion(name="East Reach", level=RegionLevel.PROVINCE, x=0.8, y=0.5),
+            ExtractedRegion(name="West Reach", level=RegionLevel.PROVINCE, x=0.2, y=0.5),
+            ExtractedRegion(name="North Reach", level=RegionLevel.PROVINCE, x=0.5, y=0.1),
+        ],
+        terrain=[
+            # barrier bordering 3 regions -> not a 2-region connection -> surfaced
+            ExtractedTerrain(
+                name="Great Range",
+                kind="mountain",
+                between=["East Reach", "West Reach", "North Reach"],
+                confidence=0.7,
+            ),
+            # barrier bordering 1 region -> also surfaced
+            ExtractedTerrain(
+                name="Lone Ridge", kind="mountain", between=["East Reach"], confidence=0.7
+            ),
+        ],
+    )
+    res = MapImageIngestor(_FakeVLM(), _FakeLLM(mp)).extract(b"img", world_id="w")
+    assert len(res.errors) == 2
+    assert all("skipped" in e for e in res.errors)
+    # no barrier connection hints generated for the wrong-arity terrain
+    hints = res.region_hints[0].attributes.get("connection_hints", []) if res.region_hints else []
+    assert not any(h.get("terrain_kind") == "mountain" for h in hints)
+
+
 # --------------------------------------------------------------------------- #
 # Service merge
 # --------------------------------------------------------------------------- #

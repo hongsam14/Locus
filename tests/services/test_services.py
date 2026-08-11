@@ -166,6 +166,62 @@ class _StubLinker:
         ]
 
 
+class _OrderTopo:
+    """Records the order of set_wiki vs build calls (FR-H7)."""
+
+    def __init__(self, log: list) -> None:
+        self._log = log
+
+    def set_wiki(self, wiki) -> None:
+        self._log.append("topo.set_wiki")
+
+    def build(self, ingestion, *, world_id):
+        self._log.append("topo.build")
+        return RegionTopology(
+            world_id=world_id,
+            regions=[
+                Region(world_id=world_id, name="R", level=RegionLevel.TOWN, provenance=_prov())
+            ],
+        )
+
+
+class _OrderOnto:
+    def __init__(self, log: list) -> None:
+        self._log = log
+
+    def set_wiki(self, wiki) -> None:
+        self._log.append("onto.set_wiki")
+
+    def build(self, ingestion, topology, *, world_id):
+        self._log.append("onto.build")
+        return KnowledgeGraph(world_id=world_id, entities=[], knowledge=[])
+
+
+def test_orchestrator_injects_wiki_before_topology_build() -> None:
+    """FR-H7 / BR-H2-2: topology.set_wiki must run BEFORE topology.build so the
+    topology can reflect this world's persisted priors."""
+    g, s = _GraphRepo(), _SearchRepo()
+    log: list = []
+    orch = PipelineOrchestrator(
+        _Ingest(), _OrderTopo(log), _OrderOnto(log), g, s, embedding=None, llm=object()
+    )
+    orch.build_world("w", inputs=None)
+    assert log.index("topo.set_wiki") < log.index("topo.build")
+    assert log.index("onto.set_wiki") < log.index("onto.build")
+
+
+def test_orchestrator_skips_wiki_when_no_llm() -> None:
+    """No LLM -> no wiki injection (existing guard preserved)."""
+    g, s = _GraphRepo(), _SearchRepo()
+    log: list = []
+    orch = PipelineOrchestrator(
+        _Ingest(), _OrderTopo(log), _OrderOnto(log), g, s, embedding=None, llm=None
+    )
+    orch.build_world("w", inputs=None)
+    assert "topo.set_wiki" not in log and "onto.set_wiki" not in log
+    assert log == ["topo.build", "onto.build"]
+
+
 def test_orchestrator_distills_priors_and_links_per_world() -> None:
     g, s = _GraphRepo(), _SearchRepo()
     orch = PipelineOrchestrator(

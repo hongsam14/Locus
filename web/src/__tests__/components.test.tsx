@@ -163,6 +163,24 @@ describe("SessionPanel (GameMaster hub)", () => {
     await waitFor(() => expect(api.advanceTurn).toHaveBeenCalledWith("s1"));
   });
 
+  it("refresh loads independent reads in parallel (FR-H6)", async () => {
+    (api.getTimeline as Mock).mockResolvedValue([]);
+    (api.listRumors as Mock).mockResolvedValue([]);
+    render(<SessionPanel session={OPEN_SESSION} regionId="r1" />);
+    // all three region-independent reads + the region rumor read are issued
+    await waitFor(() => expect(api.getTimeline).toHaveBeenCalledWith("s1"));
+    expect(api.listEvents).toHaveBeenCalledWith("s1");
+    expect(api.listDistortions).toHaveBeenCalledWith("s1");
+    expect(api.listRumors).toHaveBeenCalledWith("s1", "r1");
+  });
+
+  it("refresh skips the rumor read when no region is selected (FR-H6)", async () => {
+    (api.getTimeline as Mock).mockResolvedValue([]);
+    render(<SessionPanel session={OPEN_SESSION} regionId={null} />);
+    await waitFor(() => expect(api.getTimeline).toHaveBeenCalledWith("s1"));
+    expect(api.listRumors).not.toHaveBeenCalled();
+  });
+
   it("disables write controls on a closed session", async () => {
     (api.getTimeline as Mock).mockResolvedValue([]);
     (api.listRumors as Mock).mockResolvedValue([]);

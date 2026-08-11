@@ -27,6 +27,7 @@ _STATE_KEYS = (
     "session_service",
     "game_master",
     "session_query",
+    "translation",
 )
 
 
@@ -87,7 +88,27 @@ def _wire_default(app: FastAPI) -> None:  # pragma: no cover - requires live ser
         suggester=EventSuggester(llm),
         rumor_params=get_settings().rumor_dynamics_params(),
     )
-    app.state.session_query = SessionQueryEngine(session_repo, loader)
+
+    # X1 localization — cache-first translation over the session store. Reads are
+    # LLM-free; cache misses warm on a background thread so reads never block
+    # (review #3). Disabled -> originals shown.
+    translation = None
+    if s.translation_enabled:
+        from concurrent.futures import ThreadPoolExecutor
+
+        from locus.translation import TranslationService, Translator
+
+        warm_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="xlate-warm")
+        translation = TranslationService(
+            session_repo,
+            Translator(llm),
+            default_lang=s.translation_target_lang,
+            warm_scheduler=warm_pool.submit,
+        )
+    app.state.translation = translation
+    app.state.session_query = SessionQueryEngine(
+        session_repo, loader, translation=translation, target_lang=s.translation_target_lang
+    )
 
 
 def create_app(**state) -> FastAPI:

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
 import type { QueryResult } from "./types";
+import { Badge, Button, Card, LocalizedText, Panel } from "./ui";
 
 interface Props {
   worldId: string;
@@ -8,13 +9,6 @@ interface Props {
   sessionId?: string | null; // when set, show the session NPC view (FR-R5.1)
   onDeleted?: () => void;
 }
-
-const SCOPE_COLORS: Record<string, string> = {
-  direct: "#27ae60",
-  inherited: "#2980b9",
-  global: "#8e44ad",
-  propagated: "#f39c12",
-};
 
 export function RegionPanel({ worldId, regionId, sessionId, onDeleted }: Props) {
   const [result, setResult] = useState<QueryResult | null>(null);
@@ -47,48 +41,53 @@ export function RegionPanel({ worldId, regionId, sessionId, onDeleted }: Props) 
   }
 
   return (
-    <div data-testid="region-panel" style={{ padding: 12, minWidth: 320 }}>
-      <h3>Region knowledge</h3>
-      {error && <div style={{ color: "#c0392b" }}>{error}</div>}
-      {!result && !error && <div>Loading…</div>}
+    <Panel data-testid="region-panel" title="Region knowledge" className="min-w-80">
+      {error && <div className="text-danger">{error}</div>}
+      {!result && !error && <div className="text-ink-soft">Loading…</div>}
       {result && (
         <>
-          <div style={{ fontSize: 12, color: "#666" }}>
+          <div className="text-xs text-ink-soft mb-2">
             unique {result.unique_ids.length} · shared {result.shared_ids.length}
           </div>
-          <ul style={{ listStyle: "none", padding: 0 }}>
+          <div className="flex flex-col gap-1.5">
             {result.items.map((it) => (
-              <li
+              <Card
                 key={it.knowledge_id}
                 data-testid={`knowledge-item-${it.knowledge_id}`}
-                style={{ borderBottom: "1px solid #eee", padding: "6px 0" }}
+                className="flex items-start gap-2 text-sm"
               >
-                <span
-                  style={{
-                    background: SCOPE_COLORS[it.scope_type] ?? "#7f8c8d",
-                    color: "#fff",
-                    borderRadius: 4,
-                    padding: "1px 6px",
-                    fontSize: 11,
-                    marginRight: 6,
-                  }}
+                <Badge
+                  tone={
+                    it.is_rumor
+                      ? "event"
+                      : it.scope_type === "direct"
+                        ? "promoted" // emphasize locally-authored knowledge (mono-safe)
+                        : "neutral"
+                  }
                 >
                   {it.is_rumor ? "rumor" : it.scope_type}
+                </Badge>
+                <span className="flex-1">
+                  <LocalizedText
+                    testId={`knowledge-text-${it.knowledge_id}`}
+                    ko={it.statement_ko}
+                    original={it.statement}
+                  />
+                  <span className="text-ink-soft text-xs"> ({it.confidence.toFixed(2)})</span>
                 </span>
-                {it.statement}
-                <span style={{ color: "#999", fontSize: 11 }}> ({it.confidence.toFixed(2)})</span>
-                <button
+                <Button
+                  size="sm"
+                  variant="danger"
                   data-testid={`delete-${it.knowledge_id}`}
-                  style={{ float: "right" }}
                   onClick={() => remove(it.knowledge_id)}
                 >
                   ✕
-                </button>
-              </li>
+                </Button>
+              </Card>
             ))}
-          </ul>
+          </div>
         </>
       )}
-    </div>
+    </Panel>
   );
 }

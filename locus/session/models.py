@@ -74,6 +74,10 @@ class SessionRumor(LocusModel):
     promoted: bool = False  # promotion state (FR-R3.2/3.3); persisted in the session store
     active: bool = True  # soft-flag; prune sets False, row kept for history (BR-H1-5/6)
     provenance: Provenance
+    # Response-only localized statement (X1 / BR-X1-27). NOT persisted — the
+    # PostgreSQL adapter maps explicit columns and ignores this; it is filled by
+    # the read-path enrichment on the way out and defaults to None otherwise.
+    statement_ko: str | None = None
 
 
 class RegionDistortion(LocusModel):
@@ -166,6 +170,9 @@ class SessionEvent(LocusModel):
     # region_id -> accumulated applied delta (restore on resolve); filled in P2 (BR-P1-12)
     contributions: dict[str, float] = Field(default_factory=dict)
     provenance: Provenance
+    # Response-only localized description (X1 / BR-X1-27). NOT persisted (see
+    # SessionRumor.statement_ko); filled by read-path enrichment, else None.
+    description_ko: str | None = None
 
     # -- domain behavior (aggregate) ------------------------------------------
     # Status/lifecycle are stored as string values (use_enum_values=True); these
@@ -199,3 +206,43 @@ class SessionEvent(LocusModel):
         for region_id, delta in deltas.items():
             merged[region_id] = merged.get(region_id, 0.0) + delta
         self.contributions = merged
+
+
+# --------------------------------------------------------------------------- #
+# UX Improvement (X1) — Localization cache + per-region turn-change summary
+# --------------------------------------------------------------------------- #
+class Translation(LocusModel):
+    """A cached translation of one source field into one language (X1, C2).
+
+    Unified cache for session content (rumors/events, warmed/lazy) and canonical
+    Knowledge (lazy, world-scoped). Key = (source_kind, source_id, source_field,
+    target_lang) — source ids are UUIDs so ``world_id``/``session_id`` are
+    metadata only, not part of the key (BR-X1-5/8/9).
+    """
+
+    id: str = Field(default_factory=new_id)
+    source_kind: str  # "rumor" | "event" | "knowledge" (timeline excluded, BR-X1-25)
+    source_id: str
+    source_field: str  # "statement" | "description" | "title"
+    target_lang: str = "ko"
+    text: str  # translated text
+    source_hash: str  # hash of the source text for invalidation (BR-X1-6)
+    world_id: str | None = None  # canonical Knowledge cache partition (BR-X1-8)
+    session_id: str | None = None  # session-content cache scope (BR-X1-9)
+    created_at: datetime | None = None  # set by DB server time
+
+
+class RegionTurnChange(LocusModel):
+    """Per-region merge of one turn's changes (X1, C6 / FR-UX2.6).
+
+    Emitted only for regions that actually changed this turn; a region with all
+    six lists empty is omitted upstream (BR-X1-21).
+    """
+
+    region_id: str
+    promoted: list[str] = Field(default_factory=list)
+    demoted: list[str] = Field(default_factory=list)
+    pruned: list[str] = Field(default_factory=list)
+    events_applied: list[str] = Field(default_factory=list)
+    events_resolved: list[str] = Field(default_factory=list)
+    rumors_added: list[str] = Field(default_factory=list)

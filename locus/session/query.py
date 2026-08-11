@@ -23,10 +23,15 @@ class SessionQueryEngine:
         repo: SessionRepository,
         loader: WorldLoader,
         params: ConsensusParams = DEFAULT_PARAMS,
+        *,
+        translation=None,  # TranslationService | None (X1); None = show originals
+        target_lang: str = "ko",
     ) -> None:
         self._repo = repo
         self._loader = loader
         self._params = params
+        self._translation = translation
+        self._lang = target_lang
 
     def knowledge_for_region(self, session_id: str, region_id: str) -> QueryResult:
         session = self._repo.get_session(session_id)
@@ -43,6 +48,7 @@ class SessionQueryEngine:
         other = [_rumor_view(r) for r in rumors if not r.promoted]
 
         items = canonical + promoted + other
+        self._localize(items, session_id=session_id, world_id=session.world_id)
         # unique = region-specific (direct) + promoted rumors (direct-like);
         # shared = inherited + global. Non-promoted rumors are supplementary.
         unique_ids = [v.knowledge_id for v in view.direct] + [v.knowledge_id for v in promoted]
@@ -53,6 +59,32 @@ class SessionQueryEngine:
             items=items,
             shared_ids=shared_ids,
             unique_ids=unique_ids,
+        )
+
+    def _localize(self, items: list[KnowledgeView], *, session_id: str, world_id: str) -> None:
+        """Fill ``statement_ko`` / ``title_ko`` on the response views (X1 /
+        BR-X1-15/27) via the shared cache-only enrichment (review #10). Rumor
+        views are session-scoped; canonical knowledge is world-scoped (Q4=B).
+        No-op when translation is not configured; never blocks on the LLM."""
+        if self._translation is None or not items:
+            return
+        rumor_items = [v for v in items if v.is_rumor]
+        canon_items = [v for v in items if not v.is_rumor]
+        self._translation.enrich(
+            rumor_items,
+            kind="rumor",
+            fields=[("statement", "statement_ko")],
+            id_attr="knowledge_id",
+            session_id=session_id,
+            lang=self._lang,
+        )
+        self._translation.enrich(
+            canon_items,
+            kind="knowledge",
+            fields=[("statement", "statement_ko"), ("title", "title_ko")],
+            id_attr="knowledge_id",
+            world_id=world_id,
+            lang=self._lang,
         )
 
 

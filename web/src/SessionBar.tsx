@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
 import type { GameSession } from "./types";
+import { Button } from "./ui";
 
 interface Props {
   worldId: string;
@@ -56,13 +57,14 @@ export function SessionBar({ worldId, sessionId, onSelect }: Props) {
   return (
     <div
       data-testid="session-bar"
-      style={{ display: "flex", gap: 8, alignItems: "center", padding: 8, borderBottom: "1px solid #eee" }}
+      className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2"
     >
-      <strong style={{ fontSize: 13 }}>Session</strong>
+      <strong className="font-display text-lg">Session</strong>
       <select
         data-testid="session-select"
         value={sessionId ?? ""}
         onChange={(e) => onSelect(sessions.find((s) => s.id === e.target.value) ?? null)}
+        className="sketch-border bg-paper-card px-2 py-1 text-sm"
       >
         <option value="">— none —</option>
         {sessions.map((s) => (
@@ -71,22 +73,23 @@ export function SessionBar({ worldId, sessionId, onSelect }: Props) {
           </option>
         ))}
       </select>
-      <button data-testid="session-new-btn" onClick={start}>
+      <Button size="sm" variant="primary" data-testid="session-new-btn" onClick={start}>
         New Session
-      </button>
-      <button
+      </Button>
+      <Button
+        size="sm"
         data-testid="session-close-btn"
         onClick={close}
         disabled={!current || current.status === "closed"}
       >
         Close
-      </button>
+      </Button>
       {current && (
-        <span data-testid="session-status" style={{ fontSize: 12, color: "#666" }}>
+        <span data-testid="session-status" className="text-xs text-ink-soft">
           turn {current.turn} · {current.status}
         </span>
       )}
-      {error && <span style={{ color: "#c0392b", fontSize: 12 }}>{error}</span>}
+      {error && <span className="text-xs text-danger">{error}</span>}
     </div>
   );
 }

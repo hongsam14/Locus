@@ -81,6 +81,10 @@ class KnowledgeView(LocusModel):
     distortion_degree: float | None = None  # set for rumor views (= 1 - path_weight)
     source: str | None = None  # provenance source
     region_id: str | None = None  # origin region (for shared/unique classification)
+    # Response-only localized text (X1 / BR-X1-27). Filled by the session read-path
+    # enrichment; None when translation is disabled/unresolved (show original).
+    statement_ko: str | None = None
+    title_ko: str | None = None
 
 
 class ConsensusView(LocusModel):

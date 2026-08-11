@@ -87,6 +87,28 @@ def test_regenerate_deletes_then_recreates() -> None:
     assert repo.list_timeline(session.id)[-1].kind == TimelineKind.REGENERATE.value
 
 
+def test_regenerate_preserves_promoted_rumors() -> None:
+    # X3 / BR-X3-9: regen keeps promoted rumors, replaces only the rest.
+    repo, loader, gm, session = _setup()
+    first = gm.generate_rumors(session.id, loader.region.id)
+    promoted = first[0]
+    promoted.promoted = True
+    repo.upsert_rumor(promoted)
+
+    regen = gm.regenerate_region(session.id, loader.region.id)
+    now = repo.list_rumors(session.id, loader.region.id)
+    ids_now = {r.id for r in now}
+    assert promoted.id in ids_now  # promoted survived
+    assert {r.id for r in first if not r.promoted}.isdisjoint(ids_now)  # non-promoted replaced
+    assert promoted.id in {r.id for r in regen}  # returned set includes the kept one
+    # review #1: regen must reseed from canonical only — the preserved promoted
+    # rumor must NOT spawn an extra chain. 1 canonical source -> 3-degree chain +
+    # the 1 kept promoted = 4; a re-seed from the promoted would inflate to 7.
+    assert len(now) == 1 + 3
+    tl_payload = repo.list_timeline(session.id)[-1].payload
+    assert tl_payload["kept"] == [promoted.id]
+
+
 def test_adjust_support_and_timeline() -> None:
     repo, loader, gm, session = _setup()
     r = gm.generate_rumors(session.id, loader.region.id)[0]

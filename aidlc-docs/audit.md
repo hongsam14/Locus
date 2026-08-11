@@ -1222,3 +1222,264 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **Timestamp**: 2026-07-20T06:30:00Z
 **AI Response**: Build & Test executed. Backend 249 offline pytest GREEN (incl. hypothesis PBT Partial on rumor_dynamics), frontend 19 vitest GREEN, ruff/black/compileall + tsc --noEmit clean. Total 268 offline GREEN (was 236 at Phase 2). One intentional regression update: [3] empty-turn no-decay reversed. Wrote `construction/build-and-test/rumor-phase2-hardening/build-and-test-summary.md`. Updated `operations/operations.md` (rumor dynamics knobs, active-column migration, build-path fixes; removed stale "rumor count grows unbounded" note) and `env.example` (RUMOR_* vars). ENV: venv 3.13 symlink broke on system python 3.14 upgrade — tests run via /usr/bin/python3.13; venv repair recommended (not code). **Rumor Dynamics & Phase 2 Hardening cycle COMPLETE** (U-H1 + U-H2, FR-H1..H8 delivered). Not yet committed (awaiting user).
 **Context**: CONSTRUCTION / Build & Test — PASS; cycle complete; Operations noted.
+
+## UX Improvement Cycle — Initial Request
+**Timestamp**: 2026-08-11T02:18:17Z
+**User Input**: "ai-dlc를 사용해서 다음 작업을 하고 싶어.
+
+# UX 개선 세션
+
+## Frontend 개선
+현재 frontend는 순수 html이다. React를 사용해서 프론트엔드 디자인과 UX를 개선.
+
+## rumor 생성 방식 개선.
+현재 지역마다 클릭해서 rumor를 생성해야 하는 방식인데, 전체 루머 생성 버튼과 지역 상세 재생성 버튼이 필요함.
+
+## 로컬라이징
+현재 영어로 모든 텍스트가 생성되는데 frontend로 보여줄땐 사용자가 원하는 언어 (kor)로 번역해서 보여줘야 함."
+**AI Response**: Started new brownfield AI-DLC cycle "UX Improvement". Workspace Detection (resume): confirmed frontend is ALREADY React + Vite + TypeScript (web/src/*.tsx) using inline styles only (no CSS/design system) — the "순수 html" premise is inaccurate; item 1 is a restyle/UX overhaul of the existing React app, not an HTML→React migration. Entering Requirements Analysis; generating requirement-verification-questions.md (3 features + frontend-scope clarification + Security/PBT extension opt-ins). Awaiting answers at the gate.
+**Context**: Inception / Workspace Detection (brownfield resume) → Requirements Analysis start.
+
+---
+
+## UX Improvement Cycle — Requirements Answers Received
+**Timestamp**: 2026-08-11T02:28:55Z
+**User Input**: "답변 완료" (ux-improvement-verification-questions.md filled: Q1=A / Q2=A / Q3=A / Q4=A[+Doodly style] / Q5=C / Q6=B / Q7=B[+승격 알림 요청] / Q8=B / Q9=A / Q10=A / Q11=B / Q12=A / Security=A[Yes] / PBT=B[Partial])
+**AI Response**: Analyzed answers — no contradictions/ambiguities requiring a clarification round. Surfaced 2 new requirements from notes: FR-UX1.3 (Doodly hand-drawn style) and FR-UX2.6 (promotion notification to GameMaster). Security extension opted IN (Yes) — a change from prior cycles (No); loaded security-baseline.md; documented applicability (local no-auth MVP → most rules N/A; enforced subset = SECURITY-03/04/05/09/10/11/15). Recorded Extension Configuration (Security=Yes, PBT=Partial) in aidlc-state.md UX cycle section. Generated inception/requirements/ux-improvement-requirements.md (FR-UX1.* / FR-UX2.* / FR-UX3.* + NFR-UX1..6 + Security applicability). Awaiting Requirements approval gate.
+**Context**: Inception / Requirements Analysis — answers processed, requirements.md written, awaiting approval.
+
+---
+
+## UX Improvement Cycle — Requirements Change (notification scope)
+**Timestamp**: 2026-08-11T02:32:08Z
+**User Input**: "승격 알림을 이벤트, 루머 변동 알림으로 확장."
+**AI Response**: Broadened FR-UX2.6 from a promotion-only alert into a general turn-change notification covering all TurnResult deltas — rumor changes (promoted_ids/demoted_ids/pruned_rumor_ids/feedback_regions/newly-generated) and event changes (applied_event_ids/resolved_event_ids/newly-suggested), each carrying kind·target·turn and summarized when multiple. Display/dismiss policy deferred to Functional Design. Updated ux-improvement-requirements.md (FR-UX2.6, Q7 row, summary) and aidlc-state.md. Still at Requirements Analysis approval gate.
+**Context**: Inception / Requirements Analysis — change request applied, awaiting approval.
+
+---
+
+## UX Improvement Cycle — Security decision revised
+**Timestamp**: 2026-08-11T02:34:20Z
+**User Input**: "기존처럼 Security=No로. 다만 입력검증,보안헤더,에러처리,의존성 관리,엔드포인트 남용 방지만 적용"
+**AI Response**: Set Security Baseline extension = No (consistent with prior cycles; no blocking gate, no compliance summary). Did NOT load/enforce security-baseline.md as an extension. Carried only the 5 user-specified practices as ordinary NFRs SEC-A..E (input validation / security headers / error handling / dependency management / endpoint-abuse prevention). Updated ux-improvement-requirements.md (Security Posture section rewritten, decisions row, Extension Configuration table, summary), aidlc-state.md. Extension Configuration now: Security=No, PBT=Partial. Still at Requirements Analysis approval gate.
+**Context**: Inception / Requirements Analysis — extension config finalized, awaiting approval.
+
+---
+
+## UX Improvement Cycle — Notification grouping refinement
+**Timestamp**: 2026-08-11T02:35:29Z
+**User Input**: "알람은 병합하되, 지역별로 구분되게"
+**AI Response**: Refined FR-UX2.6 — a turn's changes merge into a SINGLE notification (not scattered per-item toasts) but are GROUPED BY REGION inside it (e.g. "Region A — 2 promoted, 1 pruned"; "Region B — 1 event resolved, 1 rumor generated"). Region attribution via rumor/event region_id and feedback_regions; merged header carries turn number + totals. Display/dismiss policy still deferred to Functional Design. Updated ux-improvement-requirements.md. Still at Requirements Analysis approval gate.
+**Context**: Inception / Requirements Analysis — change request applied, awaiting approval.
+
+---
+
+## UX Improvement Cycle — Notification granularity correction
+**Timestamp**: 2026-08-11T02:36:15Z
+**User Input**: "아니야 턴당 하나로 병합하는게 아니라 턴당 지역별로 알람이 발생하게"
+**AI Response**: Corrected FR-UX2.6 merge unit from per-turn to PER-REGION. Each turn emits one notification per region that had changes (a region's multiple changes merge into that region's single alarm); N changed regions => N alarms. Regions with no change emit nothing. Region attribution via region_id / feedback_regions. Display/stacking policy deferred to Functional Design. Updated ux-improvement-requirements.md. Still at Requirements Analysis approval gate.
+**Context**: Inception / Requirements Analysis — change request applied, awaiting approval.
+
+---
+
+## UX Improvement Cycle — Requirements APPROVED + Workflow Planning
+**Timestamp**: 2026-08-11T02:38:23Z
+**User Input**: "Approve & Continue"
+**AI Response**: Requirements Analysis APPROVED. User Stories SKIPPED (existing personas/stories cover actors, consistent with prior cycles). Executed Workflow Planning: created inception/plans/ux-improvement-execution-plan.md. EXECUTE = Application Design, Units Generation, per-unit Functional Design + Code Generation, Build & Test. SKIP = User Stories, NFR Requirements/Design (light per-unit note), Infrastructure Design (no new infra; translation reuses OpenAI/LLMProvider, session tables additive columns only). Risk=Medium, Rollback=Moderate, Testing=Moderate. Proposed 3 units X1 Localization Backend -> X2 Frontend Design System -> X3 Frontend UX Features (X2/X3 merge alt to confirm at Units Generation). Extensions: Security=No (SEC-A..E as NFR), PBT=Partial. Updated aidlc-state.md. Awaiting Workflow Planning approval.
+**Context**: Inception / Workflow Planning — plan created, awaiting approval.
+
+---
+
+## UX Improvement Cycle — Workflow Planning APPROVED + Application Design questions
+**Timestamp**: 2026-08-11T02:41:15Z
+**User Input**: "Approve & Continue"
+**AI Response**: Workflow Planning APPROVED. Entered Application Design: created inception/plans/ux-improvement-application-design-plan.md with 9 design questions (AD-UX Q1..Q9): Translator placement, translation storage shape (parallel ko fields), session-content translation timing, canonical Knowledge translation boundary (FR-UX3.6), per-region turn-change notification shaping, bulk-generate empty-region data source, UI-label i18n approach, original-text toggle, Doodly font/offline handling. Recommendations flagged inline. Awaiting answers at the gate.
+**Context**: Inception / Application Design — design questions posed, awaiting answers.
+
+---
+
+## UX Improvement Cycle — Application Design generated
+**Timestamp**: 2026-08-11T03:17:34Z
+**User Input**: "답변 완료" (AD-UX Q1=A / Q2=C / Q3=A / Q4=B / Q5=A / Q6=B / Q7=A / Q8=A / Q9=C)
+**AI Response**: Analyzed answers — no contradictions (Q2=C separate translation table + Q4=B canonical lazy cache are coherent: one unified translation cache serves session content [warmed at generation] and canonical Knowledge [lazy at read]). Generated Application Design artifacts under inception/application-design/ux-improvement/: components.md (C1-C15), component-methods.md, services.md (S1-S6), component-dependency.md, application-design.md. Backend X1=C1-C8 (Translator, translations cache table, TranslationService cache-first, generation hooks, read enrichment w/ canonical lazy translate, RegionTurnChange shaping in TurnResult, API en+ko, wiring). Frontend X2=C9 design system (Tailwind+Doodly local font). X3=C10-C15 (i18n dict, LocalizedText w/ original toggle, bulk generate parallel+confirm, region regen, per-region NotificationCenter, api/types). Awaiting Application Design approval.
+**Context**: Inception / Application Design — artifacts generated, awaiting approval.
+
+---
+
+## UX Improvement Cycle — Application Design APPROVED + Units planning
+**Timestamp**: 2026-08-11T03:18:55Z
+**User Input**: "Approve & Continue"
+**AI Response**: Application Design APPROVED. Entered Units Generation Part 1 (Planning): created inception/plans/ux-improvement-unit-of-work-plan.md with 2 decomposition questions (UOW-UX Q1 unit count/boundary [3 units X1/X2/X3 vs 2 units merge frontend], Q2 build order). Recommendations flagged. Awaiting answers.
+**Context**: Inception / Units Generation (Planning) — decomposition questions posed, awaiting answers.
+
+---
+
+## UX Improvement Cycle — Units Generation complete
+**Timestamp**: 2026-08-11T04:35:28Z
+**User Input**: "답변 완료" (UOW-UX Q1=A 3 units, Q2=A X1->X2->X3)
+**AI Response**: No ambiguity. Generated unit artifacts under inception/application-design/ux-improvement/: unit-of-work.md (X1 Localization Backend C1-C8 / X2 Frontend Design System C9 / X3 Frontend UX Features C10-C15), unit-of-work-dependency.md (X3 depends on X1+X2; build order X1->X2->X3), unit-of-work-story-map.md (FR->unit mapping, 0 unassigned FR/components). INCEPTION COMPLETE. Awaiting Units approval to enter CONSTRUCTION.
+**Context**: Inception / Units Generation — artifacts generated, awaiting approval.
+
+---
+
+## UX Improvement Cycle — Units APPROVED + CONSTRUCTION X1 Functional Design (questions)
+**Timestamp**: 2026-08-11T04:39:02Z
+**User Input**: "Approve & Continue"
+**AI Response**: Units Generation APPROVED — INCEPTION COMPLETE. Entered CONSTRUCTION, unit X1 Localization Backend Functional Design: created construction/plans/X1-localization-backend-functional-design-plan.md with 7 FD questions (FD-X1 Q1 cache invalidation via source_hash, Q2 canonical Knowledge fields title+statement, Q3 canonical cache scope world vs session, Q4 translation-failure display, Q5 rumors_added source, Q6 generation-time failure isolation, Q7 batch cap). Recommendations flagged. Awaiting answers.
+**Context**: Construction / X1 Functional Design — questions posed, awaiting answers.
+
+---
+
+## UX Improvement Cycle — X1 Functional Design generated
+**Timestamp**: 2026-08-11T04:45:14Z
+**User Input**: "답변 완료" (FD-X1 Q1..Q7 all = A / 권장대로)
+**AI Response**: No ambiguity. Generated X1 Functional Design under construction/X1-localization-backend/functional-design/: domain-entities.md (Translation cache entity w/ source_kind/source_id/source_field/target_lang/text/source_hash/world_id/session_id; RegionTurnChange value object; TurnResult additive region_changes; en+ko response DTO), business-logic-model.md (Translator fail-safe, TranslationService cache-first w/ hash invalidation, generation-time warming best-effort, read enrichment w/ canonical lazy world-cache, TurnAdvancer shape_region_changes, wiring/config), business-rules.md (BR-X1-1..24), nfr/nfr-light.md. Awaiting X1 FD approval.
+**Context**: Construction / X1 Functional Design — artifacts generated, awaiting approval.
+
+---
+
+## UX Improvement Cycle — X1 FD rationale review + revision
+**Timestamp**: 2026-08-11T04:53:08Z
+**User Input**: "Functional Design의 근거를 추출. 추출한 근거가 적절한지 리뷰. 적절하다고 확인된 근거를 기반으로 디자인을 리뷰." → then "(a)"
+**AI Response**: Extracted 12 design grounds (G1-G12) mapping decisions to user answers/code facts/conventions. Validated against code: 10 sound, 2 defective — G9 (rumors_added: append_for_region returns rumors but advance_turn discards them, turn.py) and G10 (FR-UX3.2 lists timeline as LLM content but TimelineEntry.summary is code-templated). Verified KnowledgeView.title exists and is_rumor disambiguates enrichment keying. Derived findings F1 (rumors_added capture missing), F2 (timeline mis-scoped), F3 (ko response representation under-specified), F4 (generation-time warming latency). User chose F2=(a) timeline via X3 UI i18n (not LLM). Revised X1 FD: domain-entities (source_kind drops timeline; rumors_added capture note; ko response-only representation via KnowledgeView optional fields + nullable non-persisted fields on SessionRumor/SessionEvent), business-logic-model (append return capture in advance_turn, warming optional translation_warm_on_generate default False, timeline excluded), business-rules (BR-X1-10 revised, +BR-X1-25 timeline i18n, +BR-X1-26 warming latency/F4, +BR-X1-27 ko response-only/F3, BR-X1-20 F1 capture). Awaiting X1 FD approval.
+**Context**: Construction / X1 Functional Design — reviewed & revised per findings, awaiting approval.
+
+---
+
+## UX Improvement Cycle — X1 FD APPROVED + Code Generation planning
+**Timestamp**: 2026-08-11T04:54:40Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: X1 Functional Design (revised) APPROVED. Entered X1 Code Generation Part 1 (Planning): creating construction/plans/X1-localization-backend-code-generation-plan.md with numbered brownfield steps (translation module, Translation model/RegionTurnChange/TurnResult, repo port+memory+postgres translations table, read enrichment w/ ko response fields, advance_turn append-capture + shape_region_changes, optional warming hooks, API ko attach, wiring/settings/env, tests, code summary). Awaiting plan approval before generation.
+**Context**: Construction / X1 Code Generation (Planning) — plan being created.
+
+---
+
+## UX Improvement Cycle — X1 Code Generation plan ready (approval prompt)
+**Timestamp**: 2026-08-11T04:55:37Z
+**AI Prompt**: "X1 code generation plan (13 steps) complete. Ready to proceed to generation?"
+**Context**: Construction / X1 Code Generation Part 1 — plan saved, awaiting approval before Part 2 generation.
+
+---
+
+## UX Improvement Cycle — X1 Code Gen plan rationale review + revision
+**Timestamp**: 2026-08-11T05:03:19Z
+**User Input**: "plan의 근거를 추출. 추출한 근거가 적절한지 design을 근거로 리뷰. 적절하다고 확인된 근거를 기반으로 plan을 리뷰." → then "Q1: A, Q2: A"
+**AI Response**: Extracted plan-step grounds mapped to design (C1-C8/BR-X1). Verified against code: postgres uses explicit-column mapping (response-only ko field safe, not persisted), memory_repo deepcopies, SessionRepository is Protocol, KnowledgeView is a projection. 8/11 steps faithfully grounded; 3 over/under-reach → findings P-F1 (S9 warming = scope excess, design keeps it optional default-off, read-path lazy is main route), P-F2 (S10 generate/regen inline translation latency vs F4), P-F3 (S10 enrichment owner unspecified), P-F4 (shape_region_changes placement), P-F5 (response-only ko on persisted model — verified mostly safe, add guard). User decisions: Q1=A drop warming (S9), Q2=A generate/regen return ko=null (lazy). Revised plan: S1 (drop translation_warm_on_generate), S3 (P-F5 guard note), S8 (P-F4 shape_region_changes -> pure module locus/session/turn_changes.py), S9 DROPPED, S10 (P-F3 _attach_ko router helper; P-F2 generate/regen ko=null, enrich read-path only), S11 (no generation-service DI), S12 (tests adjusted: ko=null, non-persistence, pure turn_changes; drop warming tests). Awaiting revised plan approval.
+**Context**: Construction / X1 Code Generation Part 1 — plan reviewed & revised, awaiting approval.
+
+---
+
+## UX Improvement Cycle — X1 Code Generation EXECUTED
+**Timestamp**: 2026-08-11T05:16:58Z
+**User Input**: "Approve & Continue"
+**AI Response**: X1 code generated per revised plan. New: locus/translation/{__init__,translator,service}.py, locus/session/turn_changes.py + 5 test files. Modified: settings, session/models (Translation, RegionTurnChange, response-only *_ko), turn.py (region_changes + append capture F1), repository port + memory_repo + postgres (translations table + 3 methods), models/io.py (KnowledgeView *_ko), session/query.py (translation DI + _localize canonical lazy), api/routers/session.py (_attach_ko read-path; generate/regen ko=null), api/main.py (wiring, graceful), session/__init__, env.example. 276 pytest GREEN (+27), ruff/black/compileall clean, 0 regressions. P-F5 verified (statement_ko not persisted in postgres). Code summary: construction/X1-localization-backend/code/code-summary.md. Awaiting X1 code approval.
+**Context**: Construction / X1 Code Generation Part 2 — executed, awaiting approval.
+
+---
+
+## UX Improvement Cycle — X1 code review (workflow, high) + fixes
+**Timestamp**: 2026-08-11T05:45:20Z
+**User Input**: "/code-review high ... (workflow)" then "(a). 전부 수정"
+**AI Response**: Ran workflow-backed high-effort review (22 agents) on X1 backend. 10 verified findings (1 refuted). User chose #3=(a) reads cache-only + fix all. Applied a cohesive refactor: reads are now LLM-free cache-only via TranslationService.enrich (shared by router _attach_ko [#10] and query._localize), misses warm on a background ThreadPoolExecutor (prod) / inline (tests) [#3], enrich is internally fail-safe on repo errors [#1] and honors default_lang [#2]; Translator.try_translate returns None only on failure/blank so self-identical translations are cached [#4]; removed dead TRANSLATION_MODEL [#5] and ineffective TRANSLATION_BATCH_SIZE [#9]; postgres get_translations_many chunks IN() [#7], upsert_translations batches in one transaction [#8], upsert uses SAVEPOINT + IntegrityError->update to survive the unique-key race [#6]. Reported all 10 findings with outcome=fixed. 280 pytest GREEN (was 276), ruff/black/compileall clean, 0 regressions. Behavior change: first read shows original then warms; X3 frontend refetches to show ko. Code summary updated. Awaiting X1 code approval.
+**Context**: Construction / X1 Code Generation — post-review fixes applied, awaiting approval.
+
+---
+
+## UX Improvement Cycle — X1 code APPROVED + X2 Functional Design (questions)
+**Timestamp**: 2026-08-11T05:46:46Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: X1 Localization Backend code APPROVED. Entered CONSTRUCTION unit X2 Frontend Design System — Functional Design: creating construction/plans/X2-frontend-design-system-functional-design-plan.md with FD-X2 questions (Doodly font, palette, sketch intensity, component structure, responsive scope). Awaiting answers.
+**Context**: Construction / X2 Functional Design — questions posed, awaiting answers.
+
+---
+
+## UX Improvement Cycle — X2 Functional Design generated
+**Timestamp**: 2026-08-11T05:50:37Z
+**User Input**: "답변 완료" (FD-X2 Q1=A / Q2=C / Q3=A / Q4=A / Q5=A)
+**AI Response**: No ambiguity. Q2=C = paper+ink monochrome (cream bg, black sketch). Flagged Korean-glyph requirement: handwriting display font must support Hangul (e.g. Gaegu/Nanum Pen), bundled locally. Generated X2 Functional Design: frontend-components.md (design tokens paper/ink mono, 6 primitives Button/Panel/Card/Badge/Toast/Modal + Field/Range, Tailwind setup, per-component restyle mapping), business-rules.md (BR-X2-1..12: design system, contract/testid preservation, accessibility, local-bundled fonts SEC-B/D), nfr/nfr-light.md. Toast/Modal styled here, wired in X3. Awaiting X2 FD approval.
+**Context**: Construction / X2 Functional Design — artifacts generated, awaiting approval.
+
+---
+
+## UX Improvement Cycle — X2 FD APPROVED + Code Generation plan
+**Timestamp**: 2026-08-11T05:53:42Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: X2 Functional Design APPROVED. Verified npm registry reachable (tailwindcss 4.3.3) → will use Tailwind v4 (CSS-first, @tailwindcss/vite) and @fontsource/gaegu (self-hosted Korean handwriting font, no CDN, SEC-B/D). Created construction/plans/X2-frontend-design-system-code-generation-plan.md (7 steps: deps install, vite plugin, index.css tokens+font+sketch utils, ui/ primitives Button/Panel/Card/Badge/Toast/Modal/Field/Range, restyle 7 components preserving data-testid+behavior, tests/build, code summary). Awaiting plan approval before generation.
+**Context**: Construction / X2 Code Generation Part 1 — plan created, awaiting approval.
+
+---
+
+## UX Improvement Cycle — X2 Code Generation EXECUTED
+**Timestamp**: 2026-08-11T06:07:22Z
+**User Input**: "Approve & Continue"
+**AI Response**: X2 generated per plan. Installed tailwindcss + @tailwindcss/vite (Tailwind v4 CSS-first) + @fontsource/gaegu (self-hosted Korean handwriting, no CDN) + @testing-library/dom (peer dropped by legacy-peer-deps reshuffle; re-added). New: web/src/index.css (@theme paper+ink mono tokens, Gaegu, sketch utils), web/src/ui/{Button,Panel,Card,Badge,Toast,Modal,Field,Range,index}. Modified: vite.config.ts (tailwind plugin), main.tsx (css import), restyled App/Toolbar/SessionBar/MapOverlay/RegionPanel/SessionPanel/AugmentPanel (inline style -> Tailwind/primitives, all data-testid + handlers + assertion text preserved). 19 vitest GREEN (0 regressions), tsc clean, vite build OK (fonts bundled locally), npm audit fix -> 0 vulnerabilities (nanoid/postcss). Toast/Modal styled here, wired in X3. Code summary: construction/X2-frontend-design-system/code/code-summary.md. Awaiting X2 code approval.
+**Context**: Construction / X2 Code Generation Part 2 — executed, awaiting approval.
+
+---
+
+## UX Improvement Cycle — X2 code review (workflow, high) + fixes
+**Timestamp**: 2026-08-11T06:24:12Z
+**User Input**: "/code-review high (workflow)"
+**AI Response**: Ran workflow-backed high review (14 agents) on X2 web/ changes. 5 findings (3 refuted). Fixed 4: #1 Range removed appearance-none (native thumb + accent-ink; sliders were invisible/undraggable — jsdom missed it), #2 MapOverlay moved SVG var() into style prop (fill/stroke didn't resolve as presentation attrs; markers fell to black, selection highlight gone) + improved selected/unselected contrast (ink vs paper-card), #3 RegionPanel restored scope skimmability within mono palette (direct = solid ink badge), #4 removed dead Card.interactive prop. #5 (Toast/Modal unused) marked no_change_needed — intentional FD-scoped deferral (BR-X2-6, wired in X3). Reported outcomes. 19 vitest GREEN, tsc clean, vite build OK. Code summary updated. Awaiting X2 code approval.
+**Context**: Construction / X2 Code Generation — post-review fixes applied, awaiting approval.
+
+---
+
+## UX Improvement Cycle — X2 code APPROVED + X3 Functional Design (questions)
+**Timestamp**: 2026-08-11T06:26:20Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: X2 Frontend Design System code APPROVED. Entered final unit X3 Frontend UX Features — Functional Design: created construction/plans/X3-frontend-ux-features-functional-design-plan.md with FD-X3 Q1..Q7 (notification placement/lifecycle, bulk-generate progress UI, overwrite-regen UX, timeline i18n via kind+payload [F2a], original-text toggle, region regen improvement scope, all-regen promoted-preservation). Flagged backend boundary: FR-UX2.5 'preserve promoted' requires a backend regen change (rumor_service.regenerate_region currently drops all incl. promoted) — Q6/Q7 surface whether X3 includes that backend touch. Awaiting answers.
+**Context**: Construction / X3 Functional Design — questions posed, awaiting answers.
+
+---
+
+## UX Improvement Cycle — X3 Functional Design generated
+**Timestamp**: 2026-08-11T06:30:38Z
+**User Input**: "답변 완료" (FD-X3 Q1=A / Q2=A+progress-bar / Q3=A / Q4=A / Q5=A / Q6=A / Q7=A)
+**AI Response**: No ambiguity. Generated X3 Functional Design: frontend-components.md (C10 i18n dict + timeline templates, C11 LocalizedText original-toggle, C12 generate-all[empty-only]/regen-all[confirm] parallel+progress-bar, C13 region regen Modal confirm, C14 NotificationCenter fixed top-right per-region toasts from region_changes, C15 api/types ko fields + RegionTurnChange), business-rules.md (BR-X3-1..14 incl. BR-X3-9 backend regen preserves promoted), nfr/nfr-light.md. X3 includes a backend touch (rumor_service.regenerate_region preserve promoted, Q6/Q7=A) + offline test. Awaiting X3 FD approval.
+**Context**: Construction / X3 Functional Design — artifacts generated, awaiting approval.
+
+---
+
+## UX Improvement Cycle — X3 FD APPROVED + Code Generation plan
+**Timestamp**: 2026-08-11T06:33:38Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: X3 Functional Design APPROVED. Created construction/plans/X3-frontend-ux-features-code-generation-plan.md (8 steps: backend regen preserve-promoted + test, types.ts ko fields + RegionTurnChange, i18n.ts dict+timeline templates, ui/LocalizedText + ui/NotificationCenter, SessionPanel generate-all/regen-all/region-regen-Modal/notifications/LocalizedText/timeline-i18n, RegionPanel LocalizedText, tests/build, code summary). Awaiting plan approval before generation.
+**Context**: Construction / X3 Code Generation Part 1 — plan created, awaiting approval.
+
+---
+
+## UX Improvement Cycle — X3 Code Generation EXECUTED
+**Timestamp**: 2026-08-11T06:43:14Z
+**User Input**: "Approve & Continue"
+**AI Response**: X3 generated per plan. Backend: rumor_service.regenerate_region preserves promoted (kept+fresh, timeline +kept) + test_regenerate_preserves_promoted_rumors. Frontend new: i18n.ts (labels+timeline templates+notif segments), ui/LocalizedText (original toggle), ui/NotificationCenter (fixed top-right auto-dismiss stack). Modified: types.ts (ko fields + RegionTurnChange + region_changes), SessionPanel (generate-all empty-only + regen-all confirm + region-regen confirm + advance-turn per-region notifications + LocalizedText + timeline i18n + Korean labels via t()), RegionPanel (LocalizedText). Tests: distortion->왜곡 assertion updated + 5 new (generate-all empty-only, regen-all confirm, notification, original toggle, timeline i18n). 24 vitest GREEN, tsc clean, vite build OK; backend 281 pytest GREEN (+1), ruff/black clean. ALL UNITS (X1/X2/X3) CODE COMPLETE. Code summary: construction/X3-frontend-ux-features/code/code-summary.md. Awaiting X3 code approval.
+**Context**: Construction / X3 Code Generation Part 2 — executed, awaiting approval.
+
+---
+
+## UX Improvement Cycle — X3 code review (workflow, high) + fixes
+**Timestamp**: 2026-08-11T06:58:25Z
+**User Input**: "/code-review high (workflow)"
+**AI Response**: Ran workflow-backed high review (17 agents) on X3 changes. 7 findings (2 refuted), all fixed: #1 (backend, serious) regen re-seeded chains from surviving promoted rumors -> added _collect_sources(include_existing=False), regen reseeds from canonical only + count assertion; #2 bulk generate in-flight guard + disable per-region generate/regen during progress; #3 timeline event_created template dropped so create/suggest/approve fall back to distinct summaries (timelineText +summary arg); #4 bounded mapLimit for empty-region pre-scan; #5 useCallback addNotif/dismissNotif so auto-dismiss timers don't reset; #6 toast testid -> notif-{id} unique + data-region, notification test updated; #7 empty-list guard + noTargets notice. Reported outcomes. 24 vitest + tsc + vite build GREEN, backend 281 pytest GREEN, ruff/black clean. Code summary updated. Awaiting X3 code approval.
+**Context**: Construction / X3 Code Generation — post-review fixes applied, awaiting approval.
+
+---
+
+## UX Improvement Cycle — X3 code APPROVED + Build & Test
+**Timestamp**: 2026-08-11T07:01:33Z
+**User Input**: "Continue to Next Stage"
+**Build Status**: Success
+**Test Status**: Pass — 305 offline (281 backend pytest 87% cov + 24 frontend vitest), ruff/black/compileall/tsc clean, vite build OK, npm audit 0 vulnerabilities, API 31 openapi paths (16 session) mount. 0 regressions.
+**Files Generated**: construction/build-and-test/ux-improvement/{build-and-test-summary,build-instructions,unit-test-instructions,integration-test-instructions}.md
+**AI Response**: X3 code APPROVED (all units X1/X2/X3 complete). Ran full integrated offline suite — GREEN. Live scenarios UX-A..G documented (operator-run). Awaiting Build & Test approval to proceed to Operations.
+**Context**: Construction / Build & Test — complete, awaiting approval.
+
+---
+
+## UX Improvement Cycle — Build & Test APPROVED + Operations (cycle complete)
+**Timestamp**: 2026-08-11T07:03:33Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: Build & Test APPROVED. Operations (placeholder): appended Localization & UX section to operations/operations.md (TRANSLATION_* config, read-lazy+background-warm, translations table via init-schema, regen preserves promoted, Tailwind v4/Gaegu build, additive rollback-safe) + updated CLAUDE.md Status (UX Improvement X1/X2/X3, 305 offline tests). 🎉 UX IMPROVEMENT CYCLE COMPLETE.
+**Context**: Operations — cycle complete.
+
+---

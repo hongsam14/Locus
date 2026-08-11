@@ -56,6 +56,17 @@ def _session_error(exc: Exception) -> HTTPException:
     return HTTPException(status_code=404, detail=str(exc))
 
 
+def _attach_ko(request: Request, session_id: str, kind: str, field: str, items: list) -> list:
+    """Read-path localization (X1 / P-F3, review #10): delegate to the shared
+    cache-only ``TranslationService.enrich`` (honors configured target lang and
+    is internally fail-safe, review #1/#2). No-op when translation is
+    unconfigured. Only on read paths — never on objects headed to persistence."""
+    svc = getattr(request.app.state, "translation", None)
+    if svc is None or not items:
+        return items
+    return svc.enrich(items, kind=kind, fields=[(field, f"{field}_ko")], session_id=session_id)
+
+
 @router.post("/worlds/{world_id}/sessions", response_model=GameSession)
 def start_session(world_id: str, request: Request) -> GameSession:
     try:
@@ -97,9 +108,10 @@ def get_timeline(session_id: str, request: Request) -> list[TimelineEntry]:
 @router.get("/sessions/{session_id}/regions/{region_id}/rumors", response_model=list[SessionRumor])
 def list_rumors(session_id: str, region_id: str, request: Request) -> list[SessionRumor]:
     try:
-        return _svc(request, "game_master").list_rumors(session_id, region_id)
+        rumors = _svc(request, "game_master").list_rumors(session_id, region_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return _attach_ko(request, session_id, "rumor", "statement", rumors)
 
 
 @router.post("/sessions/{session_id}/regions/{region_id}/rumors", response_model=list[SessionRumor])
@@ -168,9 +180,10 @@ def session_knowledge(session_id: str, region_id: str, request: Request) -> Quer
 @router.get("/sessions/{session_id}/events", response_model=list[SessionEvent])
 def list_events(session_id: str, request: Request, status: str | None = None) -> list[SessionEvent]:
     try:
-        return _svc(request, "game_master").list_events(session_id, status=status)
+        events = _svc(request, "game_master").list_events(session_id, status=status)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return _attach_ko(request, session_id, "event", "description", events)
 
 
 @router.post("/sessions/{session_id}/events", response_model=SessionEvent)

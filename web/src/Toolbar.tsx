@@ -1,3 +1,5 @@
+import { Button, Field } from "./ui";
+
 interface Props {
   worldId: string;
   onWorldIdChange: (v: string) => void;
@@ -16,22 +18,22 @@ export function Toolbar({
   busy,
 }: Props) {
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "center", padding: 8, borderBottom: "1px solid #ddd" }}>
-      <strong>Locus</strong>
-      <input
+    <div className="flex flex-wrap items-center gap-2 border-b border-ink px-3 py-2 bg-paper-card">
+      <strong className="font-display text-2xl mr-1">Locus</strong>
+      <Field
         data-testid="world-input"
         value={worldId}
         placeholder="world id"
         // keep parent state in sync on every keystroke (avoids stale worldId on Load)
         onChange={(e) => onWorldIdChange(e.target.value)}
       />
-      <button data-testid="load-btn" onClick={onLoad} disabled={busy}>
+      <Button data-testid="load-btn" onClick={onLoad} disabled={busy}>
         Load
-      </button>
-      <button data-testid="build-world-btn" onClick={onBuildDemo} disabled={busy}>
+      </Button>
+      <Button variant="primary" data-testid="build-world-btn" onClick={onBuildDemo} disabled={busy}>
         Build World (demo)
-      </button>
-      <label style={{ fontSize: 12 }}>
+      </Button>
+      <label className="text-xs text-ink-soft inline-flex items-center gap-1">
         Map:
         <input
           data-testid="map-file-input"

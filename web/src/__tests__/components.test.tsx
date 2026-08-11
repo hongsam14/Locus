@@ -245,7 +245,88 @@ describe("SessionPanel (GameMaster hub)", () => {
       { session_id: "s1", region_id: "r1", distortion_degree: 0.75 },
     ]);
     render(<SessionPanel session={OPEN_SESSION} regionId="r1" />);
-    await waitFor(() => expect(screen.getByText(/distortion 0\.75/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/왜곡 0\.75/)).toBeInTheDocument());
+  });
+
+  it("generate-all fills only empty regions (X3)", async () => {
+    (api.getTimeline as Mock).mockResolvedValue([]);
+    (api.listDistortions as Mock).mockResolvedValue([
+      { session_id: "s1", region_id: "r1", distortion_degree: 0.3 },
+      { session_id: "s1", region_id: "r2", distortion_degree: 0.3 },
+    ]);
+    (api.listRumors as Mock).mockImplementation((_sid: string, rid: string) =>
+      Promise.resolve(rid === "r2" ? [{ id: "x" }] : []),
+    );
+    (api.generateRumors as Mock).mockResolvedValue([]);
+    render(<SessionPanel session={OPEN_SESSION} regionId={null} />);
+    fireEvent.click(await screen.findByTestId("generate-all-btn"));
+    await waitFor(() => expect(api.generateRumors).toHaveBeenCalledWith("s1", "r1"));
+    expect(api.generateRumors).not.toHaveBeenCalledWith("s1", "r2");
+  });
+
+  it("regen-all confirms before regenerating all regions (X3)", async () => {
+    (api.getTimeline as Mock).mockResolvedValue([]);
+    (api.listRumors as Mock).mockResolvedValue([]);
+    (api.listDistortions as Mock).mockResolvedValue([
+      { session_id: "s1", region_id: "r1", distortion_degree: 0.3 },
+    ]);
+    (api.regenRumors as Mock).mockResolvedValue([]);
+    render(<SessionPanel session={OPEN_SESSION} regionId={null} />);
+    fireEvent.click(await screen.findByTestId("regen-all-btn"));
+    expect(api.regenRumors).not.toHaveBeenCalled(); // confirmation pending
+    fireEvent.click(screen.getByText("확인"));
+    await waitFor(() => expect(api.regenRumors).toHaveBeenCalledWith("s1", "r1"));
+  });
+
+  it("shows a per-region notification after advancing a turn (X3 / FR-UX2.6)", async () => {
+    (api.getTimeline as Mock).mockResolvedValue([]);
+    (api.listRumors as Mock).mockResolvedValue([]);
+    (api.advanceTurn as Mock).mockResolvedValue({
+      session_id: "s1",
+      turn: 3,
+      promoted_ids: ["ra"],
+      demoted_ids: [],
+      region_changes: [
+        {
+          region_id: "r1",
+          promoted: ["ra"],
+          demoted: [],
+          pruned: [],
+          events_applied: [],
+          events_resolved: [],
+          rumors_added: [],
+        },
+      ],
+    });
+    render(<SessionPanel session={OPEN_SESSION} regionId={null} />);
+    fireEvent.click(await screen.findByTestId("advance-turn-btn"));
+    await waitFor(() => expect(screen.getByTestId("notification-center")).toBeInTheDocument());
+    expect(screen.getByText(/지역 r1/)).toBeInTheDocument(); // notif title
+    expect(screen.getByText(/승격/)).toBeInTheDocument();
+  });
+
+  it("localizes rumor text with an original toggle (X3 / FR-UX3.4)", async () => {
+    (api.getTimeline as Mock).mockResolvedValue([]);
+    (api.listRumors as Mock).mockResolvedValue([
+      {
+        id: "ru1", session_id: "s1", region_id: "r1", distorted_from_id: "k",
+        distorted_from_kind: "knowledge", statement: "twisted tale", distortion_degree: 0.3,
+        support: 0.5, confidence: 0.5, promoted: false, statement_ko: "뒤틀린 이야기",
+      },
+    ]);
+    render(<SessionPanel session={OPEN_SESSION} regionId="r1" />);
+    await waitFor(() => expect(screen.getByText("뒤틀린 이야기")).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId("rumor-text-ru1-toggle"));
+    expect(screen.getByText("twisted tale")).toBeInTheDocument();
+  });
+
+  it("localizes timeline entries via kind+payload (X3 / F2a)", async () => {
+    (api.listRumors as Mock).mockResolvedValue([]);
+    (api.getTimeline as Mock).mockResolvedValue([
+      { id: "t1", session_id: "s1", turn: 2, kind: "promote", summary: "promoted ra", payload: { rumor_id: "ra" } },
+    ]);
+    render(<SessionPanel session={OPEN_SESSION} regionId={null} />);
+    await waitFor(() => expect(screen.getByText(/승격: ra/)).toBeInTheDocument());
   });
 });
 

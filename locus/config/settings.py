@@ -68,6 +68,14 @@ class Settings(BaseSettings):
     )
     rumor_birth_support: float = Field(default=0.2, ge=0.0, le=1.0, alias="RUMOR_BIRTH_SUPPORT")
 
+    # --- Localization (UX Improvement / X1) ---
+    # Translate LLM-generated session content (rumors, events) and canonical
+    # Knowledge to the target language for display; results are cached in the
+    # session store (BR-X1-*). Reuses the existing LLMProvider (FR-UX3.3). Reads
+    # are LLM-free (cache-only); misses warm in the background (review #3).
+    translation_enabled: bool = Field(default=True, alias="TRANSLATION_ENABLED")
+    translation_target_lang: str = Field(default="ko", alias="TRANSLATION_TARGET_LANG")
+
     # --- App ---
     debug: bool = Field(default=False, alias="LOCUS_DEBUG")
 

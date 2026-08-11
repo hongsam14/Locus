@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "./api";
 import type { AugSession } from "./types";
+import { Button, Card, Panel } from "./ui";
 
 export function AugmentPanel({ worldId }: { worldId: string }) {
   const [session, setSession] = useState<AugSession | null>(null);
@@ -50,43 +51,44 @@ export function AugmentPanel({ worldId }: { worldId: string }) {
   }
 
   return (
-    <div data-testid="augment-panel" style={{ padding: 12, minWidth: 320 }}>
-      <h3>Knowledge augmentation</h3>
-      <button data-testid="augment-start-btn" onClick={start} disabled={busy}>
-        Start session
-      </button>
-      {lastChange && (
-        <button data-testid="augment-revert-btn" onClick={revert} style={{ marginLeft: 8 }}>
-          Revert last
-        </button>
-      )}
-      {error && <div style={{ color: "#c0392b" }}>{error}</div>}
+    <Panel data-testid="augment-panel" title="Knowledge augmentation" className="min-w-80">
+      <div className="flex items-center gap-2">
+        <Button data-testid="augment-start-btn" variant="primary" onClick={start} disabled={busy}>
+          Start session
+        </Button>
+        {lastChange && (
+          <Button data-testid="augment-revert-btn" onClick={revert}>
+            Revert last
+          </Button>
+        )}
+      </div>
+      {error && <div className="text-danger mt-2">{error}</div>}
       {session && (
-        <div style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 12, color: "#666" }}>
+        <div className="mt-2 flex flex-col gap-2">
+          <div className="text-xs text-ink-soft">
             status: {session.status} · round {session.round}
           </div>
           {session.open_questions.length === 0 && <div>No open questions 🎉</div>}
           {session.open_questions.map((q) => (
-            <div key={q.id} style={{ borderTop: "1px solid #eee", padding: "8px 0" }}>
-              <div>{q.text}</div>
-              <div>
+            <Card key={q.id} className="flex flex-col gap-1.5">
+              <div className="text-sm">{q.text}</div>
+              <div className="flex flex-wrap gap-1.5">
                 {q.options.map((opt) => (
-                  <button
+                  <Button
                     key={opt}
+                    size="sm"
                     data-testid="augment-answer-btn"
                     onClick={() => answer(q.id, opt)}
                     disabled={busy}
-                    style={{ marginRight: 6 }}
                   >
                     {opt}
-                  </button>
+                  </Button>
                 ))}
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}
-    </div>
+    </Panel>
   );
 }

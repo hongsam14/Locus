@@ -113,11 +113,34 @@ def detect_wiki_conflicts(kg: KnowledgeGraph, topo: RegionTopology, wiki, llm) -
     return issues
 
 
+def detect_orphans(kg: KnowledgeGraph) -> list[Issue]:
+    """Entities with no LOCATED_IN / RELATED_TO / ABOUT edge (FR-IM4.3). Pure."""
+    linked: set[str] = set()
+    for r in kg.relations:
+        linked.add(r.source_id)
+        linked.add(r.target_id)
+    for k in kg.knowledge:
+        linked.update(k.about_entity_ids)
+    issues: list[Issue] = []
+    for e in kg.entities:
+        if not e.located_in and e.id not in linked:
+            issues.append(
+                Issue(
+                    type=IssueType.ORPHAN,
+                    description=f"Entity '{e.name}' is not connected to any region or entity.",
+                    target_ids=[e.id],
+                    severity=0.7,
+                )
+            )
+    return issues
+
+
 def detect_all(kg, topo, *, wiki=None, llm=None, threshold=LOW_CONFIDENCE_THRESHOLD) -> list[Issue]:
     issues = (
         detect_gaps(kg, topo)
         + detect_low_confidence(kg, threshold)
         + detect_wiki_conflicts(kg, topo, wiki, llm)
+        + detect_orphans(kg)
     )
     # dedup by (type, sorted target_ids)
     seen: set = set()

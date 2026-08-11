@@ -9,6 +9,7 @@ from .enums import (
     RegionLevel,
     ScopeType,
     SourceKind,
+    WikiDomain,
 )
 from .graph import (
     ConnectionEdge,
@@ -19,10 +20,11 @@ from .graph import (
     Provenance,
     Region,
     Relation,
-    Rumor,
     ScopeLink,
     WikiPrior,
+    WikiPriorLink,
     World,
+    fallback_title,
     new_id,
 )
 from .io import (
@@ -46,6 +48,7 @@ __all__ = [
     "RegionLevel",
     "ScopeType",
     "SourceKind",
+    "WikiDomain",
     # graph
     "ConnectionEdge",
     "Coord",
@@ -55,10 +58,11 @@ __all__ = [
     "Provenance",
     "Region",
     "Relation",
-    "Rumor",
     "ScopeLink",
     "WikiPrior",
+    "WikiPriorLink",
     "World",
+    "fallback_title",
     "new_id",
     # io
     "ConsensusView",

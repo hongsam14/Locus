@@ -56,19 +56,15 @@ class Neo4jGraphRepository(GraphRepository):
             return [record.data() for record in result]
 
     # -- schema ----------------------------------------------------------- #
-    NODE_LABELS = ("World", "Region", "Entity", "Relation", "Knowledge", "Rumor", "WikiPrior")
+    NODE_LABELS = ("Region", "Entity", "Relation", "Knowledge", "WikiPrior")
 
     def ensure_schema(self) -> None:
-        """Create uniqueness constraints + world_id indexes (idempotent)."""
-        # World is keyed by world_id; others by id.
-        self._run(
-            "CREATE CONSTRAINT world_world_id IF NOT EXISTS "
-            "FOR (n:World) REQUIRE n.world_id IS UNIQUE",
-            {},
-        )
+        """Create uniqueness constraints + world_id indexes (idempotent).
+
+        World nodes are not persisted (CL-A1=A); every label is keyed by id and
+        partitioned by world_id.
+        """
         for label in self.NODE_LABELS:
-            if label == "World":
-                continue
             self._run(
                 f"CREATE CONSTRAINT {label.lower()}_id IF NOT EXISTS "
                 f"FOR (n:{label}) REQUIRE n.id IS UNIQUE",

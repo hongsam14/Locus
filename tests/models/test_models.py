@@ -11,16 +11,55 @@ from locus.models import (
     Entity,
     EntityType,
     Knowledge,
+    PriorType,
     Provenance,
     Region,
     RegionLevel,
-    Rumor,
     SourceKind,
+    WikiDomain,
+    WikiPrior,
+    WikiPriorLink,
+    fallback_title,
 )
 
 
 def _prov() -> Provenance:
     return Provenance(source=SourceKind.INPUT)
+
+
+def test_fallback_title_truncates_on_word_boundary() -> None:
+    assert fallback_title("Short one") == "Short one"
+    long = "the quick brown fox jumps over the lazy dog and keeps on running far away today"
+    out = fallback_title(long, max_len=20)
+    assert len(out) <= 21 and out.endswith("…")
+    assert " " in out and not out.startswith(" ")
+    assert fallback_title("   ") == "(untitled)"
+
+
+def test_wikiprior_requires_world_id_and_roundtrips_domains() -> None:
+    p = WikiPrior(
+        world_id="w",
+        prior_type=PriorType.FACT,
+        condition="c",
+        effect="e",
+        domains=[WikiDomain.GEOGRAPHY, WikiDomain.ECONOMY],
+        provenance=_prov(),
+    )
+    assert WikiPrior.model_validate(p.model_dump()) == p
+    with pytest.raises(ValidationError):
+        WikiPrior(prior_type=PriorType.FACT, condition="c", effect="e", provenance=_prov())
+
+
+def test_wikipriorlink_roundtrip() -> None:
+    link = WikiPriorLink(
+        world_id="w",
+        source_id="a",
+        target_id="b",
+        relation="implies",
+        weight=0.7,
+        provenance=_prov(),
+    )
+    assert WikiPriorLink.model_validate(link.model_dump()) == link
 
 
 # --------------------------------------------------------------------------- #
@@ -33,7 +72,12 @@ def _prov() -> Provenance:
 )
 def test_knowledge_roundtrip(statement: str, confidence: float, topic: str | None) -> None:
     k = Knowledge(
-        world_id="w1", statement=statement, confidence=confidence, topic=topic, provenance=_prov()
+        world_id="w1",
+        statement=statement,
+        title=statement,
+        confidence=confidence,
+        topic=topic,
+        provenance=_prov(),
     )
     assert Knowledge.model_validate(k.model_dump()) == k
     # JSON round-trip too
@@ -49,25 +93,13 @@ def test_region_roundtrip(name: str, level: RegionLevel) -> None:
     assert Region.model_validate(r.model_dump()) == r
 
 
-@given(degree=st.floats(min_value=0.0, max_value=1.0))
-def test_rumor_roundtrip(degree: float) -> None:
-    rumor = Rumor(
-        world_id="w1",
-        statement="distorted",
-        distorted_from_id="k-origin",
-        distortion_degree=degree,
-        provenance=_prov(),
-    )
-    assert Rumor.model_validate(rumor.model_dump()) == rumor
-
-
 # --------------------------------------------------------------------------- #
 # Validation (BR-4..6)
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize("bad", [-0.1, 1.1, 2.0])
 def test_confidence_out_of_range_rejected(bad: float) -> None:
     with pytest.raises(ValidationError):
-        Knowledge(world_id="w1", statement="x", confidence=bad, provenance=_prov())
+        Knowledge(world_id="w1", statement="x", title="x", confidence=bad, provenance=_prov())
 
 
 def test_extra_field_forbidden() -> None:
@@ -79,14 +111,6 @@ def test_extra_field_forbidden() -> None:
             provenance=_prov(),
             bogus="nope",  # type: ignore[call-arg]
         )
-
-
-# --------------------------------------------------------------------------- #
-# Rumor invariants (BR-13)
-# --------------------------------------------------------------------------- #
-def test_rumor_requires_origin() -> None:
-    with pytest.raises(ValidationError):
-        Rumor(world_id="w1", statement="x", provenance=_prov())  # type: ignore[call-arg]
 
 
 def test_enum_serializes_to_string() -> None:

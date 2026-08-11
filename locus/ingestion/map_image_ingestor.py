@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ..llm.base import LLMProvider, VLMProvider
 from ..models import IngestionResult
-from .mapping import flag_low_confidence, merge_regions, to_region, to_terrain_entity
+from .mapping import is_barrier_terrain, merge_regions, to_region, to_terrain_region
 from .schemas import MapExtraction
 
 _VLM_PROMPT = (
@@ -47,32 +47,43 @@ class MapImageIngestor:
         except Exception as exc:  # graceful degrade
             return IngestionResult(world_id=world_id, errors=[f"map extraction failed: {exc}"])
 
-        regions = merge_regions([to_region(r, world_id, generated_by="vlm") for r in ex.regions])
-        terrain = [to_terrain_entity(t, world_id) for t in ex.terrain]
+        regions = [to_region(r, world_id, generated_by="vlm") for r in ex.regions]
 
-        # connection hints are preserved on region attributes; edges are built in U3.
-        # Both explicit connection hints and terrain.between contribute hints
-        # (terrain ones carry terrain_kind so U3 can weight them).
+        # Terrain classification (FD-B Q1=B, BR-B1):
+        #  - barrier/connector kinds -> A-B connection hint only (no node)
+        #  - area-form kinds -> promote to a Region(level=TERRAIN), join topology
         hints: list[dict] = [
             {"from": c.source_name, "to": c.target_name, "kind": "route"}
             for c in ex.connection_hints
         ]
+        errors: list[str] = []
         for t in ex.terrain:
-            if len(t.between) == 2:
-                hints.append(
-                    {
-                        "from": t.between[0],
-                        "to": t.between[1],
-                        "kind": _TERRAIN_TO_KIND.get(t.kind.strip().lower(), "adjacent"),
-                        "terrain_kind": t.kind,
-                    }
-                )
+            if is_barrier_terrain(t.kind):
+                if len(t.between) == 2:
+                    hints.append(
+                        {
+                            "from": t.between[0],
+                            "to": t.between[1],
+                            "kind": _TERRAIN_TO_KIND.get(t.kind.strip().lower(), "adjacent"),
+                            "terrain_kind": t.kind,
+                        }
+                    )
+                else:
+                    # barrier connects exactly two regions (FD-B Q1=B); anything else
+                    # is surfaced instead of silently dropped (FR-H8 / BR-H2-3).
+                    errors.append(
+                        f"barrier terrain '{t.name}' ({t.kind}) skipped: expected 2 "
+                        f"bordering regions, got {len(t.between)}"
+                    )
+            else:
+                # area terrain -> promoted Region; connect it to each bordering region
+                region = to_terrain_region(t, world_id)
+                regions.append(region)
+                for neighbor in t.between:
+                    hints.append({"from": t.name, "to": neighbor, "kind": "adjacent"})
+
+        regions = merge_regions(regions)
         if hints and regions:
             regions[0].attributes.setdefault("connection_hints", hints)
 
-        return IngestionResult(
-            world_id=world_id,
-            entities=terrain,
-            region_hints=regions,
-            low_confidence_item_ids=flag_low_confidence(terrain),
-        )
+        return IngestionResult(world_id=world_id, region_hints=regions, errors=errors)

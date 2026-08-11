@@ -1,24 +1,21 @@
-"""Common-sense Wiki lookup interface with LLM fallback (FR-E lookup, CL1=A).
+"""Common-sense Wiki lookup interface with LLM fallback (FR-E lookup).
 
-The Wiki is a real-world prior knowledge base stored in the ``__realworld__``
-partition (a "digital twin", CL2). Topology weighting (FR-B3) and lore
-corroboration (FR-C3) query it through this interface.
+NPC-facing: scoped to a single world (BR-A9). Each world holds its own
+WikiPriors (no reserved partition). Topology weighting and lore corroboration
+query it through this interface; cross-world reference is a separate
+designer-only path (see ``cross_world.CrossWorldWikiExplorer``).
 
-Lookup strategy (business-logic-model.md §4):
-1. Hybrid-search WikiPriors in the ``__realworld__`` partition.
+Lookup strategy:
+1. Hybrid-search WikiPriors in this world's partition.
 2. If a hit clears ``score_threshold`` -> return it (provenance: wiki).
 3. Otherwise -> LLM fallback inference grounded on any available context
    (provenance: inferred-wiki).
-
-The Wiki *build* (ingesting real-world maps/text) is implemented in U6; here we
-only provide lookup + graceful fallback so U3/U4 can run before U6 exists.
 """
 
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from .. import REALWORLD_WORLD_ID
 from ..llm.base import EmbeddingProvider, LLMProvider
 from ..models import PriorType, Provenance, SourceKind, WikiPrior
 from ..storage.base import SearchRepository
@@ -40,7 +37,7 @@ class CommonsenseWiki:
         llm: LLMProvider,
         embedding: EmbeddingProvider | None = None,
         *,
-        world_id: str = REALWORLD_WORLD_ID,
+        world_id: str,
         score_threshold: float = 0.0,
     ) -> None:
         self._search = search
@@ -86,9 +83,11 @@ class CommonsenseWiki:
         meta = hit.meta or {}
         return WikiPrior(
             id=hit.id,
+            world_id=hit.world_id or self._world_id,
             prior_type=meta.get("prior_type", PriorType.FACT),
             condition=meta.get("condition", hit.text),
             effect=meta.get("effect", ""),
+            domains=meta.get("domains", []),
             description=meta.get("description"),
             confidence=meta.get("confidence", 1.0),
             provenance=Provenance(source=SourceKind.INPUT, generated_by="wiki", note="wiki hit"),
@@ -101,6 +100,7 @@ class CommonsenseWiki:
         )
         suggestion = self._llm.structured(prompt, _PriorSuggestion)
         return WikiPrior(
+            world_id=self._world_id,
             prior_type=prior_type,
             condition=suggestion.condition,
             effect=suggestion.effect,

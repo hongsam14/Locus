@@ -15,9 +15,9 @@ from ..models import (
     Knowledge,
     Region,
     Relation,
-    Rumor,
     ScopeLink,
     WikiPrior,
+    WikiPriorLink,
 )
 from . import graph_mapping as gm
 from .base import GraphRepository, SearchRepository
@@ -32,8 +32,8 @@ def persist_graph(
     regions: list[Region] | None = None,
     entities: list[Entity] | None = None,
     knowledge: list[Knowledge] | None = None,
-    rumors: list[Rumor] | None = None,
     priors: list[WikiPrior] | None = None,
+    prior_links: list[WikiPriorLink] | None = None,
     connections: list[ConnectionEdge] | None = None,
     scopes: list[ScopeLink] | None = None,
     relations: list[Relation] | None = None,
@@ -42,8 +42,8 @@ def persist_graph(
     regions = regions or []
     entities = entities or []
     knowledge = knowledge or []
-    rumors = rumors or []
     priors = priors or []
+    prior_links = prior_links or []
     connections = connections or []
     scopes = scopes or []
     relations = relations or []
@@ -53,8 +53,7 @@ def persist_graph(
         [gm.region_to_node(r) for r in regions]
         + [gm.entity_to_node(e) for e in entities]
         + [gm.knowledge_to_node(k) for k in knowledge]
-        + [gm.rumor_to_node(r) for r in rumors]
-        + [gm.wikiprior_to_node(p, world_id) for p in priors]
+        + [gm.wikiprior_to_node(p) for p in priors]
     )
     edges = (
         gm.contains_edges(regions)
@@ -63,7 +62,8 @@ def persist_graph(
         + gm.about_edges(knowledge)
         + gm.derived_from_edges(knowledge)
         + gm.relation_edges(relations)
-        + gm.distorted_from_edges(rumors)
+        + gm.located_in_edges(entities)
+        + gm.prior_link_edges(prior_links)
     )
     try:
         graph_repo.upsert_nodes(nodes)
@@ -74,7 +74,7 @@ def persist_graph(
     docs = (
         [gm.knowledge_doc(k) for k in knowledge]
         + [gm.entity_doc(e) for e in entities]
-        + [gm.wikiprior_doc(p, world_id) for p in priors]
+        + [gm.wikiprior_doc(p) for p in priors]
     )
     docs = [d for d in docs if d.text.strip()]
     if docs:

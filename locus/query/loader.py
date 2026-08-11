@@ -15,7 +15,6 @@ class WorldLoader:
         regions = [gm.node_to_region(n) for n in self._g.find_nodes(world_id, "Region")]
         entities = [gm.node_to_entity(n) for n in self._g.find_nodes(world_id, "Entity")]
         knowledge = [gm.node_to_knowledge(n) for n in self._g.find_nodes(world_id, "Knowledge")]
-        rumors = [gm.node_to_rumor(n) for n in self._g.find_nodes(world_id, "Rumor")]
 
         edges = self._g.get_edges(world_id)
         connections = [gm.edge_to_connection(e) for e in edges if e.type == "CONNECTED_TO"]
@@ -25,7 +24,6 @@ class WorldLoader:
             world_id=world_id,
             entities=entities,
             knowledge=knowledge,
-            rumors=rumors,
             scopes=scopes,
         )
         topo = RegionTopology(world_id=world_id, regions=regions, connections=connections)

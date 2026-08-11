@@ -1,4 +1,8 @@
-"""Locus CLI (U9). Commands: init-schema, build-wiki, build-world, export."""
+"""Locus CLI (U9). Commands: init-schema, build-world, export.
+
+Each world self-distills its own WikiPriors during build-world (FR-IM1.3); there
+is no separate real-world wiki build step.
+"""
 
 from __future__ import annotations
 
@@ -6,16 +10,13 @@ import argparse
 import json
 import sys
 
-from .commonsense_wiki import PriorDistiller, WikiBuilder, load_bundled_realworld
 from .config import get_settings
 from .demo import load_demo_world
-from .ingestion.service import IngestionService, WorldInputs
+from .ingestion.service import WorldInputs
 from .llm.factory import ProviderFactory
-from .ontology.builder import OntologyBuilder
 from .query import WorldLoader
 from .services import Exporter, PipelineOrchestrator
 from .storage import Neo4jGraphRepository, OpenSearchRepository, SchemaInitializer
-from .topology.builder import TopologyBuilder
 
 
 def _repos():
@@ -41,37 +42,22 @@ def _load_inputs(path: str | None, demo: bool) -> WorldInputs:
 
 
 def cmd_init_schema(_args: argparse.Namespace) -> int:
-    _s, graph, search = _repos()
+    s, graph, search = _repos()
     try:
         SchemaInitializer(graph, search).initialize()
-        print("Schema initialized: Neo4j constraints/indexes + OpenSearch index ready.")
-    finally:
-        graph.disconnect()
-        search.disconnect()
-    return 0
+        # Session layer (PostgreSQL) tables — idempotent (SI-Q5=A).
+        from .storage.postgres_session_repo import PostgresSessionRepository
 
-
-def cmd_build_wiki(args: argparse.Namespace) -> int:
-    s, graph, search = _repos()
-    factory = ProviderFactory(s)
-    llm, embedding = factory.llm(), factory.embedding()
-    builder = WikiBuilder(
-        IngestionService.from_factory(factory),
-        TopologyBuilder(wiki=None),
-        OntologyBuilder(llm=llm, embedding=embedding, wiki=None),
-        PriorDistiller(llm),
-        graph,
-        search,
-        embedding,
-    )
-    inputs = (
-        WorldInputs(**json.load(open(args.inputs, encoding="utf-8")))
-        if args.inputs
-        else load_bundled_realworld()
-    )
-    try:
-        report = builder.build_wiki(inputs)
-        print(f"Wiki built: {report.model_dump_json()}")
+        session_repo = PostgresSessionRepository(s.session_db_url)
+        try:
+            session_repo.connect()
+            session_repo.ensure_schema()
+            print(
+                "Schema initialized: Neo4j constraints/indexes + OpenSearch index "
+                "+ PostgreSQL session tables ready."
+            )
+        finally:
+            session_repo.disconnect()
     finally:
         graph.disconnect()
         search.disconnect()
@@ -112,10 +98,6 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser(
         "init-schema", help="Create Neo4j constraints/indexes + OpenSearch index"
     ).set_defaults(func=cmd_init_schema)
-
-    p_wiki = sub.add_parser("build-wiki", help="Build the Common-sense Wiki (bundled or --inputs)")
-    p_wiki.add_argument("--inputs", help="JSON file with real-world WorldInputs")
-    p_wiki.set_defaults(func=cmd_build_wiki)
 
     p_world = sub.add_parser("build-world", help="Build a game world graph")
     p_world.add_argument("--world", required=True, help="world id")

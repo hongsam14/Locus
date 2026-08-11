@@ -71,3 +71,83 @@ export interface AugAnswer {
   confidence?: number;
   region_id?: string;
 }
+
+// --- Session layer (S3) ---------------------------------------------------- //
+export interface GameSession {
+  id: string;
+  world_id: string;
+  status: "open" | "closed";
+  turn: number;
+  created_at?: string | null;
+  closed_at?: string | null;
+}
+
+export interface SessionRumor {
+  id: string;
+  session_id: string;
+  region_id: string;
+  distorted_from_id: string;
+  distorted_from_kind: string;
+  statement: string;
+  distortion_degree: number;
+  support: number;
+  confidence: number;
+  promoted: boolean;
+}
+
+export interface RegionDistortion {
+  session_id: string;
+  region_id: string;
+  distortion_degree: number;
+}
+
+export interface TimelineEntry {
+  id: string;
+  session_id: string;
+  turn: number;
+  kind: string;
+  summary: string;
+  payload: Record<string, unknown>;
+  created_at?: string | null;
+}
+
+export interface TurnResult {
+  session_id: string;
+  turn: number;
+  promoted_ids: string[];
+  demoted_ids: string[];
+  applied_event_ids: string[];
+  resolved_event_ids: string[];
+}
+
+// --- Session events (Phase 2) --------------------------------------------- //
+export type EventCategory =
+  | "war"
+  | "plague"
+  | "politics"
+  | "disaster"
+  | "festival"
+  | "discovery";
+export type EventLifecycle = "one_shot" | "persistent";
+export type EventStatus = "suggested" | "active" | "resolved";
+
+export interface SessionEvent {
+  id: string;
+  session_id: string;
+  region_id: string;
+  category: EventCategory;
+  description: string;
+  magnitude: number;
+  lifecycle: EventLifecycle;
+  status: EventStatus;
+  created_turn: number;
+  resolved_turn?: number | null;
+  contributions: Record<string, number>;
+}
+
+export interface EventDraft {
+  region_id: string;
+  category: EventCategory;
+  description: string;
+  magnitude: number;
+}

@@ -87,7 +87,9 @@ def test_ensure_schema_creates_constraints() -> None:
     queries = " ".join(q for q, _ in recorder)
     assert "CREATE CONSTRAINT" in queries
     assert "FOR (n:Region) REQUIRE n.id IS UNIQUE" in queries
-    assert "FOR (n:World) REQUIRE n.world_id IS UNIQUE" in queries
+    assert "FOR (n:WikiPrior) REQUIRE n.id IS UNIQUE" in queries
+    # World nodes are no longer persisted (CL-A1=A)
+    assert "n:World" not in queries
 
 
 def test_traverse_respects_min_weight_param() -> None:

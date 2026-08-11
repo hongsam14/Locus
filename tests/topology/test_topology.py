@@ -104,6 +104,7 @@ class _FakeWiki:
         return [
             WikiPrior(
                 id="prior-1",
+                world_id="w",
                 prior_type=PriorType.TERRAIN_RULE,
                 condition=f"{feature} between regions",
                 effect="slower exchange",

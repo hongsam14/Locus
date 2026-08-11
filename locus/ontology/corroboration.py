@@ -10,7 +10,15 @@ from __future__ import annotations
 
 from ..commonsense_wiki.base import CommonsenseWiki
 from ..llm.base import LLMProvider
-from ..models import Knowledge, Provenance, Region, ScopeLink, ScopeType, SourceKind
+from ..models import (
+    Knowledge,
+    Provenance,
+    Region,
+    ScopeLink,
+    ScopeType,
+    SourceKind,
+    fallback_title,
+)
 from .schemas import CorroborationBatch
 
 CONFIDENCE_DISCOUNT = 0.8
@@ -43,6 +51,7 @@ class CorroborationGenerator:
                 k = Knowledge(
                     world_id=world_id,
                     statement=sug.statement,
+                    title=sug.title or fallback_title(sug.statement),
                     topic=sug.topic,
                     confidence=min(1.0, sug.confidence * CONFIDENCE_DISCOUNT),
                     derived_from_prior_ids=prior_ids,

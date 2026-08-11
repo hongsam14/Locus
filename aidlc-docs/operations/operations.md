@@ -65,8 +65,26 @@ Adds **Events** that dynamically evolve per-region distortion over turns. **No n
 
 > Distortion/propagation/support evolution are **deterministic** (LLM-independent); only event *suggestion*
 > uses the LLM and is graceful (no suggester / failure → no suggestions, the turn still advances).
-> Rumor count grows each turn (append semantics) — use `regenerate` to bound long sessions.
-> Phase 3 (rumor→region feedback loop, event-to-event interaction) is deferred.
+> Event-to-event interaction (Phase 3 remainder) is still deferred.
+
+### Rumor Dynamics & Hardening (U-H1/U-H2, post code-review)
+support(공신력) is now the rumor "aliveness" lever, so the set stays finite without manual `regenerate`:
+1. **Decay & prune** — each `advance-turn`, unreinforced rumors lose support (`RUMOR_SUPPORT_DECAY`, 0.05)
+   and any below `RUMOR_PRUNE_FLOOR` (0.05) are **soft-flagged** (`active=false`, row kept) — promoted rumors
+   are exempt. New rumors are born at `RUMOR_BIRTH_SUPPORT` (0.2) so they survive a few quiet turns.
+2. **Propagation gate** — only rumors with `support ≥ RUMOR_MIN_SOURCE_SUPPORT` (0.3) re-seed new rumors on
+   the auto-append path (manual `generate`/`regenerate` unchanged).
+3. **Rumor→region feedback** — high-support rumor density bumps a region's distortion each turn
+   (`RUMOR_FEEDBACK_WEIGHT` 0.1 × density of rumors ≥ `RUMOR_HIGH_SUPPORT_THRESHOLD` 0.6), so strong rumors
+   keep a region dynamic even with no events. `TurnResult` now reports `pruned_rumor_ids` + `feedback_regions`.
+4. All knobs are env-tunable (`RUMOR_*` in `.env`); the engine stays deterministic (LLM-independent).
+
+**Schema migration**: `init-schema` (and `ensure_schema` on app start) adds `session_rumors.active` idempotently
+(`ADD COLUMN IF NOT EXISTS`, default TRUE) — existing sessions upgrade in place, no data change.
+
+**Build path fixes**: topology now sees this world's persisted common-sense priors (wiki injected before
+`topology.build`); a barrier terrain not bordering exactly 2 regions is reported in `IngestionResult.errors`
+instead of being silently dropped. Web SessionPanel loads its reads in parallel.
 
 ## Web UI (U10)
 ```bash

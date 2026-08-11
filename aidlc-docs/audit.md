@@ -1089,3 +1089,136 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **Context**: 🎉 RUMOR / GAME-SESSION PHASE 2 COMPLETE (P1 Event Foundation + P2 Dynamic Engine + P3 Web UI). AI-DLC cycle done.
 
 ---
+
+## 2026-07-15 — Phase 2 Hardening (post code-review) — Requirements Analysis START
+**Timestamp**: 2026-07-15T00:00:00Z
+**User Input**: "ai-dlc로 질문지 작성"
+**AI Response**: New brownfield-resume cycle "Phase 2 Hardening (post code-review)". Context: after Phase 2 COMPLETE, a high-effort workflow code review surfaced findings in the turn engine; the clear correctness/efficiency items ([1] resolve baseline restore after saturation, [3] no support decay on empty turns, [9] single list_rumors read) were already fixed & committed (81be437). Created Requirements-Analysis verification questions `aidlc-docs/inception/requirements/rumor-phase2-hardening-verification-questions.md` (7 questions, A/B/C/X + [Answer]: tags) scoping the REMAINING findings needing a design decision: [2] exponential rumor growth (correctness), [8] per-rumor support upsert (efficiency), frontend refresh waterfall, out-of-scope canonical-build items [4]/[5], process depth, extensions. Awaiting user answers.
+**Context**: INCEPTION / Requirements Analysis — verification questions issued; blocked on answers.
+
+---
+
+## 2026-07-15 — Phase 2 Hardening — Verification answers received
+**Timestamp**: 2026-07-15T00:30:00Z
+**User Input**: "답변 완료" — Q1=C / Q2=X("각 루머의 공신력이라는 수치가 있긴 하지만, 이 문제는 더 깊게 생각해봐야 할 듯. 이 월드를 다이나믹하게 만드는 거의 핵심 변수이기 때문에.") / Q3=A / Q4=A / Q5=A / Q6=B("프로젝트 전면 재점검을 하기 위해서.") / Q7=A
+**AI Response**: Detected two items needing clarification before requirements can be fixed: (1) Q2 is not a bounding-strategy choice but a signal that [2] rumor growth is a core rumor-dynamics DESIGN problem (support/공신력 as the key dynamic lever), not a quick fix; (2) Q6=B + "전면 재점검" may broaden scope beyond the Q1=C finding list. Creating `rumor-phase2-hardening-clarification-questions.md` (3 questions: [2] framing, support's role in rumor dynamics, meaning/scope of "전면 재점검"). Confirmed: Q1=C, Q3=A(batch upsert_rumors port), Q4=A(Promise.all), Q5=A(investigate [4]/[5]), Q7=A(Security off / PBT Partial).
+**Context**: INCEPTION / Requirements Analysis — clarification round issued; blocked on answers.
+
+---
+
+## 2026-07-15 — Phase 2 Hardening — Clarification answers received; Requirements drafting
+**Timestamp**: 2026-07-15T01:00:00Z
+**User Input**: "답변 완료" — 명확화1=A(promote [2] to dedicated rumor-dynamics/lifecycle design, pull in deferred Phase 3 rumor-feedback, own FD) / 명확화2=C(support drives BOTH survival-prune AND propagation eligibility) / 명확화3=A(full AI-DLC stages for the Q1=C finding list; scope NOT broadened to whole-project audit)
+**AI Response**: Consistency re-check: no contradictions. Final decision set fixed — scope = rumor-dynamics (promoted [2], incl. rumor→region feedback), [8] batch upsert_rumors port, frontend Promise.all, [4]/[5] investigate-and-fix; full stages (Q6=B) with scope = finding list (명확화3=A); Security off / PBT Partial (Q7=A). [2] grows from "hardening" into Phase 3 Rumor Dynamics. Writing requirements doc `rumor-phase2-hardening-requirements.md` (FR-H1..H8 + NFR-H1..H5).
+**Context**: INCEPTION / Requirements Analysis — clarifications resolved; generating requirements; will await approval.
+
+---
+
+## 2026-07-15 — Requirements Analysis APPROVED; Workflow Planning
+**Timestamp**: 2026-07-15T01:30:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: Requirements Analysis APPROVED. Proceeding to Workflow Planning (full cycle per Q6=B, scope=finding list per 명확화3=A). Creating `inception/plans/rumor-phase2-hardening-execution-plan.md`. EXECUTE: Application Design, Units Generation, per-unit Functional Design + NFR-light + Code Gen, Build&Test. SKIP: User Stories (reuses existing GameMaster persona, no new personas), Infrastructure Design (no new infra, NFR-H4). Proposed units: U-H1 Rumor Dynamics (FR-H1..H5 incl. batch upsert) → U-H2 Fixes (FR-H6 frontend + FR-H7/H8 canonical build).
+**Context**: INCEPTION / Workflow Planning — generating execution plan; will await approval.
+
+---
+
+## 2026-07-15 — Workflow Planning APPROVED; Application Design
+**Timestamp**: 2026-07-15T02:00:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: Workflow Planning APPROVED (`inception/plans/rumor-phase2-hardening-execution-plan.md`). Proceeding to Application Design. Created design questions `inception/application-design/rumor-phase2-hardening/design-questions.md` (AD-H Q1..Q7: dynamics module location, prune mechanism, propagation-gate placement, rumor→region feedback owner, params location, batch upsert signature, promoted-rumor prune exemption). Awaiting answers before generating components/methods/services/dependency artifacts.
+**Context**: INCEPTION / Application Design — design questions issued; blocked on answers.
+
+---
+
+## 2026-07-20 — Application Design answers received; artifacts generated; APPROVAL REQUESTED
+**Timestamp**: 2026-07-20T00:00:00Z
+**User Input**: "답변 완료" — AD-H Q1=B(new `rumor_dynamics.py` pure module, split from event `dynamics.py`) / Q2=B(soft-flag prune: `active=False`, keep rows) / Q3=A(`min_source_support` optional param on RumorService source collection, auto-append only) / Q4=B(dedicated `RumorFeedbackService`, pure aggregation delegated to rumor_dynamics) / Q5=B(centralize tuning params in `settings.py` → `RumorDynamicsParams`; incl. min_source_support) / Q6=A(`upsert_rumors(list)->list[SessionRumor]`) / Q7=A(promoted rumors exempt from prune)
+**AI Response**: Consistency re-check: no contradictions. Q3=A(param placement)×Q5=B(value in settings) reconciled — value lives in Settings, passed as arg into RumorService method (determinism preserved). Q2=B(soft-flag)×NFR-H4 reconciled — additive `active` column via idempotent ADD COLUMN IF NOT EXISTS. Q4=B(service)×Q1=B(pure module) reconciled — service owns side-effects, rumor_dynamics owns pure `region_feedback`. Generated 5 artifacts under `inception/application-design/rumor-phase2-hardening/`: components.md (CH1..CH12), component-methods.md, services.md, component-dependency.md, application-design.md. Components: CH1 rumor_dynamics(pure)+RumorDynamicsParams, CH2 RumorFeedbackService, CH3 RumorService(gate), CH4 TurnAdvancer(decay/prune/feedback/batch), CH5 SessionRumor(active), CH6 SessionRepository(upsert_rumors/include_pruned/active col), CH7 Settings, CH8 GameMasterService(DI), CH9 API, CH10 web(Promise.all), CH11 orchestrator, CH12 map_image_ingestor. Open params flagged to FD (values/aggregation formula/step-order/empty-turn decay). Awaiting explicit approval before Units Generation.
+**Context**: INCEPTION / Application Design — artifacts generated; APPROVAL REQUESTED (approval gate).
+
+## 2026-07-20 — Application Design APPROVED; Units Generation (Planning)
+**Timestamp**: 2026-07-20T00:30:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: Application Design APPROVED (`inception/application-design/rumor-phase2-hardening/{components,component-methods,services,component-dependency,application-design}.md`; AD-H Q1=B..Q7=A). Proceeding to Units Generation Part 1 (Planning). Creating `inception/plans/unit-of-work-plan.md` with decomposition questions UOW-H Q1..Q3 (U-H1 granularity: single vs foundation/engine split; U-H2 grouping: one unit vs frontend-split; build order/independence). Proposed baseline from execution plan: U-H1 Rumor Dynamics (CH1-CH9, FR-H1..H5) → U-H2 Fixes (CH10-CH12, FR-H6/H7/H8). Awaiting answers before generating unit-of-work artifacts.
+**Context**: INCEPTION / Units Generation (Planning) — decomposition questions issued; blocked on answers.
+
+## 2026-07-20 — Units Generation answers received; artifacts generated; APPROVAL REQUESTED
+**Timestamp**: 2026-07-20T01:00:00Z
+**User Input**: "답변 완료" — UOW-H Q1=A(single unit U-H1) / Q2=A(single unit U-H2 Fixes) / Q3=A(sequential U-H1 → U-H2). = execution-plan baseline, no ambiguities.
+**AI Response**: Generated unit artifacts under `inception/application-design/rumor-phase2-hardening/`: unit-of-work.md, unit-of-work-dependency.md, unit-of-work-story-map.md. **2 units**: U-H1 Rumor Dynamics (CH1-CH9, FR-H1..H5 + NFR-H1..H5) — pure rumor_dynamics engine + RumorFeedbackService + RumorService gate + TurnAdvancer decay/prune/feedback/batch + SessionRumor.active + SessionRepository.upsert_rumors/include_pruned/active col + Settings params + GameMasterService DI + session API; U-H2 Fixes (CH10-CH12, FR-H6/H7/H8) — web Promise.all + orchestrator set_wiki investigation + map_image_ingestor barrier-drop investigation. Units have NO cross-code dependency (session layer vs frontend/canonical-build); sequential for risk mgmt. Coverage verified: FR 8/8, NFR 5/5, components 12/12 assigned (0 unassigned). Open→FD items carried per unit. INCEPTION nearly complete — awaiting approval before CONSTRUCTION.
+**Context**: INCEPTION / Units Generation — artifacts generated; APPROVAL REQUESTED (approval gate before CONSTRUCTION).
+
+## 2026-07-20 — Units Generation APPROVED; INCEPTION complete → CONSTRUCTION (U-H1 Functional Design)
+**Timestamp**: 2026-07-20T01:30:00Z
+**User Input**: "Approve & Continue"
+**AI Response**: Units Generation APPROVED (2 units U-H1→U-H2; artifacts under `inception/application-design/rumor-phase2-hardening/`). INCEPTION complete. Entering CONSTRUCTION phase, unit **U-H1 Rumor Dynamics**, stage Functional Design. Creating `construction/plans/U-H1-rumor-dynamics-functional-design-plan.md` with questions FD-H Q1..Q6 resolving AD open params: parameter values (decay/prune_floor/min_source_support/feedback_weight/high_support_threshold), feedback aggregation formula, advance_turn step order (feedback↔decay), empty-turn decay policy ([3] re-decision), decay reinforced-set definition, promoted-rumor decay/feedback treatment. Awaiting answers before generating FD artifacts.
+**Context**: CONSTRUCTION / U-H1 / Functional Design — questions issued; blocked on answers.
+
+## 2026-07-20 — U-H1 Functional Design answers received; artifacts generated; APPROVAL REQUESTED
+**Timestamp**: 2026-07-20T02:00:00Z
+**User Input**: "답변 완료" — FD-H Q1=A(decay every turn incl. empty turns; [3] reversed, promoted exempt from prune as safeguard) / Q2=A(reinforced = event-influenced ∪ feedback regions) / Q3=A(recommended param set: decay 0.05 / prune_floor 0.05 / min_source_support 0.3 / feedback_weight 0.1 / high_support_threshold 0.6) / Q4=A(feedback = high-support density × weight) / Q5=A(step order: feedback → decay → prune) / Q6=A(promoted exempt from decay+prune, participates in feedback; pruned active=False fully excluded). No ambiguities.
+**AI Response**: Generated FD artifacts under `construction/U-H1-rumor-dynamics/functional-design/`: domain-entities.md (SessionRumor.active, RumorDynamicsParams, TurnResult ext, Settings ext, schema), business-logic-model.md (pure fns decay_support/is_prunable/partition_prunable/is_eligible_source/region_feedback + RumorFeedbackService + RumorService gate + advance_turn extended sequence + GameMaster DI), business-rules.md (BR-H1-1..20). Key decision: [3] empty-turn no-decay policy explicitly REVERSED (support is now the survival lever); promoted-rumor prune+decay exemption is the safeguard. Note flagged: `test_empty_turn_does_not_decay_support` needs intentional update. Awaiting approval before NFR-light + Code Gen.
+**Context**: CONSTRUCTION / U-H1 / Functional Design — artifacts generated; APPROVAL REQUESTED.
+
+## 2026-07-20 — U-H1 Functional Design APPROVED; NFR-light + Code Generation planning
+**Timestamp**: 2026-07-20T02:30:00Z
+**User Input**: "continue to next stage"
+**AI Response**: U-H1 Functional Design APPROVED (`construction/U-H1-rumor-dynamics/functional-design/*`, BR-H1-1..20). NFR = LIGHT per execution plan (single note: determinism / additivity / PBT+offline tests — same as Phase 1/2, no question round). Writing `construction/U-H1-rumor-dynamics/nfr/nfr-light.md`, then Code Generation Part 1 (planning): `construction/plans/U-H1-rumor-dynamics-code-generation-plan.md`. Awaiting plan approval before generation.
+**Context**: CONSTRUCTION / U-H1 / NFR-light + Code Generation (planning).
+
+## 2026-07-20 — U-H1 NFR-light written; Code Generation Plan created; PLAN APPROVAL REQUESTED
+**Timestamp**: 2026-07-20T02:45:00Z
+**User Input**: (continuation of "continue to next stage")
+**AI Response**: Wrote `construction/U-H1-rumor-dynamics/nfr/nfr-light.md` (NFR-H1..H5 light mapping + regression note on [3] reversal). Created Code Generation Plan `construction/plans/U-H1-rumor-dynamics-code-generation-plan.md` — 14 steps, brownfield in-place. Create: rumor_dynamics.py, rumor_feedback_service.py, test_rumor_dynamics.py, code-summary.md. Modify: models.py/rumor_service.py/turn.py/game_master.py/__init__.py/repository.py/memory_repo.py, storage/postgres_session_repo.py, config/settings.py, tests/session/test_advance_turn.py + repo-contract/postgres tests. Key: advance_turn order feedback→decay→prune; batch upsert_rumors; SessionRumor.active soft-flag + idempotent column; RumorDynamicsParams from Settings; test_empty_turn_does_not_decay_support intentionally updated. This plan is single source of truth. Awaiting plan approval before execution (Part 2).
+**Context**: CONSTRUCTION / U-H1 / Code Generation (planning) — plan created; APPROVAL REQUESTED before generation.
+
+## 2026-07-20 — U-H1 Code Generation Plan APPROVED; executing generation
+**Timestamp**: 2026-07-20T03:00:00Z
+**User Input**: "Approve"
+**AI Response**: Code Generation Plan APPROVED. Executing Part 2 (14 steps, brownfield in-place). Tests written but executed in Build & Test phase.
+**Context**: CONSTRUCTION / U-H1 / Code Generation (generation).
+
+## 2026-07-20 — FD-H Q7 follow-up answered (A); U-H1 Code Generation COMPLETE; APPROVAL REQUESTED
+**Timestamp**: 2026-07-20T04:00:00Z
+**User Input**: "A" (FD-H Q7 birth-support follow-up, discovered during code gen) — seed newly generated rumors with birth_support (default 0.2) so they survive a few quiet turns before decaying (BR-H1-21). Chosen over B (instant death) / C (age field).
+**AI Response**: Executed all 14 code-gen steps (brownfield in-place). CREATED: locus/session/rumor_dynamics.py (RumorDynamicsParams frozen dataclass + 5 pure fns), rumor_feedback_service.py, tests/session/test_rumor_dynamics.py (+PBT), code-summary.md. MODIFIED: models.py (SessionRumor.active + TimelineKind.PRUNE), turn.py (advance_turn: feedback→decay→prune, evolve_support(decay=0) to avoid double-decay, batch upsert_rumors, TurnResult +pruned_rumor_ids/feedback_regions, removed _set_promoted), rumor_service.py (min_source_support gate + birth_support), rumor_generator.py (birth_support param), game_master.py (DI wiring), __init__.py, repository.py/memory_repo.py (upsert_rumors + include_pruned), storage/postgres_session_repo.py (active column idempotent + batch), config/settings.py (5 rumor_* fields + rumor_birth_support + factory), api/main.py (rumor_params wiring), test_advance_turn.py (lifecycle tests + INTENTIONAL update of empty-turn test reflecting [3] reversal), repo-contract + postgres tests (batch/soft-flag). Result: **246 offline pytest GREEN** (was 219; +27), ruff/black/compileall clean. CH9 auto (advance-turn response_model=TurnResult). Awaiting code approval before U-H2.
+**Context**: CONSTRUCTION / U-H1 / Code Generation — COMPLETE; APPROVAL REQUESTED.
+
+## 2026-07-20 — U-H1 Code APPROVED; U-H2 Fixes (Functional Design — investigation)
+**Timestamp**: 2026-07-20T04:30:00Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: U-H1 Rumor Dynamics code APPROVED (246 offline GREEN). Moving to unit U-H2 Fixes. FR-H7/H8 are investigate-first; reading orchestrator.build_world (set_wiki ordering) + map_image_ingestor (barrier terrain drop) + web SessionPanel.refresh (Promise.all) to ground the FD. Will write FD note + code-gen plan after investigation.
+**Context**: CONSTRUCTION / U-H2 / Functional Design — investigating FR-H7/H8.
+
+## 2026-07-20 — U-H2 Functional Design (investigation) COMPLETE; APPROVAL REQUESTED
+**Timestamp**: 2026-07-20T05:00:00Z
+**AI Response**: Investigated FR-H7/H8 in code. BOTH confirmed real defects. FR-H7: orchestrator.build_world calls topology.build (L68) BEFORE set_wiki (L98), and TopologyBuilder uses self._wiki in _wiki_rationale → topology never reflects persisted priors (always SourceKind.INPUT). Fix: move wiki creation + set_wiki(topology/ontology) before topology.build; first build (empty wiki) unchanged, rebuild/existing-wiki world now reflected. FR-H8: map_image_ingestor drops barrier terrain with between!=2 silently (falls through both branches). Fix: record a skip warning in IngestionResult.errors (graceful, visible). FR-H6: SessionPanel.refresh is a 4-deep await waterfall → Promise.all. Wrote FD artifacts under `construction/U-H2-fixes/functional-design/{business-logic-model,business-rules}.md` (BR-H2-1..4) + nfr-light. No new design questions (fixes clear). Awaiting FD approval before code-gen.
+**Context**: CONSTRUCTION / U-H2 / Functional Design — investigation complete; APPROVAL REQUESTED.
+
+## 2026-07-20 — U-H2 Functional Design APPROVED; Code Generation planning
+**Timestamp**: 2026-07-20T05:15:00Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: U-H2 FD APPROVED (FR-H7/H8 confirmed real; BR-H2-1..4). NFR light (done). Creating Code Generation plan `construction/plans/U-H2-fixes-code-generation-plan.md` (brownfield in-place: web/src/SessionPanel.tsx Promise.all, locus/services/orchestrator.py set_wiki-before-build, locus/ingestion/map_image_ingestor.py barrier-drop warning + tests). Awaiting plan approval before generation.
+**Context**: CONSTRUCTION / U-H2 / Code Generation (planning).
+
+## 2026-07-20 — U-H2 Code Generation Plan created; PLAN APPROVAL REQUESTED
+**Timestamp**: 2026-07-20T05:20:00Z
+**AI Response**: Created `construction/plans/U-H2-fixes-code-generation-plan.md` (7 steps, brownfield in-place). Modify: web/src/SessionPanel.tsx (Promise.all), locus/services/orchestrator.py (set_wiki before topology.build), locus/ingestion/map_image_ingestor.py (barrier between!=2 -> errors warning) + tests (vitest + pytest orchestrator call-order + ingestor edge cases). Single source of truth. Awaiting plan approval before generation.
+**Context**: CONSTRUCTION / U-H2 / Code Generation (planning) — plan created; APPROVAL REQUESTED.
+
+## 2026-07-20 — U-H2 Code Generation Plan APPROVED & EXECUTED; APPROVAL REQUESTED
+**Timestamp**: 2026-07-20T05:45:00Z
+**User Input**: "Approve"
+**AI Response**: Executed all 7 U-H2 steps (brownfield in-place). Modified web/src/SessionPanel.tsx (refresh Promise.all), locus/services/orchestrator.py (set_wiki BEFORE topology.build), locus/ingestion/map_image_ingestor.py (barrier between!=2 -> IngestionResult.errors warning). Tests: tests/services/test_services.py (+2: wiki-before-build call-order, no-llm guard), tests/ingestion/test_ingestion.py (+1: wrong-arity barrier surfaced), web components.test.tsx (+2: parallel refresh, regionId=null skips rumors). Result: **backend 249 offline pytest GREEN** (246->249), **frontend 19 vitest GREEN** (17->19), ruff/black/compileall clean. ENV NOTE: system python3 upgraded to 3.14 broke .venv(3.13.7) python3 symlink; ran tests via `PYTHONPATH=.venv/lib/python3.13/site-packages /usr/bin/python3.13 -m pytest` (recorded in code-summary; venv repair recommended). code-summary `construction/U-H2-fixes/code/code-summary.md`. Awaiting code approval before Build & Test.
+**Context**: CONSTRUCTION / U-H2 / Code Generation — COMPLETE; APPROVAL REQUESTED.
+
+## 2026-07-20 — U-H2 Code APPROVED; Build & Test
+**Timestamp**: 2026-07-20T06:00:00Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: U-H2 code APPROVED. Both units code-complete. Running Build & Test: full offline pytest suite (+PBT) + frontend vitest + lint + compile. Will document results in construction/build-and-test/ and add Operations note.
+**Context**: CONSTRUCTION / Build & Test.
+
+## 2026-07-20 — Build & Test PASS; Operations updated; CYCLE COMPLETE
+**Timestamp**: 2026-07-20T06:30:00Z
+**AI Response**: Build & Test executed. Backend 249 offline pytest GREEN (incl. hypothesis PBT Partial on rumor_dynamics), frontend 19 vitest GREEN, ruff/black/compileall + tsc --noEmit clean. Total 268 offline GREEN (was 236 at Phase 2). One intentional regression update: [3] empty-turn no-decay reversed. Wrote `construction/build-and-test/rumor-phase2-hardening/build-and-test-summary.md`. Updated `operations/operations.md` (rumor dynamics knobs, active-column migration, build-path fixes; removed stale "rumor count grows unbounded" note) and `env.example` (RUMOR_* vars). ENV: venv 3.13 symlink broke on system python 3.14 upgrade — tests run via /usr/bin/python3.13; venv repair recommended (not code). **Rumor Dynamics & Phase 2 Hardening cycle COMPLETE** (U-H1 + U-H2, FR-H1..H8 delivered). Not yet committed (awaiting user).
+**Context**: CONSTRUCTION / Build & Test — PASS; cycle complete; Operations noted.

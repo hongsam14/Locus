@@ -61,21 +61,28 @@ class RumorService(SessionAppService):
     def regenerate_region(self, session_id: str, region_id: str) -> list[SessionRumor]:
         session = self._require_open(session_id)
         existing = self._repo.list_rumors(session_id, region_id)
-        for r in existing:  # Q4=A: drop all (incl. promoted) then regenerate
+        # FR-UX2.5 / BR-X3-9 (X3): preserve promoted rumors; drop only the
+        # non-promoted ones then regenerate. (Was Q4=A drop-all incl. promoted.)
+        kept = [r for r in existing if r.promoted]
+        dropped = [r for r in existing if not r.promoted]
+        for r in dropped:
             self._repo.delete_rumor(session_id, r.id)
         degrees = self._chain_degrees(session_id, region_id)
-        rumors = self._generate_for_region(session, region_id, degrees)
+        # Reseed from canonical knowledge only — kept promoted rumors must not
+        # become chain seeds (X3 review #1 / BR-X3-9).
+        fresh = self._generate_for_region(session, region_id, degrees, include_existing=False)
         self._timeline(
             session,
             TimelineKind.REGENERATE,
             f"regenerated {region_id}",
             {
                 "region_id": region_id,
-                "deleted": [r.id for r in existing],
-                "rumor_ids": [r.id for r in rumors],
+                "deleted": [r.id for r in dropped],
+                "kept": [r.id for r in kept],
+                "rumor_ids": [r.id for r in fresh],
             },
         )
-        return rumors
+        return kept + fresh
 
     def adjust_support(self, session_id: str, rumor_id: str, support: float) -> SessionRumor:
         session = self._require_open(session_id)
@@ -119,10 +126,15 @@ class RumorService(SessionAppService):
         degrees: list[float],
         *,
         min_source_support: float | None = None,
+        include_existing: bool = True,
     ) -> list[SessionRumor]:
         rumors: list[SessionRumor] = []
         for text, sid, kind, conf in self._collect_sources(
-            session.world_id, region_id, session.id, min_source_support=min_source_support
+            session.world_id,
+            region_id,
+            session.id,
+            min_source_support=min_source_support,
+            include_existing=include_existing,
         ):
             chain = self._gen.generate_chain(
                 source_text=text,
@@ -145,13 +157,17 @@ class RumorService(SessionAppService):
         session_id: str,
         *,
         min_source_support: float | None = None,
+        include_existing: bool = True,
     ) -> list[tuple[str, str, str, float]]:
         """Sources = region direct + propagated canonical knowledge + existing
         session rumors (Q2). (text, id, kind, confidence).
 
         Canonical sources are never gated. When ``min_source_support`` is set, an
         existing rumor only re-seeds when ``support >= threshold`` (FR-H2 /
-        BR-H1-7). ``list_rumors`` already excludes pruned rumors (BR-H1-6/11)."""
+        BR-H1-7). ``list_rumors`` already excludes pruned rumors (BR-H1-6/11).
+        ``include_existing=False`` seeds from canonical knowledge only — used by
+        regenerate so preserved promoted rumors are NOT re-used as chain seeds
+        (X3 review #1)."""
         kg, topo = self._loader.load(world_id)
         if region_id not in {r.id for r in topo.regions}:
             raise LookupError(f"region not found: {region_id}")
@@ -159,12 +175,13 @@ class RumorService(SessionAppService):
         sources: list[tuple[str, str, str, float]] = []
         for kv in view.direct + view.propagated:  # Q2: direct + propagated
             sources.append((kv.statement, kv.knowledge_id, "knowledge", kv.confidence))
-        for r in self._repo.list_rumors(session_id, region_id):  # existing rumors (chain)
-            if min_source_support is not None and not rumor_dynamics.is_eligible_source(
-                r, min_support=min_source_support
-            ):
-                continue
-            sources.append((r.statement, r.id, "rumor", r.confidence))
+        if include_existing:
+            for r in self._repo.list_rumors(session_id, region_id):  # existing rumors (chain)
+                if min_source_support is not None and not rumor_dynamics.is_eligible_source(
+                    r, min_support=min_source_support
+                ):
+                    continue
+                sources.append((r.statement, r.id, "rumor", r.confidence))
         return sources
 
     def _chain_degrees(self, session_id: str, region_id: str) -> list[float]:

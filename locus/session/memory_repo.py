@@ -18,6 +18,7 @@ from .models import (
     SessionRumor,
     SessionStatus,
     TimelineEntry,
+    Translation,
 )
 
 
@@ -30,6 +31,8 @@ class InMemorySessionRepository:
         self._distortions: dict[tuple[str, str], float] = {}  # (session_id, region_id) -> degree
         self._timeline: dict[str, list[TimelineEntry]] = {}  # session_id -> entries
         self._events: dict[str, dict[str, SessionEvent]] = {}  # session_id -> {event_id: event}
+        # (kind, source_id, field, lang) -> Translation (X1 localization cache)
+        self._translations: dict[tuple[str, str, str, str], Translation] = {}
         self._clock = 0
 
     # --- internal ---
@@ -168,6 +171,39 @@ class InMemorySessionRepository:
 
     def delete_event(self, session_id: str, event_id: str) -> None:
         self._events.get(session_id, {}).pop(event_id, None)
+
+    # --- translations (X1) ---
+    def get_translation(
+        self, source_kind: str, source_id: str, source_field: str, target_lang: str
+    ) -> Translation | None:
+        t = self._translations.get((source_kind, source_id, source_field, target_lang))
+        return deepcopy(t) if t else None
+
+    def get_translations_many(
+        self, keys: list[tuple[str, str, str]], target_lang: str
+    ) -> dict[tuple[str, str], Translation]:
+        out: dict[tuple[str, str], Translation] = {}
+        for kind, source_id, field in keys:
+            t = self._translations.get((kind, source_id, field, target_lang))
+            if t is not None:
+                out[(source_id, field)] = deepcopy(t)
+        return out
+
+    def upsert_translation(self, translation: Translation) -> Translation:
+        key = (
+            translation.source_kind,
+            translation.source_id,
+            translation.source_field,
+            translation.target_lang,
+        )
+        stored = deepcopy(translation)
+        if stored.created_at is None:
+            stored.created_at = self._now()
+        self._translations[key] = stored
+        return deepcopy(stored)
+
+    def upsert_translations(self, translations: list[Translation]) -> list[Translation]:
+        return [self.upsert_translation(t) for t in translations]
 
     # --- helpers ---
     def _require_session(self, session_id: str) -> GameSession:

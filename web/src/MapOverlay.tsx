@@ -39,18 +39,22 @@ export function MapOverlay({
   }
 
   return (
-    <div style={{ position: "relative", width: W, height: H, border: "1px solid #ccc" }} data-testid="map-overlay">
+    <div
+      data-testid="map-overlay"
+      className="relative sketch-border sketch-shadow overflow-hidden bg-paper-card"
+      style={{ width: W, height: H, maxWidth: "100%" }}
+    >
       {mapImageUrl && (
         <img
           src={mapImageUrl}
           alt="world map"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          className="absolute inset-0 h-full w-full object-cover"
         />
       )}
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+        className="absolute inset-0 h-full w-full"
         onPointerMove={(e) => {
           if (drag) {
             const n = clientToNorm(e);
@@ -96,8 +100,21 @@ export function MapOverlay({
               onPointerDown={() => setDrag({ id: r.id, x: c.x, y: c.y })}
               onClick={() => onSelect(r.id)}
             >
-              <circle r={10} fill={selectedId === r.id ? "#e67e22" : "#2980b9"} stroke="#fff" strokeWidth={2} />
-              <text x={12} y={4} fontSize={12} fill="#222">
+              <circle
+                r={10}
+                // var() resolves in CSS (style), not in SVG presentation attributes
+                style={{
+                  fill: selectedId === r.id ? "var(--color-ink)" : "var(--color-paper-card)",
+                  stroke: "var(--color-ink)",
+                }}
+                strokeWidth={2}
+              />
+              <text
+                x={12}
+                y={4}
+                fontSize={13}
+                style={{ fill: "var(--color-ink)", fontFamily: "var(--font-display)" }}
+              >
                 {r.name}
               </text>
             </g>

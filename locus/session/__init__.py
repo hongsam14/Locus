@@ -23,11 +23,13 @@ from .models import (
     EventStatus,
     GameSession,
     RegionDistortion,
+    RegionTurnChange,
     SessionEvent,
     SessionRumor,
     SessionStatus,
     TimelineEntry,
     TimelineKind,
+    Translation,
     default_lifecycle,
 )
 from .promotion import PromotionResult
@@ -81,4 +83,7 @@ __all__ = [
     "RumorDynamicsParams",
     "DEFAULT_RUMOR_DYNAMICS",
     "RumorFeedbackService",
+    # X1 — localization
+    "Translation",
+    "RegionTurnChange",
 ]

@@ -10,7 +10,14 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from .models import GameSession, RegionDistortion, SessionEvent, SessionRumor, TimelineEntry
+from .models import (
+    GameSession,
+    RegionDistortion,
+    SessionEvent,
+    SessionRumor,
+    TimelineEntry,
+    Translation,
+)
 
 
 @runtime_checkable
@@ -60,3 +67,17 @@ class SessionRepository(Protocol):
         self, event: SessionEvent
     ) -> SessionEvent: ...  # status/resolved_turn/contributions
     def delete_event(self, session_id: str, event_id: str) -> None: ...
+
+    # --- translations (X1 localization cache) ---
+    def get_translation(
+        self, source_kind: str, source_id: str, source_field: str, target_lang: str
+    ) -> Translation | None: ...
+    def get_translations_many(
+        self, keys: list[tuple[str, str, str]], target_lang: str
+    ) -> dict[
+        tuple[str, str], Translation
+    ]: ...  # keys: (kind, id, field) -> {(id, field): Translation}
+    def upsert_translation(self, translation: Translation) -> Translation: ...
+    def upsert_translations(
+        self, translations: list[Translation]
+    ) -> list[Translation]: ...  # batch, one transaction (review #8)

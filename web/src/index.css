@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/* Self-hosted Gaegu (Korean handwriting) — no external CDN (SEC-B/D). */
+@import "@fontsource/gaegu/korean-400.css";
+@import "@fontsource/gaegu/latin-400.css";
+@import "@fontsource/gaegu/korean-700.css";
+@import "@fontsource/gaegu/latin-700.css";
+
+/* Design tokens — paper + ink monochrome (FD-X2 Q2=C). Tailwind v4 reads these
+   as theme values, so `bg-paper`, `text-ink`, `font-display`, etc. are usable. */
+@theme {
+  --color-paper: #faf6ec;
+  --color-paper-card: #fffdf7;
+  --color-ink: #201e1a;
+  --color-ink-soft: #5b554c;
+  --color-line: #20181722;
+  --color-highlight: #ede3c8;
+  --color-danger: #7a2e22;
+
+  --font-display: "Gaegu", "Nanum Pen Script", cursive;
+  --font-body: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo",
+    "Malgun Gothic", sans-serif;
+
+  --radius-doodle: 0.75rem;
+  --shadow-doodle: 2px 3px 0 var(--color-ink);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+  }
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+/* "Doodly" sketch utilities — subtle (FD-X2 Q3=A): slightly irregular border
+   radius + hard offset shadow + hand-drawn underline. */
+@layer components {
+  .sketch-border {
+    border: 1.5px solid var(--color-ink);
+    border-radius: 14px 11px 15px 10px / 10px 15px 11px 14px;
+  }
+  .sketch-shadow {
+    box-shadow: var(--shadow-doodle);
+  }
+  .ink-underline {
+    text-decoration: underline;
+    text-decoration-style: wavy;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+}

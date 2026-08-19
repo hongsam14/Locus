@@ -14,11 +14,18 @@ from ..models import LocusModel
 from ..query.loader import WorldLoader
 from . import dynamics, promotion, rumor_dynamics
 from .base import SessionAppService
-from .models import DEFAULT_DISTORTION_DEGREE, EventStatus, GameSession, TimelineKind
+from .models import (
+    DEFAULT_DISTORTION_DEGREE,
+    EventStatus,
+    GameSession,
+    RegionTurnChange,
+    TimelineKind,
+)
 from .repository import SessionRepository
 from .rumor_dynamics import DEFAULT_RUMOR_DYNAMICS, RumorDynamicsParams
 from .rumor_feedback_service import RumorFeedbackService
 from .rumor_service import RumorService
+from .turn_changes import shape_region_changes
 
 
 class TurnResult(LocusModel):
@@ -34,6 +41,8 @@ class TurnResult(LocusModel):
     # U-H1 (additive) — rumors pruned + regions moved by rumor feedback this turn
     pruned_rumor_ids: list[str] = Field(default_factory=list)
     feedback_regions: list[str] = Field(default_factory=list)
+    # X1 (additive) — per-region merge of this turn's changes (FR-UX2.6)
+    region_changes: list[RegionTurnChange] = Field(default_factory=list)
 
 
 class _EventApplication(LocusModel):
@@ -45,6 +54,8 @@ class _EventApplication(LocusModel):
     target_regions: set[str] = Field(default_factory=set)
     # every region whose distortion moved (drives support auto-evolution)
     influenced_regions: set[str] = Field(default_factory=set)
+    # event id -> primary region id (for X1 region_changes shaping)
+    event_regions: dict[str, str] = Field(default_factory=dict)
 
 
 class TurnAdvancer(SessionAppService):
@@ -79,10 +90,13 @@ class TurnAdvancer(SessionAppService):
         # (2) primary-region rumors: append at the new distortion, preserving
         #     existing rumors + support (FR-P4.1 / BR-P2-7). Support-gated so weak
         #     rumors do not spawn new ones (FR-H2 / BR-H1-7).
+        added_by_region: dict[str, list[str]] = {}
         for region_id in events.target_regions:
-            self._rumors.append_for_region(
+            new_rumors = self._rumors.append_for_region(
                 session, region_id, min_source_support=self._params.min_source_support
             )
+            if new_rumors:  # F1: capture newly-added rumor ids per region (FR-UX2.6)
+                added_by_region.setdefault(region_id, []).extend(r.id for r in new_rumors)
 
         # (3) rumor→region distortion feedback (FR-H3 / BR-H1-9/10). Runs before
         #     decay so strong rumors reinforce their own regions this turn.
@@ -129,6 +143,19 @@ class TurnAdvancer(SessionAppService):
         new_turn = self._repo.bump_turn(session_id)
         pruned_ids = [r.id for r in prunable]
         feedback_regions = sorted(feedback_deltas)
+        # X1 (FR-UX2.6): shape per-region change summary. rumor_region covers all
+        # active rumors read this turn (incl. the just-appended ones).
+        rumor_region = {r.id: r.region_id for r in rumors}
+        region_changes = shape_region_changes(
+            promoted=res.promoted_ids,
+            demoted=res.demoted_ids,
+            pruned=pruned_ids,
+            applied_events=events.applied_ids,
+            resolved_events=events.resolved_ids,
+            added_by_region=added_by_region,
+            rumor_region=rumor_region,
+            event_region=events.event_regions,
+        )
         self._timeline(
             session,
             TimelineKind.ADVANCE_TURN,
@@ -152,6 +179,7 @@ class TurnAdvancer(SessionAppService):
             resolved_event_ids=events.resolved_ids,
             pruned_rumor_ids=pruned_ids,
             feedback_regions=feedback_regions,
+            region_changes=region_changes,
         )
 
     # -- internals -----------------------------------------------------------
@@ -183,6 +211,7 @@ class TurnAdvancer(SessionAppService):
             cur = updated
             ev.accumulate(effective)
             out.applied_ids.append(ev.id)
+            out.event_regions[ev.id] = ev.region_id
             out.target_regions.add(ev.region_id)
             out.influenced_regions |= set(deltas)
             if ev.is_one_shot():  # BR-P2-4: 1-shot, no restore

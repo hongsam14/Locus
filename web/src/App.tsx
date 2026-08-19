@@ -58,7 +58,7 @@ export function App() {
   }
 
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif" }}>
+    <div className="min-h-full">
       <Toolbar
         worldId={worldId}
         onWorldIdChange={setWorldId}
@@ -68,26 +68,30 @@ export function App() {
         busy={busy}
       />
       <SessionBar worldId={worldId} sessionId={session?.id ?? null} onSelect={setSession} />
-      {error && <div style={{ color: "#c0392b", padding: 8 }}>{error}</div>}
-      {busy && <div style={{ padding: 8, color: "#888" }} data-testid="busy">working…</div>}
+      {error && <div className="p-2 text-danger">{error}</div>}
+      {busy && (
+        <div className="p-2 text-ink-soft" data-testid="busy">
+          working…
+        </div>
+      )}
       {!busy && data && data.regions.length === 0 && (
-        <div data-testid="empty-hint" style={{ padding: 8, color: "#b9770e" }}>
+        <div data-testid="empty-hint" className="p-2 text-danger">
           World <b>{worldId}</b> has <b>0 regions</b> — build it first (button above or
           <code> locus build-world --world {worldId} --demo</code>), then Load. Check the world id matches.
         </div>
       )}
       {!busy && !data && (
-        <div data-testid="empty-hint" style={{ padding: 8, color: "#888" }}>
+        <div data-testid="empty-hint" className="p-2 text-ink-soft">
           No world loaded. Click <b>Build World (demo)</b> or <b>Load</b>.
         </div>
       )}
       {data && (
-        <div data-testid="graph-status" style={{ padding: "0 8px 8px", fontSize: 12, color: "#666" }}>
+        <div data-testid="graph-status" className="px-2 pb-2 text-xs text-ink-soft">
           world <b>{data.world_id}</b> · regions {data.regions.length} · connections{" "}
           {data.connections.length} · knowledge {data.knowledge.length}
         </div>
       )}
-      <div style={{ display: "flex", gap: 16, padding: 12 }}>
+      <div className="flex flex-wrap gap-4 p-3">
         <MapOverlay
           regions={data?.regions ?? []}
           connections={data?.connections ?? []}
@@ -96,7 +100,7 @@ export function App() {
           onSelect={setSelected}
           onMove={move}
         />
-        <div>
+        <div className="flex min-w-72 flex-col gap-4">
           {selected && (
             <RegionPanel
               key={`${selected}-${session?.id ?? "none"}-${sessionRev}`}

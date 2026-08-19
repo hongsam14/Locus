@@ -30,12 +30,16 @@ export interface WorldExport {
 export interface KnowledgeView {
   knowledge_id: string;
   statement: string;
+  title?: string | null;
   scope_type: string;
   is_rumor: boolean;
   confidence: number;
   distortion_degree?: number | null;
   source?: string | null;
   region_id?: string | null;
+  // X1 localization (response-only): ko translation, null when unresolved
+  statement_ko?: string | null;
+  title_ko?: string | null;
 }
 
 export interface QueryResult {
@@ -93,6 +97,7 @@ export interface SessionRumor {
   support: number;
   confidence: number;
   promoted: boolean;
+  statement_ko?: string | null; // X1 localization (response-only)
 }
 
 export interface RegionDistortion {
@@ -111,6 +116,16 @@ export interface TimelineEntry {
   created_at?: string | null;
 }
 
+export interface RegionTurnChange {
+  region_id: string;
+  promoted: string[];
+  demoted: string[];
+  pruned: string[];
+  events_applied: string[];
+  events_resolved: string[];
+  rumors_added: string[];
+}
+
 export interface TurnResult {
   session_id: string;
   turn: number;
@@ -118,6 +133,9 @@ export interface TurnResult {
   demoted_ids: string[];
   applied_event_ids: string[];
   resolved_event_ids: string[];
+  pruned_rumor_ids?: string[];
+  feedback_regions?: string[];
+  region_changes?: RegionTurnChange[]; // X1 per-region turn-change summary (FR-UX2.6)
 }
 
 // --- Session events (Phase 2) --------------------------------------------- //
@@ -143,6 +161,7 @@ export interface SessionEvent {
   created_turn: number;
   resolved_turn?: number | null;
   contributions: Record<string, number>;
+  description_ko?: string | null; // X1 localization (response-only)
 }
 
 export interface EventDraft {

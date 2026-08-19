@@ -24,6 +24,7 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    UniqueConstraint,
     create_engine,
     delete,
     select,
@@ -32,6 +33,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 
 from ..models import Provenance
 from ..session.models import (
@@ -42,10 +44,15 @@ from ..session.models import (
     SessionStatus,
     TimelineEntry,
     TimelineKind,
+    Translation,
 )
 
 # JSONB on PostgreSQL, plain JSON on other dialects (e.g. SQLite for offline tests).
 _JSON = JSON().with_variant(JSONB(), "postgresql")
+
+# Max ids per IN() chunk — keeps large reads under the DB bind-parameter limit
+# (SQLite 999 / PostgreSQL cap) (review #7).
+_IN_CHUNK = 500
 
 _metadata = MetaData()
 
@@ -113,6 +120,26 @@ session_events = Table(
     Column("resolved_turn", Integer, nullable=True),
     Column("contributions", _JSON, nullable=False, default=dict),
     Column("provenance", _JSON, nullable=False),
+)
+
+# X1 — localization cache. Unified across session content + canonical Knowledge;
+# key = (source_kind, source_id, source_field, target_lang) (BR-X1-5). Additive.
+translations = Table(
+    "translations",
+    _metadata,
+    Column("id", String, primary_key=True),
+    Column("source_kind", String, nullable=False),
+    Column("source_id", String, nullable=False, index=True),
+    Column("source_field", String, nullable=False),
+    Column("target_lang", String, nullable=False),
+    Column("text", Text, nullable=False),
+    Column("source_hash", String, nullable=False),
+    Column("world_id", String, nullable=True, index=True),
+    Column("session_id", String, nullable=True, index=True),
+    Column("created_at", DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP")),
+    UniqueConstraint(
+        "source_kind", "source_id", "source_field", "target_lang", name="uq_translation_key"
+    ),
 )
 
 
@@ -432,6 +459,114 @@ class PostgresSessionRepository:
                 )
             )
 
+    # -- translations (X1) ------------------------------------------------ #
+    def get_translation(
+        self, source_kind: str, source_id: str, source_field: str, target_lang: str
+    ) -> Translation | None:
+        with self._require_engine().connect() as conn:
+            row = (
+                conn.execute(
+                    select(translations).where(
+                        translations.c.source_kind == source_kind,
+                        translations.c.source_id == source_id,
+                        translations.c.source_field == source_field,
+                        translations.c.target_lang == target_lang,
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
+        return _row_to_translation(row) if row else None
+
+    def get_translations_many(
+        self, keys: list[tuple[str, str, str]], target_lang: str
+    ) -> dict[tuple[str, str], Translation]:
+        if not keys:
+            return {}
+        wanted = set(keys)
+        ids = list({sid for _, sid, _ in keys})
+        out: dict[tuple[str, str], Translation] = {}
+        with self._require_engine().connect() as conn:
+            # Chunk the IN() so a large region stays under the DB bind-param limit
+            # (SQLite 999 / PostgreSQL cap) (review #7).
+            for start in range(0, len(ids), _IN_CHUNK):
+                chunk = ids[start : start + _IN_CHUNK]
+                rows = (
+                    conn.execute(
+                        select(translations).where(
+                            translations.c.target_lang == target_lang,
+                            translations.c.source_id.in_(chunk),
+                        )
+                    )
+                    .mappings()
+                    .all()
+                )
+                for r in rows:
+                    key = (r["source_kind"], r["source_id"], r["source_field"])
+                    if key in wanted:
+                        out[(r["source_id"], r["source_field"])] = _row_to_translation(r)
+        return out
+
+    def upsert_translation(self, translation: Translation) -> Translation:
+        with self._require_engine().begin() as conn:
+            self._upsert_translation_conn(conn, translation)
+        return translation.model_copy(deep=True)
+
+    def upsert_translations(self, translations_: list[Translation]) -> list[Translation]:
+        """Batch upsert in one transaction (review #8)."""
+        if not translations_:
+            return []
+        with self._require_engine().begin() as conn:
+            for t in translations_:
+                self._upsert_translation_conn(conn, t)
+        return [t.model_copy(deep=True) for t in translations_]
+
+    @staticmethod
+    def _upsert_translation_conn(conn, translation: Translation) -> None:
+        values = _translation_to_values(translation)
+        exists = conn.execute(
+            select(translations.c.id).where(
+                translations.c.source_kind == translation.source_kind,
+                translations.c.source_id == translation.source_id,
+                translations.c.source_field == translation.source_field,
+                translations.c.target_lang == translation.target_lang,
+            )
+        ).scalar_one_or_none()
+        if exists:
+            conn.execute(
+                update(translations)
+                .where(translations.c.id == exists)
+                .values(
+                    text=values["text"],
+                    source_hash=values["source_hash"],
+                    world_id=values["world_id"],
+                    session_id=values["session_id"],
+                )
+            )
+            return
+        # Insert inside a SAVEPOINT so a concurrent insert that wins the unique-key
+        # race (uq_translation_key) is caught and folded into an update instead of
+        # aborting the whole batch transaction (review #6).
+        try:
+            with conn.begin_nested():
+                conn.execute(translations.insert().values(**values))
+        except IntegrityError:
+            conn.execute(
+                update(translations)
+                .where(
+                    translations.c.source_kind == translation.source_kind,
+                    translations.c.source_id == translation.source_id,
+                    translations.c.source_field == translation.source_field,
+                    translations.c.target_lang == translation.target_lang,
+                )
+                .values(
+                    text=values["text"],
+                    source_hash=values["source_hash"],
+                    world_id=values["world_id"],
+                    session_id=values["session_id"],
+                )
+            )
+
     # -- helpers ---------------------------------------------------------- #
     def _require_engine(self) -> Engine:
         if self._engine is None:
@@ -540,3 +675,32 @@ def _row_to_event(row) -> SessionEvent:
 def _enum_value(v) -> str:
     """Enum field values are already strings (use_enum_values=True), but accept enums too."""
     return v.value if isinstance(v, Enum) else str(v)
+
+
+def _translation_to_values(t: Translation) -> dict:
+    return {
+        "id": t.id,
+        "source_kind": t.source_kind,
+        "source_id": t.source_id,
+        "source_field": t.source_field,
+        "target_lang": t.target_lang,
+        "text": t.text,
+        "source_hash": t.source_hash,
+        "world_id": t.world_id,
+        "session_id": t.session_id,
+    }
+
+
+def _row_to_translation(row) -> Translation:
+    return Translation(
+        id=row["id"],
+        source_kind=row["source_kind"],
+        source_id=row["source_id"],
+        source_field=row["source_field"],
+        target_lang=row["target_lang"],
+        text=row["text"],
+        source_hash=row["source_hash"],
+        world_id=row["world_id"],
+        session_id=row["session_id"],
+        created_at=row["created_at"],
+    )

@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Mock } from "vitest";
 import { SessionBar } from "../SessionBar";
+import { t } from "../i18n";
 import { PlayPage } from "../routes/PlayPage";
 import type { GameSession, RegionView, TurnRun } from "../types";
 
@@ -93,13 +94,15 @@ describe("PlayPage", () => {
     expect(screen.getByTestId("npc-n1")).toHaveTextContent("Mara");
     expect(screen.getByTestId("knowledge-item-k1")).toHaveTextContent("The mill burned.");
     expect(screen.getByTestId("hearsay-item-k9")).toHaveTextContent("Wolves in the pass.");
-    expect(screen.getByTestId("rumor-ru1")).toHaveTextContent("승격됨");
-    expect(screen.getByTestId("move-b")).toHaveTextContent("2턴");
-    expect(screen.getByTestId("move-c-blocked")).toHaveTextContent("지나갈 수 없음");
+    expect(screen.getByTestId("rumor-ru1")).toHaveTextContent(t("gm.promoted"));
+    expect(screen.getByTestId("move-b")).toHaveTextContent(t("play.turns", { n: 2 }));
+    expect(screen.getByTestId("move-c-blocked")).toHaveTextContent(t("play.blocked"));
     expect(screen.getByTestId("move-c-btn")).toBeDisabled(); // TP-U4-2 (UI)
     expect(screen.getByTestId("move-b-btn")).toBeEnabled();
     expect(screen.queryByTestId("llm-banner")).not.toBeInTheDocument();
-    expect(screen.getByTestId("log-session_started")).toHaveTextContent("Ari 도착 · Riverton");
+    expect(screen.getByTestId("log-session_started")).toHaveTextContent(
+      t("timeline.session_started", { player_name: "Ari", region_name: "Riverton" }),
+    );
   });
 
   it("EX-7: a move answers 202, refreshes the region at once, polls to done and notifies", async () => {
@@ -129,11 +132,11 @@ describe("PlayPage", () => {
     fireEvent.click(screen.getByTestId("move-b-btn"));
     await waitFor(() => expect(api.act).toHaveBeenCalledWith("s1", { type: "move", to_region_id: "b" }));
     await waitFor(() => expect(screen.getByTestId("region-title")).toHaveTextContent("Hollow")); // arrived at once
-    expect(screen.getByTestId("turn-progress")).toHaveTextContent("2턴");
+    expect(screen.getByTestId("turn-progress")).toHaveTextContent(t("play.running", { n: 2 }));
     await waitFor(() => expect(screen.getByTestId("notification-center")).toBeInTheDocument());
     expect(screen.getByTestId("notification-center")).toHaveTextContent("Hollow");
-    expect(screen.getByTestId("notification-center")).toHaveTextContent("2건 신규 소문");
-    expect(screen.getByTestId("notification-center")).toHaveTextContent("LLM 예산");
+    expect(screen.getByTestId("notification-center")).toHaveTextContent(t("notif.rumors_added", { n: 2 }));
+    expect(screen.getByTestId("notification-center")).toHaveTextContent(t("play.budget"));
     await waitFor(() => expect(screen.queryByTestId("turn-progress")).not.toBeInTheDocument());
     expect((api.getLog as Mock).mock.calls.length).toBeGreaterThanOrEqual(3);
   });
@@ -143,7 +146,7 @@ describe("PlayPage", () => {
     renderPlay();
     await waitFor(() => expect(screen.getByTestId("wait-btn")).toBeEnabled());
     fireEvent.click(screen.getByTestId("wait-btn"));
-    await waitFor(() => expect(screen.getByTestId("notification-center")).toHaveTextContent("턴이 진행 중입니다"));
+    await waitFor(() => expect(screen.getByTestId("notification-center")).toHaveTextContent(t("play.turnInProgress")));
     expect(screen.queryByTestId("play-error")).not.toBeInTheDocument();
   });
 
@@ -181,7 +184,7 @@ describe("PlayPage", () => {
     (api.listTurnRuns as Mock).mockResolvedValue([running]);
     (api.getTurnRun as Mock).mockResolvedValue({ ...running, status: "failed", error: "turn processing failed" });
     renderPlay();
-    await waitFor(() => expect(screen.getByTestId("notification-center")).toHaveTextContent("턴 처리에 실패했습니다"));
+    await waitFor(() => expect(screen.getByTestId("notification-center")).toHaveTextContent(t("play.runFailed")));
   });
 });
 

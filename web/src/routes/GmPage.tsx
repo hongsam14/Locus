@@ -5,6 +5,7 @@ import { RegionPanel } from "../RegionPanel";
 import { SessionBar } from "../SessionBar";
 import { SessionPanel } from "../SessionPanel";
 import { api } from "../api";
+import { t, useLang } from "../i18n";
 import type { GameSession, WorldExport } from "../types";
 import { Button } from "../ui";
 import { AppNav } from "./AppNav";
@@ -12,6 +13,7 @@ import { AppNav } from "./AppNav";
 // GameMaster screen (F1): one session, its world map, the session NPC view of the
 // selected region, and the GameMaster hub (rumors / distortion / turns / events).
 export function GmPage() {
+  useLang(); // labels follow the display language
   const { sessionId = "" } = useParams();
   const navigate = useNavigate();
   const [session, setSession] = useState<GameSession | null>(null);
@@ -94,33 +96,36 @@ export function GmPage() {
         <div className="p-2 text-danger flex flex-wrap items-center gap-2" data-testid="gm-error">
           <span>{error}</span>
           <Button size="sm" data-testid="gm-retry-btn" onClick={() => loadSession()}>
-            다시 시도
+            {t("gm.retry")}
           </Button>
           {!session && (
             <span className="text-xs text-ink-soft">
-              세션이 없으면 에디터에서 새 세션을 시작하세요.
+              {t("gm.noSessionHint")}
             </span>
           )}
         </div>
       )}
       {!session && !error && (
         <div className="p-2 text-ink-soft" data-testid="busy">
-          loading session…
+          {t("gm.loading")}
         </div>
       )}
       {session && (
         <div className="flex flex-wrap items-center gap-3 px-3 py-1 text-xs text-ink-soft">
           <span data-testid="gm-world">
-            world <b>{session.world_id}</b>
+            {t("gm.world", { world: session.world_id })}
             {data && (
               <>
-                {" "}
-                · regions {data.regions.length} · connections {data.connections.length}
+                {" · "}
+                {t("gm.worldCounts", {
+                  regions: data.regions.length,
+                  connections: data.connections.length,
+                })}
               </>
             )}
           </span>
           <label className="inline-flex items-center gap-1">
-            Map:
+            {t("toolbar.pickMap")}
             <input
               data-testid="map-file-input"
               type="file"

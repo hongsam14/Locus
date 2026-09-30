@@ -95,22 +95,22 @@ export function SessionBar({
       data-testid="session-bar"
       className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2"
     >
-      <strong className="font-display text-lg">Session</strong>
+      <strong className="font-display text-lg">{t("session.title")}</strong>
       <select
         data-testid="session-select"
         value={sessionId ?? ""}
         onChange={(e) => onSelect(sessions.find((s) => s.id === e.target.value) ?? null)}
         className="sketch-border bg-paper-card px-2 py-1 text-sm"
       >
-        {allowNone && <option value="">— none —</option>}
+        {allowNone && <option value="">{t("session.none")}</option>}
         {sessions.map((s) => (
           <option key={s.id} value={s.id}>
-            {s.id.slice(0, 8)} · turn {s.turn} · {s.status}
+            {s.id.slice(0, 8)} · {t("common.turn", { n: s.turn })} · {s.status}
           </option>
         ))}
       </select>
       <Button size="sm" variant="primary" data-testid="session-new-btn" onClick={start}>
-        New Session
+        {t("session.new")}
       </Button>
       {onPlay && (
         <Button size="sm" data-testid="session-play-btn" onClick={() => setPlayOpen(true)}>
@@ -133,12 +133,12 @@ export function SessionBar({
           onClick={close}
           disabled={!current || current.status === "closed"}
         >
-          Close
+          {t("session.close")}
         </Button>
       )}
       {variant === "full" && current && (
         <span data-testid="session-status" className="text-xs text-ink-soft">
-          turn {current.turn} · {current.status}
+          {t("common.turn", { n: current.turn })} · {current.status}
         </span>
       )}
       {error && <span className="text-xs text-danger">{error}</span>}

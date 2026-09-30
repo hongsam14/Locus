@@ -121,10 +121,13 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   shown as `running` before it actually starts (demo scale: fine). On shutdown the API waits
   `TURN_SHUTDOWN_TIMEOUT_S` (30s) for the current run; a hung LLM call does not block process
   exit. On startup any run still `running` is marked `failed` (`error=interrupted`).
-- **LLM outage**: each LLM call retries 3× with a 30s timeout (`locus/shared/llm/retry.py`),
-  ≈97s worst case per call. A turn whose rumor chain comes back short trips a circuit
+- **LLM outage**: each LLM call makes 3 attempts with a 30s timeout and waits 1s then 2s
+  between them (`locus/shared/llm/retry.py`): **93s** worst case per call (30 × 3 + 1 + 2).
+  Both OpenAI clients set `max_retries=0`, so the SDK does not retry underneath; its timeout
+  applies per phase, so 93s is the design bound rather than a hard one (corrected in U5 from
+  an earlier ≈97s). A turn whose rumor chain comes back short trips a circuit
   breaker (remaining drafts of that turn are skipped, `llm_failed=true` in the result), so an
-  action is bounded by ≈ `PLAY_MAX_MOVE_COST × 97s`. Without an LLM key the engine still runs
+  action is bounded by ≈ `PLAY_MAX_MOVE_COST × 93s`. Without an LLM key the engine still runs
   (moves, waits, events, promotion); only rumor drafts are skipped (`llm_available=false`).
 - **Timeline order**: a turn's entries are written in one transaction, so they are stamped
   by the application with a strictly increasing clock (`locus/play/storage/clock.py`) rather
@@ -135,6 +138,61 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   server log). Turns already committed stay.
 - **Tables** (idempotent `init-schema --play` / startup): `players` (one per session),
   `turn_runs`.
+
+## NPC dialogue & display language (Purpose Restructure U5, 2026-09-30)
+
+- **Routes** (under `/api/play/sessions/{s}`): `GET npcs` lists the NPCs of the player's
+  region with `has_conversation` / `message_count`; `POST npcs/{n}/start` returns the
+  conversation and its history, creating it on first use (**no LLM**); `POST npcs/{n}/say?lang=`
+  with `{text}` returns the NPC's answer (**one LLM call**); `GET npcs/{n}/history` reads a
+  conversation, closed sessions included. Errors: 400 for empty or too-long text, an
+  unsupported `lang`, or an NPC outside the player's region; 404 for an unknown NPC, session
+  or conversation; 409 for a closed session; **503 on `say` only** when no LLM provider is
+  configured (everything else keeps working).
+- **Turns**: talking spends no turn and takes no turn lock, so it works while a turn runs.
+  "End talk" is the U4 action `POST .../act {type: end_talk, npc_id}`: one turn, plus an
+  `npc_talked` timeline entry with the message count.
+- **What an NPC knows**: the region's canonical facts of scope direct / inherited / global
+  (`NPC_MAX_FACTS`, 12) and its active rumors (`NPC_MAX_RUMORS`, 8). A picked rumor hides the
+  fact it distorts, so the NPC does not tell both versions. **Hearsay is not included**: the
+  player's region screen still shows it, under a hint that the locals may not know it. The
+  prompt also replays the last `NPC_MAX_RECENT_MESSAGES` (10) lines; a line is at most
+  `NPC_MAX_MESSAGE_CHARS` (500) characters. These limits bound the prompt, so its size does
+  not grow with the length of a conversation.
+- **Cost and failure**: one call per `say`, outside the turn budget (`LLM_MAX_CALLS_PER_TURN`
+  does not apply; the player's pace is the limit). Worst case **93s** per call (see "LLM
+  outage" above). The call runs before the transaction, so a failed call stores nothing: no
+  conversation row and no message. A call that still fails after its retries answers **500**,
+  because BR-U5-30 only says the error is raised and gives no status. An empty answer is
+  replaced by a fixed line in the display language.
+- **Display language**: `SUPPORTED_LANGS` (default `ko,en`) is the `?lang=` allow-list.
+  `TRANSLATION_TARGET_LANG` is the default, and startup fails if it is not in the list.
+  `?lang=` is taken by the player region, the session and canonical region-knowledge reads,
+  the GM rumor and event lists, and `say`. The timeline does not take it (it has no
+  translated field). `lang=en` returns the `*_ko` fields empty and warms no translation,
+  because the sources are English. Dialogue lines are stored in the language they were
+  written in and are never translated. The web UI keeps the choice in `localStorage`
+  (`locus.lang`), shows a ko | en toggle in the top bar, and re-reads the screen on a switch.
+- **Translation cleanup**: regenerating a region purges the translations of the rumors it
+  deleted. The six world-replace routes (`build`, `build/upload`, `file`, `file/upload`,
+  `demo/{name}`, `demo/{name}/build`) purge the old world's canonical-knowledge translations
+  when the world was actually replaced, open sessions or not. A warm-up already in flight can
+  leave one harmless row behind, which the next purge removes. A failed purge is logged and
+  never fails the request. **Known gap**: the CLI (`locus world build|import|demo` with a
+  replace) builds no localization container and purges nothing. Those orphan rows go away
+  with the next API-side replace of that world.
+- **Accepted risks** (local single-player demo, no auth): the player's text goes into the
+  prompt as is. The guard is the system prompt's knowledge boundary plus the length cap, so a
+  crafted line can still make the NPC invent things outside its knowledge. Because recent
+  lines are replayed, a poisoned answer can persist for the rest of that conversation. No
+  stored data outside the conversation changes. `say` has **no rate limit**, and every call
+  costs one LLM request. The latency target (`start`, `history`, `npcs` p95 ≤ 100ms, no LLM)
+  is operator-run. The offline gate is structural: one `say` = one LLM call and one
+  transaction.
+- **Tables** (idempotent `init-schema --play` / startup): `conversations` (unique
+  `(session_id, npc_id)`; the NPC id is a plain reference, so a conversation outlives an NPC
+  removed by an edit: `history` still reads, `say` answers 404) and `messages` (app-stamped
+  `created_at`, read in `(created_at, id)` order). No retention policy.
 
 ## Web UI (U10)
 ```bash
@@ -152,7 +210,7 @@ npm run build        # static build -> web/dist (serve behind any static host / 
 - **Translation (X1)**: LLM-backed ko translation of session content (rumors/events) + canonical Knowledge, cached in the PostgreSQL `translations` table (created by `init-schema`, additive). Reuses the OpenAI provider. Config: `TRANSLATION_ENABLED`(기본 true), `TRANSLATION_TARGET_LANG`(ko). **Reads never block on the LLM** — cache-only on read, misses warm on a background thread; so the first view of new content may show English, then Korean on refetch. Disabled → all English (graceful).
 - **Turn-change notifications**: `advance-turn` returns `region_changes` (per-region promoted/demoted/pruned/events/added); the web SessionPanel shows one auto-dismiss toast per changed region.
 - **Regenerate preserves promoted**: `regenerate_region` keeps promoted rumors and reseeds the rest from **canonical knowledge only** (promoted rumors are not reused as chain seeds). Applies to per-region and "전체 재생성".
-- **Frontend (X2/X3)**: Tailwind v4 ("Doodly" paper+ink theme) + self-hosted Gaegu Korean handwriting font (`@fontsource/gaegu`, no CDN). Korean UI labels + timeline i18n. Build: `cd web && npm install --legacy-peer-deps && npm run build`.
+- **Frontend (X2/X3)**: Tailwind v4 ("Doodly" paper+ink theme) + self-hosted Gaegu Korean handwriting font (`@fontsource/gaegu`, no CDN). Korean UI labels + timeline i18n (U5: every label is in a ko and an en dictionary in `web/src/i18n.ts`; see the dialogue section for the toggle). Build: `cd web && npm install --legacy-peer-deps && npm run build`.
 - **No new infra**: canonical graph unchanged; only additive session-layer `translations` table + response-only ko fields + `region_changes`. Rollback is additive-safe.
 
 ## Future Operations (not implemented)

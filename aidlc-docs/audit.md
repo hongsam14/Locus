@@ -2465,3 +2465,11 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **Context**: CONSTRUCTION / U5 — Code Generation Part 2, Step 1.
 
 ---
+
+---
+
+## U5 Code Generation Step 7 — frontend and docs
+**Timestamp**: 2026-09-30T13:14:35Z
+**User Input**: (none — plan Step 7, part of the approved plan)
+**AI Response**: `web/src/i18n.ts` now holds a ko and an en dictionary (same key set, enforced by the type `Record<Key, string>` and a vitest check), the display language as module state (`lang` / `setLang` / `useLang`, localStorage `locus.lang`), and `timeline.npc_talked` in both languages. `api/http.ts::withLang` adds `?lang=` to the five translated reads and `say` (not the timeline, not writes); `api/play.ts` gains `listNpcs` / `startDialogue` / `say` / `dialogueHistory`; `types.ts` gains `Lang` / `Message` / `Conversation` / `NpcReply` / `NpcSummary`. New `features/play/{LangToggle,NpcList,DialoguePanel}.tsx`; `RegionScene` uses `NpcList` and shows the hearsay hint; `PlayPage` opens the panel (`activeNpcId`), ends talk with the U4 `end_talk` action and re-reads the region on a language switch; `AppNav` carries the toggle. The remaining English labels (and the hard-coded Korean ones, so the en toggle covers the whole UI) moved into the dictionaries; enum codes (scope type, event status / category / lifecycle, session status, level) stay codes. Existing label assertions became key-based. Docs: `env.example` (+5 env), `operations.md` dialogue section and U4 "≈97s" → 93s, `CLAUDE.md`. Deviation: the ko `timeline.npc_talked` reads "대화: {npc_name} · {region_name}" instead of the design's "{npc_name}와 대화 · …", which picks the wrong particle after a consonant-final name. Also fixed `aidlc-state.md`, whose U2 and U4 lines had carried the next unit's progress. vitest 56 (39 + 17), tsc clean; two mutations (no language re-read, no rollback) each failed a new test.
+**Context**: CONSTRUCTION / U5 — Code Generation Part 2, Step 7.

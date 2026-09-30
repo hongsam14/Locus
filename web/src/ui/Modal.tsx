@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { t } from "../i18n";
 import { Button } from "./Button";
 
 /** Confirm dialog (X2 presentational). Used by X3 for destructive actions. */
@@ -6,8 +7,8 @@ export function Modal({
   open,
   title,
   children,
-  confirmLabel = "확인",
-  cancelLabel = "취소",
+  confirmLabel = t("action.confirm"),
+  cancelLabel = t("action.cancel"),
   confirmTone = "primary",
   onConfirm,
   onCancel,

@@ -82,10 +82,10 @@
 - [x] 6.5 테스트 `tests/api/test_dialogue_api.py`: EX-1·3·4·6~12, `?lang=fr` 400(lang을 받는 라우트 전부), `lang=en` → `*_ko` null이고 번역 호출 0, LLM 없는 컨테이너에서 `start` 200·`say` 503, 진행 중 턴에도 `say` 200. `tests/api/test_world_api.py`에 "열린 세션 없는 교체에서도 정리가 돈다"(이월 FD R-13). 기존 `test_play_gm_api.py`·`test_localization_api.py`·`test_knowledge_api.py`는 변경 없이 GREEN.
 
 ### Step 7 — 프론트엔드·문서
-- [ ] 7.1 `web/src/i18n.ts`: `Lang`·`dicts.ko/en`·`lang()`·`setLang()`·`useLang()`; 남은 영어 라벨을 키로 옮기고(`toolbar.*`·`region.*`·`session.*`·`augment.*`·`editor.*`·`nav.*`) `en`을 채운다. `timeline.npc_talked` 두 언어. `web/src/api/http.ts`에 `withLang`(**타임라인 조회는 제외** — 백엔드가 `lang`을 받지 않는다). `api/play.ts`·`gm.ts`·`knowledge.ts`에 `?lang=`·새 함수 4개. `types.ts`에 `Conversation`·`Message`·`NpcReply`·`Lang`.
-- [ ] 7.2 `features/play/{LangToggle,NpcList,DialoguePanel}.tsx` + `RegionScene`에서 NPC 카드 분리 + "들은 이야기" 안내 한 줄 + `PlayPage` 연결(`activeNpcId`, 언어 변경 시 재조회). `AppNav`에 토글.
-- [ ] 7.3 테스트 `web/src/__tests__/dialogue.test.tsx`: 대화 열기·전송·실패 되돌림·LLM 없음·대화 끝내기; `ko`/`en` 키 집합 동일; 토글 뒤 `?lang=en`과 재조회. 기존 프론트 테스트는 라벨 단언만 키 기반으로 갱신.
-- [ ] 7.4 문서: `env.example`(env 5개), `operations.md` — 대화 절 신설(라우트, 호출 1회, **93초**, 컨텍스트 한도, 표시 언어, 정리 시점과 CLI 공백, 주입·빈도 제한 감수: 이월 NFR R-01/R-04/R-05) **그리고 U4 절의 "≈97초"(125·127행)를 93초로 정정**. `CLAUDE.md`(Status·`play/npc/`·테스트 수).
+- [x] 7.1 `web/src/i18n.ts`: `Lang`·`dicts.ko/en`·`lang()`·`setLang()`·`useLang()`; 남은 영어 라벨을 키로 옮기고(`toolbar.*`·`region.*`·`session.*`·`augment.*`·`editor.*`·`nav.*`) `en`을 채운다. `timeline.npc_talked` 두 언어. `web/src/api/http.ts`에 `withLang`(**타임라인 조회는 제외** — 백엔드가 `lang`을 받지 않는다). `api/play.ts`·`gm.ts`·`knowledge.ts`에 `?lang=`·새 함수 4개. `types.ts`에 `Conversation`·`Message`·`NpcReply`·`Lang`.
+- [x] 7.2 `features/play/{LangToggle,NpcList,DialoguePanel}.tsx` + `RegionScene`에서 NPC 카드 분리 + "들은 이야기" 안내 한 줄 + `PlayPage` 연결(`activeNpcId`, 언어 변경 시 재조회). `AppNav`에 토글.
+- [x] 7.3 테스트 `web/src/__tests__/dialogue.test.tsx`: 대화 열기·전송·실패 되돌림·LLM 없음·대화 끝내기; `ko`/`en` 키 집합 동일; 토글 뒤 `?lang=en`과 재조회. 기존 프론트 테스트는 라벨 단언만 키 기반으로 갱신.
+- [x] 7.4 문서: `env.example`(env 5개), `operations.md` — 대화 절 신설(라우트, 호출 1회, **93초**, 컨텍스트 한도, 표시 언어, 정리 시점과 CLI 공백, 주입·빈도 제한 감수: 이월 NFR R-01/R-04/R-05) **그리고 U4 절의 "≈97초"(125·127행)를 93초로 정정**. `CLAUDE.md`(Status·`play/npc/`·테스트 수).
 
 ### Step 8 — 검증·요약
 - [ ] 8.1 전체: `pytest -q --no-cov`(기존 475 + 신규 GREEN, 회귀 0), `npx vitest run`, `ruff check`, `black --check`, `mypy locus api`(≤ 11), `tsc --noEmit`, `vite build`, `docker build`. 라이브(Neo4j/PG/OpenAI) 시나리오는 운영자 실행으로 남기고 명령을 code-summary에 적는다(지역 A·B의 NPC가 같은 사건을 다르게 말하는 US-6.1 확인 포함).

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
+import { t, useLang } from "./i18n";
 import type { KnowledgeView, QueryResult } from "./types";
 import { Badge, Button, Card, LocalizedText, Panel } from "./ui";
 
@@ -10,10 +11,11 @@ interface Props {
   onDeleted?: () => void;
 }
 
-// Badge text (U1 §11.4): canonical hearsay vs. session rumor vs. scope.
+// Badge text (U1 §11.4): canonical hearsay vs. session rumor vs. scope. Scope
+// types stay codes (direct / inherited / global), like the other enum values.
 export function badgeLabel(it: KnowledgeView): string {
-  if (it.is_hearsay) return "hearsay";
-  if (it.source?.startsWith("rumor")) return "rumor";
+  if (it.is_hearsay) return t("badge.hearsay");
+  if (it.source?.startsWith("rumor")) return t("badge.rumor");
   return it.scope_type;
 }
 
@@ -26,6 +28,7 @@ function badgeTone(it: KnowledgeView): "neutral" | "event" | "promoted" {
 export function RegionPanel({ worldId, regionId, sessionId, onDeleted }: Props) {
   const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const displayLang = useLang(); // translated fields differ per language: re-read on switch
 
   useEffect(() => {
     let active = true;
@@ -41,7 +44,7 @@ export function RegionPanel({ worldId, regionId, sessionId, onDeleted }: Props) 
     return () => {
       active = false;
     };
-  }, [worldId, regionId, sessionId]);
+  }, [worldId, regionId, sessionId, displayLang]);
 
   async function remove(id: string) {
     try {
@@ -54,14 +57,20 @@ export function RegionPanel({ worldId, regionId, sessionId, onDeleted }: Props) 
   }
 
   return (
-    <Panel data-testid="region-panel" title="Region knowledge" className="min-w-80">
+    <Panel data-testid="region-panel" title={t("region.title")} className="min-w-80">
       {error && <div className="text-danger">{error}</div>}
-      {!result && !error && <div className="text-ink-soft">Loading…</div>}
+      {!result && !error && <div className="text-ink-soft">{t("common.loading")}</div>}
       {result && (
         <>
           <div className="text-xs text-ink-soft mb-2">
-            unique {result.unique_ids.length} · shared {result.shared_ids.length}
+            {t("region.unique", { n: result.unique_ids.length })} ·{" "}
+            {t("region.shared", { n: result.shared_ids.length })}
           </div>
+          {result.items.length === 0 && (
+            <div data-testid="region-empty" className="text-xs text-ink-soft">
+              {t("region.empty")}
+            </div>
+          )}
           <div className="flex flex-col gap-1.5">
             {result.items.map((it) => (
               <Card
@@ -78,7 +87,7 @@ export function RegionPanel({ worldId, regionId, sessionId, onDeleted }: Props) 
                   />
                   <span className="text-ink-soft text-xs">
                     {" "}({it.confidence.toFixed(2)}
-                    {it.path_decay != null ? ` · decay ${it.path_decay.toFixed(2)}` : ""}
+                    {it.path_decay != null ? ` · ${t("label.decay")} ${it.path_decay.toFixed(2)}` : ""}
                     {it.distortion != null ? ` · d${it.distortion.toFixed(2)}` : ""})
                   </span>
                 </span>

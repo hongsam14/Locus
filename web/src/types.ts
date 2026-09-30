@@ -61,6 +61,45 @@ export interface NPC {
   provenance: { source: string; generated_by?: string | null; refs?: string[]; note?: string | null };
 }
 
+/** Display language (FD-U5 Q1=A): UI labels + the `?lang=` of translated reads. */
+export type Lang = "ko" | "en";
+
+/** One line of a conversation, stored in the language it was written in (A-1). */
+export interface Message {
+  id: string;
+  conversation_id: string;
+  role: "player" | "npc";
+  text: string;
+  lang: string;
+  turn: number;
+  created_at?: string | null;
+}
+
+/** The one conversation a session has with one NPC (BR-U5-1). */
+export interface Conversation {
+  id: string;
+  session_id: string;
+  npc_id: string;
+  started_turn: number;
+  messages: Message[];
+  created_at?: string | null;
+}
+
+/** The NPC's answer to one `say` (exactly one LLM call). */
+export interface NpcReply {
+  message: Message;
+  lang: string;
+  llm_calls: number;
+  context_ids: string[];
+}
+
+/** An NPC of the player's region and how far the player has talked with them. */
+export interface NpcSummary {
+  npc: NPC;
+  has_conversation: boolean;
+  message_count: number;
+}
+
 export interface BuildWarning {
   stage: string;
   item_id?: string | null;

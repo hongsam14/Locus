@@ -7,6 +7,7 @@ import { AugmentPanel } from "../AugmentPanel";
 import { SessionBar } from "../SessionBar";
 import { SessionPanel } from "../SessionPanel";
 import { App } from "../App";
+import { t } from "../i18n";
 import type { ConnectionEdge, GameSession, Region } from "../types";
 
 vi.mock("../api", () => ({
@@ -115,8 +116,8 @@ describe("RegionPanel badges (U1 §11.4)", () => {
     });
     render(<RegionPanel worldId="w" regionId="r1" />);
     await waitFor(() => expect(screen.getByTestId("knowledge-item-h1")).toBeInTheDocument());
-    expect(screen.getByTestId("knowledge-item-h1")).toHaveTextContent("hearsay");
-    expect(screen.getByTestId("knowledge-item-s1")).toHaveTextContent("rumor");
+    expect(screen.getByTestId("knowledge-item-h1")).toHaveTextContent(t("badge.hearsay"));
+    expect(screen.getByTestId("knowledge-item-s1")).toHaveTextContent(t("badge.rumor"));
     expect(screen.getByTestId("knowledge-item-d1")).toHaveTextContent("direct");
   });
 });
@@ -281,7 +282,7 @@ describe("SessionPanel (GameMaster hub)", () => {
       { session_id: "s1", region_id: "r1", distortion_degree: 0.75 },
     ]);
     render(<SessionPanel session={OPEN_SESSION} regionId="r1" />);
-    await waitFor(() => expect(screen.getByText(/왜곡 0\.75/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(new RegExp(`${t("gm.distortion")} 0\\.75`))).toBeInTheDocument());
   });
 
   it("generate-all fills only empty regions (X3)", async () => {
@@ -310,7 +311,7 @@ describe("SessionPanel (GameMaster hub)", () => {
     render(<SessionPanel session={OPEN_SESSION} regionId={null} />);
     fireEvent.click(await screen.findByTestId("regen-all-btn"));
     expect(api.regenRumors).not.toHaveBeenCalled(); // confirmation pending
-    fireEvent.click(screen.getByText("확인"));
+    fireEvent.click(screen.getByText(t("action.confirm")));
     await waitFor(() => expect(api.regenRumors).toHaveBeenCalledWith("s1", "r1"));
   });
 
@@ -337,8 +338,8 @@ describe("SessionPanel (GameMaster hub)", () => {
     render(<SessionPanel session={OPEN_SESSION} regionId={null} />);
     fireEvent.click(await screen.findByTestId("advance-turn-btn"));
     await waitFor(() => expect(screen.getByTestId("notification-center")).toBeInTheDocument());
-    expect(screen.getByText(/지역 r1/)).toBeInTheDocument(); // notif title
-    expect(screen.getByText(/승격/)).toBeInTheDocument();
+    expect(screen.getByText(t("notif.title", { region_id: "r1" }))).toBeInTheDocument(); // notif title
+    expect(screen.getByText(t("notif.promoted", { n: 1 }))).toBeInTheDocument();
   });
 
   it("localizes rumor text with an original toggle (X3 / FR-UX3.4)", async () => {
@@ -362,7 +363,7 @@ describe("SessionPanel (GameMaster hub)", () => {
       { id: "t1", session_id: "s1", turn: 2, kind: "promote", summary: "promoted ra", payload: { rumor_id: "ra" } },
     ]);
     render(<SessionPanel session={OPEN_SESSION} regionId={null} />);
-    await waitFor(() => expect(screen.getByText(/승격: ra/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(new RegExp(t("timeline.promote", { rumor_id: "ra" })))).toBeInTheDocument());
   });
 });
 
@@ -418,7 +419,7 @@ describe("App routing (F1 / AD-R8)", () => {
     await waitFor(() => expect(api.exportWorld).toHaveBeenCalledTimes(1));
     fireEvent.change(screen.getByTestId("world-input"), { target: { value: "" } });
     fireEvent.click(screen.getByTestId("load-btn"));
-    expect(screen.getByText(/world id를 입력하세요/)).toBeInTheDocument();
+    expect(screen.getByText(t("editor.enterWorldId"))).toBeInTheDocument();
     expect(api.exportWorld).toHaveBeenCalledTimes(1);
   });
 
@@ -452,7 +453,7 @@ describe("App routing (F1 / AD-R8)", () => {
     await waitFor(() => expect(screen.getByTestId("gm-error")).toBeInTheDocument());
     fireEvent.click(screen.getByTestId("gm-retry-btn"));
     await waitFor(() => expect(screen.getByTestId("session-panel")).toBeInTheDocument());
-    expect(screen.queryByText("— none —")).not.toBeInTheDocument(); // no dead entry on GM
+    expect(screen.queryByText(t("session.none"))).not.toBeInTheDocument(); // no dead entry on GM
   });
 
   it("shows the player screen hint for /play without a session (U4)", () => {
@@ -487,7 +488,7 @@ describe("EditorPage demo load (BR-U2-25)", () => {
     fireEvent.click(screen.getByTestId("build-world-btn"));
     await waitFor(() => expect(screen.getByTestId("replace-confirm")).toBeInTheDocument());
     expect(api.loadDemo).toHaveBeenCalledWith("aldermoor", "aldermoor", { replace: true, confirm: false });
-    fireEvent.click(screen.getByText("닫고 교체"));
+    fireEvent.click(screen.getByText(t("editor.replaceConfirm")));
     await waitFor(() =>
       expect(api.loadDemo).toHaveBeenLastCalledWith("aldermoor", "aldermoor", { replace: true, confirm: true }),
     );

@@ -8,14 +8,14 @@ import type {
   TimelineEntry,
   TurnResult,
 } from "../types";
-import { enc, http } from "./http";
+import { enc, http, withLang } from "./http";
 
 const s = (sid: string) => `/api/gm/sessions/${enc(sid)}`;
 
 export const gmApi = {
   getTimeline: (sid: string) => http<TimelineEntry[]>(`${s(sid)}/timeline`),
   listRumors: (sid: string, regionId: string) =>
-    http<SessionRumor[]>(`${s(sid)}/regions/${enc(regionId)}/rumors`),
+    http<SessionRumor[]>(withLang(`${s(sid)}/regions/${enc(regionId)}/rumors`)),
   generateRumors: (sid: string, regionId: string) =>
     http<SessionRumor[]>(`${s(sid)}/regions/${enc(regionId)}/rumors`, { method: "POST" }),
   regenRumors: (sid: string, regionId: string) =>
@@ -35,7 +35,7 @@ export const gmApi = {
 
   // events
   listEvents: (sid: string, status?: string) =>
-    http<SessionEvent[]>(`${s(sid)}/events${status ? `?status=${enc(status)}` : ""}`),
+    http<SessionEvent[]>(withLang(`${s(sid)}/events${status ? `?status=${enc(status)}` : ""}`)),
   createEvent: (
     sid: string,
     body: {

@@ -1,6 +1,9 @@
 // `/api/play` — game sessions, the player screen and player actions (U4).
 import type {
+  Conversation,
   GameSession,
+  NpcReply,
+  NpcSummary,
   PlayerAction,
   PlayerCreate,
   Player,
@@ -10,7 +13,7 @@ import type {
   TimelineEntry,
   TurnRun,
 } from "../types";
-import { enc, http } from "./http";
+import { enc, http, withLang } from "./http";
 
 const s = (sid: string) => `/api/play/sessions/${enc(sid)}`;
 
@@ -32,14 +35,25 @@ export const playApi = {
   getSession: (sid: string) => http<GameSession>(s(sid)),
   closeSession: (sid: string) => http<GameSession>(`${s(sid)}/close`, { method: "POST" }),
   sessionKnowledge: (sid: string, regionId: string) =>
-    http<QueryResult>(`${s(sid)}/regions/${enc(regionId)}/knowledge`),
+    http<QueryResult>(withLang(`${s(sid)}/regions/${enc(regionId)}/knowledge`)),
   // U4 player mode
   getPlayer: (sid: string) => http<Player>(`${s(sid)}/player`),
-  getRegion: (sid: string) => http<RegionView>(`${s(sid)}/region`),
+  getRegion: (sid: string) => http<RegionView>(withLang(`${s(sid)}/region`)),
   act: (sid: string, action: PlayerAction) =>
     http<TurnRun>(`${s(sid)}/act`, { method: "POST", body: JSON.stringify(action) }),
   getTurnRun: (sid: string, runId: string) => http<TurnRun>(`${s(sid)}/turn-runs/${enc(runId)}`),
   listTurnRuns: (sid: string, status?: string) =>
     http<TurnRun[]>(`${s(sid)}/turn-runs${status ? `?status=${enc(status)}` : ""}`),
   getLog: (sid: string) => http<TimelineEntry[]>(`${s(sid)}/log`),
+  // U5 NPC dialogue: only `say` calls the LLM (one call) and takes the language
+  listNpcs: (sid: string) => http<NpcSummary[]>(`${s(sid)}/npcs`),
+  startDialogue: (sid: string, npcId: string) =>
+    http<Conversation>(`${s(sid)}/npcs/${enc(npcId)}/start`, { method: "POST" }),
+  say: (sid: string, npcId: string, text: string) =>
+    http<NpcReply>(withLang(`${s(sid)}/npcs/${enc(npcId)}/say`), {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    }),
+  dialogueHistory: (sid: string, npcId: string) =>
+    http<Conversation>(`${s(sid)}/npcs/${enc(npcId)}/history`),
 };

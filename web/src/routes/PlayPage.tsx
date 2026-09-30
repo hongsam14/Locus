@@ -2,12 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
 import { ActionBar } from "../features/play/ActionBar";
+import { DialoguePanel } from "../features/play/DialoguePanel";
 import { LlmBanner } from "../features/play/LlmBanner";
 import { MovePanel } from "../features/play/MovePanel";
 import { PlayLog } from "../features/play/PlayLog";
 import { RegionScene } from "../features/play/RegionScene";
 import { changeSummary, changeTitle } from "../features/play/summary";
-import { t } from "../i18n";
+import { t, useLang } from "../i18n";
 import type { GameSession, PlayerAction, RegionView, TimelineEntry, TurnRun } from "../types";
 import { NotificationCenter, Panel } from "../ui";
 import type { Notif } from "../ui";
@@ -18,7 +19,9 @@ let _notifSeq = 0;
 /** Player screen (F3, US-3.2~3.4): the current region, the move options and the
  * wait action. An action answers 202 with a TurnRun; the page refreshes the
  * region at once (the player has arrived, Q4=A) and polls the run until it is
- * done, then shows one notification per changed region + the narration. */
+ * done, then shows one notification per changed region + the narration.
+ * U5: "talk" on an NPC opens `DialoguePanel`; a display-language switch re-reads
+ * the region (its translated fields depend on the language). */
 export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
   const { sessionId = "" } = useParams();
   const [session, setSession] = useState<GameSession | null>(null);
@@ -28,6 +31,9 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
   const [error, setError] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Notif[]>([]);
   const [narration, setNarration] = useState<string[]>([]);  // last turn's sentences
+  const [npcCounts, setNpcCounts] = useState<Record<string, number>>({}); // U5: messages per NPC
+  const [activeNpcId, setActiveNpcId] = useState<string | null>(null);
+  const displayLang = useLang();
   // Route session readable from async continuations so a late response for a
   // previous session never rebinds the screen (same pattern as GmPage).
   const sessionIdRef = useRef(sessionId);
@@ -45,9 +51,21 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
     [],
   );
 
+  // Talked-to marks (U5). Best effort: the region screen must not fail with it.
+  const loadNpcs = useCallback(async (sid: string) => {
+    try {
+      const list = await api.listNpcs(sid);
+      if (sessionIdRef.current !== sid || !Array.isArray(list)) return;
+      setNpcCounts(Object.fromEntries(list.map((n) => [n.npc.id, n.message_count])));
+    } catch {
+      /* the marks just stay as they were */
+    }
+  }, []);
+
   const refresh = useCallback(async () => {
     const sid = sessionId;
     if (!sid) return;
+    void loadNpcs(sid);
     try {
       const [s, v, entries] = await Promise.all([
         api.getSession(sid),
@@ -62,7 +80,17 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
     } catch (e) {
       if (sessionIdRef.current === sid) setError(String(e));
     }
-  }, [sessionId]);
+  }, [sessionId, loadNpcs]);
+
+  // A display-language switch re-reads the region (translated fields differ per
+  // language). Compared against the last language seen, so it neither fires on mount
+  // nor twice under StrictMode, and it never restarts the session effect below.
+  const langSeen = useRef(displayLang);
+  useEffect(() => {
+    if (langSeen.current === displayLang) return;
+    langSeen.current = displayLang;
+    void refresh();
+  }, [displayLang, refresh]);
 
   // Poll a run until it settles; then notify + refresh (Q4=A).
   // `gen` invalidates the loop on unmount or a session switch, and every exit path
@@ -120,6 +148,8 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
     setLog([]);
     setRun(null);
     setNarration([]);
+    setNpcCounts({});
+    setActiveNpcId(null);
     setError(null);
     if (!sessionId) return;
     (async () => {
@@ -164,6 +194,13 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
   }
 
   const busy = run != null || (view?.turn_running ?? false);
+  // The panel follows the region: after a move the NPC is no longer here, so it closes.
+  const activeNpc = view?.npcs.find((n) => n.id === activeNpcId) ?? null;
+
+  async function endTalk(npcId: string) {
+    setActiveNpcId(null);
+    await act({ type: "end_talk", npc_id: npcId });
+  }
 
   return (
     <div className="min-h-full">
@@ -183,7 +220,24 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
         {view && (
           <>
             <LlmBanner visible={!view.llm_available} />
-            <RegionScene view={view} />
+            <RegionScene
+              view={view}
+              npcCounts={npcCounts}
+              activeNpcId={activeNpc?.id ?? null}
+              onTalk={setActiveNpcId}
+            />
+            {activeNpc && (
+              <DialoguePanel
+                key={activeNpc.id}
+                sessionId={sessionId}
+                npc={activeNpc}
+                llmAvailable={view.llm_available}
+                busy={busy}
+                onClose={() => setActiveNpcId(null)}
+                onEndTalk={() => endTalk(activeNpc.id)}
+                onSpoke={() => loadNpcs(sessionId)}
+              />
+            )}
             {narration.length > 0 && (
               <ul data-testid="play-narration" className="max-w-2xl space-y-0.5 text-sm">
                 {narration.map((line) => (

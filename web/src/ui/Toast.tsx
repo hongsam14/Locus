@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { t } from "../i18n";
 
 type Tone = "neutral" | "event" | "danger";
 
@@ -31,7 +32,7 @@ export function Toast({
         {onClose && (
           <button
             onClick={onClose}
-            aria-label="close"
+            aria-label={t("action.close")}
             className="font-display text-sm leading-none px-1 hover:opacity-70"
           >
             ×

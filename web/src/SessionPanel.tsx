@@ -8,7 +8,7 @@ import type {
   SessionRumor,
   TimelineEntry,
 } from "./types";
-import { t, timelineText } from "./i18n";
+import { t, timelineText, useLang } from "./i18n";
 import {
   Badge,
   Button,
@@ -79,6 +79,7 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
   );
   const [confirm, setConfirm] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const closed = session.status === "closed";
+  const displayLang = useLang(); // rumors / events carry translated fields: re-read on switch
 
   // Memoized so NotificationCenter's auto-dismiss effect deps stay stable and its
   // timers don't reset on every SessionPanel re-render (review #5).
@@ -114,7 +115,7 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
     } catch (e) {
       setError(String(e));
     }
-  }, [session.id, regionId]);
+  }, [session.id, regionId, displayLang]);
 
   useEffect(() => {
     refresh();
@@ -210,7 +211,7 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
   return (
     <Panel
       data-testid="session-panel"
-      title={`GameMaster · turn ${session.turn}`}
+      title={t("gm.title", { turn: session.turn })}
       className="min-w-80"
     >
       {error && <div className="text-danger mb-2">{error}</div>}
@@ -294,7 +295,7 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
                   onClick={() => run(() => api.approveEvent(session.id, ev.id))}
                   disabled={closed}
                 >
-                  Approve
+                  {t("gm.approve")}
                 </Button>
                 <Button
                   size="sm"
@@ -303,7 +304,7 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
                   onClick={() => run(() => api.discardEvent(session.id, ev.id))}
                   disabled={closed}
                 >
-                  Discard
+                  {t("gm.discard")}
                 </Button>
               </>
             )}
@@ -314,7 +315,7 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
                 onClick={() => run(() => api.resolveEvent(session.id, ev.id))}
                 disabled={closed}
               >
-                Resolve
+                {t("gm.resolve")}
               </Button>
             )}
           </Card>
@@ -386,7 +387,7 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
             </select>
             <Field
               data-testid="event-description"
-              placeholder="description"
+              placeholder={t("gm.eventDescription")}
               value={evDescription}
               disabled={closed}
               onChange={(e) => setEvDescription(e.target.value)}
@@ -410,7 +411,7 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
               onChange={(e) => setEvLifecycle(e.target.value as EventLifecycle | "")}
               className="sketch-border bg-paper-card px-1.5 py-1"
             >
-              <option value="">default</option>
+              <option value="">{t("gm.lifecycleDefault")}</option>
               <option value="one_shot">one_shot</option>
               <option value="persistent">persistent</option>
             </select>

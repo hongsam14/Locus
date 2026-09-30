@@ -6,6 +6,7 @@ import { RegionPanel } from "../RegionPanel";
 import { SessionBar } from "../SessionBar";
 import { Toolbar } from "../Toolbar";
 import { api } from "../api";
+import { t, useLang } from "../i18n";
 import type { GameSession, Region, SessionStartOut, WorldExport } from "../types";
 import { Modal } from "../ui";
 import { AppNav } from "./AppNav";
@@ -15,6 +16,7 @@ export const DEFAULT_WORLD = "aldermoor";
 // World editor screen (F1): build/load a world, move regions, inspect canonical
 // knowledge, run augmentation Q&A. Selecting a session hands off to /gm/:sessionId.
 export function EditorPage() {
+  useLang(); // labels follow the display language
   const { worldId: paramWorldId = DEFAULT_WORLD } = useParams();
   const navigate = useNavigate();
   const [worldId, setWorldId] = useState(paramWorldId);
@@ -64,7 +66,7 @@ export function EditorPage() {
   // silently dropping the loaded world (review U1 #12).
   function requireWorldId(): boolean {
     if (worldId.trim()) return true;
-    setError("world id를 입력하세요");
+    setError(t("editor.enterWorldId"));
     return false;
   }
 
@@ -138,27 +140,26 @@ export function EditorPage() {
       {error && <div className="p-2 text-danger">{error}</div>}
       {busy && (
         <div className="p-2 text-ink-soft" data-testid="busy">
-          working…
+          {t("editor.working")}
         </div>
       )}
       {!busy && data && data.regions.length === 0 && (
         <div data-testid="empty-hint" className="p-2 text-danger">
-          World <b>{worldId}</b> has <b>0 regions</b> — load the demo (button above or
-          <code> locus world demo --name aldermoor --world {worldId}</code>) or build it, then
-          Load. Check the world id matches.
+          {t("editor.emptyWorld", { world: worldId })}{" "}
+          <code>locus world demo --name aldermoor --world {worldId}</code>
         </div>
       )}
       {!busy && !data && (
         <div data-testid="empty-hint" className="p-2 text-ink-soft">
-          No world loaded. Click <b>Load demo world</b> or <b>Load</b>.
+          {t("editor.noWorld", { loadDemo: t("toolbar.loadDemo"), load: t("toolbar.load") })}
         </div>
       )}
       <Modal
         open={confirmReplace != null}
-        title="월드 교체"
+        title={t("editor.replaceTitle")}
         confirmTone="danger"
-        confirmLabel="닫고 교체"
-        cancelLabel="취소"
+        confirmLabel={t("editor.replaceConfirm")}
+        cancelLabel={t("action.cancel")}
         onConfirm={() => {
           setConfirmReplace(null);
           loadDemo(true);
@@ -166,15 +167,18 @@ export function EditorPage() {
         onCancel={() => setConfirmReplace(null)}
       >
         <span data-testid="replace-confirm">
-          이 월드에 열린 세션이 {confirmReplace?.open ?? 0}개 있습니다. 데모를 불러오면 그 세션을
-          닫고 월드를 교체합니다. 계속할까요?
+          {t("editor.replaceBody", { n: confirmReplace?.open ?? 0 })}
         </span>
       </Modal>
       {data && (
         <div data-testid="graph-status" className="px-2 pb-2 text-xs text-ink-soft">
-          world <b>{data.world_id}</b> · regions {data.regions.length} · connections{" "}
-          {data.connections.length} · entities {data.entities?.length ?? 0} · knowledge{" "}
-          {data.knowledge.length}
+          {t("editor.status", {
+            world: data.world_id,
+            regions: data.regions.length,
+            connections: data.connections.length,
+            entities: data.entities?.length ?? 0,
+            knowledge: data.knowledge.length,
+          })}
         </div>
       )}
       <div className="flex flex-wrap gap-4 p-3">

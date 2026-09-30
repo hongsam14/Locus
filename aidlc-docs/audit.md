@@ -2359,3 +2359,19 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **Context**: CONSTRUCTION / U5 — NFR Requirements + Design (light).
 
 ---
+
+## Plan Review Completed — NFR Requirements (light) — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:15:43Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY** (advisory). Findings: 0 Critical / 2 Major / 4 Minor; open 6 (R-01 the retry arithmetic is 93s not 97s and the provider's own SDK retries push a single call to ~270s; R-02 `say` reads the snapshot at least twice, so the structural assertion as worded would fail; R-03 the note promises a re-read on a conversation UNIQUE race that the flow does not do; R-04 the injection blast radius is understated — stored text re-enters via `recent`, and unauthenticated free text can drive paid calls; R-05 the p95 target has no verification method; R-06 the note does not say whether the new `region_knowledge` argument is required or defaulted). Advisory: the artifact is frozen and the human triages at the gate. Record: `construction/U5-npc-dialogue-language/nfr/reviews/nfr-light-review-01.md`.
+**Context**: NFR (light) — next: approval gate.
+
+---
+
+## Approval Prompt — NFR Requirements (light) — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:15:43Z
+**User Input**: (none — gate prompt logging)
+**AI Response**: Presenting `construction/U5-npc-dialogue-language/nfr/nfr-light.md` with the Review brief (advisory iteration 1 READY; six open findings). Options: Continue to Next Stage (open findings → Accepted risk, corrected in the code-generation plan) / Request Changes.
+**Context**: NFR (light) — approval gate.
+
+---

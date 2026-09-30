@@ -14,11 +14,14 @@ from locus.shared.models import (
     NPC,
     ConnectionEdge,
     ConnectionKind,
+    Knowledge,
     KnowledgeGraph,
     Provenance,
     Region,
     RegionLevel,
     RegionTopology,
+    ScopeLink,
+    ScopeType,
     SourceKind,
     WorldSnapshot,
 )
@@ -131,3 +134,82 @@ def rumors_for(draw, session_id: str, region_id: str, max_count: int = 25) -> li
         )
         for i in range(n)
     ]
+
+
+# --------------------------------------------------------------------------- #
+# U5 — worlds whose knowledge is tagged by region (TP-U5-1/4, PBT-07)
+# --------------------------------------------------------------------------- #
+def marker(region_id: str, i: int) -> str:
+    """A statement that can only belong to ``region_id`` — searched for in prompts."""
+    return f"only-in-{region_id}-#{i}"
+
+
+GLOBAL_MARKER = "everyone-knows-this"
+
+
+@st.composite
+def regional_worlds(draw, max_regions: int = 4) -> WorldSnapshot:
+    """A chain r0 — r1 — … with each region's own direct knowledge (statements carry a
+    region marker), optional global knowledge, and weights drawn across the propagate
+    and hearsay bands so neighbours really do reach each other's knowledge."""
+    n = draw(st.integers(min_value=2, max_value=max_regions))
+    ids = [f"r{i}" for i in range(n)]
+    knowledge: list[Knowledge] = []
+    scopes: list[ScopeLink] = []
+    for rid in ids:
+        for j in range(draw(st.integers(min_value=0, max_value=4))):
+            k = Knowledge(
+                world_id=WORLD,
+                statement=marker(rid, j),
+                title=f"{rid}-{j}",
+                confidence=draw(st.floats(min_value=0.1, max_value=1.0, allow_nan=False)),
+                provenance=_prov(),
+            )
+            k.id = f"k-{rid}-{j}"
+            knowledge.append(k)
+            scopes.append(
+                ScopeLink(
+                    world_id=WORLD, knowledge_id=k.id, region_id=rid, scope_type=ScopeType.DIRECT
+                )
+            )
+    if draw(st.booleans()):
+        g = Knowledge(
+            world_id=WORLD,
+            statement=GLOBAL_MARKER,
+            title="global",
+            is_global=True,
+            provenance=_prov(),
+        )
+        g.id = "k-global"
+        knowledge.append(g)
+    edges: list[ConnectionEdge] = []
+    for a, b in zip(ids, ids[1:], strict=False):
+        w = draw(st.sampled_from([0.9, 0.6, 0.4, 0.2, 0.05]))  # propagate / hearsay / nothing
+        edges += [edge(a, b, weight=w), edge(b, a, weight=w)]
+    kg = KnowledgeGraph(world_id=WORLD, knowledge=knowledge, scopes=scopes)
+    return build_snapshot(ids, edges, kg=kg)
+
+
+@st.composite
+def rumors_from(
+    draw, session_id: str, region_id: str, knowledge_ids: list[str], max_count: int = 12
+) -> list[SessionRumor]:
+    """Active rumors in ``region_id`` drafted from some of ``knowledge_ids``."""
+    n = draw(st.integers(min_value=0, max_value=max_count))
+    out: list[SessionRumor] = []
+    for i in range(n):
+        source = draw(st.sampled_from(knowledge_ids)) if knowledge_ids else f"k-elsewhere-{i}"
+        out.append(
+            SessionRumor(
+                session_id=session_id,
+                region_id=region_id,
+                distorted_from_id=source,
+                distorted_from_kind="knowledge",
+                statement=f"twisted-{source}-{i}",
+                distortion_degree=draw(st.floats(min_value=0.0, max_value=1.0, allow_nan=False)),
+                support=draw(st.floats(min_value=0.0, max_value=1.0, allow_nan=False)),
+                promoted=draw(st.booleans()),
+                provenance=_prov(),
+            )
+        )
+    return out

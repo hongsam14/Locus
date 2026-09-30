@@ -52,10 +52,10 @@
 - [x] 2.4 테스트: `tests/play/test_models.py`에 새 모델 왕복(`Message.role` 판별, 길이·범위), `RegenerateResult.rumors`; `tests/shared/test_config.py`(신규)에 env 5개 로딩, 기본 언어 정합 검증 실패, **두 provider의 `max_retries == 0`**(생성자 인자를 가로채는 가짜로 확인).
 
 ### Step 3 — 아는 범위 (순수) (business-logic-model §1)
-- [ ] 3.1 `locus/play/npc/scope.py`: `ScopeLimits.from_tuning(tuning)`, `build_context(*, npc, facts, rumors, recent, limits) -> NpcContext`. **순서**: 소문 정렬·절단 → 선택된 소문에서 `shadowed` 계산 → facts에서 제외 → facts 정렬·절단 → `recent` 뒤 `limits.recent_messages`개(0이면 빈 목록). `allowed_ids`는 선택 뒤 남은 facts와 선택된 소문의 id.
-- [ ] 3.2 `locus/play/npc/prompts.py`: `system_prompt(npc, lang)`, `user_prompt(ctx, question, lang)`, `fallback_text(lang)`, `LANG_NAMES`. 소문 태그는 `known`(승격) / `uncertain rumor`(왜곡도 ≥ 0.5) / `rumor`.
-- [ ] 3.3 `tests/play/strategies.py` 확장: `regional_worlds()`(두 지역, 지역 전용 문장 표지, 전언을 만드는 약한 연결), `rumors_from(knowledge_ids)`.
-- [ ] 3.4 테스트 `tests/play/test_npc_scope.py`: TP-U5-1(독립 기준 — `ConsensusEngine`으로 직접 계산 + 저장소 소문에서 기준식을 만들고 **같은 선택 순서**를 쓴다), TP-U5-2(한도·순서, 한도 0), TP-U5-3(결정성), TP-U5-4(프롬프트 문자열에 다른 지역 문장·소문 원본·전언 없음), EX-5, EX-7, 그리고 소문이 한도를 넘는 경우 잘려 나간 소문의 원본이 facts에 **남는다**(이월 FD R-12).
+- [x] 3.1 `locus/play/npc/scope.py`: `ScopeLimits.from_tuning(tuning)`, `build_context(*, npc, facts, rumors, recent, limits) -> NpcContext`. **순서**: 소문 정렬·절단 → 선택된 소문에서 `shadowed` 계산 → facts에서 제외 → facts 정렬·절단 → `recent` 뒤 `limits.recent_messages`개(0이면 빈 목록). `allowed_ids`는 선택 뒤 남은 facts와 선택된 소문의 id.
+- [x] 3.2 `locus/play/npc/prompts.py`: `system_prompt(npc, lang)`, `user_prompt(ctx, question, lang)`, `fallback_text(lang)`, `LANG_NAMES`. 소문 태그는 `known`(승격) / `uncertain rumor`(왜곡도 ≥ 0.5) / `rumor`.
+- [x] 3.3 `tests/play/strategies.py` 확장: `regional_worlds()`(두 지역, 지역 전용 문장 표지, 전언을 만드는 약한 연결), `rumors_from(knowledge_ids)`.
+- [x] 3.4 테스트 `tests/play/test_npc_scope.py`: TP-U5-1(독립 기준 — `ConsensusEngine`으로 직접 계산 + 저장소 소문에서 기준식을 만들고 **같은 선택 순서**를 쓴다), TP-U5-2(한도·순서, 한도 0), TP-U5-3(결정성), TP-U5-4(프롬프트 문자열에 다른 지역 문장·소문 원본·전언 없음), EX-5, EX-7, 그리고 소문이 한도를 넘는 경우 잘려 나간 소문의 원본이 facts에 **남는다**(이월 FD R-12).
 
 ### Step 4 — 저장·서비스
 - [ ] 4.1 `locus/play/ports.py`: `ConversationStore`(`create_conversation`(중복이면 `ConversationExistsError`)/`get_conversation`/`append_message`/`list_conversations`), `PlayUnitOfWork += conversations`, `PlayRepository += ConversationStore`. `locus/play/storage/schema.py`: `conversations`·`messages` 테이블.

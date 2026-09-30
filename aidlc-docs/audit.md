@@ -2331,3 +2331,31 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **Context**: Functional Design — U5 — approval gate.
 
 ---
+
+## Functional Design Approved — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:11:36Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: Functional Design approved (review iter 2 READY; R-04/R-12/R-13 open → dispositions below). The human did not ask for hearsay back, so the design keeps it out of the NPC context per FR-C4/US-4.2. Next: U5 NFR Requirements + Design (light) per the execution plan.
+**Context**: CONSTRUCTION / U5 — Functional Design gate → NFR (light).
+
+---
+
+## Plan Review Dispositions — Functional Design — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:11:36Z
+**User Input**: (approval at gate; see above)
+**AI Response**:
+- R-04 → Accepted risk (carry into the code plan: validate at startup that `TRANSLATION_TARGET_LANG` is in `SUPPORTED_LANGS`, or fall back to the first supported value; drop `lang` from `GET /api/gm/sessions/{s}/timeline`, which returns untranslated entries)
+- R-12 → Accepted risk (carry: pick the rumors first, then compute `shadowed` from the selected rumors only, so a capped-out rumor cannot hide its own source; the oracle in TP-U5-1 follows the same order, and EX-5/EX-7 gain an over-the-cap case)
+- R-13 → Accepted risk (carry: the purge step sits outside `_close_if_replaced`'s early return and is conditioned on `report.replaced` alone; the six replace routes gain a `loc` dependency; EX-9 gains a "replace with no open sessions" case)
+- hearsay → stays excluded from the NPC context (human made no change at the gate); the region screen keeps it as a player-facing panel with a hint line
+**Context**: Functional Design — U5 — dispositions recorded; artifacts unchanged.
+
+---
+
+## Purpose Restructure Cycle — U5 NFR Requirements + Design (light) written
+**Timestamp**: 2026-09-30T12:13:41Z
+**User Input**: (none — follows the Functional Design approval)
+**AI Response**: Light stage per the execution plan: plan `construction/plans/U5-npc-dialogue-language-nfr-requirements-plan.md` (no questions — the values are fixed by FD-U5 Q1/Q3/Q4, A-1 and the requirements; assumptions N5-1..N5-6) and the single note `construction/U5-npc-dialogue-language/nfr/nfr-light.md` (NFR-1..9 mapping with the three contract changes and their exact call sites, the non-tautological PBT target, the structural responsiveness assertion for `say`, prompt injection as an accepted risk with its blast radius, reliability/scale, no new tech stack, and the inputs to the code plan). Dispatching architecture-reviewer (class advisory, iteration 1) on the note. Review record: `construction/U5-npc-dialogue-language/nfr/reviews/nfr-light-review-01.md`.
+**Context**: CONSTRUCTION / U5 — NFR Requirements + Design (light).
+
+---

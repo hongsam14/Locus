@@ -19,12 +19,12 @@ docker compose --profile service up -d --build  # + app (uvicorn :8000, runs ini
 
 ## Typical workflow
 1. `locus init-schema` (idempotent).
-2. `locus build-world --world <id> --demo|--inputs <file>` — also distills that world's own
+2. `locus world build --world <id> --inputs <file>` (or `locus world demo --name aldermoor --world <id>` for the LLM-free demo) — a build also distills that world's own
    Common-sense Wiki priors + links (no separate `build-wiki` step since the 2026-06-09 MVP-improvement cycle).
-3. Query: `GET /api/query/regions/{id}/knowledge?world_id=<id>` ; author: `/api/authoring/*`.
-4. Designer cross-world reference: `GET /api/authoring/worlds/{id}/related-priors` — priors from OTHER
+3. Query: `GET /api/knowledge/worlds/{world_id}/regions/{id}?include_hearsay=true` ; author: `/api/world/*` (U1 route prefixes).
+4. Designer cross-world reference: `GET /api/world/worlds/{id}/related-priors` — priors from OTHER
    worlds sharing this world's domain tags (read-through; never enters NPC build/query).
-5. `locus export --world <id> --out <file.json>` for NPC-runtime static bundles.
+5. `locus world export --world <id> --out <file.world.json>` — World File v1 (also the NPC-runtime static bundle).
 
 > MVP-improvement cycle (2026-06-09) changed only application/data layers — no infra/deploy change.
 > Each world is now self-contained (its own WikiPriors); `__realworld__` partition removed.
@@ -34,9 +34,10 @@ A dynamic **game-session layer** (PostgreSQL) sits over the static canonical wor
 The canonical layer is referenced by id only and never mutated by sessions (NFR-R2).
 ```bash
 locus init-schema          # now also creates the PostgreSQL session tables (idempotent)
+locus init-schema --play --localization   # U1: flags pick a subset — --world (Neo4j/OpenSearch), --play (PostgreSQL play tables), --localization (translations); no flag = all
 ```
-1. Start a play-through: `POST /api/session/worlds/{world_id}/sessions` (validates the world exists;
-   seeds a default per-region distortion). History: `GET /api/session/worlds/{world_id}/sessions`.
+1. Start a play-through: `POST /api/play/worlds/{world_id}/sessions` (validates the world exists;
+   seeds a default per-region distortion). History: `GET /api/play/worlds/{world_id}/sessions`. GameMaster tools live under `/api/gm/*`.
 2. GameMaster (per turn): generate rumors `POST …/sessions/{sid}/regions/{rid}/rumors` (LLM degree-chain
    distortion of direct + propagated knowledge + existing rumors), regenerate, `PUT …/rumors/{id}/support`,
    `PUT …/regions/{rid}/distortion`, `POST …/sessions/{sid}/advance-turn` (re-evaluate promotion, turn++).
@@ -85,6 +86,55 @@ support(공신력) is now the rumor "aliveness" lever, so the set stays finite w
 **Build path fixes**: topology now sees this world's persisted common-sense priors (wiki injected before
 `topology.build`); a barrier terrain not bordering exactly 2 regions is reported in `IngestionResult.errors`
 instead of being silently dropped. Web SessionPanel loads its reads in parallel.
+
+## World File · demo · backups (Purpose Restructure U2, 2026-09-30)
+- **Save / load a world (World File v1)** — `locus world export --world <id> --out <id>.world.json`, `locus world import --world <id> --file <file> [--replace/--no-replace] [--remap] [--force]`. API: `GET /api/world/worlds/{id}/file` (download), `POST /api/world/worlds/{id}/file?replace=&confirm=&remap=` (JSON body) or `POST .../file/upload` (multipart). Legacy export JSON (no `format_version`) is accepted as v0; other versions → 422. Loading a file into a different world id remaps every id deterministically (`uuid5`); `remap=true` / `--remap` forces it (recovery from an `id collision with another world` error).
+- **Demo world without an LLM** — `locus world demo --list`, `locus world demo --name aldermoor --world <id>`; API `GET /api/world/demos`, `POST /api/world/worlds/{id}/demo/aldermoor`. The packaged World File loads with **0 LLM calls**; the editor's "Load demo world" button uses it. The source-based build (`locus world build --world <id> --demo-sources`, `POST .../demo/aldermoor/build`) still needs `OPENAI_API_KEY`.
+- **Build** — `locus world build --world <id> --inputs <file.json>` (images base64 in `map_images`/`concept_arts`); API `POST /api/world/worlds/{id}/build` (JSON) or `.../build/upload` (multipart fields: `memos`, `maps`, `images` (repeatable), `name`, `description`). `BuildReport.ok` is false only for error-severity warnings (persist failure, unreadable input, zero regions); item-level problems and unresolved names are warnings; `unscoped_knowledge_ids` lists knowledge that found no region; `llm_calls`/`embedding_calls` count that build.
+- **Replacing a world** — build/import/demo replace an existing world by default (`replace=true`). Before deleting, the old world is exported to `LOCUS_DATA_DIR/backups/<id>-<UTC>.world.json` (compose: the `locus_data` volume at `/app/data`). Recover with `locus world import --world <id> --file <backup>`. If the world has **open sessions**, the API answers 409 (`open_sessions`, `session_ids`) until `confirm=true`; the CLI exits 1 until `--force`; confirmed/forced replaces close those sessions and list them in `closed_session_ids`.
+- **Single worker** — play and the editor read one in-process `WorldCache` per worker; run the API with **one uvicorn worker** (compose does). Writes (build, import, edit, augmentation, prior edit) invalidate it.
+- **Without `OPENAI_API_KEY`** — the API starts, `/health` reports `degraded`, and world file / demo / list / editor routes work; build, augmentation and wiki routes answer 503.
+- `locus world list` prints stored worlds with name, region count and last update (`WorldMeta`; pre-U2 worlds show `name=id`). Old aliases `locus build-world` / `locus export` still work for one cycle.
+
+## Player mode (Purpose Restructure U4, 2026-09-30)
+
+- **Routes**: `POST /api/play/worlds/{w}/sessions` with `{name, start_region_id}` starts a
+  player session (201 `{session, player}`); without a body it still creates a GM-only session
+  (200). `GET /api/play/sessions/{s}/region` is the player screen; `POST .../act`
+  (`{type: move|wait|end_talk}`) answers **202** with a `TurnRun` and the turns run in the
+  background; poll `GET .../turn-runs/{id}` until `done` / `failed`; `GET .../log`.
+- **Turn engine**: one entry point for GM manual turns and player actions. A turn is
+  compute → draft (LLM) → one transaction. Caps (env, see `env.example`): `LLM_MAX_CALLS_PER_TURN`
+  (8), `RUMOR_MAX_NEW_PER_REGION_TURN` (2), `RUMOR_MAX_ACTIVE_PER_REGION` (20), move cost cap
+  `PLAY_MAX_MOVE_COST` (5). Worst case per action = `PLAY_MAX_MOVE_COST × LLM_MAX_CALLS_PER_TURN`
+  calls. GM manual generate/regenerate ignore the caps (intentional). `llm_calls` in the
+  results counts *reserved* calls (upper bound).
+- **Concurrency**: one running turn per session (in-process guard). A second action, a GM
+  manual turn, closing the session, or a GM write (rumors / support / distortion / events)
+  while a run is in flight answers **409 `turn in progress`**; reads are never blocked. The
+  guard is process-local: keep **`--workers 1`** (compose already does). Raising the worker
+  count breaks two things, not one: two workers can run turns for the same session at the
+  same time, and a starting worker's `fail_stale_runs` marks **another worker's live run**
+  `failed` (code review U4 #5, accepted for this demo scale — there is no cross-process
+  fencing).
+- **Background executor**: one daemon worker thread, FIFO across sessions. A queued run is
+  shown as `running` before it actually starts (demo scale: fine). On shutdown the API waits
+  `TURN_SHUTDOWN_TIMEOUT_S` (30s) for the current run; a hung LLM call does not block process
+  exit. On startup any run still `running` is marked `failed` (`error=interrupted`).
+- **LLM outage**: each LLM call retries 3× with a 30s timeout (`locus/shared/llm/retry.py`),
+  ≈97s worst case per call. A turn whose rumor chain comes back short trips a circuit
+  breaker (remaining drafts of that turn are skipped, `llm_failed=true` in the result), so an
+  action is bounded by ≈ `PLAY_MAX_MOVE_COST × 97s`. Without an LLM key the engine still runs
+  (moves, waits, events, promotion); only rumor drafts are skipped (`llm_available=false`).
+- **Timeline order**: a turn's entries are written in one transaction, so they are stamped
+  by the application with a strictly increasing clock (`locus/play/storage/clock.py`) rather
+  than the database default, and read back ordered by `(turn, created_at, id)`. This is the
+  one table whose `created_at` is not DB server time.
+- **Failure records**: a failed run stores the fixed message `turn processing failed`; the
+  timeline `turn_run_failed` payload holds only the exception class name (details go to the
+  server log). Turns already committed stay.
+- **Tables** (idempotent `init-schema --play` / startup): `players` (one per session),
+  `turn_runs`.
 
 ## Web UI (U10)
 ```bash

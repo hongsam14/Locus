@@ -65,6 +65,15 @@ All subsequent rule detail file references (e.g., `common/process-overview.md`, 
 - [Answer]: tag usage
 - Answer validation and ambiguity resolution
 
+## MANDATORY: Plan Review Before Approval Gates
+**CRITICAL**: Before presenting the approval gate of a reviewed stage, you MUST run the Plan Review defined in `common/plan-review.md`: an independent reviewer sub-agent reads the produced plan or design artifact, writes a review record, and its findings are quoted verbatim at the gate (the "Review brief"). The human keeps the final say; the review is decision support.
+
+- Load `common/plan-review.md` when ENTERING a reviewed stage (not at workflow start) and follow its flow: request → dispatch reviewer sub-agent → read verdict → branch on class → Review brief at the gate
+- Reviewed stages, reviewers, classes (`advisory` for INCEPTION, `adversarial` for CONSTRUCTION), and review-record paths are defined in the table in `common/plan-review.md` § 1
+- NEVER present a reviewed stage's approval gate without a verdict recorded in the review record and `aidlc-docs/audit.md`
+- Check `## Plan Review Configuration` in `aidlc-docs/aidlc-state.md` for per-cycle overrides (the human may lower a class); default to the table when no configuration exists
+- Reviewer personas: `common/reviewers/architecture-reviewer.md`, `common/reviewers/product-lead-reviewer.md` (Claude Code: project agents `aidlc-architecture-reviewer`, `aidlc-product-lead-reviewer`)
+
 ## MANDATORY: Custom Welcome Message
 **CRITICAL**: When starting ANY software development request, you MUST display the welcome message.
 
@@ -154,8 +163,9 @@ All subsequent rule detail file references (e.g., `common/process-overview.md`, 
    - Ask clarifying questions (if needed)
    - Generate requirements document
 4. Execute at appropriate depth (minimal/standard/comprehensive)
-5. **Wait for Explicit Approval**: Follow approval format from requirements-analysis.md detailed steps - DO NOT PROCEED until user confirms
-6. **MANDATORY**: Log user's response in audit.md with complete raw input
+5. **MANDATORY — Plan Review**: Run `common/plan-review.md` on the requirements document (product-lead-reviewer, advisory) and record the verdict BEFORE the approval prompt
+6. **Wait for Explicit Approval**: Present the Review brief, then follow approval format from requirements-analysis.md detailed steps - DO NOT PROCEED until user confirms
+7. **MANDATORY**: Log user's response in audit.md with complete raw input
 
 ## User Stories (CONDITIONAL)
 
@@ -223,8 +233,9 @@ All subsequent rule detail file references (e.g., `common/process-overview.md`, 
 6. Execute at appropriate depth (minimal/standard/comprehensive)
 7. **PART 1 - Planning**: Create story plan with questions, wait for user answers, analyze for ambiguities, get approval
 8. **PART 2 - Generation**: Execute approved plan to generate stories and personas
-9. **Wait for Explicit Approval**: Follow approval format from user-stories.md detailed steps - DO NOT PROCEED until user confirms
-10. **MANDATORY**: Log user's response in audit.md with complete raw input
+9. **MANDATORY — Plan Review**: Run `common/plan-review.md` on the generated stories (product-lead-reviewer, advisory) and record the verdict BEFORE the approval prompt
+10. **Wait for Explicit Approval**: Present the Review brief, then follow approval format from user-stories.md detailed steps - DO NOT PROCEED until user confirms
+11. **MANDATORY**: Log user's response in audit.md with complete raw input
 
 ## Workflow Planning (ALWAYS EXECUTE)
 
@@ -263,8 +274,9 @@ All subsequent rule detail file references (e.g., `common/process-overview.md`, 
 2. Load all steps from `inception/application-design.md`
 3. Load reverse engineering artifacts (if brownfield)
 4. Execute at appropriate depth (minimal/standard/comprehensive)
-5. **Wait for Explicit Approval**: Present detailed completion message (see application-design.md for message format) - DO NOT PROCEED until user confirms
-6. **MANDATORY**: Log user's response in audit.md with complete raw input
+5. **MANDATORY — Plan Review**: Run `common/plan-review.md` on the generated design artifacts (architecture-reviewer, advisory) and record the verdict BEFORE the approval prompt
+6. **Wait for Explicit Approval**: Present the Review brief, then the detailed completion message (see application-design.md for message format) - DO NOT PROCEED until user confirms
+7. **MANDATORY**: Log user's response in audit.md with complete raw input
 
 ## Units Generation (CONDITIONAL)
 
@@ -283,8 +295,9 @@ All subsequent rule detail file references (e.g., `common/process-overview.md`, 
 2. Load all steps from `inception/units-generation.md`
 3. Load reverse engineering artifacts (if brownfield)
 4. Execute at appropriate depth (minimal/standard/comprehensive)
-5. **Wait for Explicit Approval**: Present detailed completion message (see units-generation.md for message format) - DO NOT PROCEED until user confirms
-6. **MANDATORY**: Log user's response in audit.md with complete raw input
+5. **MANDATORY — Plan Review**: Run `common/plan-review.md` on the generated unit artifacts (architecture-reviewer, advisory) and record the verdict BEFORE the approval prompt
+6. **Wait for Explicit Approval**: Present the Review brief, then the detailed completion message (see units-generation.md for message format) - DO NOT PROCEED until user confirms
+7. **MANDATORY**: Log user's response in audit.md with complete raw input
 
 ---
 
@@ -326,9 +339,10 @@ All subsequent rule detail file references (e.g., `common/process-overview.md`, 
 1. **MANDATORY**: Log any user input during this stage in audit.md
 2. Load all steps from `construction/functional-design.md`
 3. Execute functional design for this unit
-4. **MANDATORY**: Present standardized 2-option completion message as defined in functional-design.md - DO NOT use emergent 3-option behavior
-5. **Wait for Explicit Approval**: User must choose between "Request Changes" or "Continue to Next Stage" - DO NOT PROCEED until user confirms
-6. **MANDATORY**: Log user's response in audit.md with complete raw input
+4. **MANDATORY — Plan Review**: Run `common/plan-review.md` on the functional design artifacts (architecture-reviewer, adversarial, max 2 iterations) and record the terminal verdict BEFORE the completion message
+5. **MANDATORY**: Present standardized 2-option completion message as defined in functional-design.md - DO NOT use emergent 3-option behavior - present the Review brief immediately before its WHAT'S NEXT block
+6. **Wait for Explicit Approval**: User must choose between "Request Changes" or "Continue to Next Stage" - DO NOT PROCEED until user confirms
+7. **MANDATORY**: Log user's response in audit.md with complete raw input
 
 ### NFR Requirements (CONDITIONAL, per-unit)
 
@@ -346,9 +360,10 @@ All subsequent rule detail file references (e.g., `common/process-overview.md`, 
 1. **MANDATORY**: Log any user input during this stage in audit.md
 2. Load all steps from `construction/nfr-requirements.md`
 3. Execute NFR assessment for this unit
-4. **MANDATORY**: Present standardized 2-option completion message as defined in nfr-requirements.md - DO NOT use emergent behavior
-5. **Wait for Explicit Approval**: User must choose between "Request Changes" or "Continue to Next Stage" - DO NOT PROCEED until user confirms
-6. **MANDATORY**: Log user's response in audit.md with complete raw input
+4. **MANDATORY — Plan Review**: Run `common/plan-review.md` on the NFR requirements artifacts (architecture-reviewer, adversarial, max 2 iterations) and record the terminal verdict BEFORE the completion message
+5. **MANDATORY**: Present standardized 2-option completion message as defined in nfr-requirements.md - DO NOT use emergent behavior - present the Review brief immediately before its WHAT'S NEXT block
+6. **Wait for Explicit Approval**: User must choose between "Request Changes" or "Continue to Next Stage" - DO NOT PROCEED until user confirms
+7. **MANDATORY**: Log user's response in audit.md with complete raw input
 
 ### NFR Design (CONDITIONAL, per-unit)
 
@@ -364,9 +379,10 @@ All subsequent rule detail file references (e.g., `common/process-overview.md`, 
 1. **MANDATORY**: Log any user input during this stage in audit.md
 2. Load all steps from `construction/nfr-design.md`
 3. Execute NFR design for this unit
-4. **MANDATORY**: Present standardized 2-option completion message as defined in nfr-design.md - DO NOT use emergent behavior
-5. **Wait for Explicit Approval**: User must choose between "Request Changes" or "Continue to Next Stage" - DO NOT PROCEED until user confirms
-6. **MANDATORY**: Log user's response in audit.md with complete raw input
+4. **MANDATORY — Plan Review**: Run `common/plan-review.md` on the NFR design artifacts (architecture-reviewer, adversarial, max 2 iterations) and record the terminal verdict BEFORE the completion message
+5. **MANDATORY**: Present standardized 2-option completion message as defined in nfr-design.md - DO NOT use emergent behavior - present the Review brief immediately before its WHAT'S NEXT block
+6. **Wait for Explicit Approval**: User must choose between "Request Changes" or "Continue to Next Stage" - DO NOT PROCEED until user confirms
+7. **MANDATORY**: Log user's response in audit.md with complete raw input
 
 ### Infrastructure Design (CONDITIONAL, per-unit)
 
@@ -383,9 +399,10 @@ All subsequent rule detail file references (e.g., `common/process-overview.md`, 
 1. **MANDATORY**: Log any user input during this stage in audit.md
 2. Load all steps from `construction/infrastructure-design.md`
 3. Execute infrastructure design for this unit
-4. **MANDATORY**: Present standardized 2-option completion message as defined in infrastructure-design.md - DO NOT use emergent behavior
-5. **Wait for Explicit Approval**: User must choose between "Request Changes" or "Continue to Next Stage" - DO NOT PROCEED until user confirms
-6. **MANDATORY**: Log user's response in audit.md with complete raw input
+4. **MANDATORY — Plan Review**: Run `common/plan-review.md` on the infrastructure design artifacts (architecture-reviewer, adversarial, max 2 iterations) and record the terminal verdict BEFORE the completion message
+5. **MANDATORY**: Present standardized 2-option completion message as defined in infrastructure-design.md - DO NOT use emergent behavior - present the Review brief immediately before its WHAT'S NEXT block
+6. **Wait for Explicit Approval**: User must choose between "Request Changes" or "Continue to Next Stage" - DO NOT PROCEED until user confirms
+7. **MANDATORY**: Log user's response in audit.md with complete raw input
 
 ### Code Generation (ALWAYS EXECUTE, per-unit)
 
@@ -398,7 +415,7 @@ All subsequent rule detail file references (e.g., `common/process-overview.md`, 
 **Execution**:
 1. **MANDATORY**: Log any user input during this stage in audit.md
 2. Load all steps from `construction/code-generation.md`
-3. **PART 1 - Planning**: Create code generation plan with checkboxes, get user approval
+3. **PART 1 - Planning**: Create code generation plan with checkboxes, then **MANDATORY — Plan Review**: run `common/plan-review.md` on the plan (architecture-reviewer, adversarial, max 2 iterations), then present the Review brief and get user approval of the plan
 4. **PART 2 - Generation**: Execute approved plan to generate code for this unit
 5. **MANDATORY**: Present standardized 2-option completion message as defined in code-generation.md - DO NOT use emergent behavior
 6. **Wait for Explicit Approval**: User must choose between "Request Changes" or "Continue to Next Stage" - DO NOT PROCEED until user confirms
@@ -457,6 +474,7 @@ The Operations stage will eventually include:
   - **CRITICAL**: Never summarize or paraphrase user input in audit log
   - **CRITICAL**: Log every interaction, not just approvals
 - **Quality Focus**: Complex changes get full treatment, simple changes stay efficient
+- **Plan Review**: Reviewed stages (see `common/plan-review.md` § 1) get an independent reviewer pass before their approval gate; findings are shown verbatim, never hidden, and the human triages them
 - **Content Validation**: Always validate content before file creation per content-validation.md rules
 - **NO EMERGENT BEHAVIOR**: Construction phases MUST use standardized 2-option completion messages as defined in their respective rule files. DO NOT create 3-option menus or other emergent navigation patterns.
 

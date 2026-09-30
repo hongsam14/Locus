@@ -147,6 +147,12 @@ Update `aidlc-docs/aidlc-state.md`:
 - [x] Requirements Analysis
 ```
 
+### Step 8a: Plan Review (MANDATORY — before the approval prompt)
+- **Load `common/plan-review.md`** and run it for this stage: reviewer **product-lead-reviewer**, class **advisory**, reviewed artifact `aidlc-docs/inception/requirements/requirements.md` (or the cycle-prefixed requirements file) plus the verification / clarification question files
+- Log the request and the verdict in `aidlc-docs/audit.md` and note the verdict in `aidlc-docs/aidlc-state.md` as plan-review.md § 3 directs
+- Do not proceed to Step 9 until a verdict is recorded; present the Review brief (plan-review.md § 5) immediately before the "WHAT'S NEXT?" block
+- After a "Request Changes" revision, re-run this step before re-presenting the approval
+
 ### Step 9: Log and Proceed
    - Log approval prompt with timestamp in `aidlc-docs/audit.md`
    - Present completion message in this structure:

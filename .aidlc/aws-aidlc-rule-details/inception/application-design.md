@@ -106,6 +106,12 @@ If the analysis in step 8 reveals ANY ambiguous answers, you MUST:
   - Data flow diagrams
 - Create `aidlc-docs/inception/application-design/application-design.md` that consolidates the multiple design docs created above in a single doc.
 
+### 10a. Plan Review (MANDATORY — before the approval prompt)
+- **Load `common/plan-review.md`** and run it for this stage: reviewer **architecture-reviewer**, class **advisory**, reviewed artifact `aidlc-docs/inception/application-design/application-design.md` (or the cycle subdirectory) plus `components.md`, `component-methods.md`, `services.md`, `component-dependency.md` and the approved design plan
+- Log the request and the verdict in `aidlc-docs/audit.md` and note the verdict in `aidlc-docs/aidlc-state.md` as plan-review.md § 3 directs
+- Do not proceed to Step 11 until a verdict is recorded; present the Review brief (plan-review.md § 5) immediately before the "WHAT'S NEXT?" block
+- After a "Request Changes" revision, re-run this step before re-presenting the approval
+
 ### 11. Log Approval
 - Log approval prompt with timestamp in `aidlc-docs/audit.md`
 - Include complete approval prompt text

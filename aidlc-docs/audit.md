@@ -2606,3 +2606,11 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **User Input**: (none — automatic per plan-review.md)
 **AI Response**: Dispatching architecture-reviewer (class advisory, iteration 1) on `aidlc-docs/construction/U6-deeds-spread/nfr/nfr-light.md`. Review record: `aidlc-docs/construction/U6-deeds-spread/nfr/reviews/nfr-light-review-01.md`.
 **Context**: NFR (light) — review requested before approval gate.
+
+---
+
+## Plan Review Completed — NFR (light) — U6 행적·전파
+**Timestamp**: 2026-09-30T23:43:14Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY** (advisory, terminal). Findings: 0 Critical / 2 Major / 3 Minor; open 5. Record: `aidlc-docs/construction/U6-deeds-spread/nfr/reviews/nfr-light-review-01.md`. Fact check: R-05's "CLAUDE.md says 601" does not hold — CLAUDE.md reads 621 (557 + 64) in the working tree and at HEAD since 3452fd8; the rest of R-05 stands.
+**Context**: NFR (light) — next: approval gate.

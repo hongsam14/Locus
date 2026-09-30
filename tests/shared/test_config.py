@@ -73,7 +73,7 @@ def test_the_default_display_language_must_be_supported(monkeypatch: pytest.Monk
 
 
 def test_both_providers_pin_sdk_retries_off(monkeypatch: pytest.MonkeyPatch) -> None:
-    """NFR review R-01: retries live only in `with_retry`, so one call is bounded by 93s."""
+    """NFR review R-01: retries live only in `with_retry` (bounded; see retry.py)."""
     seen: list[dict] = []
 
     class RecordingChatOpenAI:
@@ -90,3 +90,21 @@ def test_both_providers_pin_sdk_retries_off(monkeypatch: pytest.MonkeyPatch) -> 
     OpenAIVLMProvider(api_key="k", model="m")
     assert [kw["max_retries"] for kw in seen] == [0, 0]
     assert all(kw["timeout"] == 30.0 for kw in seen)
+
+
+def test_review_10_the_embedding_client_is_bounded_too(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Review U5 #10: the SDK default (2 retries, no timeout) stacked under with_retry."""
+    seen: list[dict] = []
+
+    class RecordingEmbeddings:
+        def __init__(self, **kwargs) -> None:
+            seen.append(kwargs)
+
+    fake = types.ModuleType("langchain_openai")
+    fake.OpenAIEmbeddings = RecordingEmbeddings  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "langchain_openai", fake)
+
+    from locus.shared.llm.openai_provider import OpenAIEmbeddingProvider
+
+    OpenAIEmbeddingProvider(api_key="k", model="m", dimension=8)
+    assert seen[0]["max_retries"] == 0 and seen[0]["timeout"] == 30.0

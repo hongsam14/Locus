@@ -12,7 +12,7 @@ import { knowledgeApi } from "../api/knowledge";
 import { playApi } from "../api/play";
 import { DialoguePanel } from "../features/play/DialoguePanel";
 import { NpcList } from "../features/play/NpcList";
-import { dicts, lang, setLang, t, timelineText } from "../i18n";
+import { availableLangs, configureLangs, dicts, lang, setLang, t, timelineText } from "../i18n";
 import { PlayPage } from "../routes/PlayPage";
 import type { Conversation, Message, NPC, RegionView } from "../types";
 
@@ -99,9 +99,12 @@ function typeAndSend(text: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // The server's languages as GET /api/langs reports them by default (review U5 #2).
+  act(() => configureLangs("ko", ["ko", "en"]));
 });
 
 afterEach(() => {
+  act(() => configureLangs("ko", ["ko", "en"]));
   act(() => setLang("ko"));
   localStorage.clear();
   vi.unstubAllGlobals();
@@ -148,6 +151,32 @@ describe("?lang= on translated reads (FD-U5 Q1=A)", () => {
     setLang("en");
     expect(withLang("/x")).toBe("/x?lang=en");
     expect(withLang("/x?a=1")).toBe("/x?a=1&lang=en");
+  });
+
+  it("the server default is not sent: the server applies it (review U5 #2)", () => {
+    setLang("ko");
+    expect(withLang("/x")).toBe("/x");
+  });
+
+  it("before the server's languages are known nothing is sent (review U5 #2)", async () => {
+    vi.resetModules();
+    const fresh = await import("../api/http");
+    const freshI18n = await import("../i18n");
+    freshI18n.setLang("en");
+    expect(fresh.withLang("/x")).toBe("/x");
+    freshI18n.configureLangs("ko", ["ko", "en"]);
+    expect(fresh.withLang("/x")).toBe("/x?lang=en");
+  });
+
+  it("an English-only server never gets ?lang=ko and the toggle hides (review U5 #2)", () => {
+    setLang("ko");
+    configureLangs("en", ["en"]);
+    expect(lang()).toBe("en"); // falls back to the server default for this page
+    expect(withLang("/x")).toBe("/x");
+    expect(availableLangs()).toEqual(["en"]);
+    configureLangs("ko", ["ko"]);
+    setLang("en"); // a language the server does not take is never sent
+    expect(withLang("/x")).toBe("/x");
   });
 
   it("the five reads and say carry the language; the timeline and writes do not", async () => {
@@ -250,6 +279,36 @@ describe("DialoguePanel (US-4.1 / 4.3)", () => {
     expect(screen.getByTestId("dialogue-end-btn")).toBeDisabled();
   });
 
+  it("while a line is on its way the input is locked (review U5 #9)", async () => {
+    (api.startDialogue as Mock).mockResolvedValue(conversation());
+    let fail!: (e: unknown) => void;
+    (api.say as Mock).mockReturnValue(new Promise((_, rej) => (fail = rej)));
+    renderPanel();
+    await waitFor(() => expect(screen.getByTestId("dialogue-input")).toBeEnabled());
+    typeAndSend("Q1");
+    expect(screen.getByTestId("dialogue-input")).toBeDisabled();
+    await act(async () => fail(new Error("503 Service Unavailable")));
+    expect(screen.getByTestId("dialogue-input")).toBeEnabled();
+    expect(screen.getByTestId("dialogue-input")).toHaveValue("Q1");
+  });
+
+  it("a closed session shows the history read-only (review U5 #7)", async () => {
+    (api.dialogueHistory as Mock).mockResolvedValue(conversation([msg("npc", "지난 이야기")]));
+    renderPanel({ readOnly: true });
+    await waitFor(() => expect(screen.getByTestId("dialogue-msg-npc")).toBeInTheDocument());
+    expect(api.startDialogue).not.toHaveBeenCalled();
+    expect(api.dialogueHistory).toHaveBeenCalledWith("s1", "n1");
+    expect(screen.getByTestId("dialogue-input")).toBeDisabled();
+    expect(screen.getByTestId("dialogue-end-btn")).toBeDisabled();
+  });
+
+  it("a closed session with no talk yet shows an empty history, not an error", async () => {
+    (api.dialogueHistory as Mock).mockRejectedValue(new Error("404 Not Found: no conversation"));
+    renderPanel({ readOnly: true });
+    await waitFor(() => expect(screen.getByTestId("dialogue-messages")).toHaveTextContent(t("dialogue.empty")));
+    expect(screen.queryByTestId("dialogue-error")).not.toBeInTheDocument();
+  });
+
   it("end talk and close call back", async () => {
     (api.startDialogue as Mock).mockResolvedValue(conversation());
     const props = renderPanel();
@@ -303,6 +362,40 @@ describe("PlayPage with dialogue and the language toggle", () => {
     fireEvent.click(screen.getByTestId("dialogue-end-btn"));
     await waitFor(() => expect(api.act).toHaveBeenCalledWith("s1", { type: "end_talk", npc_id: "n1" }));
     expect(screen.queryByTestId("dialogue-panel")).not.toBeInTheDocument();
+  });
+
+  it("moving away closes the panel and coming back does not reopen it (review U5 #8)", async () => {
+    (api.act as Mock).mockResolvedValue({ id: "run1", session_id: "s1", status: "running", cost_turns: 1, action: null });
+    (api.getTurnRun as Mock).mockResolvedValue({
+      id: "run1", session_id: "s1", status: "done", cost_turns: 1, action: null,
+      result: { session: { id: "s1", world_id: "w", status: "open", turn: 1 }, changes: [], narration: [], budget_exhausted: false, llm_failed: false },
+    });
+    const away = view({ region_id: "b", region_name: "Hollow", npcs: [] });
+    renderPlay();
+    fireEvent.click(await screen.findByTestId("npc-n1-talk-btn"));
+    expect(await screen.findByTestId("dialogue-panel")).toBeInTheDocument();
+    (api.getRegion as Mock).mockResolvedValue(away);
+    fireEvent.click(screen.getByTestId("wait-btn")); // any refresh that lands elsewhere
+    await waitFor(() => expect(screen.getByTestId("region-title")).toHaveTextContent("Hollow"));
+    (api.getRegion as Mock).mockResolvedValue(view());
+    fireEvent.click(await screen.findByTestId("wait-btn"));
+    await waitFor(() => expect(screen.getByTestId("region-title")).toHaveTextContent("Riverton"));
+    expect(screen.queryByTestId("dialogue-panel")).not.toBeInTheDocument();
+    expect(api.startDialogue).toHaveBeenCalledTimes(1);
+  });
+
+  it("a late answer in the previous language does not overwrite the new one (review U5 #11)", async () => {
+    renderPlay();
+    await screen.findByTestId("region-scene");
+    let slowEn!: (v: RegionView) => void;
+    (api.getRegion as Mock)
+      .mockReturnValueOnce(new Promise<RegionView>((r) => (slowEn = r)))
+      .mockResolvedValueOnce(view({ region_name: "Riverton-ko" }));
+    fireEvent.click(screen.getByTestId("lang-en")); // read A: slow
+    fireEvent.click(screen.getByTestId("lang-ko")); // read B: fast, the newest
+    await waitFor(() => expect(screen.getByTestId("region-title")).toHaveTextContent("Riverton-ko"));
+    await act(async () => slowEn(view({ region_name: "Riverton-en" })));
+    expect(screen.getByTestId("region-title")).toHaveTextContent("Riverton-ko");
   });
 
   it("switching to en relabels the screen and re-reads the region", async () => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import type {
   EventCategory,
@@ -8,7 +8,7 @@ import type {
   SessionRumor,
   TimelineEntry,
 } from "./types";
-import { t, timelineText, useLang } from "./i18n";
+import { t, timelineText, useRequestLang } from "./i18n";
 import {
   Badge,
   Button,
@@ -79,7 +79,7 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
   );
   const [confirm, setConfirm] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const closed = session.status === "closed";
-  const displayLang = useLang(); // rumors / events carry translated fields: re-read on switch
+  const displayLang = useRequestLang(); // rumors / events carry translated fields: re-read
 
   // Memoized so NotificationCenter's auto-dismiss effect deps stay stable and its
   // timers don't reset on every SessionPanel re-render (review #5).
@@ -92,7 +92,11 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
     [],
   );
 
+  // Only the latest read may paint: a slow answer in the previous language (or for the
+  // previous region) must not overwrite a newer one (review U5 #11).
+  const readSeq = useRef(0);
   const refresh = useCallback(async () => {
+    const mine = ++readSeq.current;
     setError(null);
     try {
       // These reads are independent — load them in parallel (round-trip depth 1)
@@ -103,6 +107,7 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
         api.listDistortions(session.id),
         regionId ? api.listRumors(session.id, regionId) : Promise.resolve([]),
       ]);
+      if (mine !== readSeq.current) return;
       setTimeline(tl);
       setEvents(ev);
       const map: Record<string, number> = {};
@@ -113,7 +118,7 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
         setDistortion(map[regionId] ?? 0.3); // reflect real per-region distortion
       }
     } catch (e) {
-      setError(String(e));
+      if (mine === readSeq.current) setError(String(e));
     }
   }, [session.id, regionId, displayLang]);
 

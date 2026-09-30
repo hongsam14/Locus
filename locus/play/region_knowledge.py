@@ -17,12 +17,14 @@ receives it (deviation 1).
 
 from __future__ import annotations
 
+from pydantic import Field
+
 from locus.knowledge.cache import SnapshotSource
 from locus.knowledge.consensus import DEFAULT_PARAMS, ConsensusEngine, ConsensusParams
 from locus.knowledge.query import region_known
-from locus.play.models import SessionRumor
+from locus.play.models import GameSession, SessionRumor
 from locus.play.ports import SessionRumorStore
-from locus.shared.models import KnowledgeView, LocusModel, QueryResult, ScopeType
+from locus.shared.models import KnowledgeView, LocusModel, QueryResult, ScopeType, WorldSnapshot
 
 
 class RegionSources(LocusModel):
@@ -33,6 +35,9 @@ class RegionSources(LocusModel):
     facts: list[KnowledgeView]  # region_known(view): direct + inherited + global
     hearsay: list[KnowledgeView]  # the player screen only — never an NPC's knowledge
     rumors: list[SessionRumor]  # the region's active session rumors
+    # Every rumor of the region incl. pruned ones, so a chain can be walked to its
+    # canonical root when an NPC's context hides sources (review U5 #1).
+    lineage: list[SessionRumor] = Field(default_factory=list)
 
 
 class SessionKnowledgeService:
@@ -46,21 +51,36 @@ class SessionKnowledgeService:
         self._snapshots = snapshots
         self._params = params
 
-    def region_sources(self, session_id: str, region_id: str) -> RegionSources:
-        """The region's facts, hearsay and active rumors, resolved once (BLM §1.1)."""
-        session = self._repo.get_session(session_id)
+    def region_sources(
+        self,
+        session_id: str,
+        region_id: str,
+        *,
+        session: GameSession | None = None,
+        snapshot: WorldSnapshot | None = None,
+    ) -> RegionSources:
+        """The region's facts, hearsay and active rumors, resolved once (BLM §1.1).
+
+        A caller that already read the session and the snapshot passes them in, so one
+        screen is built from one snapshot and does not read them twice (review U5 #13).
+        """
         if session is None:
-            raise LookupError(f"session not found: {session_id}")
-        snapshot = self._snapshots.get(session.world_id)
+            session = self._repo.get_session(session_id)
+            if session is None:
+                raise LookupError(f"session not found: {session_id}")
+        if snapshot is None:
+            snapshot = self._snapshots.get(session.world_id)
         if region_id not in snapshot.regions_by_id:
             raise LookupError(f"region not found: {region_id}")
         view = ConsensusEngine.from_snapshot(snapshot, self._params).resolve(region_id)
+        every = self._repo.list_rumors(session_id, region_id, include_pruned=True)
         return RegionSources(
             world_id=session.world_id,
             region_id=region_id,
             facts=region_known(view),  # direct + inherited + global (FR-R5.1)
             hearsay=list(view.hearsay),
-            rumors=self._repo.list_rumors(session_id, region_id),
+            rumors=[r for r in every if r.active],
+            lineage=every,
         )
 
     def knowledge_for_region(self, session_id: str, region_id: str) -> QueryResult:

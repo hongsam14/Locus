@@ -61,7 +61,9 @@ class PlayService(SessionAppService):
         region = snapshot.regions_by_id.get(player.region_id)
         if region is None:  # checked first so this message survives (NFR-9)
             raise LookupError(f"player region no longer exists: {player.region_id}")
-        src = self._region_knowledge.region_sources(session.id, region.id)
+        src = self._region_knowledge.region_sources(
+            session.id, region.id, session=session, snapshot=snapshot
+        )
         return RegionView(
             session_id=session.id,
             turn=session.turn,

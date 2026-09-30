@@ -18,9 +18,17 @@ of work, so the loser's answer is not lost (plan review R-03).
 from __future__ import annotations
 
 from locus.knowledge.cache import SnapshotSource
-from locus.play.base import SessionAppService
+from locus.play.base import SessionAppService, SessionClosedError
 from locus.play.errors import ConversationExistsError, InvalidActionError, LlmUnavailableError
-from locus.play.models import Conversation, GameSession, Message, NpcReply, Player, ScopeLimits
+from locus.play.models import (
+    Conversation,
+    GameSession,
+    Message,
+    NpcReply,
+    Player,
+    ScopeLimits,
+    SessionStatus,
+)
 from locus.play.npc.prompts import fallback_text, system_prompt, user_prompt
 from locus.play.npc.scope import build_context
 from locus.play.ports import PlayRepository
@@ -103,17 +111,21 @@ class NpcDialogueService(SessionAppService):
             raise LlmUnavailableError("npc dialogue needs an LLM provider (set OPENAI_API_KEY)")
         session = self._require_open(session_id)
         player = self._require_player(session_id)
-        npc = self._require_npc_here(self._snapshots.get(session.world_id), player, npc_id)
+        snapshot = self._snapshots.get(session.world_id)
+        npc = self._require_npc_here(snapshot, player, npc_id)
 
         # reads + the pure scope, outside any transaction
         conv = self._repo.get_conversation(session_id, npc_id)
-        src = self._region_knowledge.region_sources(session_id, npc.home_region_id)
+        src = self._region_knowledge.region_sources(
+            session_id, npc.home_region_id, session=session, snapshot=snapshot
+        )
         ctx = build_context(
             npc=npc,
             facts=src.facts,
             rumors=src.rumors,
             recent=conv.messages if conv else [],
             limits=ScopeLimits.from_tuning(self._tuning),
+            lineage=src.lineage,
         )
         # exactly one LLM call, outside any transaction (BR-U4-14)
         answer = self._llm.complete(user_prompt(ctx, body, lang), system=system_prompt(npc, lang))
@@ -154,6 +166,12 @@ class NpcDialogueService(SessionAppService):
         lang: str,
     ) -> Message:
         with self._repo.uow() as u:
+            # The LLM call took up to a minute and `say` holds no turn lock: the GM (or a
+            # confirmed world replace) may have closed the session meanwhile. Re-check
+            # inside the transaction so a closed session never gains lines (review U5 #4).
+            current = u.sessions.get_session(session.id)
+            if current is None or current.status == SessionStatus.CLOSED.value:
+                raise SessionClosedError(f"session is closed: {session.id}")
             if conv is None:
                 conv = u.conversations.create_conversation(
                     Conversation(session_id=session.id, npc_id=npc_id, started_turn=session.turn)

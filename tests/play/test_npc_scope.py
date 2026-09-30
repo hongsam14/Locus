@@ -17,9 +17,9 @@ from locus.knowledge.consensus import ConsensusEngine
 from locus.knowledge.query import region_known
 from locus.play.models import Message, ScopeLimits, SessionRumor
 from locus.play.npc.prompts import rumor_tone, system_prompt, user_prompt
-from locus.play.npc.scope import build_context, is_known_scope, shadowed_sources
+from locus.play.npc.scope import build_context, is_known_scope
 from locus.shared.models import KnowledgeView, Provenance, SourceKind
-from tests.play.strategies import GLOBAL_MARKER, npc, regional_worlds, rumors_from
+from tests.play.strategies import GLOBAL_MARKER, chain_roots, npc, regional_worlds, rumors_from
 
 NPC_A = npc("n1", "r0", name="Mara")
 LIMITS = ScopeLimits()
@@ -83,13 +83,17 @@ def rumor_lists(draw, fact_ids: list[str]) -> list[SessionRumor]:
 )
 def test_tp_u5_1a_the_context_only_holds_known_scope_minus_hidden_sources(data, limits) -> None:
     facts = data.draw(fact_lists())
-    rumors = data.draw(rumor_lists([f.knowledge_id for f in facts]))
-    ctx = build_context(npc=NPC_A, facts=facts, rumors=rumors, recent=[], limits=limits)
-    hidden = shadowed_sources(ctx.rumors)  # only the *selected* rumors hide their sources
+    every = data.draw(rumor_lists([f.knowledge_id for f in facts]))
+    active = [r for r in every if r.active]
+    ctx = build_context(
+        npc=NPC_A, facts=facts, rumors=active, recent=[], limits=limits, lineage=every
+    )
+    # only the *selected* rumors hide their sources — the root of each chain (review #1)
+    hidden = chain_roots(ctx.rumors, every)
     allowed_facts = {f.knowledge_id for f in facts if is_known_scope(f)} - hidden
     assert {k.knowledge_id for k in ctx.facts} <= allowed_facts
     assert all(str(k.scope_type) in ("direct", "inherited", "global") for k in ctx.facts)
-    assert {r.id for r in ctx.rumors} <= {r.id for r in rumors}
+    assert {r.id for r in ctx.rumors} <= {r.id for r in active}
     assert ctx.allowed_ids == {k.knowledge_id for k in ctx.facts} | {r.id for r in ctx.rumors}
 
 
@@ -221,3 +225,50 @@ def test_the_question_line_names_the_language(lang: str) -> None:
     ctx = build_context(npc=NPC_A, facts=[], rumors=[], recent=[], limits=LIMITS)
     prompt = user_prompt(ctx, "hi", lang)
     assert prompt.endswith("hi") and "(nothing in particular)" in prompt
+
+
+# --- review U5 #1: a chain's later links hide the chain's canonical root ------------ #
+def _link(rid: str, parent: str, *, support=0.5, distortion=0.5, active=True) -> SessionRumor:
+    r = _rumor(rid, parent, support=support, distortion=distortion)
+    return r.model_copy(update={"distorted_from_kind": "rumor", "active": active})
+
+
+def test_review_1_second_and_third_links_hide_the_original() -> None:
+    """The demo case: a regenerate makes 3-link chains with equal support; the limit
+    keeps the most distorted links, so only 2nd/3rd links are picked."""
+    facts = [_fact("k1", statement="The mill burned."), _fact("k2")]
+    first = _rumor("r1", "k1", distortion=0.2)
+    second = _link("r2", "r1", distortion=0.4)
+    third = _link("r3", "r2", distortion=0.6)
+    ctx = build_context(
+        npc=NPC_A,
+        facts=facts,
+        rumors=[first, second, third],
+        recent=[],
+        limits=ScopeLimits(facts=12, rumors=2, recent_messages=0),
+    )
+    assert [r.id for r in ctx.rumors] == ["r3", "r2"]
+    assert "k1" not in {k.knowledge_id for k in ctx.facts}  # the original is hidden
+    assert "k2" in {k.knowledge_id for k in ctx.facts}
+
+
+def test_review_1_a_pruned_middle_link_still_leads_to_the_root() -> None:
+    facts = [_fact("k1")]
+    first = _rumor("r1", "k1").model_copy(update={"active": False})
+    third = _link("r3", "r2")
+    ctx = build_context(
+        npc=NPC_A,
+        facts=facts,
+        rumors=[third],
+        recent=[],
+        limits=LIMITS,
+        lineage=[first, _link("r2", "r1", active=False), third],
+    )
+    assert ctx.facts == []  # k1 hidden through two pruned links
+
+
+def test_review_14_a_rumor_with_no_words_is_never_picked() -> None:
+    facts = [_fact("k1")]
+    empty = _rumor("r1", "k1").model_copy(update={"statement": "  "})
+    ctx = build_context(npc=NPC_A, facts=facts, rumors=[empty], recent=[], limits=LIMITS)
+    assert ctx.rumors == [] and [k.knowledge_id for k in ctx.facts] == ["k1"]

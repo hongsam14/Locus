@@ -2553,3 +2553,40 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **User Input**: (none — background review finished)
 **AI Response**: Record `aidlc-docs/construction/U5-npc-dialogue-language/code/reviews/code-review-01.md`: 15 correctness findings (1 high, several medium), 6 cleanup findings, 1 capped, 1 rejected. The heaviest (#1) breaks BR-U5-11: the rumor-shadowing rule only covers the first chain link, so an NPC can hold an original and its distortion together (reproduced on the aldermoor demo after a GM regenerate). The code is approved, so fixing it changes approved code: asking the human (record §7 options), per the global rule on reworking approved artifacts.
 **Context**: CONSTRUCTION / U5 — post-approval code review.
+
+---
+
+## Functional Design Approval — U6 행적·전파
+**Timestamp**: 2026-09-30T23:26:40Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U6 functional design approved. Next: U6 NFR (light) — after the U5 review fixes below, because U6 builds on the same code.
+**Context**: CONSTRUCTION / U6 — Functional Design approved.
+
+---
+
+## Plan Review Dispositions — Functional Design — U6 행적·전파
+**Timestamp**: 2026-09-30T23:26:40Z
+**User Input**: (approval at gate; see above)
+**AI Response**:
+- R-10 → Accepted risk (carry: the code plan lists the remaining deviations — DeedService method names, reach weight as w(X)×edge vs best_path_weights, SpreadTarget/DeedView/void shapes)
+- R-15 → Accepted risk (carry: decide rumor-level birth-turn decay exemption in the code plan; the gate note proposed rumor-level)
+- R-16 → Accepted risk (carry: a missing statement appraisal defaults to noteworthy=false, salience=0, stored with the statement deed)
+- R-17 → Accepted risk (carry: code plan names who builds SceneBrief and the lang path router → PlayService.act → TurnAdvancer.begin/_start)
+- Riding suggestions (Q4=A migration note, timeline lines of deleted deeds, length caps on appraisal fields) → carried to the code plan as questions/assumptions.
+**Context**: Functional Design — dispositions recorded.
+
+---
+
+## U5 code review — fix decision
+**Timestamp**: 2026-09-30T23:26:40Z
+**User Input**: "A. 14건 지금 수정, 1건 감수 (Recommended)"
+**AI Response**: Fix #1–#14 of `U5-npc-dialogue-language/code/reviews/code-review-01.md` now on this branch, recorded as review fixes without reopening the code gate (U4 precedent). #15 (sync `say` holding AnyIO thread-pool tokens under 40+ concurrent slow calls) → Accepted risk.
+**Context**: CONSTRUCTION / U5 — post-approval review fixes.
+
+---
+
+## U5 code review fixes applied
+**Timestamp**: 2026-09-30T23:39:36Z
+**User Input**: (continuation of "A. 14건 지금 수정, 1건 감수")
+**AI Response**: Fixed #1–#14 of `U5-npc-dialogue-language/code/reviews/code-review-01.md` (outcomes in its §8): chain-root shadowing with lineage incl. pruned links (#1; generator now makes chains, independent oracle `chain_roots`, mutation check fails 4 tests); `GET /api/langs` + client sends `?lang=` only for a non-default language the server takes (#2); Retry-After-aware waits capped at 8s → 106s bound (#3); closed-session re-check inside the say transaction (#4); nginx 130s (#5); id-scoped in-flight purge (#6); read-only history panel for closed sessions (#7); panel closes on region change (#8); input locked while sending (#9); bounded embeddings client (#10); latest-read-wins in PlayPage/SessionPanel and re-read on the request language (#11; mutation check fails the new test); localized turn summary (#12); one snapshot read per screen/say (#13); empty drafts end the chain and blank rumors are never picked (#14). #15 → Accepted risk (operations.md). Docs: operations.md (106s, /api/langs, closed sessions, accepted risk), CLAUDE.md (test count 621, two inaccurate phrases), U5 code-summary §8. Gates: pytest 557, vitest 64, mypy 11, ruff/black/tsc/vite clean, docker build OK with /api/langs.
+**Context**: CONSTRUCTION / U5 — post-approval review fixes complete.

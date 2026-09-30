@@ -245,3 +245,10 @@ def test_regenerate_without_localization_still_works() -> None:
     sid = _start(client)
     client.post(f"/api/gm/sessions/{sid}/regions/a/rumors")
     assert client.post(f"/api/gm/sessions/{sid}/regions/a/rumors/regen").status_code == 200
+
+
+def test_review_2_the_server_tells_the_client_its_languages() -> None:
+    """Review U5 #2: the web client sends ?lang= only for a language the server takes."""
+    client, *_ = _app()
+    body = client.get("/api/langs").json()
+    assert body == {"default": "ko", "supported": ["ko", "en"]}

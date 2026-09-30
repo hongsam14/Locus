@@ -2,14 +2,16 @@
 // `api` merges the four so existing components keep importing `./api`.
 import { gmApi } from "./gm";
 import { knowledgeApi } from "./knowledge";
+import { metaApi } from "./meta";
 import { playApi } from "./play";
 import { worldApi } from "./world";
 
-export { gmApi, knowledgeApi, playApi, worldApi };
+export { gmApi, knowledgeApi, metaApi, playApi, worldApi };
 
 export const api = {
   ...worldApi,
   ...knowledgeApi,
   ...playApi,
   ...gmApi,
+  ...metaApi,
 };

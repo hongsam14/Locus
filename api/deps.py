@@ -67,6 +67,13 @@ def get_play_optional(request: Request) -> PlayContainer | None:
     return _containers(request).play
 
 
+def lang_settings(request: Request) -> Settings:
+    """Settings that decide the display language. Without an assembled shared container
+    (tests inject only some boundaries) the settings' own defaults apply."""
+    shared = _containers(request).shared
+    return shared.settings if shared is not None else Settings.model_construct()
+
+
 def display_lang(request: Request, lang: str | None = None) -> str:
     """The display language of this request (U5, FD-U5 Q1=A, BR-U5-15).
 
@@ -75,8 +82,7 @@ def display_lang(request: Request, lang: str | None = None) -> str:
     value can never become a translation-cache key (400). Without an assembled shared
     container (tests inject only some boundaries) the settings' own defaults apply.
     """
-    shared = _containers(request).shared
-    settings = shared.settings if shared is not None else Settings.model_construct()
+    settings = lang_settings(request)
     chosen = (lang or settings.translation_target_lang).strip().lower()
     if chosen not in settings.supported_langs:
         raise HTTPException(status_code=400, detail=f"unsupported lang: {chosen}")

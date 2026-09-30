@@ -61,3 +61,48 @@ def test_factory_unsupported_provider_raises() -> None:
     factory = ProviderFactory(settings=_settings(llm_provider="acme"))
     with pytest.raises(ValueError, match="Unsupported llm_provider"):
         factory.embedding()
+
+
+# --- review U5 #3: the server's Retry-After is honoured, capped ----------------- #
+class _Response:
+    def __init__(self, headers: dict[str, str]) -> None:
+        self.headers = headers
+
+
+class _StatusError(Exception):
+    """Shaped like an SDK status error: it carries the HTTP response."""
+
+    def __init__(self, headers: dict[str, str]) -> None:
+        super().__init__("status")
+        self.response = _Response(headers)
+
+
+def _state(exc: BaseException, attempt: int = 1):
+    from tenacity import RetryCallState, Retrying
+
+    state = RetryCallState(Retrying(), None, (), {})
+    state.attempt_number = attempt
+    state.set_exception((type(exc), exc, None))
+    return state
+
+
+def test_review_3_retry_after_headers_are_read() -> None:
+    from locus.shared.llm.retry import retry_after_seconds
+
+    assert retry_after_seconds(_StatusError({"retry-after": "4"})) == 4.0
+    assert retry_after_seconds(_StatusError({"retry-after-ms": "1500"})) == 1.5
+    assert retry_after_seconds(_StatusError({"retry-after": "soon"})) is None
+    assert retry_after_seconds(_StatusError({})) is None
+    assert retry_after_seconds(RuntimeError("no response")) is None
+
+
+def test_review_3_the_wait_follows_the_hint_within_the_cap() -> None:
+    from locus.shared.llm.retry import RETRY_AFTER_CAP_SECONDS, retry_wait
+
+    assert retry_wait(_state(_StatusError({"retry-after": "4"}))) == 4.0
+    assert retry_wait(_state(_StatusError({"retry-after": "60"}))) == RETRY_AFTER_CAP_SECONDS
+    # no hint: the exponential backoff (1s, then 2s)
+    assert retry_wait(_state(RuntimeError("x"), attempt=1)) == 1.0
+    assert retry_wait(_state(RuntimeError("x"), attempt=2)) == 2.0
+    # a hint shorter than the backoff never shortens it
+    assert retry_wait(_state(_StatusError({"retry-after": "0"}), attempt=2)) == 2.0

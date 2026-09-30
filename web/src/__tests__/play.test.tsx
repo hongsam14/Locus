@@ -136,6 +136,9 @@ describe("PlayPage", () => {
     await waitFor(() => expect(screen.getByTestId("notification-center")).toBeInTheDocument());
     expect(screen.getByTestId("notification-center")).toHaveTextContent("Hollow");
     expect(screen.getByTestId("notification-center")).toHaveTextContent(t("notif.rumors_added", { n: 2 }));
+    // the turn summary is drawn with t(), not the server's English sentences (review U5 #12)
+    await waitFor(() => expect(screen.getByTestId("play-narration")).toHaveTextContent(t("notif.rumors_added", { n: 2 })));
+    expect(screen.getByTestId("play-narration")).not.toHaveTextContent("2 new rumors");
     expect(screen.getByTestId("notification-center")).toHaveTextContent(t("play.budget"));
     await waitFor(() => expect(screen.queryByTestId("turn-progress")).not.toBeInTheDocument());
     expect((api.getLog as Mock).mock.calls.length).toBeGreaterThanOrEqual(3);

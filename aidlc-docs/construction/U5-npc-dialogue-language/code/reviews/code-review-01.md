@@ -91,3 +91,26 @@ U5 코드는 승인됐다(eed2f58). 위 지적을 고치면 **승인된 코드�
 - **A. #1–#4를 지금 이 브랜치에서 고치고 게이트를 다시 돈다.** #1은 이 유닛의 핵심 체험(BR-U5-11, US-4.3/6.1)을 데모의 평범한 GM 경로에서 깨뜨린다. #2는 문서가 허용한 설정에서 화면을 통째로 막는다. 둘 다 원하시는 것에 직접 닿는다. 비용: Code Generation 재작업, 코드 게이트 재확인, 테스트 생성기 보강(체인 고리). 되돌리기 쉽다(커밋 단위).
 - **B. 전부 감수 위험으로 기록하고 U6로 간다.** 비용은 없다. 대신 #1 때문에 NPC가 원문을 말하는 채로 U6(행적 전파)가 그 위에 쌓이고, U6의 대화 요약이 원문을 퍼뜨릴 수 있다.
 - **C. 섞는다.** #1–#4는 지금 고치고, #5–#15와 정리 C1–C6은 U6/U7 백로그로 넘긴다. #2의 해법(서버 언어 노출)은 API 계약을 더하므로 설계 한 줄이 필요하다.
+
+## 8. 처리 결과 (2026-10-01, 사람의 선택: A — #1~#14 수정, #15 감수)
+| # | 처리 | 위치 · 확인 |
+|---|---|---|
+| 1 | 수정 | `npc/scope.py` `root_source`가 계보를 거슬러 뿌리 캐노니컬 지식을 가린다. `RegionSources.lineage`(가지치기 포함)를 건넨다. 생성기 `rumors_from`이 체인과 비활성 고리를 만들고, 기준식 `chain_roots`는 검사 대상과 따로 작성했다. 데모 재현 예제와 가지치기된 중간 고리 예제를 더했다. 옛 동작으로 되돌리면 테스트 4개가 실패한다 |
+| 2 | 수정 | `GET /api/langs`, `i18n.configureLangs`/`requestLang`/`availableLangs`. 설정 전·서버 기본값·서버가 받지 않는 언어이면 `?lang=`을 보내지 않는다. 토글은 서버가 받는 언어만 보인다 |
+| 3 | 수정 | `retry.py` `retry_wait`가 `Retry-After`/`retry-after-ms`를 따르고 8초에서 자른다. 호출당 최악 106초로 문서(operations.md, retry.py)를 고쳤다. SDK 재시도는 계속 끈다(NFR R-01 유지) |
+| 4 | 수정 | `NpcDialogueService._store`가 UoW 안에서 세션을 다시 읽어, 닫혔으면 `SessionClosedError`(409)를 낸다 |
+| 5 | 수정 | `web/nginx.conf` `/api/`에 `proxy_read_timeout`·`proxy_send_timeout` 130초 |
+| 6 | 수정 | `TranslationService.purge`는 id로 범위를 정한 정리일 때만 진행 중 키를 지운다 |
+| 7 | 수정 | 닫힌 세션이면 `DialoguePanel`이 `readOnly`로 `history`를 읽는다. 404는 빈 이력이고, 입력과 대화 끝내기는 잠긴다 |
+| 8 | 수정 | `PlayPage`가 지역이 바뀌면 `activeNpcId`를 지운다 |
+| 9 | 수정 | 전송 중에는 입력창을 잠근다. 실패하면 보낸 줄을 되살린다 |
+| 10 | 수정 | `OpenAIEmbeddings(timeout=30, max_retries=0)` |
+| 11 | 수정 | `PlayPage`·`SessionPanel`이 조회 순번으로 늦은 응답을 버린다. 화면은 라벨 언어가 아니라 요청 언어(`useRequestLang`)가 바뀔 때 다시 읽는다 |
+| 12 | 수정 | 턴 요약은 서버 문장 대신 `changes`를 `t()`로 그린다 |
+| 13 | 수정 | `region_sources(..., session=, snapshot=)`. `current_region`과 `say`가 이미 읽은 값을 넘긴다(스냅샷 1회) |
+| 14 | 수정 | 생성기는 빈 초안에서 체인을 멈추고, `pick_rumors`는 빈 문장 소문을 고르지 않는다 |
+| 15 | 감수 위험 | 동기 `say`가 스레드풀 토큰을 LLM 왕복 동안 쥔다. 동시 느린 호출 40개가 넘어야 드러난다(operations.md "Accepted risks"에 기록) |
+
+정리 지적 C1~C6과 상한으로 뺀 1건(줄바꿈 위조)은 이번 선택 범위 밖이다. U6·U7 백로그로 넘긴다. 문서 정확도 메모의 CLAUDE.md 두 문장은 고쳤다.
+
+결과: pytest 557(+12), vitest 64(+8), mypy 11(기준선), ruff·black·tsc 통과.

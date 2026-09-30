@@ -18,7 +18,7 @@ from locus.play import InMemoryPlayRepository
 from locus.play.base import SessionClosedError
 from locus.play.errors import InvalidActionError, LlmUnavailableError, TurnInProgressError
 from locus.play.models import EndTalkAction, Player, ScopeLimits, SessionRumor, WaitAction
-from locus.play.npc.scope import build_context, pick_rumors, shadowed_sources
+from locus.play.npc.scope import build_context, pick_rumors
 from locus.play.region_knowledge import SessionKnowledgeService
 from locus.play.rumor.generator import RumorDraft, RumorGenerator
 from locus.shared.models import (
@@ -30,7 +30,14 @@ from locus.shared.models import (
     SourceKind,
 )
 from tests.play.helpers import compose_play
-from tests.play.strategies import build_snapshot, edge, npc, regional_worlds, rumors_from
+from tests.play.strategies import (
+    build_snapshot,
+    chain_roots,
+    edge,
+    npc,
+    regional_worlds,
+    rumors_from,
+)
 
 
 class _Snap:
@@ -355,17 +362,48 @@ def test_tp_u5_1b_what_an_npc_may_know_is_what_its_region_can_reach(world, data)
 
     src = rk.region_sources(session.id, region)  # the path under test
     ctx = build_context(
-        npc=npc("n", region), facts=src.facts, rumors=src.rumors, recent=[], limits=limits
+        npc=npc("n", region),
+        facts=src.facts,
+        rumors=src.rumors,
+        recent=[],
+        limits=limits,
+        lineage=src.lineage,
     )
 
     # oracle: recomputed from the consensus engine and the repository, not via region_sources
     view = ConsensusEngine.from_snapshot(world).resolve(region)
     active = repo.list_rumors(session.id, region)
-    hidden = shadowed_sources(pick_rumors(active, limits.rumors))
+    every = repo.list_rumors(session.id, region, include_pruned=True)
+    hidden = chain_roots(pick_rumors(active, limits.rumors), every)
     reachable = {k.knowledge_id for k in region_known(view)} - hidden
     assert {k.knowledge_id for k in ctx.facts} <= reachable
+    # BR-U5-11 directly: no original sits next to a distortion of it
+    assert {k.knowledge_id for k in ctx.facts}.isdisjoint(chain_roots(ctx.rumors, every))
     assert {r.id for r in ctx.rumors} <= {r.id for r in active}
     others = [rid for rid in world.regions_by_id if rid != region]
     for k in ctx.facts:  # never another region's own knowledge, never hearsay
         assert not any(k.knowledge_id.startswith(f"k-{o}-") for o in others)
         assert not k.is_hearsay
+
+
+# --- review U5 #4: a session closed while the LLM answers gains no lines ---------- #
+def test_review_4_a_session_closed_during_the_llm_call_gains_no_lines() -> None:
+    repo, gm, _snap, llm, session, _player = _setup()
+    answer = llm.complete
+
+    def close_then_answer(prompt, *, system=None):
+        repo.close_session(session.id)  # the GM closes it during the call
+        return answer(prompt, system=system)
+
+    llm.complete = close_then_answer  # type: ignore[method-assign]
+    with pytest.raises(SessionClosedError):
+        gm.dialogue.say(session.id, "n1", "hello?")
+    assert repo.get_conversation(session.id, "n1") is None  # nothing stored
+
+
+def test_review_13_say_reads_the_snapshot_once() -> None:
+    _repo, gm, snap, _llm, session, _player = _setup()
+    gm.dialogue.start(session.id, "n1")
+    snap.gets = 0
+    gm.dialogue.say(session.id, "n1", "news?")
+    assert snap.gets == 1  # the scope reuses the snapshot the NPC check read

@@ -62,6 +62,10 @@ class RumorGenerator:
             except Exception:
                 # graceful: stop the chain; keep what succeeded (NFR-R4, BR-S2-7)
                 break
+            if not draft.statement.strip():
+                # An empty draft is a failed step: stored, it would hide its source from
+                # an NPC and say nothing in its place (review U5 #14).
+                break
             rumor = SessionRumor(
                 session_id=session_id,
                 region_id=region_id,

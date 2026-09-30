@@ -135,19 +135,19 @@ class TranslationService:
         Also forgets matching in-flight keys so a later read can warm afresh. A warm
         already running may still write one row back after this — an orphan cache row
         with no effect on reads (only live sources are looked up); the next purge
-        removes it. World/session-scoped purges cannot see in-flight keys (they carry
-        no world or session), which is the same harmless race.
+        removes it. Only an **id-scoped** purge touches in-flight keys: they carry no
+        world or session, so a world/session/kind-only purge would forget every other
+        world's warm-ups too and translate them twice (review U5 #6). Leaving them is
+        the same harmless race.
         """
         removed = self._store.purge(kind=kind, ids=ids, world_id=world_id, session_id=session_id)
-        if kind is not None or ids is not None:
-            wanted = set(ids) if ids is not None else None
+        if ids is not None:
+            wanted = set(ids)
             with self._in_flight_lock:
                 self._in_flight = {
                     key
                     for key in self._in_flight
-                    if not (
-                        (kind is None or key[0] == kind) and (wanted is None or key[1] in wanted)
-                    )
+                    if not ((kind is None or key[0] == kind) and key[1] in wanted)
                 }
         return removed
 

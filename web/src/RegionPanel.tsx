@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
-import { t, useLang } from "./i18n";
+import { t, useRequestLang } from "./i18n";
 import type { KnowledgeView, QueryResult } from "./types";
 import { Badge, Button, Card, LocalizedText, Panel } from "./ui";
 
@@ -28,7 +28,7 @@ function badgeTone(it: KnowledgeView): "neutral" | "event" | "promoted" {
 export function RegionPanel({ worldId, regionId, sessionId, onDeleted }: Props) {
   const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const displayLang = useLang(); // translated fields differ per language: re-read on switch
+  const displayLang = useRequestLang(); // translated fields differ per language: re-read
 
   useEffect(() => {
     let active = true;

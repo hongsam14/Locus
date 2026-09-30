@@ -104,7 +104,12 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
     def __init__(self, *, api_key: str, model: str, dimension: int) -> None:
         from langchain_openai import OpenAIEmbeddings
 
-        self._client = OpenAIEmbeddings(api_key=api_key, model=model)
+        # Same policy as the chat clients: one retry layer (with_retry), a bounded call.
+        # The SDK default (2 retries, no timeout) let one embed send 9 requests or block
+        # a worker forever (review U5 #10).
+        self._client = OpenAIEmbeddings(
+            api_key=api_key, model=model, timeout=CALL_TIMEOUT_SECONDS, max_retries=0
+        )
         self._dimension = dimension
 
     @property

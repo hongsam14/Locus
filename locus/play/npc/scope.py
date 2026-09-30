@@ -15,11 +15,15 @@ Two rules make the unit's core experience hold:
   so the original would otherwise sit next to its distortion. The rumors are picked
   first and only the *selected* rumors hide their sources — a rumor cut by the limit
   must not make the NPC forget the event altogether (BR-U5-11, plan review R-12).
+  The source is the **root** of the rumor's chain: a later link distorts the previous
+  link, not the knowledge, so hiding only first links let an NPC hold the original and
+  its second-link distortion together (code review U5 #1). ``lineage`` carries the
+  region's rumors that are not in the pick (unpicked, pruned) so the walk can climb.
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 
 from locus.play.models import Message, NpcContext, ScopeLimits, SessionRumor
 from locus.shared.models import NPC, KnowledgeView
@@ -42,14 +46,39 @@ def is_known_scope(k: KnowledgeView) -> bool:
     return str(k.scope_type) in KNOWN_SCOPES and not k.is_hearsay
 
 
-def shadowed_sources(rumors: Iterable[SessionRumor]) -> set[str]:
-    """Canonical knowledge ids the given rumors were drafted from."""
-    return {r.distorted_from_id for r in rumors if r.distorted_from_kind == "knowledge"}
+def root_source(rumor: SessionRumor, lineage: Mapping[str, SessionRumor]) -> str | None:
+    """The canonical knowledge id ``rumor``'s chain started from, or ``None`` when the
+    chain does not end in knowledge (a missing parent — e.g. deleted by a regenerate —
+    or a non-knowledge origin). Cycles stop the walk."""
+    seen: set[str] = set()
+    current = rumor
+    while current.distorted_from_kind == "rumor":
+        if current.id in seen:
+            return None
+        seen.add(current.id)
+        parent = lineage.get(current.distorted_from_id)
+        if parent is None:
+            return None
+        current = parent
+    return current.distorted_from_id if current.distorted_from_kind == "knowledge" else None
+
+
+def shadowed_sources(
+    rumors: Iterable[SessionRumor], lineage: Iterable[SessionRumor] = ()
+) -> set[str]:
+    """Canonical knowledge ids at the root of the given rumors' chains."""
+    picked = list(rumors)
+    by_id = {r.id: r for r in lineage}
+    by_id.update({r.id: r for r in picked})
+    roots = (root_source(r, by_id) for r in picked)
+    return {root for root in roots if root is not None}
 
 
 def pick_rumors(rumors: Sequence[SessionRumor], limit: int) -> list[SessionRumor]:
-    """Promoted first, then by support (BR-U5-9)."""
-    return sorted(rumors, key=_rumor_key)[:limit] if limit else []
+    """Promoted first, then by support (BR-U5-9). A rumor with no words is never
+    picked: it would hide its source and leave the NPC with nothing (review U5 #14)."""
+    spoken = [r for r in rumors if r.statement.strip()]
+    return sorted(spoken, key=_rumor_key)[:limit] if limit else []
 
 
 def build_context(
@@ -59,9 +88,10 @@ def build_context(
     rumors: Sequence[SessionRumor],
     recent: Sequence[Message],
     limits: ScopeLimits,
+    lineage: Sequence[SessionRumor] = (),
 ) -> NpcContext:
     picked_rumors = pick_rumors(rumors, limits.rumors)
-    hidden = shadowed_sources(picked_rumors)
+    hidden = shadowed_sources(picked_rumors, [*rumors, *lineage])
     visible = [k for k in facts if is_known_scope(k) and k.knowledge_id not in hidden]
     picked_facts = sorted(visible, key=_fact_key)[: limits.facts] if limits.facts else []
     # `recent[-0:]` would return everything: a zero limit means "none".

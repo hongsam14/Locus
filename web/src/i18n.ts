@@ -349,8 +349,19 @@ let current: Lang = readStoredLang() ?? "ko";
 if (typeof document !== "undefined") document.documentElement.lang = current;
 const listeners = new Set<() => void>();
 
-/** The display language: labels come from its dictionary, and read requests that
- * carry translated fields send it as `?lang=` (`api/http.ts::withLang`). */
+// The server's display languages (`GET /api/langs`, review U5 #2). Until they are
+// known the client sends no `?lang=` and the server's default applies: a server
+// configured for English only must never receive `?lang=ko` and answer 400.
+let serverDefault: string | null = null;
+let serverLangs: readonly string[] | null = null;
+
+function notify(): void {
+  if (typeof document !== "undefined") document.documentElement.lang = current;
+  for (const fn of listeners) fn();
+}
+
+/** The display language: labels come from its dictionary. Read requests carry it as
+ * `?lang=` when the server needs to be told (`requestLang`, `api/http.ts::withLang`). */
 export function lang(): Lang {
   return current;
 }
@@ -364,8 +375,33 @@ export function setLang(next: Lang): void {
   } catch {
     /* not remembered; the switch still applies to this page */
   }
-  if (typeof document !== "undefined") document.documentElement.lang = next;
-  for (const fn of listeners) fn();
+  notify();
+}
+
+/** Adopt the server's languages. A remembered language the server does not take falls
+ * back to the server default (for this page; the stored choice is kept). */
+export function configureLangs(defaultLang: string, supported: readonly string[]): void {
+  serverDefault = defaultLang.trim().toLowerCase();
+  serverLangs = supported.map((l) => l.trim().toLowerCase());
+  const known = serverLangs;
+  if (!known.includes(current)) {
+    const fallback = isLang(serverDefault) ? serverDefault : LANGS.find((l) => known.includes(l));
+    if (fallback) current = fallback;
+  }
+  notify();
+}
+
+/** The `?lang=` value to send, or `null` to let the server default apply: unknown
+ * server languages, a language the server does not take, or the default itself. */
+export function requestLang(): Lang | null {
+  if (serverLangs === null || !serverLangs.includes(current)) return null;
+  return current === serverDefault ? null : current;
+}
+
+/** Languages the toggle offers: the dictionaries the server also takes. */
+export function availableLangs(): Lang[] {
+  const known = serverLangs;
+  return known === null ? [...LANGS] : LANGS.filter((l) => known.includes(l));
 }
 
 function subscribe(fn: () => void): () => void {
@@ -376,6 +412,22 @@ function subscribe(fn: () => void): () => void {
 /** Subscribe a component to the display language (re-renders on `setLang`). */
 export function useLang(): Lang {
   return useSyncExternalStore(subscribe, lang, lang);
+}
+
+const requestKey = () => requestLang() ?? "";
+
+/** The language the server is asked for (`""` = its default). Screens that show
+ * translated data re-read when this changes — not merely when the labels change. */
+export function useRequestLang(): string {
+  return useSyncExternalStore(subscribe, requestKey, requestKey);
+}
+
+const availableKey = () => availableLangs().join(",");
+
+/** Re-render when the offered languages change (after `configureLangs`). */
+export function useAvailableLangs(): Lang[] {
+  const key = useSyncExternalStore(subscribe, availableKey, availableKey);
+  return key ? (key.split(",") as Lang[]) : [];
 }
 
 function lookup(key: string): string | undefined {

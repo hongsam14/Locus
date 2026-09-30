@@ -88,3 +88,33 @@ def test_chain_from_existing_rumor_source() -> None:
         degrees=[0.3],
     )
     assert rumors[0].distorted_from_id == "ru0" and rumors[0].distorted_from_kind == "rumor"
+
+
+class _BlankAfter:
+    """Answers `ok-<n>` for the first ``good`` steps, then an empty statement."""
+
+    def __init__(self, good: int) -> None:
+        self.good = good
+        self.calls = 0
+
+    def structured(self, prompt, schema, *, system=None):
+        self.calls += 1
+        return RumorDraft(statement=f"ok-{self.calls}" if self.calls <= self.good else "  ")
+
+    def complete(self, prompt, *, system=None):  # pragma: no cover
+        return ""
+
+
+def test_review_14_an_empty_draft_ends_the_chain() -> None:
+    """Review U5 #14: a stored empty rumor hides its source and says nothing."""
+    gen = RumorGenerator(_BlankAfter(good=1))
+    chain = gen.generate_chain(
+        source_text="The mill burned.",
+        source_id="k1",
+        source_kind="knowledge",
+        source_confidence=0.9,
+        region_id="r",
+        session_id="s",
+        degrees=[0.2, 0.4, 0.6],
+    )
+    assert [r.statement for r in chain] == ["ok-1"]

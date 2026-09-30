@@ -177,3 +177,18 @@ def test_enrichment_for_never_asks_for_the_source_language() -> None:
     assert loc.translations._translator._llm.calls == 0
     enrichment_for(loc, items, kind="rumor", fields=["statement"], lang="ko")  # type: ignore[arg-type]
     assert loc.translations._translator._llm.calls == 1  # the ko path still warms
+
+
+def test_review_6_a_world_purge_leaves_other_warm_ups_in_flight() -> None:
+    """Review U5 #6: in-flight keys carry no world, so a world-scoped purge must not
+    forget them — otherwise another world's item is translated twice."""
+    scheduled: list = []
+    svc = TranslationService(
+        InMemoryTranslationRepository(), Translator(_LLM()), warm_scheduler=scheduled.append
+    )
+    item = [_Item(id="k-w2", statement="hi")]
+    svc.enrich(item, kind="knowledge", fields=["statement"], world_id="w2")
+    assert len(scheduled) == 1
+    svc.purge(kind="knowledge", world_id="w1")
+    svc.enrich(item, kind="knowledge", fields=["statement"], world_id="w2")
+    assert len(scheduled) == 1  # still in flight: no second warm

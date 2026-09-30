@@ -18,6 +18,7 @@ export function DialoguePanel({
   npc,
   llmAvailable,
   busy,
+  readOnly = false,
   onClose,
   onEndTalk,
   onSpoke,
@@ -26,6 +27,8 @@ export function DialoguePanel({
   npc: NPC;
   llmAvailable: boolean;
   busy: boolean;
+  /** A closed session: show the history (read, no LLM) and nothing else (review U5 #7). */
+  readOnly?: boolean;
   onClose: () => void;
   onEndTalk: () => void;
   onSpoke?: () => void;
@@ -45,12 +48,19 @@ export function DialoguePanel({
     setLoading(true);
     setReady(false);
     setError(null);
-    api
-      .startDialogue(sessionId, npc.id)
+    // `start` needs an open session; a closed one is read through `history`, where
+    // "never talked" (404) simply means an empty history (BR-U5-4).
+    const load = readOnly
+      ? api.dialogueHistory(sessionId, npc.id).catch((e: unknown) => {
+          if (String(e).includes("404")) return { messages: [] as Message[] };
+          throw e;
+        })
+      : api.startDialogue(sessionId, npc.id);
+    load
       .then((c) => {
         if (!active) return;
         setMessages(c.messages);
-        setReady(true);
+        setReady(!readOnly);
       })
       .catch((e) => {
         if (active) setError(String(e));
@@ -62,7 +72,7 @@ export function DialoguePanel({
       active = false;
       alive.current = false;
     };
-  }, [sessionId, npc.id]);
+  }, [sessionId, npc.id, readOnly]);
 
   async function send() {
     const text = draft.trim();
@@ -94,7 +104,9 @@ export function DialoguePanel({
     }
   }
 
-  const inputOff = !llmAvailable || !ready;
+  // Locked while a line is on its way: a failed send puts that line back in the box,
+  // which must not overwrite a next line typed meanwhile (review U5 #9).
+  const inputOff = !llmAvailable || !ready || readOnly || sending;
   return (
     <Panel
       data-testid="dialogue-panel"
@@ -121,7 +133,7 @@ export function DialoguePanel({
             {m.text}
           </li>
         ))}
-        {!loading && ready && messages.length === 0 && (
+        {!loading && (ready || readOnly) && messages.length === 0 && (
           <li className="text-xs text-ink-soft">{t("dialogue.empty")}</li>
         )}
       </ul>
@@ -161,7 +173,12 @@ export function DialoguePanel({
         </Button>
       </form>
       <div className="flex gap-2 mt-2">
-        <Button size="sm" data-testid="dialogue-end-btn" disabled={busy || sending} onClick={onEndTalk}>
+        <Button
+          size="sm"
+          data-testid="dialogue-end-btn"
+          disabled={busy || sending || readOnly}
+          onClick={onEndTalk}
+        >
           {t("dialogue.end")}
         </Button>
         <Button size="sm" data-testid="dialogue-close-btn" onClick={onClose}>

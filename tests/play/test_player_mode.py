@@ -1003,3 +1003,31 @@ def test_the_deterministic_services_work_without_a_provider() -> None:
         rumors.generate_rumors(session.id, "a")
     with pytest.raises(LlmUnavailableError):
         events.suggest_events(session.id, n=1)
+
+
+def test_review_13_the_player_screen_reads_one_snapshot() -> None:
+    """Review U5 #13: `region_sources` reuses the session and snapshot `current_region`
+    already read — one snapshot read per screen, never facts from a newer version."""
+
+    class Counting:
+        def __init__(self, snapshot) -> None:
+            self.snapshot = snapshot
+            self.gets = 0
+
+        def get(self, world_id):
+            self.gets += 1
+            return self.snapshot
+
+    repo, gm, sessions, _play = _services()
+    session, _player = sessions.start("w", PlayerCreate(name="Ari", start_region_id="a"))
+    counting = Counting(_play_world())
+    play = PlayService(
+        repo,
+        counting,
+        SessionKnowledgeService(repo, counting),
+        guard=gm.guard,
+        turns=gm.turns,
+        tuning=PlayTuning(),
+    )
+    play.current_region(session.id)
+    assert counting.gets == 1

@@ -144,3 +144,11 @@ curl -s -XPOST "localhost:8000/api/play/sessions/$S/npcs/<npcB>/say?lang=ko" \
 - **U7(GM 모드·안정화)**: GM 화면이 `RegionSources`를 쓸 수 있다. LLM 실패 상태 코드(§5 f), `say` 빈도 제한, 주입 방어 강화가 남아 있다.
 - **U3(월드 에디터)**: 에디터 삭제가 지운 id로 번역을 정리하는 자리는 문서화만 했다(BLM §6). 새 화면의 라벨은 `i18n.ts` 두 사전에 키를 함께 더한다.
 - **U8(데모·배포·문서)**: CLI 교체는 번역을 정리하지 않는다(알려진 공백, operations.md). 필요하면 전용 CLI 명령을 만든다.
+
+## 8. 승인 뒤 코드 리뷰 수정 (2026-10-01)
+- `/code-review` 기록 `code/reviews/code-review-01.md`에 정확성 지적 15건이 있다. 사람의 선택은 A다. #1~#14는 수정했고, #15는 감수 위험이다. 처리 표는 기록의 §8에 있다.
+- **바뀐 계약**
+  - 새 읽기 라우트 `GET /api/langs`가 생겼다.
+  - 웹은 서버 기본값과 같은 언어이면 `?lang=`을 보내지 않는다.
+  - 호출당 최악 시간은 93초에서 106초로 바뀌었다(Retry-After 대기, 상한 8초). 이 문서 §4의 NFR R-01 줄과 승인된 NFR·FD 문서의 "93초"는 당시 값이다. 현재 값은 `operations.md`가 기준이다.
+- **결과**: pytest 557, vitest 64, mypy 11.

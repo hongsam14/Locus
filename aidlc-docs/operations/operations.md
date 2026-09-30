@@ -121,13 +121,15 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   shown as `running` before it actually starts (demo scale: fine). On shutdown the API waits
   `TURN_SHUTDOWN_TIMEOUT_S` (30s) for the current run; a hung LLM call does not block process
   exit. On startup any run still `running` is marked `failed` (`error=interrupted`).
-- **LLM outage**: each LLM call makes 3 attempts with a 30s timeout and waits 1s then 2s
-  between them (`locus/shared/llm/retry.py`): **93s** worst case per call (30 × 3 + 1 + 2).
-  Both OpenAI clients set `max_retries=0`, so the SDK does not retry underneath; its timeout
-  applies per phase, so 93s is the design bound rather than a hard one (corrected in U5 from
-  an earlier ≈97s). A turn whose rumor chain comes back short trips a circuit
-  breaker (remaining drafts of that turn are skipped, `llm_failed=true` in the result), so an
-  action is bounded by ≈ `PLAY_MAX_MOVE_COST × 93s`. Without an LLM key the engine still runs
+- **LLM outage**: each LLM call makes 3 attempts with a 30s timeout
+  (`locus/shared/llm/retry.py`). Between attempts it waits 1s then 2s, or what the server
+  asked for in `Retry-After` / `retry-after-ms` (rate limits, 503), capped at 8s. Worst case
+  per call: **106s** (30 × 3 + 8 + 8). All three OpenAI clients (chat, vision, embeddings)
+  set `max_retries=0` and the 30s timeout, so the SDK does not retry underneath; its timeout
+  applies per phase, so 106s is the design bound rather than a hard one (U5 review: 93s
+  before the Retry-After wait, ≈97s before that). A turn whose rumor chain comes back short
+  trips a circuit breaker (remaining drafts of that turn are skipped, `llm_failed=true` in
+  the result), so an action is bounded by ≈ `PLAY_MAX_MOVE_COST × 106s`. Without an LLM key the engine still runs
   (moves, waits, events, promotion); only rumor drafts are skipped (`llm_available=false`).
 - **Timeline order**: a turn's entries are written in one transaction, so they are stamped
   by the application with a strictly increasing clock (`locus/play/storage/clock.py`) rather
@@ -160,8 +162,10 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   `NPC_MAX_MESSAGE_CHARS` (500) characters. These limits bound the prompt, so its size does
   not grow with the length of a conversation.
 - **Cost and failure**: one call per `say`, outside the turn budget (`LLM_MAX_CALLS_PER_TURN`
-  does not apply; the player's pace is the limit). Worst case **93s** per call (see "LLM
-  outage" above). The call runs before the transaction, so a failed call stores nothing: no
+  does not apply; the player's pace is the limit). Worst case **106s** per call (see "LLM
+  outage" above). The web image's nginx waits 130s for `/api/` (`web/nginx.conf`), so a slow
+  answer is not cut off with a 504 while the backend still saves it. A reverse proxy in
+  front of the API needs the same allowance. The call runs before the transaction, so a failed call stores nothing: no
   conversation row and no message. A call that still fails after its retries answers **500**,
   because BR-U5-30 only says the error is raised and gives no status. An empty answer is
   replaced by a fixed line in the display language.
@@ -171,8 +175,15 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   the GM rumor and event lists, and `say`. The timeline does not take it (it has no
   translated field). `lang=en` returns the `*_ko` fields empty and warms no translation,
   because the sources are English. Dialogue lines are stored in the language they were
-  written in and are never translated. The web UI keeps the choice in `localStorage`
-  (`locus.lang`), shows a ko | en toggle in the top bar, and re-reads the screen on a switch.
+  written in and are never translated. `GET /api/langs` returns `{default, supported}`.
+  The web UI reads it at start, offers only languages the server takes, and sends `?lang=`
+  only when it differs from the server default. Before the answer arrives, or if it fails,
+  no `?lang=` is sent, so an English-only server never receives `?lang=ko`. The choice is
+  kept in `localStorage` (`locus.lang`), the ko | en toggle sits in the top bar, and a
+  switch re-reads the screen; a late answer in the previous language is dropped.
+- **Closed sessions**: `say` re-checks the session inside its transaction, so a session
+  closed while the LLM answered gains no lines (409). The dialogue panel of a closed session
+  reads `GET .../history` and shows it read-only.
 - **Translation cleanup**: regenerating a region purges the translations of the rumors it
   deleted. The six world-replace routes (`build`, `build/upload`, `file`, `file/upload`,
   `demo/{name}`, `demo/{name}/build`) purge the old world's canonical-knowledge translations
@@ -189,6 +200,8 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   costs one LLM request. The latency target (`start`, `history`, `npcs` p95 ≤ 100ms, no LLM)
   is operator-run. The offline gate is structural: one `say` = one LLM call and one
   transaction.
+  Each `say` holds a worker thread of the API's sync thread pool (40) for up to one LLM
+  call; more than 40 slow calls at once delay other sync routes (U5 review #15, accepted).
 - **Tables** (idempotent `init-schema --play` / startup): `conversations` (unique
   `(session_id, npc_id)`; the NPC id is a plain reference, so a conversation outlives an NPC
   removed by an edit: `history` still reads, `say` answers 404) and `messages` (app-stamped

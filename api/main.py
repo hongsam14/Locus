@@ -10,10 +10,10 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from api.deps import Containers
+from api.deps import Containers, lang_settings
 from api.routers import gm as gm_router
 from api.routers import knowledge as knowledge_router
 from api.routers import play as play_router
@@ -145,6 +145,17 @@ def create_app(
             )
         status = "ok" if all(boundaries.values()) or not do_assemble else "degraded"
         return JSONResponse(content={"status": status, "boundaries": boundaries})
+
+    @app.get("/api/langs", tags=["meta"])
+    def langs(request: Request) -> dict[str, object]:
+        """The display languages this server accepts (review U5 #2). The web client sends
+        ``?lang=`` only for one of these, so a server configured for English only never
+        receives ``?lang=ko`` and answers 400 to every read."""
+        settings = lang_settings(request)
+        return {
+            "default": settings.translation_target_lang,
+            "supported": list(settings.supported_langs),
+        }
 
     app.include_router(world_router.router)
     app.include_router(knowledge_router.router)

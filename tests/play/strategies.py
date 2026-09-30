@@ -194,22 +194,50 @@ def regional_worlds(draw, max_regions: int = 4) -> WorldSnapshot:
 def rumors_from(
     draw, session_id: str, region_id: str, knowledge_ids: list[str], max_count: int = 12
 ) -> list[SessionRumor]:
-    """Active rumors in ``region_id`` drafted from some of ``knowledge_ids``."""
+    """Rumors in ``region_id`` drafted from some of ``knowledge_ids``.
+
+    Like the real generator, a rumor may extend an earlier one (a chain link:
+    ``distorted_from_kind="rumor"``), and some rumors are pruned (``active=False``) —
+    a pruned middle link must not break the walk to the canonical root (review U5 #1).
+    Support ties are common on purpose: the demo's chains share one support value.
+    """
     n = draw(st.integers(min_value=0, max_value=max_count))
     out: list[SessionRumor] = []
     for i in range(n):
-        source = draw(st.sampled_from(knowledge_ids)) if knowledge_ids else f"k-elsewhere-{i}"
+        if out and draw(st.booleans()):
+            parent = draw(st.sampled_from(out))
+            source, kind = parent.id, "rumor"
+        else:
+            source = draw(st.sampled_from(knowledge_ids)) if knowledge_ids else f"k-elsewhere-{i}"
+            kind = "knowledge"
         out.append(
             SessionRumor(
                 session_id=session_id,
                 region_id=region_id,
                 distorted_from_id=source,
-                distorted_from_kind="knowledge",
+                distorted_from_kind=kind,
                 statement=f"twisted-{source}-{i}",
                 distortion_degree=draw(st.floats(min_value=0.0, max_value=1.0, allow_nan=False)),
-                support=draw(st.floats(min_value=0.0, max_value=1.0, allow_nan=False)),
+                support=draw(st.sampled_from([0.2, 0.5, 0.8])),
                 promoted=draw(st.booleans()),
+                active=draw(st.sampled_from([True, True, True, False])),
                 provenance=_prov(),
             )
         )
     return out
+
+
+def chain_roots(picked: list[SessionRumor], every: list[SessionRumor]) -> set[str]:
+    """Test oracle, written apart from ``scope.root_source``: the canonical knowledge
+    ids at the root of each picked rumor's chain (parents looked up in ``every``)."""
+    by_id = {r.id: r for r in every}
+    roots: set[str] = set()
+    for rumor in picked:
+        node: SessionRumor | None = rumor
+        visited: set[str] = set()
+        while node is not None and node.distorted_from_kind == "rumor" and node.id not in visited:
+            visited.add(node.id)
+            node = by_id.get(node.distorted_from_id)
+        if node is not None and node.distorted_from_kind == "knowledge":
+            roots.add(node.distorted_from_id)
+    return roots

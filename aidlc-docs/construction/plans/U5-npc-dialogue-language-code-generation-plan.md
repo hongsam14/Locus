@@ -69,10 +69,10 @@
 - [x] 4.9 테스트 `tests/play/test_dialogue.py`: EX-1~3, EX-6, EX-10~12, TP-U5-5(호출 1회), 동시 첫 `say` 재조회(두 번째 UoW로 append, 답을 잃지 않는다), `EndTalk` → `NPC_TALKED`(`messages` 수·`region_name`).
 
 ### Step 5 — 번역 정리·언어
-- [ ] 5.1 `locus/localization/ports.py`·`storage/{postgres_repo,memory_repo}.py`: `purge(*, kind=None, ids=None, world_id=None, session_id=None) -> int`(필터 없으면 `ValueError`). `service.py`: 같은 시그니처로 감싸고 in-flight 키 정리.
-- [ ] 5.2 `api/deps.py`: `display_lang(lang: str | None = None, shared=Depends(get_shared)) -> str`(지원 집합 밖 400).
-- [ ] 5.3 `api/schemas.py`: `SOURCE_LANG = "en"`; `enrichment_for(..., lang: str | None = None)`는 **요청 언어가 원문 언어와 같으면 곧바로 `{}`를 돌려준다**(BR-U5-19; 그래야 en→en 워밍이 생기지 않는다 — 이월 검토 R-09). `localize_query_result(..., lang=None)`, `localize_region_view(..., lang=None)`. `lang=None`은 "서버 기본값"을 뜻하고 쓰기 경로(`_rumors_out(enrich=False)` 등)는 지금처럼 번역을 부르지 않으므로 영향이 없다.
-- [ ] 5.4 테스트 `tests/localization/test_purge.py`: TP-U5-6(필터별·필터 없음), in-flight 정리, 없는 원본; `enrich`가 `lang="en"`에 호출되지 않음. `tests/play/test_dialogue.py`에 구조 단언(이월 NFR R-02): 정상 `say` 한 번에 `complete` 1회 · `uow()` 1회 · `SnapshotSource.get` ≤ 2 · 그래프·검색 호출 0(경합 복구 경로는 `uow()` 2회를 허용).
+- [x] 5.1 `locus/localization/ports.py`·`storage/{postgres_repo,memory_repo}.py`: `purge(*, kind=None, ids=None, world_id=None, session_id=None) -> int`(필터 없으면 `ValueError`). `service.py`: 같은 시그니처로 감싸고 in-flight 키 정리.
+- [x] 5.2 `api/deps.py`: `display_lang(lang: str | None = None, shared=Depends(get_shared)) -> str`(지원 집합 밖 400).
+- [x] 5.3 `api/schemas.py`: `SOURCE_LANG = "en"`; `enrichment_for(..., lang: str | None = None)`는 **요청 언어가 원문 언어와 같으면 곧바로 `{}`를 돌려준다**(BR-U5-19; 그래야 en→en 워밍이 생기지 않는다 — 이월 검토 R-09). `localize_query_result(..., lang=None)`, `localize_region_view(..., lang=None)`. `lang=None`은 "서버 기본값"을 뜻하고 쓰기 경로(`_rumors_out(enrich=False)` 등)는 지금처럼 번역을 부르지 않으므로 영향이 없다.
+- [x] 5.4 테스트 `tests/localization/test_purge.py`: TP-U5-6(필터별·필터 없음), in-flight 정리, 없는 원본; `enrich`가 `lang="en"`에 호출되지 않음. `tests/play/test_dialogue.py`에 구조 단언(이월 NFR R-02): 정상 `say` 한 번에 `complete` 1회 · `uow()` 1회 · `SnapshotSource.get` ≤ 2 · 그래프·검색 호출 0(경합 복구 경로는 `uow()` 2회를 허용).
 
 ### Step 6 — API
 - [ ] 6.1 `api/routers/play.py`: 새 라우트 4개(`GET npcs`, `POST npcs/{n}/start`, `POST npcs/{n}/say`, `GET npcs/{n}/history`). `api/schemas.py`에 `ConversationOut`·`NpcReplyOut`·`NpcSummaryOut`·`SayIn(text)`. `say`는 `lang: str = Depends(display_lang)`.

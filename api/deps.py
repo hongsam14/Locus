@@ -14,6 +14,7 @@ from fastapi import HTTPException, Request
 from locus.knowledge.wiring import KnowledgeContainer
 from locus.localization.wiring import LocalizationContainer
 from locus.play.wiring import PlayContainer
+from locus.shared.config import Settings
 from locus.shared.wiring import SharedContainer
 from locus.world.wiring import WorldContainer
 
@@ -64,3 +65,19 @@ def get_play_optional(request: Request) -> PlayContainer | None:
     """Optional play boundary: world routes ask it about open sessions before a replace
     (NFR-9) and skip the check when play is not assembled."""
     return _containers(request).play
+
+
+def display_lang(request: Request, lang: str | None = None) -> str:
+    """The display language of this request (U5, FD-U5 Q1=A, BR-U5-15).
+
+    ``?lang=`` overrides the server default (``TRANSLATION_TARGET_LANG``) and must be
+    one of ``SUPPORTED_LANGS`` — validated once here at the edge, so an unsupported
+    value can never become a translation-cache key (400). Without an assembled shared
+    container (tests inject only some boundaries) the settings' own defaults apply.
+    """
+    shared = _containers(request).shared
+    settings = shared.settings if shared is not None else Settings.model_construct()
+    chosen = (lang or settings.translation_target_lang).strip().lower()
+    if chosen not in settings.supported_langs:
+        raise HTTPException(status_code=400, detail=f"unsupported lang: {chosen}")
+    return chosen

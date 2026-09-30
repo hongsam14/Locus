@@ -99,6 +99,9 @@ class RegionViewOut(RegionView):
 
 T = TypeVar("T", bound=BaseModel)
 
+# The language every stored, embedded and searched text is written in (C-1, FR-G2).
+SOURCE_LANG = "en"
+
 
 def localize(
     items: Sequence[BaseModel],
@@ -128,17 +131,36 @@ def enrichment_for(
     id_attr: str = "id",
     world_id: str | None = None,
     session_id: str | None = None,
+    lang: str | None = None,
 ) -> Enrichment:
-    """Cache-only translation mapping; ``{}`` when localization is off."""
+    """Cache-only translation mapping; ``{}`` when localization is off.
+
+    ``lang`` is the display language (``None`` = the server default). When it is the
+    language the source text is stored in (English, C-1) there is nothing to translate
+    and no warm is scheduled — otherwise ``?lang=en`` would warm en→en rows (BR-U5-19).
+    """
     if loc is None or loc.translations is None or not items:
         return {}
+    target = (lang or loc.translations.default_lang).lower()
+    if target == SOURCE_LANG:
+        return {}
     return loc.translations.enrich(
-        items, kind=kind, fields=fields, id_attr=id_attr, world_id=world_id, session_id=session_id
+        items,
+        kind=kind,
+        fields=fields,
+        id_attr=id_attr,
+        world_id=world_id,
+        session_id=session_id,
+        lang=target,
     )
 
 
 def localize_query_result(
-    result: QueryResult, loc: LocalizationContainer | None, *, session_id: str | None = None
+    result: QueryResult,
+    loc: LocalizationContainer | None,
+    *,
+    session_id: str | None = None,
+    lang: str | None = None,
 ) -> QueryResultOut:
     """Localize a region-knowledge result: canonical items per world, rumor views per session."""
     from locus.play.region_knowledge import is_rumor_view
@@ -154,6 +176,7 @@ def localize_query_result(
             fields=["statement", "title"],
             id_attr="knowledge_id",
             world_id=result.world_id,
+            lang=lang,
         )
     )
     enrichment.update(
@@ -164,6 +187,7 @@ def localize_query_result(
             fields=["statement"],
             id_attr="knowledge_id",
             session_id=session_id,
+            lang=lang,
         )
     )
     items = localize(
@@ -183,7 +207,12 @@ def localize_query_result(
 
 
 def localize_region_view(
-    view: RegionView, loc: LocalizationContainer | None, *, world_id: str, session_id: str
+    view: RegionView,
+    loc: LocalizationContainer | None,
+    *,
+    world_id: str,
+    session_id: str,
+    lang: str | None = None,
 ) -> RegionViewOut:
     """Localize the player screen: canonical facts/hearsay per world, rumors per session."""
     canon_items = list(view.facts) + list(view.hearsay)
@@ -196,6 +225,7 @@ def localize_region_view(
             fields=["statement", "title"],
             id_attr="knowledge_id",
             world_id=world_id,
+            lang=lang,
         )
     )
     facts = localize(
@@ -213,7 +243,7 @@ def localize_region_view(
         id_attr="knowledge_id",
     )
     rumor_enrichment = enrichment_for(
-        loc, view.rumors, kind="rumor", fields=["statement"], session_id=session_id
+        loc, view.rumors, kind="rumor", fields=["statement"], session_id=session_id, lang=lang
     )
     rumors = localize(view.rumors, RumorOut, rumor_enrichment, [("statement", "statement_ko")])
     data: dict[str, Any] = view.model_dump()

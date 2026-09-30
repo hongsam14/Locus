@@ -122,6 +122,35 @@ class TranslationService:
                     self._release(fresh, lang)
         return out
 
+    def purge(
+        self,
+        *,
+        kind: str | None = None,
+        ids: list[str] | None = None,
+        world_id: str | None = None,
+        session_id: str | None = None,
+    ) -> int:
+        """Drop cached translations whose source is gone (U5, FR-G4, BR-U5-22/33).
+
+        Also forgets matching in-flight keys so a later read can warm afresh. A warm
+        already running may still write one row back after this — an orphan cache row
+        with no effect on reads (only live sources are looked up); the next purge
+        removes it. World/session-scoped purges cannot see in-flight keys (they carry
+        no world or session), which is the same harmless race.
+        """
+        removed = self._store.purge(kind=kind, ids=ids, world_id=world_id, session_id=session_id)
+        if kind is not None or ids is not None:
+            wanted = set(ids) if ids is not None else None
+            with self._in_flight_lock:
+                self._in_flight = {
+                    key
+                    for key in self._in_flight
+                    if not (
+                        (kind is None or key[0] == kind) and (wanted is None or key[1] in wanted)
+                    )
+                }
+        return removed
+
     def _release(self, misses: list[tuple[str, str, str, str]], lang: str) -> None:
         with self._in_flight_lock:
             self._in_flight.difference_update((*m[:3], lang) for m in misses)

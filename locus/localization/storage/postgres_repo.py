@@ -7,7 +7,7 @@ SAVEPOINT + IntegrityError dance is gone.
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.engine import Engine
 
 from locus.localization.models import Translation
@@ -89,6 +89,44 @@ class PostgresTranslationRepository:
                     )
                 )
         return [t.model_copy(deep=True) for t in translations_]
+
+    def purge(
+        self,
+        *,
+        kind: str | None = None,
+        ids: list[str] | None = None,
+        world_id: str | None = None,
+        session_id: str | None = None,
+    ) -> int:
+        """Delete cached translations matching **every** given filter; returns the
+        number of rows removed. At least one filter is required so a stray call can
+        never empty the cache (BR-U5-22). An empty ``ids`` list matches nothing."""
+        if kind is None and ids is None and world_id is None and session_id is None:
+            raise ValueError("purge needs at least one filter (kind, ids, world_id, session_id)")
+        if ids is not None and not ids:
+            return 0
+
+        def _stmt(chunk: list[str] | None):
+            stmt = delete(translations)
+            if kind is not None:
+                stmt = stmt.where(translations.c.source_kind == kind)
+            if chunk is not None:
+                stmt = stmt.where(translations.c.source_id.in_(chunk))
+            if world_id is not None:
+                stmt = stmt.where(translations.c.world_id == world_id)
+            if session_id is not None:
+                stmt = stmt.where(translations.c.session_id == session_id)
+            return stmt
+
+        removed = 0
+        with self._require_engine().begin() as conn:
+            if ids is None:
+                removed = int(conn.execute(_stmt(None)).rowcount or 0)
+            else:  # chunk the IN() under the bind-parameter limit (review #7)
+                for start in range(0, len(ids), _IN_CHUNK):
+                    res = conn.execute(_stmt(ids[start : start + _IN_CHUNK]))
+                    removed += int(res.rowcount or 0)
+        return removed
 
     def _require_engine(self) -> Engine:
         if self._engine is None:

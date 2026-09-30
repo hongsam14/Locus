@@ -50,3 +50,29 @@ class InMemoryTranslationRepository:
 
     def upsert_many(self, translations: list[Translation]) -> list[Translation]:
         return [self._upsert_one(t) for t in translations]
+
+    def purge(
+        self,
+        *,
+        kind: str | None = None,
+        ids: list[str] | None = None,
+        world_id: str | None = None,
+        session_id: str | None = None,
+    ) -> int:
+        """Delete cached translations matching **every** given filter; returns the
+        number of rows removed. At least one filter is required so a stray call can
+        never empty the cache (BR-U5-22). An empty ``ids`` list matches nothing."""
+        if kind is None and ids is None and world_id is None and session_id is None:
+            raise ValueError("purge needs at least one filter (kind, ids, world_id, session_id)")
+        wanted = set(ids) if ids is not None else None
+        doomed = [
+            key
+            for key, t in self._translations.items()
+            if (kind is None or t.source_kind == kind)
+            and (wanted is None or t.source_id in wanted)
+            and (world_id is None or t.world_id == world_id)
+            and (session_id is None or t.session_id == session_id)
+        ]
+        for key in doomed:
+            del self._translations[key]
+        return len(doomed)

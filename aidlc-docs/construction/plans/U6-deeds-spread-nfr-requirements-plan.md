@@ -9,8 +9,8 @@
 - [x] 승인된 FD 산출물 분석(`construction/U6-deeds-spread/functional-design/*`, 검토 02의 R-10·R-15·R-16·R-17 disposition과 제안 셋)
 - [x] NFR-1~9와 U6의 접점 정리; 질문 필요 여부 판단
 - [x] `construction/U6-deeds-spread/nfr/nfr-light.md` 작성(요구 + 설계 + 수치 + 검증 방법 + 코드 플랜 입력)
-- [ ] Plan Review(architecture-reviewer, **advisory** 1회) → `construction/U6-deeds-spread/nfr/reviews/nfr-light-review-01.md`
-- [ ] 완료 메시지 + 승인 게이트 → 다음: U6 Code Generation Part 1(플랜)
+- [x] Plan Review(architecture-reviewer, **advisory** 1회) → `construction/U6-deeds-spread/nfr/reviews/nfr-light-review-01.md`
+- [x] 완료 메시지 + 승인 게이트 → 다음: U6 Code Generation Part 1(플랜)
 
 ## 질문
 없다. U6에 걸리는 값은 FD에서 정해졌다.

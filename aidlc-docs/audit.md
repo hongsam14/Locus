@@ -2614,3 +2614,25 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **User Input**: (none)
 **AI Response**: architecture-reviewer iteration 1 → **READY** (advisory, terminal). Findings: 0 Critical / 2 Major / 3 Minor; open 5. Record: `aidlc-docs/construction/U6-deeds-spread/nfr/reviews/nfr-light-review-01.md`. Fact check: R-05's "CLAUDE.md says 601" does not hold — CLAUDE.md reads 621 (557 + 64) in the working tree and at HEAD since 3452fd8; the rest of R-05 stands.
 **Context**: NFR (light) — next: approval gate.
+
+---
+
+## NFR (light) Approval — U6 행적·전파
+**Timestamp**: 2026-09-30T23:46:16Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U6 NFR (light) approved. Next: U6 Code Generation Part 1 (plan).
+**Context**: CONSTRUCTION / U6 — NFR (light) approved.
+
+---
+
+## Plan Review Dispositions — NFR (light) — U6 행적·전파
+**Timestamp**: 2026-09-30T23:46:16Z
+**User Input**: (approval at gate; see above)
+**AI Response**:
+- R-01 → Accepted risk (carry: worst case per action kind in numbers; a failed prep call trips the turn's circuit breaker so spread and canonical drafts are skipped that turn; test the path)
+- R-02 → Accepted risk (carry: one column table — 4 session_rumors + 3 turn_runs columns with type/nullable/default; the origin_deed_id index on the existing table via CREATE INDEX IF NOT EXISTS; deeds.run_id is created by create_all; cost estimate revised)
+- R-03 → Accepted risk (carry: deeds committed by a run that a restart marks interrupted stay — recorded as an accepted risk in NFR-9/operations)
+- R-04 → Accepted risk (carry: budget 0 → no reservation, the no-LLM fallback applies; example with budget 0 and 1)
+- R-05 → Accepted risk (carry: code plan step 1 measures the baseline — 557 / 64 / mypy 11 — and the GET deeds p95 target states 300 deeds / 100 rumors). Note: the finding's "CLAUDE.md says 601" is factually wrong (621 since 3452fd8).
+- Suggestion (statement → appraisal summary → NPC prompt injection assertion) → carried to the code plan's test steps.
+**Context**: NFR (light) — dispositions recorded.

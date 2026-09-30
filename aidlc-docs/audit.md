@@ -2590,3 +2590,19 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **User Input**: (continuation of "A. 14건 지금 수정, 1건 감수")
 **AI Response**: Fixed #1–#14 of `U5-npc-dialogue-language/code/reviews/code-review-01.md` (outcomes in its §8): chain-root shadowing with lineage incl. pruned links (#1; generator now makes chains, independent oracle `chain_roots`, mutation check fails 4 tests); `GET /api/langs` + client sends `?lang=` only for a non-default language the server takes (#2); Retry-After-aware waits capped at 8s → 106s bound (#3); closed-session re-check inside the say transaction (#4); nginx 130s (#5); id-scoped in-flight purge (#6); read-only history panel for closed sessions (#7); panel closes on region change (#8); input locked while sending (#9); bounded embeddings client (#10); latest-read-wins in PlayPage/SessionPanel and re-read on the request language (#11; mutation check fails the new test); localized turn summary (#12); one snapshot read per screen/say (#13); empty drafts end the chain and blank rumors are never picked (#14). #15 → Accepted risk (operations.md). Docs: operations.md (106s, /api/langs, closed sessions, accepted risk), CLAUDE.md (test count 621, two inaccurate phrases), U5 code-summary §8. Gates: pytest 557, vitest 64, mypy 11, ruff/black/tsc/vite clean, docker build OK with /api/langs.
 **Context**: CONSTRUCTION / U5 — post-approval review fixes complete.
+
+---
+
+## U6 NFR (light) — plan and artifact
+**Timestamp**: 2026-09-30T23:41:21Z
+**User Input**: (continuation — next stage after the U6 FD approval)
+**AI Response**: Wrote `construction/plans/U6-deeds-spread-nfr-requirements-plan.md` (no questions; assumptions N6-1..N6-6 incl. the three FD-review suggestions as decisions: output length caps, inspector column adds kept as a Q4=A deviation, timeline lines of deleted deeds kept as audit trail) and `construction/U6-deeds-spread/nfr/nfr-light.md` (NFR-1..9, structural assertions incl. "no LLM call while a UoW is open", 106s per-call bound, carry-forward list for the code plan).
+**Context**: CONSTRUCTION / U6 — NFR (light).
+
+---
+
+## Plan Review Requested — NFR (light) — U6 행적·전파
+**Timestamp**: 2026-09-30T23:41:21Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class advisory, iteration 1) on `aidlc-docs/construction/U6-deeds-spread/nfr/nfr-light.md`. Review record: `aidlc-docs/construction/U6-deeds-spread/nfr/reviews/nfr-light-review-01.md`.
+**Context**: NFR (light) — review requested before approval gate.

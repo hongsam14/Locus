@@ -2275,3 +2275,27 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **Context**: CONSTRUCTION / U5 — Functional Design Part 2 (2 of 4 artifacts written).
 
 ---
+
+## Purpose Restructure Cycle — U1/U2/U4 committed
+**Timestamp**: 2026-09-30T11:49:47Z
+**User Input**: "그럼 커밋 후, U5의 나머지 작업을 ai-dlc를 사용해서 작업 진행"
+**AI Response**: Branched `feat/purpose-restructure` off `main` (the repo's convention; `main` is the default branch) and committed the tree in two logical commits: `07e4b04 feat(play): five boundaries, World File v1 and player mode (U1+U2+U4)` (293 paths) and `21dea89 docs(aidlc): Purpose Restructure cycle artifacts (U1, U2, U4 + U5 in progress)` (80 paths). Working tree clean. Removed a stray empty root `node_modules/` (a vitest cache from running npx outside `web/`) and added `node_modules/` to the root `.gitignore`.
+**Context**: CONSTRUCTION / U5 — commit before continuing.
+
+---
+
+## Purpose Restructure Cycle — U5 Functional Design artifacts complete
+**Timestamp**: 2026-09-30T11:49:47Z
+**User Input**: (none — continuing the stage)
+**AI Response**: Wrote the two remaining artifacts: `business-rules.md` (BR-U5-1..30 + Testable Properties TP-U5-1..7, the NPC-scope invariant as PBT-03 and per-rule examples EX-1..12) and `frontend-components.md` (`LangToggle`, the `en` dictionary with the same key set as `ko`, the remaining English labels mapped to keys, `NpcList`, `DialoguePanel`, the API layer's `?lang=`). All four artifacts now exist. Next: Step 6a Plan Review (architecture-reviewer, adversarial, max 2).
+**Context**: CONSTRUCTION / U5 — Functional Design Part 2.
+
+---
+
+## Plan Review Requested — Functional Design — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T11:49:47Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/U5-npc-dialogue-language/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/U5-npc-dialogue-language/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — U5 — review requested before approval gate.
+
+---

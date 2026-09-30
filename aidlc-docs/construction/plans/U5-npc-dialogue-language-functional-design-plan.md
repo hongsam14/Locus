@@ -10,8 +10,8 @@
 - [x] 질문(아래 FD-U5 Q1~Q4) 답 수집·분석
 - [x] `construction/U5-npc-dialogue-language/functional-design/domain-entities.md` — `Conversation`·`Message`·`NpcContext`·`ScopeLimits`·`NpcReply`, `TimelineKind.NPC_TALKED`, `ConversationStore` 포트·`PlayUnitOfWork.conversations`, 테이블, `PlayTuning`/`Settings` 추가(컨텍스트 한도·언어), 오류
 - [x] `.../business-logic-model.md` — `NpcScope.build_context`(순수·불변식), `NpcDialogueService.start/say/history`(프롬프트 가드·표시 언어 직접 생성·LLM 1회), `EndTalk` → `NPC_TALKED` 타임라인(U4 `_start` 확장), 표시 언어 결정, `TranslationService.purge` + 호출 지점(조립 루트), API(`npcs/{n}/start|say|history`, `lang`), 프롬프트 설계(`play/npc/prompts.py`), LLM 없을 때
-- [ ] `.../business-rules.md` — BR-U5-*, Testable Properties(PBT-03 아는 범위 불변식 `context ids ⊆ known ∪ region rumors`, 생성기 재사용 PBT-07; 왜곡 전언 표현 예제)
-- [ ] `.../frontend-components.md` — `NpcList`(RegionScene NPC 카드 "말하기")·`DialoguePanel`(이력·입력·전송·LLM 1회)·언어 토글·i18n 전 라벨(+en 사전)
+- [x] `.../business-rules.md` — BR-U5-*, Testable Properties(PBT-03 아는 범위 불변식 `context ids ⊆ known ∪ region rumors`, 생성기 재사용 PBT-07; 왜곡 전언 표현 예제)
+- [x] `.../frontend-components.md` — `NpcList`(RegionScene NPC 카드 "말하기")·`DialoguePanel`(이력·입력·전송·LLM 1회)·언어 토글·i18n 전 라벨(+en 사전)
 - [ ] Plan Review(architecture-reviewer, adversarial ≤ 2) → `construction/U5-npc-dialogue-language/functional-design/reviews/functional-design-review-NN.md`
 - [ ] 완료 메시지 + 승인 게이트 → 다음: U5 NFR(light)
 

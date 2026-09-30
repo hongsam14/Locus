@@ -18,7 +18,7 @@
 | BR-U6-7 | 판단은 대화를 마칠 때(`EndTalk`) **그 대화 상대만** 하고, **지난 대화 마침 뒤 그 NPC에게 새로 한 말이 있을 때만** 한다. 새 말 없이 보낸 `end_talk`(API로 직접 보낸 것 포함)은 판단하지 않는다(1턴만 쓴다). 대화하지 않은 NPC는 어떤 행적도 판단하지 않는다 | FR-C10, A-6, 검토 1차 R-06 |
 | BR-U6-8 | 한 NPC가 판단하는 행적은 자기가 목격했고, 현재 체류 안에 있으며, 아직 자기 판단이 없는 행적이다. 최신 순으로 `appraisal_max_deeds`(8)개까지 다룬다 | Q1, A6-3 |
 | BR-U6-9 | 한 대화 마침 = 판단 LLM 호출 최대 1회다. 새 발언이 없으면 0회다. 발언 요약은 같은 호출에 합친다. 호출이 성공하면 `statement` 행적을 늘 남긴다(`summary`가 비면 결정적 문장과 `noteworthy=false` 판단) | services §5.2, NFR-5 |
-| BR-U6-10 | `(deed_id, npc_id)`는 유일하다. 모델이 빠뜨린 대기 행적은 `noteworthy=false, salience=0`으로 기록해 같은 NPC가 다시 판단하지 않게 한다 | BLM §3.2 |
+| BR-U6-10 | `(deed_id, npc_id)`는 유일하다. 모델이 빠뜨린 대기 행적은 `noteworthy=false, salience=0`으로 기록해 같은 NPC가 다시 판단하지 않게 한다 판단 초안에 발언 항목이 빠지면 그 발언 행적도 `noteworthy=false, salience=0, slant=""`로 함께 저장한다 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-10-01의 이월 결정 반영〕 | BLM §3.2, 검토 02 R-16 |
 | BR-U6-11 | `noteworthy=true`인데 `retelling`이 비면 `noteworthy=false`로 본다. `salience`는 [0,1]로 자른다. 모르는 `ref`는 버린다 | BLM §3.2 |
 | BR-U6-12 | 씨앗 조건: `noteworthy ∧ salience ≥ deed_seed_min_salience(0.5) ∧ retelling ≠ "" ∧ 씨앗 없음 ∧ 행적 미취소`. 한 판단은 씨앗을 **최대 하나** 낳는다(`seeded_rumor_id`). 그래서 `statement`는 행적당 씨앗 최대 1개이고, `arrival`·`declared_action`은 판단한 NPC 수만큼까지다 | Q1, FR-C10 |
 | BR-U6-13 | 판단과 `retelling`은 그 NPC의 페르소나(이름·역할·설명·traits)와 그 NPC가 아는 사실을 입력으로 한다. 사실이 아닌 주장도 전할 만하다고 판단할 수 있다(의도적으로 소문을 뿌릴 수 있다) | US-4.4 넷째 |
@@ -62,7 +62,7 @@
 |---|---|---|
 | BR-U6-32 | 서술·판단·전파의 LLM 호출은 어떤 UoW 안에서도 하지 않는다. 준비 단계는 호출 뒤 자기 UoW에서 저장하고, 턴은 턴마다 UoW 하나다 | services §4 |
 | BR-U6-33 | 행적·판단 번역은 조립 루트(`api/schemas.py`)에서 붙인다(kind `deed`/`text`, `deed_appraisal`/`retelling`). play는 localization을 import하지 않는다 | 경계 규칙 |
-| BR-U6-34 | `session_rumors`의 기원 열, `deeds.run_id`, `turn_runs`의 세 열은 `ensure_play_schema`가 inspector로 두 방언(PG·SQLite) 모두에서 빠진 것을 찾아 더한다. 기존 소문 행은 `origin_kind='canonical'`이다 | A6-12, 검토 1차 R-11 |
+| BR-U6-34 | 기존 테이블의 열 7개(`session_rumors` 4, `turn_runs` 3 — domain-entities §4.3 표)는 `ensure_play_schema`가 inspector로 두 방언(PG·SQLite) 모두에서 빠진 것을 찾아 더한다. 기존 테이블 색인 `ix_session_rumors_origin_deed_id`는 `CREATE INDEX IF NOT EXISTS`다. `deeds.run_id`는 새 테이블 열이라 `create_all`이 만든다. 기존 소문 행은 `origin_kind='canonical'`이다 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-10-01의 이월 결정 반영〕 | A6-12, 검토 1차 R-11, NFR 검토 R-02 |
 | BR-U6-35 | 캐노니컬 소문 체인(턴 초안, GM 수동 생성)의 원천은 캐노니컬 지식과 **캐노니컬 기원** 기존 소문뿐이다. 행적 기원 소문은 원천이 되지 않는다. 행적에서 난 말은 씨앗과 전파로만 퍼지고, 그래서 취소가 그 전부에 닿는다 | FR-D6, US-5.6, 검토 1차 R-02 |
 | BR-U6-36 | 턴이 하나도 진행되지 않은 실패 실행(`advanced == 0`)은 보상할 때 그 실행이 기록한 행적(`run_id`)과 그 판단을 지운다. 대상은 이동의 도착, 선언, 발언이다. 턴이 하나라도 진행됐으면 행적은 남는다 | 검토 1차 R-08 |
 | BR-U6-37 | `turn_runs`는 `lang`·`turns_charged`·`from_region_id`를 저장한다. 배경 실행이 다시 읽어도 서술 언어가 남고, U4 실패 보상(턴 환불·위치 복원)이 PostgreSQL에서도 동작한다(U4 잠재 결함 수정) | 검토 1차 R-03 |

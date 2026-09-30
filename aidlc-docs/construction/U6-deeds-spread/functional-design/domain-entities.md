@@ -160,10 +160,19 @@ def list_rumors_by_origin(self, session_id: str, *, deed_id: str | None = None,
 - `deed_appraisals`
   - 열: `id` PK, `session_id` idx, `deed_id` idx, `npc_id`, `noteworthy`, `salience`, `slant`, `retelling`, `turn`, `seeded_rumor_id` null, `created_at` not null
   - 제약: **`UNIQUE (deed_id, npc_id)`** 이름 `uq_deed_appraisals_deed_npc`
-- `session_rumors` 열 추가
-  - `origin_kind` not null default `'canonical'`, `origin_deed_id` null idx, `origin_appraisal_id` null, `spread_from_region_id` null
-  - 기존 행은 `canonical`이 된다(A6-12).
-- `turn_runs` 열 추가(검토 1차 R-03): `lang` null, `turns_charged` not null default 0, `from_region_id` null.
+- **기존 테이블 열 추가 표** 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-10-01의 이월 결정 반영〕
+
+| 테이블 | 열 | 타입 | nullable | 기본값 | 색인 |
+|---|---|---|---|---|---|
+| `session_rumors` | `origin_kind` | String | NOT NULL | `'canonical'` | — |
+| `session_rumors` | `origin_deed_id` | String | NULL | — | `ix_session_rumors_origin_deed_id`(`CREATE INDEX IF NOT EXISTS`) |
+| `session_rumors` | `origin_appraisal_id` | String | NULL | — | — |
+| `session_rumors` | `spread_from_region_id` | String | NULL | — | — |
+| `turn_runs` | `lang` | String | NULL | — (NULL = 서버 기본) | — |
+| `turn_runs` | `turns_charged` | Integer | NOT NULL | `0` | — |
+| `turn_runs` | `from_region_id` | String | NULL | — | — |
+
+`deeds.run_id`(와 새 테이블의 모든 열·색인)은 `create_all`이 새 테이블과 함께 만든다. ALTER 대상이 아니다.
 - **열 추가 방식(검토 1차 R-11)**
   - `ensure_play_schema`는 SQLAlchemy inspector로 **두 방언 모두**에서 빠진 열을 찾고, `ALTER TABLE … ADD COLUMN`을 실행한다.
   - 이것은 선례와 다르다. 선례는 PG 전용 `ADD COLUMN IF NOT EXISTS`이고 SQLite를 건너뛴다.
@@ -213,3 +222,6 @@ def list_rumors_by_origin(self, session_id: str, *, deed_id: str | None = None,
 | 18 | U4 `turn_runs`(열 9개) | `lang`·`turns_charged`·`from_region_id` 추가 | 검토 1차 R-03: PG에서 서술 언어와 U4 실패 보상 값이 사라진다(U4 잠재 결함을 함께 고친다) |
 | 19 | (없음) | `Deed.run_id`, `DeedStore.delete_by_run`; 턴이 하나도 진행되지 않은 실패 실행의 행적·판단을 지운다 | 검토 1차 R-08: 되돌린 이동의 도착, 실패한 선언이 유령 행적으로 남지 않게 한다 |
 | 20 | (없음) | `RegionView.declare_max_chars` | 화면의 상한을 서버 값과 맞춘다(검토 1차 제안) |
+| 21 | P16 `DeedService.record/pending_for/attach_appraisals/seeds_for_turn/void/list` | `arrival/current_stay/pending_for/record_declaration/record_appraisal/seeds_ready/recent/views/void` | 쓰기를 한 곳에 모으고(이탈 13), 체류·기억·사건 제안 읽기를 더했다 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-10-01의 이월 결정 반영〕 |
+| 22 | P19 "도달 가중치 w" | `w(X) = best_path_weights(origin)[X]`(통행 가능한 양방향 연결)이고, 기록 가중치는 `SpreadTarget.weight = w(X) × edge(X,Y)`다. 이 값은 `best_path_weights(origin)[Y]` 이하다. 소문이 X에 비최적 경로로 먼저 닿아도 `w(X)`는 최대 곱 경로다 | BR-U6-17과 같은 정의다. 실제로 지나온 경로를 추적하지 않는다 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-10-01의 이월 결정 반영〕 |
+| 23 | P1 `SpreadTarget(region_id, degree, support)`, `DeedView(deed, appraisals, reached_region_ids)`, A7 void `{deactivated_rumors: int}` | `SpreadTarget`에 `from_region_id`·`weight`를 더한다. `DeedView`에 `rumors`를 더한다. void 응답은 `{deed_id, deactivated_rumor_ids}`다 | GM 화면이 경로와 꺼진 소문을 보인다 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-10-01의 이월 결정 반영〕 |

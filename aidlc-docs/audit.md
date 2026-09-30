@@ -2660,3 +2660,43 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **User Input**: (none)
 **AI Response**: architecture-reviewer iteration 1 → **READY** (adversarial, terminal). Findings: 0 Critical / 2 Major / 6 Minor; open 8. Record: `aidlc-docs/construction/plans/reviews/U6-deeds-spread-code-generation-plan-review-01.md`. Fact check: R-08's "CLAUDE.md says 545 + 56 = 601" does not hold (CLAUDE.md reads 621 = 557 + 64); the rest of R-08 stands. Plan frozen until the gate answer.
 **Context**: Code Generation Part 1 — next: approval gate.
+
+---
+
+## Code Generation Part 1 — approval prompt — U6 행적·전파
+**Timestamp**: 2026-09-30T23:54:36Z
+**User Input**: (none — prompt)
+**AI Response**: Presenting the U6 code generation plan (`construction/plans/U6-deeds-spread-code-generation-plan.md`, 11 steps) for approval with the review brief (8 open findings). Options: Approve & Continue / Request Changes.
+**Context**: CONSTRUCTION / U6 — Code Generation Part 1 approval gate.
+
+---
+
+## Code Generation Part 1 Approval — U6 행적·전파
+**Timestamp**: 2026-09-30T23:57:33Z
+**User Input**: "Approve & Continue (Recommended)"
+**AI Response**: Plan approved. Starting Code Generation Part 2 from Step 1.
+**Context**: CONSTRUCTION / U6 — Code Generation Part 1 → Part 2.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — U6 행적·전파
+**Timestamp**: 2026-09-30T23:57:33Z
+**User Input**: (approval at gate; see above)
+**AI Response**:
+- R-01 → Accepted risk (carry: reach weight follows the approved BR-U6-17 — w(X) = best_path_weights(origin)[X] over passable edges both ways; recorded weight = best[X] × edge(X,Y) ≤ best[Y]; Step 1.3(a) wording follows this, not "the path actually taken"; one non-best-path example)
+- R-02 → Accepted risk (carry: `dialogue_llm` supplies dialogue, appraisal and narration; assemble_play/compose_play signatures unchanged)
+- R-03 → Accepted risk (carry: `_start(..., *, lang=None)`; call sites advancer.advance/begin and test_player_mode.py:443 keep working)
+- R-04 → Accepted risk (carry: each caller keeps its status codes (404/400); the dead fallback in advancer goes; PlayService.params and the duplicate _require_player are deferred to U7 — C4 partially closed)
+- R-05 → Accepted risk (carry: constructor injection only — appraise(session_id, npc_id, *, budget); the player name travels in SceneBrief)
+- R-06 → Accepted risk (carry: the empty tracked locus/play/gm/__init__.py is reused)
+- R-07 → Accepted risk (carry: RumorService seed/spread/reserved unit tests live in 6.5; deeds=None turns deed features off (a declaration is narrated but not recorded, declaration still returned); region_knowledge=None gives a SceneBrief without facts/rumors; _prepare runs after the turn-1 open-session check)
+- R-08 → Accepted risk (carry: if Step 1.1 measures a different baseline, Step 1.3(f) corrects NFR-1). The finding's "CLAUDE.md says 601" is factually wrong (621).
+**Context**: Code Generation Part 1 — dispositions recorded.
+
+---
+
+## U6 Code Generation Step 1 — baseline, skeleton, approved-text corrections
+**Timestamp**: 2026-09-30T23:58:59Z
+**User Input**: (none — plan Step 1)
+**AI Response**: Baseline measured: pytest 557 / vitest 64 / mypy 11 (as expected; no NFR-1 correction needed). Skeleton files created (frontend files wait for Step 8 so an empty test file does not fail vitest). Step 1.3 corrections marked "〔Step 1.3 정정〕": domain-entities §7 rows 21–23 (DeedService names, reach weight = best_path_weights(origin)[X] × edge per BR-U6-17, SpreadTarget/DeedView/void shapes) and §4.3 fixed column table; BR-U6-10 (missing statement appraisal → false) and BR-U6-34 (column table, index, run_id via create_all); BLM §4 (c) rumor-level exemption and §0.1 wiring (region_knowledge, lang path, dialogue_llm, None behaviour, prep after the open check); nfr-light NFR-5 (prep failure trips the breaker, worst cases, budget 0/1), NFR-9 (interrupted-run deeds kept), NFR-3 (p95 conditions). Review records keep the old wording.
+**Context**: CONSTRUCTION / U6 — Code Generation Part 2, Step 1.

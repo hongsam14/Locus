@@ -34,6 +34,12 @@ def _prepare(self, run, budget) -> PrepResult:   # PrepResult(declaration: Narra
                     → deeds.record_appraisal(run, npc_id, outcome)                 # 쓰기는 DeedService 한 곳
 ```
 - 조립 순서(`assemble_play`)는 `DeedService` → `NpcDialogueService`(행적 기억을 읽는다) → `GmNarrator` → `TurnAdvancer`다.
+- 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-10-01의 이월 결정 반영〕
+  - `TurnAdvancer`는 `region_knowledge: SessionKnowledgeService`에도 기댄다. `SceneBrief`는 `_prepare`가 `region_sources(session=…, snapshot=…)`와 스냅샷의 NPC로 만든다.
+  - `lang` 경로는 `router act(lang=Depends(display_lang)) → PlayService.act(..., lang=) → TurnAdvancer.begin/advance(..., lang=) → _start(..., *, lang=None) → run.lang`다.
+  - 대화·판단·서술 LLM은 모두 `assemble_play(dialogue_llm=…)` 하나가 공급한다.
+  - 새 의존이 None이면 그 기능이 꺼진다. `deeds=None`이면 행적을 기록하지 않지만 서술은 결과로 돌려준다. `region_knowledge=None`이면 사실·소문 없는 장면이다.
+  - `_prepare`는 턴 1의 세션 OPEN 확인 뒤에 돈다.
 - `GmNarrator`는 LLM이 없으면 `None`이다. 그때 `_prepare`는 §9의 대체 서술을 쓴다.
 
 ## 1. 행적 기록 — `DeedService` (`locus/play/deeds/service.py`, P16)
@@ -179,7 +185,7 @@ def appraise(self, session_id, npc_id, *, budget: LlmBudget) -> AppraisalOutcome
      원천(_collect_sources)에 행적 기원 소문은 넣지 않는다 (검토 1차 R-02, BR-U6-35)
 (c) UoW 하나: 사건 → 씨앗 upsert + mark_seeded + DEED_SEEDED → 전파 upsert + RUMOR_SPREAD
              → 캐노니컬 초안 → 되먹임 → 강화/감쇠 → 가지치기 → 승격 → 턴 +1 (기존 순서)
-             단, **이번 턴에 태어난 행적 기원 소문은 감쇠하지 않는다** (강화 집합에 넣는다, 검토 1차 R-01)
+             단, **이번 턴에 태어난 행적 기원 소문은 감쇠하지 않는다** — 소문 단위 면제 `decay_support(..., exempt_ids=새 행적 소문 id)` 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-10-01의 이월 결정 반영〕
 ```
 - 이번 턴의 씨앗은 (c)에서 저장되므로, 다음 턴부터 전파 부모가 된다. 한 턴에 한 칸이다(A6-5).
 - 씨앗이 생긴 지역은 그 판단의 `reached`에 곧바로 들어간다. 판본이 원점으로 되돌아오지 않는다.

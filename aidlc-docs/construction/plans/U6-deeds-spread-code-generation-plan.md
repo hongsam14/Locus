@@ -89,12 +89,12 @@
 ## Steps
 
 ### Step 1 — 베이스라인·뼈대·승인 산출물 정정
-- [ ] 1.1 실측값을 `construction/U6-deeds-spread/code/code-summary.md` 초안의 기준선으로 적는다. 대상은 `pytest -q --no-cov`(기대 557), `cd web && npx vitest run`(64), `mypy locus api`(11)이다.
-- [ ] 1.2 새 파일을 만든다(빈 docstring).
+- [x] 1.1 실측값을 `construction/U6-deeds-spread/code/code-summary.md` 초안의 기준선으로 적는다. 대상은 `pytest -q --no-cov`(기대 557), `cd web && npx vitest run`(64), `mypy locus api`(11)이다.
+- [x] 1.2 새 파일을 만든다(빈 docstring).
   - `locus/play/deeds/{__init__,service}.py`, `locus/play/gm/{__init__,narrator}.py`, `locus/play/rumor/spread.py`, `locus/play/turn/quota.py`
   - `tests/play/{test_deeds,test_spread,test_narrator,test_deed_turns}.py`, `tests/api/test_deeds_api.py`
   - `web/src/features/play/NarrationCard.tsx`, `web/src/features/gm/DeedPanel.tsx`, `web/src/__tests__/deeds.test.tsx`
-- [ ] 1.3 **승인 산출물 정정**: 게이트가 받은 disposition을 문서에 반영하고, 각 곳에 "〔Step 1.3 정정〕"을 붙인다. audit에 한 줄 남긴다.
+- [x] 1.3 **승인 산출물 정정**: 게이트가 받은 disposition을 문서에 반영하고, 각 곳에 "〔Step 1.3 정정〕"을 붙인다. audit에 한 줄 남긴다.
   - (a) FD domain-entities §7에 R-10의 세 항목을 더한다.
   - (b) BR-U6-34와 domain-entities §4.3을 위 열 추가 표로 맞춘다. `deeds.run_id`는 새 테이블 열이다.
   - (c) BR-U6-10에 R-16의 기본값을 더한다.

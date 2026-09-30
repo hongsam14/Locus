@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 
-from api.deps import get_knowledge, get_localization
+from api.deps import display_lang, get_knowledge, get_localization
 from api.errors import http_error
 from api.schemas import QueryResultOut, localize_query_result
 from locus.knowledge.wiring import KnowledgeContainer
@@ -19,6 +19,7 @@ def region_knowledge(
     world_id: str,
     region_id: str,
     include_hearsay: bool = Query(True),
+    lang: str = Depends(display_lang),
     k: KnowledgeContainer = Depends(get_knowledge),
     loc: LocalizationContainer | None = Depends(get_localization),
 ) -> QueryResultOut:
@@ -26,7 +27,7 @@ def region_knowledge(
         result = k.query.knowledge_for_region(world_id, region_id, include_hearsay=include_hearsay)
     except LookupError as exc:
         raise http_error(exc) from exc
-    return localize_query_result(result, loc)
+    return localize_query_result(result, loc, lang=lang)
 
 
 @router.get("/worlds/{world_id}/diff", response_model=RegionDiff)

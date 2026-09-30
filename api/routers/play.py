@@ -15,11 +15,15 @@ from typing import Any
 from fastapi import APIRouter, Body, Depends
 from fastapi.responses import JSONResponse
 
-from api.deps import get_localization, get_play
+from api.deps import display_lang, get_localization, get_play
 from api.errors import PLAY_ERRORS, http_error
 from api.schemas import (
+    ConversationOut,
+    NpcReplyOut,
+    NpcSummaryOut,
     QueryResultOut,
     RegionViewOut,
+    SayIn,
     SessionStartOut,
     localize_query_result,
     localize_region_view,
@@ -94,6 +98,7 @@ def get_player(session_id: str, p: PlayContainer = Depends(get_play)) -> Player:
 @router.get("/sessions/{session_id}/region", response_model=RegionViewOut)
 def current_region(
     session_id: str,
+    lang: str = Depends(display_lang),
     p: PlayContainer = Depends(get_play),
     loc: LocalizationContainer | None = Depends(get_localization),
 ) -> RegionViewOut:
@@ -104,7 +109,9 @@ def current_region(
         view = p.play.current_region(session_id)
     except PLAY_ERRORS as exc:
         raise http_error(exc) from exc
-    return localize_region_view(view, loc, world_id=session.world_id, session_id=session_id)
+    return localize_region_view(
+        view, loc, world_id=session.world_id, session_id=session_id, lang=lang
+    )
 
 
 @router.post("/sessions/{session_id}/act", response_model=TurnRun, status_code=202)
@@ -152,6 +159,7 @@ def play_log(session_id: str, p: PlayContainer = Depends(get_play)) -> list[Time
 def session_knowledge(
     session_id: str,
     region_id: str,
+    lang: str = Depends(display_lang),
     p: PlayContainer = Depends(get_play),
     loc: LocalizationContainer | None = Depends(get_localization),
 ) -> QueryResultOut:
@@ -160,4 +168,59 @@ def session_knowledge(
         result = p.region_knowledge.knowledge_for_region(session_id, region_id)
     except PLAY_ERRORS as exc:
         raise http_error(exc) from exc
-    return localize_query_result(result, loc, session_id=session_id)
+    return localize_query_result(result, loc, session_id=session_id, lang=lang)
+
+
+# --- NPC dialogue (U5) ------------------------------------------------------------ #
+@router.get("/sessions/{session_id}/npcs", response_model=list[NpcSummaryOut])
+def list_npcs(session_id: str, p: PlayContainer = Depends(get_play)) -> list[NpcSummaryOut]:
+    """The people of the player's current region (US-4.1)."""
+    try:
+        pairs = p.dialogue.npcs_here(session_id)
+    except PLAY_ERRORS as exc:
+        raise http_error(exc) from exc
+    return [
+        NpcSummaryOut(
+            npc=npc,
+            has_conversation=conv is not None,
+            message_count=len(conv.messages) if conv else 0,
+        )
+        for npc, conv in pairs
+    ]
+
+
+@router.post("/sessions/{session_id}/npcs/{npc_id}/start", response_model=ConversationOut)
+def start_dialogue(
+    session_id: str, npc_id: str, p: PlayContainer = Depends(get_play)
+) -> ConversationOut:
+    """Open or reopen the conversation (no LLM — works without a provider)."""
+    try:
+        return p.dialogue.start(session_id, npc_id)
+    except PLAY_ERRORS as exc:
+        raise http_error(exc) from exc
+
+
+@router.post("/sessions/{session_id}/npcs/{npc_id}/say", response_model=NpcReplyOut)
+def say(
+    session_id: str,
+    npc_id: str,
+    body: SayIn,
+    lang: str = Depends(display_lang),
+    p: PlayContainer = Depends(get_play),
+) -> NpcReplyOut:
+    """One line to an NPC; one LLM call; the answer in the display language (FR-C4/G3).
+    400 bad text / wrong region, 404 unknown NPC, 409 closed, 503 without a provider."""
+    try:
+        return p.dialogue.say(session_id, npc_id, body.text, lang=lang)
+    except PLAY_ERRORS as exc:
+        raise http_error(exc) from exc
+
+
+@router.get("/sessions/{session_id}/npcs/{npc_id}/history", response_model=ConversationOut)
+def dialogue_history(
+    session_id: str, npc_id: str, p: PlayContainer = Depends(get_play)
+) -> ConversationOut:
+    try:
+        return p.dialogue.history(session_id, npc_id)
+    except PLAY_ERRORS as exc:
+        raise http_error(exc) from exc

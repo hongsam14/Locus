@@ -17,9 +17,10 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Response, UploadFile
 
-from api.deps import get_play_optional, get_shared, get_world
+from api.deps import get_localization, get_play_optional, get_shared, get_world
 from api.errors import http_error
-from api.schemas import WorldInfo
+from api.schemas import WorldInfo, purge_translations
+from locus.localization.wiring import LocalizationContainer
 from locus.play.errors import TurnInProgressError
 from locus.play.wiring import PlayContainer
 from locus.shared.models import (
@@ -89,6 +90,23 @@ def _open_sessions(world_id: str, confirm: bool, play: PlayContainer | None) -> 
     return open_ids
 
 
+def _after_replace(
+    report,
+    open_ids: list[str],
+    play: PlayContainer | None,
+    loc: LocalizationContainer | None,
+    world_id: str,
+) -> None:
+    """What follows a replace: close the confirmed sessions, and drop the old world's
+    canonical translations (U5 Q4=A). The two are independent — the purge must not sit
+    behind the session step's early return, or the common replace with no open
+    session would skip it (plan review FD R-13). Six routes share five call sites
+    (``file`` and ``file/upload`` go through ``_import``)."""
+    _close_if_replaced(report, open_ids, play)
+    if getattr(report, "replaced", False):
+        purge_translations(loc, kind="knowledge", world_id=world_id)
+
+
 def _close_if_replaced(report, open_ids: list[str], play: PlayContainer | None) -> None:
     """After a successful replace, close the sessions the caller confirmed.
 
@@ -136,6 +154,7 @@ def build_world(
     confirm: bool = False,
     w: WorldContainer = Depends(get_world),
     play: PlayContainer | None = Depends(get_play_optional),
+    loc: LocalizationContainer | None = Depends(get_localization),
 ) -> BuildReport:
     """Build from JSON inputs (images base64-encoded, RE A7)."""
     builder = _need(w.builder, "world build (LLM provider)")
@@ -144,7 +163,7 @@ def build_world(
         report = builder.build(world_id, inputs, replace=replace)
     except WorldExistsError as exc:
         raise http_error(exc) from exc
-    _close_if_replaced(report, open_ids, play)
+    _after_replace(report, open_ids, play, loc, world_id)
     return report
 
 
@@ -160,6 +179,7 @@ def build_world_upload(
     confirm: bool = Form(default=False),
     w: WorldContainer = Depends(get_world),
     play: PlayContainer | None = Depends(get_play_optional),
+    loc: LocalizationContainer | None = Depends(get_localization),
 ) -> BuildReport:
     """Build from uploaded files (multipart): memos (text), maps (JSON), images (map).
 
@@ -186,7 +206,7 @@ def build_world_upload(
         report = builder.build(world_id, inputs, replace=replace)
     except WorldExistsError as exc:
         raise http_error(exc) from exc
-    _close_if_replaced(report, open_ids, play)
+    _after_replace(report, open_ids, play, loc, world_id)
     return report
 
 
@@ -277,6 +297,7 @@ def _import(
     remap: bool,
     w: WorldContainer,
     play: PlayContainer | None,
+    loc: LocalizationContainer | None,
 ) -> ImportReport:
     importer = _need(w.importer, "world import")
     try:
@@ -288,7 +309,7 @@ def _import(
         report = importer.import_(world_id, file, replace=replace, force_remap=remap)
     except WorldExistsError as exc:
         raise http_error(exc) from exc
-    _close_if_replaced(report, open_ids, play)
+    _after_replace(report, open_ids, play, loc, world_id)
     return report
 
 
@@ -301,10 +322,13 @@ def import_world_file(
     remap: bool = False,
     w: WorldContainer = Depends(get_world),
     play: PlayContainer | None = Depends(get_play_optional),
+    loc: LocalizationContainer | None = Depends(get_localization),
 ) -> ImportReport:
     """Load a World File (JSON body) into ``world_id`` (US-6.3). ``remap=true`` forces id
     remapping (recovery from an id collision, BR-U2-4)."""
-    return _import(world_id, raw, replace=replace, confirm=confirm, remap=remap, w=w, play=play)
+    return _import(
+        world_id, raw, replace=replace, confirm=confirm, remap=remap, w=w, play=play, loc=loc
+    )
 
 
 @router.post("/worlds/{world_id}/file/upload", response_model=ImportReport)
@@ -316,13 +340,16 @@ def import_world_file_upload(
     remap: bool = Form(default=False),
     w: WorldContainer = Depends(get_world),
     play: PlayContainer | None = Depends(get_play_optional),
+    loc: LocalizationContainer | None = Depends(get_localization),
 ) -> ImportReport:
     """Load a World File uploaded as multipart (sync route, see build_world_upload)."""
     try:
         raw = json.loads(file.file.read().decode("utf-8"))
     except (UnicodeDecodeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=f"not a JSON file: {exc}") from exc
-    return _import(world_id, raw, replace=replace, confirm=confirm, remap=remap, w=w, play=play)
+    return _import(
+        world_id, raw, replace=replace, confirm=confirm, remap=remap, w=w, play=play, loc=loc
+    )
 
 
 # --- demo worlds ------------------------------------------------------------- #
@@ -339,6 +366,7 @@ def load_demo_world(
     confirm: bool = False,
     w: WorldContainer = Depends(get_world),
     play: PlayContainer | None = Depends(get_play_optional),
+    loc: LocalizationContainer | None = Depends(get_localization),
 ) -> ImportReport:
     """Load a packaged demo World File — no LLM call (FR-B3, BR-U2-28)."""
     demo = _need(w.demo, "demo worlds")
@@ -351,7 +379,7 @@ def load_demo_world(
         report = demo.load(name, world_id, replace=replace)
     except (LookupError, WorldExistsError) as exc:
         raise http_error(exc) from exc
-    _close_if_replaced(report, open_ids, play)
+    _after_replace(report, open_ids, play, loc, world_id)
     return report
 
 
@@ -364,6 +392,7 @@ def build_demo_world_from_sources(
     with_map: bool = True,
     w: WorldContainer = Depends(get_world),
     play: PlayContainer | None = Depends(get_play_optional),
+    loc: LocalizationContainer | None = Depends(get_localization),
 ) -> BuildReport:
     """Development path: build the demo from its raw sources through the LLM pipeline
     (``with_map=false`` skips the map image / VLM)."""
@@ -378,7 +407,7 @@ def build_demo_world_from_sources(
         report = demo.build_from_sources(name, world_id, replace=replace, include_map=with_map)
     except (LookupError, WorldExistsError) as exc:
         raise http_error(exc) from exc
-    _close_if_replaced(report, open_ids, play)
+    _after_replace(report, open_ids, play, loc, world_id)
     return report
 
 

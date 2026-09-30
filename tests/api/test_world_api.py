@@ -157,7 +157,9 @@ class _Play:
         self.guard = TurnGuard()  # U4: the replace gate pre-flights running turns
 
 
-def _client(*, editor=None, builder="default", importer=None, demo=None, graph=None, play=None):
+def _client(
+    *, editor=None, builder="default", importer=None, demo=None, graph=None, play=None, loc=None
+):
     world = WorldContainer(
         cache=None,
         editor=editor or _Editor(),
@@ -170,7 +172,7 @@ def _client(*, editor=None, builder="default", importer=None, demo=None, graph=N
         cross_world=None,
     )
     shared = SharedContainer(settings=Settings(), graph=graph or _GraphRepo())
-    return TestClient(create_app(world=world, shared=shared, play=play))
+    return TestClient(create_app(world=world, shared=shared, play=play, localization=loc))
 
 
 # --- build ------------------------------------------------------------------- #
@@ -369,3 +371,43 @@ def test_demo_build_from_sources_with_map_flag() -> None:
     demo = _Demo()
     r = _client(demo=demo).post("/api/world/worlds/w/demo/aldermoor/build?with_map=false")
     assert r.status_code == 200 and demo.map_flag is False
+
+
+def test_u5_a_replace_with_no_open_session_still_purges_the_worlds_translations() -> None:
+    """FD review R-13: the purge must not sit behind the session step's early return."""
+    from locus.localization import TranslationService
+    from locus.localization.models import Translation
+    from locus.localization.storage.memory_repo import InMemoryTranslationRepository
+    from locus.localization.translator import Translator
+    from locus.localization.wiring import LocalizationContainer
+
+    class _NoLLM:
+        def complete(self, prompt, *, system=None):  # pragma: no cover
+            return ""
+
+        def structured(self, prompt, schema, *, system=None):  # pragma: no cover
+            raise NotImplementedError
+
+    store = InMemoryTranslationRepository()
+    loc = LocalizationContainer(translations=TranslationService(store, Translator(_NoLLM())))
+
+    def row(sid: str, world: str) -> Translation:
+        return Translation(
+            source_kind="knowledge",
+            source_id=sid,
+            source_field="statement",
+            text="번역",
+            source_hash="h",
+            world_id=world,
+        )
+
+    store.upsert_many([row("k1", "w"), row("k2", "other")])
+    client = _client(play=_Play([]), loc=loc)  # no open sessions at all
+    raw = _file("w").model_dump(mode="json")
+    assert client.post("/api/world/worlds/w/file?confirm=true", json=raw).status_code == 200
+    assert store.get_many([("knowledge", "k1", "statement")], "ko") == {}  # purged
+    assert store.get_many([("knowledge", "k2", "statement")], "ko")  # other world kept
+    # the demo route shares the helper
+    store.upsert_many([row("k3", "w")])
+    assert client.post("/api/world/worlds/w/demo/aldermoor?confirm=true").status_code == 200
+    assert store.get_many([("knowledge", "k3", "statement")], "ko") == {}

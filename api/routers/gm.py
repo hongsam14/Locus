@@ -7,7 +7,7 @@ from typing import TypeVar
 
 from fastapi import APIRouter, Depends
 
-from api.deps import get_localization, get_play
+from api.deps import display_lang, get_localization, get_play
 from api.errors import PLAY_ERRORS, http_error
 from api.schemas import (
     DistortionUpdate,
@@ -17,6 +17,7 @@ from api.schemas import (
     SupportUpdate,
     enrichment_for,
     localize,
+    purge_translations,
 )
 from locus.localization.wiring import LocalizationContainer
 from locus.play.errors import TurnInProgressError
@@ -52,11 +53,15 @@ def _rumors_out(
     rumors: list[SessionRumor],
     *,
     enrich: bool = True,
+    lang: str | None = None,
 ) -> list[RumorOut]:
     """Read paths enrich from the translation cache (and warm misses); write paths
-    return ``statement_ko=None`` without touching the translator (X1 Q2=A, review U1 #5)."""
+    return ``statement_ko=None`` without touching the translator (X1 Q2=A, review U1 #5).
+    ``lang=None`` is the server default; write paths never reach the translator."""
     enrichment = (
-        enrichment_for(loc, rumors, kind="rumor", fields=["statement"], session_id=session_id)
+        enrichment_for(
+            loc, rumors, kind="rumor", fields=["statement"], session_id=session_id, lang=lang
+        )
         if enrich
         else {}
     )
@@ -69,9 +74,12 @@ def _events_out(
     events: list[SessionEvent],
     *,
     enrich: bool = True,
+    lang: str | None = None,
 ) -> list[EventOut]:
     enrichment = (
-        enrichment_for(loc, events, kind="event", fields=["description"], session_id=session_id)
+        enrichment_for(
+            loc, events, kind="event", fields=["description"], session_id=session_id, lang=lang
+        )
         if enrich
         else {}
     )
@@ -92,6 +100,7 @@ def get_timeline(session_id: str, p: PlayContainer = Depends(get_play)) -> list[
 def list_rumors(
     session_id: str,
     region_id: str,
+    lang: str = Depends(display_lang),
     p: PlayContainer = Depends(get_play),
     loc: LocalizationContainer | None = Depends(get_localization),
 ) -> list[RumorOut]:
@@ -99,7 +108,7 @@ def list_rumors(
         rumors = p.rumors.list_rumors(session_id, region_id)
     except LookupError as exc:
         raise http_error(exc) from exc
-    return _rumors_out(loc, session_id, rumors)
+    return _rumors_out(loc, session_id, rumors, lang=lang)
 
 
 @router.post(
@@ -132,10 +141,13 @@ def regenerate_region(
     loc: LocalizationContainer | None = Depends(get_localization),
 ) -> list[RumorOut]:
     try:
-        rumors = p.rumors.regenerate_region(session_id, region_id).rumors
+        result = p.rumors.regenerate_region(session_id, region_id)
     except PLAY_ERRORS as exc:
         raise http_error(exc) from exc
-    return _rumors_out(loc, session_id, rumors, enrich=False)
+    # Q4=A: the replaced rumors' translations go with them. The two skip paths delete
+    # nothing, so `deleted_ids` is empty and nothing is purged (BR-U5-23).
+    purge_translations(loc, kind="rumor", ids=result.deleted_ids)
+    return _rumors_out(loc, session_id, result.rumors, enrich=False)
 
 
 @router.put(
@@ -207,6 +219,7 @@ def advance(session_id: str, p: PlayContainer = Depends(get_play)) -> TurnResult
 def list_events(
     session_id: str,
     status: str | None = None,
+    lang: str = Depends(display_lang),
     p: PlayContainer = Depends(get_play),
     loc: LocalizationContainer | None = Depends(get_localization),
 ) -> list[EventOut]:
@@ -214,7 +227,7 @@ def list_events(
         events = p.events.list_events(session_id, status=status)
     except LookupError as exc:
         raise http_error(exc) from exc
-    return _events_out(loc, session_id, events)
+    return _events_out(loc, session_id, events, lang=lang)
 
 
 @router.post(

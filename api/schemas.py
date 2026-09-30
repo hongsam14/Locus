@@ -7,6 +7,7 @@ response types with :func:`localize`.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from typing import Any, TypeVar
 
@@ -15,15 +16,17 @@ from pydantic import BaseModel
 from locus.localization.service import Enrichment
 from locus.localization.wiring import LocalizationContainer
 from locus.play.models import (
+    Conversation,
     EventCategory,
     EventLifecycle,
     GameSession,
+    NpcReply,
     Player,
     RegionView,
     SessionEvent,
     SessionRumor,
 )
-from locus.shared.models import KnowledgeView, QueryResult
+from locus.shared.models import NPC, KnowledgeView, QueryResult
 
 # --- requests ---------------------------------------------------------------- #
 
@@ -74,6 +77,27 @@ class RumorOut(SessionRumor):
 
 class EventOut(SessionEvent):
     description_ko: str | None = None
+
+
+# --- U5 NPC dialogue ----------------------------------------------------------- #
+class SayIn(BaseModel):
+    """The player's line. Length and emptiness are checked by the service (400)."""
+
+    text: str
+
+
+class NpcSummaryOut(BaseModel):
+    """An NPC of the player's region, and whether a conversation already exists."""
+
+    npc: NPC
+    has_conversation: bool
+    message_count: int
+
+
+# Dialogue is generated in the display language and never translated (A-1), so the
+# domain models are the response models as they are.
+ConversationOut = Conversation
+NpcReplyOut = NpcReply
 
 
 # --- U4 player mode ------------------------------------------------------------ #
@@ -249,3 +273,31 @@ def localize_region_view(
     data: dict[str, Any] = view.model_dump()
     data.update(facts=facts, hearsay=hearsay, rumors=rumors)
     return RegionViewOut(**data)
+
+
+_log = logging.getLogger(__name__)
+
+
+def purge_translations(
+    loc: LocalizationContainer | None,
+    *,
+    kind: str | None = None,
+    ids: list[str] | None = None,
+    world_id: str | None = None,
+    session_id: str | None = None,
+) -> int:
+    """Drop cached translations whose source is gone (U5 Q4=A, BR-U5-23).
+
+    Called by the composition root only (play and world never import localization).
+    A side job: without localization it does nothing, and a failure is logged and
+    never breaks the response it rides on.
+    """
+    if loc is None or loc.translations is None:
+        return 0
+    if ids is not None and not ids:
+        return 0
+    try:
+        return loc.translations.purge(kind=kind, ids=ids, world_id=world_id, session_id=session_id)
+    except Exception:
+        _log.exception("translation purge failed (kind=%s, world=%s)", kind, world_id)
+        return 0

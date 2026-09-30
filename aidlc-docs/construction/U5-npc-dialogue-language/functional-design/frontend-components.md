@@ -27,6 +27,8 @@ Toolbar · RegionPanel · SessionBar · SessionPanel · AugmentPanel · EditorPa
 - **자리**: `AppNav` 오른쪽. 모든 화면에 보인다.
 
 ### 2.2 `i18n.ts` 확장 (Q2=A)
+
+기존 `web/src/i18n.ts` **한 파일**을 넓힌다(unit-of-work가 적은 `web/src/i18n/` 디렉터리가 아니다 — domain-entities §7 이탈 10). 사전 두 개와 언어 상태뿐이다.
 ```ts
 type Lang = "ko" | "en";
 const dicts: Record<Lang, Record<string, string>> = { ko: {...}, en: {...} };
@@ -39,6 +41,7 @@ export function timelineText(kind, payload, turn, summary?): string  // 기존 �
 ```
 - `en` 사전은 `ko`와 **같은 키 집합**을 가진다(테스트로 강제). 빠진 키는 `ko`로 떨어져 화면이 비지 않는다.
 - U4가 넣은 플레이 라벨과 타임라인 템플릿에 `en`을 채우고, `npc.*`·`dialogue.*` 키를 새로 더한다.
+- U5가 만드는 타임라인 종류의 템플릿도 두 언어로 더한다: `timeline.npc_talked`(ko "{npc_name}와 대화 · {region_name}" / en "spoke with {npc_name} · {region_name}"). 빠지면 `timelineText`가 요약문으로 떨어져 `PlayLog`에 영어 원문이 보인다.
 
 ### 2.3 남은 영어 라벨 정리 (FR-G5, US-9.4 첫째)
 | 파일 | 지금 | 키 |
@@ -51,6 +54,9 @@ export function timelineText(kind, payload, turn, summary?): string  // 기존 �
 | `EditorPage.tsx` | "No world loaded…" 안내 | `editor.noWorld` |
 | `AppNav.tsx` | Editor / GM / Play | `nav.editor`·`nav.gm`·`nav.play` (제품명 "Locus"는 그대로) |
 - 라벨 문자열을 단언하는 기존 테스트는 `t("...")`로 바꾼다(문구가 아니라 키를 검증).
+
+### 2.3a 전언은 화면에만 (검토 1차 R-01)
+`RegionScene`의 "들은 이야기"(U4)는 그대로 둔다. 그것은 그 지역에 희미하게 닿은 캐노니컬 지식을 **플레이어에게** 보여 주는 칸이다. NPC가 아는 범위에는 들어가지 않으므로(BR-U5-7), 화면에 보이는 전언을 물어도 NPC는 모른다고 할 수 있다. 화면 문구로 그 차이를 드러낸다: 제목을 `t("play.hearsay")`("들은 이야기") 아래 작은 글씨로 `t("play.hearsayHint")`("이 지역에 희미하게 닿은 이야기입니다. 사람들이 다 아는 것은 아닙니다.")를 둔다.
 
 ### 2.4 `NpcList` (`features/play/NpcList.tsx`) — US-4.1 첫째
 - **props**: `npcs: NPC[]`, `activeNpcId: string | null`, `disabled: boolean`(LLM 없음), `onTalk(npcId)`.

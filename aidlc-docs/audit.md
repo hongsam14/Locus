@@ -2299,3 +2299,19 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **Context**: Functional Design — U5 — review requested before approval gate.
 
 ---
+
+## Plan Review Completed — Functional Design — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:00:18Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 5 Major / 6 Minor; open 11. Record: `aidlc-docs/construction/U5-npc-dialogue-language/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — U5 — builder fix + re-review.
+
+---
+
+## Plan Review Requested — Functional Design — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:00:18Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Builder fixed R-01..R-11 in place. The substantive change is R-01: **hearsay is removed from the NPC context**, following FR-C4/US-4.2 as written — the reviewer showed that hearsay is another region's canonical knowledge reached over a weak path, so including it let a distant NPC recite the undistorted original and weakened US-6.1 and US-4.3. Q3's option text mentioned "hearsay 6", so the gate will offer the human the chance to put it back. R-02: `build_context` now drops canonical knowledge that an active local rumor derives from, so the original and the distortion are never held together (with the pruned-chain limit stated). R-03: the invariant moved to the `region_sources` + `build_context` composition with an oracle built independently from ConsensusEngine and the repository. R-04: `?lang=` is validated once at the API edge (`display_lang` dependency) and threaded through `enrichment_for`/`localize_*`, with `*_ko` naming, `TRANSLATION_ENABLED` independence and the route list settled. R-05: `RegenerateResult` specifies `deleted_ids == []` for both skip paths U4's review settled, lists the real call sites (1 router + 5 tests), drops the "only way" claim and records the purge/warm race as accepted. R-06: purge hooks the one helper the six replace routes share, and the CLI gap is a stated rule. R-07: `region_sources` replaces the third copy of the resolve skeleton, the U4 `PlayService` constructor/wiring change is recorded, the 404 message is shared and the DTO renamed `RegionSources`. R-08: NPC 404 vs 400 split, `LlmUnavailableError` reused rather than redeclared, conversation creation moved inside the `say` transaction. R-09: EndTalk pseudocode matches U4's real shape and the `timeline.npc_talked` keys are listed. R-10: zero-limit slicing, `ge=0` bounds, a message length cap and the interleaving note. R-11: the deviation list is now complete (P12/P13/P2 signatures, `messages.lang`, i18n file location). Dispatching architecture-reviewer (class adversarial, iteration 2) with prior findings carried forward. Review record: `aidlc-docs/construction/U5-npc-dialogue-language/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — U5 — review requested before approval gate.
+
+---

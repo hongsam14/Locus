@@ -2636,3 +2636,19 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 - R-05 → Accepted risk (carry: code plan step 1 measures the baseline — 557 / 64 / mypy 11 — and the GET deeds p95 target states 300 deeds / 100 rumors). Note: the finding's "CLAUDE.md says 601" is factually wrong (621 since 3452fd8).
 - Suggestion (statement → appraisal summary → NPC prompt injection assertion) → carried to the code plan's test steps.
 **Context**: NFR (light) — dispositions recorded.
+
+---
+
+## U6 Code Generation Part 1 — plan written
+**Timestamp**: 2026-09-30T23:50:02Z
+**User Input**: (continuation — next stage after the U6 NFR approval)
+**AI Response**: Wrote `construction/plans/U6-deeds-spread-code-generation-plan.md` (11 steps; carry-forward table closing FD R-10/R-15/R-16/R-17, FD suggestions, NFR R-01..R-05 + suggestion, U5 review C4 (C1 deferred to U7); fixed column-add table; call sites of every changed constructor/signature listed).
+**Context**: CONSTRUCTION / U6 — Code Generation Part 1.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — U6 행적·전파
+**Timestamp**: 2026-09-30T23:50:02Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/U6-deeds-spread-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/U6-deeds-spread-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — review requested before approval gate.

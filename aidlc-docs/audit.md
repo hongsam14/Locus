@@ -2652,3 +2652,11 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **User Input**: (none — automatic per plan-review.md)
 **AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/U6-deeds-spread-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/U6-deeds-spread-code-generation-plan-review-01.md`.
 **Context**: Code Generation Part 1 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — U6 행적·전파
+**Timestamp**: 2026-09-30T23:54:27Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY** (adversarial, terminal). Findings: 0 Critical / 2 Major / 6 Minor; open 8. Record: `aidlc-docs/construction/plans/reviews/U6-deeds-spread-code-generation-plan-review-01.md`. Fact check: R-08's "CLAUDE.md says 545 + 56 = 601" does not hold (CLAUDE.md reads 621 = 557 + 64); the rest of R-08 stands. Plan frozen until the gate answer.
+**Context**: Code Generation Part 1 — next: approval gate.

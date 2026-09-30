@@ -41,14 +41,16 @@ def build_context(
     recent: list[Message],
     limits: ScopeLimits,
 ) -> NpcContext:
-    # (1) 활성 소문의 원본 캐노니컬 지식은 facts에서 뺀다. 소문은 그 지역 지식에서
-    #     나므로 원본이 facts에 남아 있으면 NPC가 같은 사건의 원문과 왜곡문을 같이
-    #     들고 있게 되어 US-4.3 첫째 기준("원문은 말하지 않는다")이 깨진다.
-    shadowed = {r.distorted_from_id for r in rumors if r.distorted_from_kind == "knowledge"}
-    visible = [k for k in facts if k.knowledge_id not in shadowed]
-    allowed = {k.knowledge_id for k in visible} | {r.id for r in rumors}
-    picked_facts = sorted(visible, key=_fact_key)[: limits.facts]
+    # (1) 소문을 먼저 고른다. 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-09-30T12:41Z의 이월 결정 반영〕
     picked_rumors = sorted(rumors, key=_rumor_key)[: limits.rumors]
+    # (2) **선택된** 소문의 원본 캐노니컬 지식만 facts에서 뺀다. 소문은 그 지역 지식에서
+    #     나므로 원본이 facts에 남아 있으면 NPC가 같은 사건의 원문과 왜곡문을 같이
+    #     들고 있게 되어 US-4.3 첫째 기준("원문은 말하지 않는다")이 깨진다. 한도로
+    #     잘려 나간 소문은 원본을 가리지 않는다(가리면 NPC가 그 사건을 아예 모른다).
+    shadowed = {r.distorted_from_id for r in picked_rumors if r.distorted_from_kind == "knowledge"}
+    visible = [k for k in facts if k.knowledge_id not in shadowed]
+    picked_facts = sorted(visible, key=_fact_key)[: limits.facts]
+    allowed = {k.knowledge_id for k in picked_facts} | {r.id for r in picked_rumors}
     picked_recent = recent[-limits.recent_messages :] if limits.recent_messages else []
     return NpcContext(npc=npc, facts=picked_facts, rumors=picked_rumors,
                       recent=picked_recent, allowed_ids=allowed)
@@ -108,7 +110,7 @@ npc = require_npc_here(snapshot, player, npc_id)
 conv = repo.get_conversation(session_id, npc_id)             # 없으면 아래 UoW에서 만든다
 src = region_knowledge.region_sources(session_id, npc.home_region_id)
 ctx = build_context(npc=npc, facts=src.facts, rumors=src.rumors,
-                    recent=conv.messages if conv else [], limits=tuning.scope_limits())
+                    recent=conv.messages if conv else [], limits=ScopeLimits.from_tuning(tuning))  # 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-09-30T12:41Z의 이월 결정 반영〕
 # ── LLM 1회 (UoW 밖; BR-U5-16) ──
 reply_text = self._llm.complete(user_prompt(ctx, body, lang), system=system_prompt(npc, lang))
 reply_text = reply_text.strip() or fallback_text(lang)       # 빈 응답도 대화를 끊지 않는다
@@ -125,7 +127,7 @@ return NpcReply(message=npc_msg, lang=lang, llm_calls=1,
                 context_ids=[k.knowledge_id for k in ctx.facts] + [r.id for r in ctx.rumors])
 ```
 - 대화 생성과 두 메시지가 **한 트랜잭션**이다. 생성만 따로 커밋되면 LLM 실패 때 빈 대화가 남는다(이탈 6).
-- LLM 호출이 예외로 실패하면 아무것도 저장되지 않고 오류가 올라간다(어댑터가 30초·3회 재시도 뒤 최종 실패 → 500; 최악 ≈97초를 운영 문서에 적는다).
+- LLM 호출이 예외로 실패하면 아무것도 저장되지 않고 오류가 올라간다(어댑터가 30초·3회 재시도 뒤 최종 실패 → 500; 최악 93초 — 두 provider는 `max_retries=0` — 를 운영 문서에 적는다 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-09-30T12:41Z의 이월 결정 반영〕).
 - 턴은 흐르지 않는다(A5-2). 진행 중 턴 실행이 있어도 대화는 허용한다(BR-U5-27). 같은 세션에 `say`가 겹치면 메시지가 서로 끼일 수 있다 — 순서는 `(created_at, id)`로 정해지고 잃는 것은 없으므로 감수한다(플레이어 한 명이 쓰는 화면이다).
 
 ### 2.3 `history(session_id, npc_id) -> Conversation` — 읽기(닫힌 세션도 허용, LLM 불필요). 없으면 404.
@@ -217,7 +219,7 @@ NPC 존재는 U4 `movement.validate_action`이 가드 안에서 이미 확인한
 | `POST /api/play/sessions/{s}/npcs/{n}/say?lang=` `{text}` | `NpcReply` 200. 400 빈/긴 텍스트·지원하지 않는 lang·NPC가 이 지역이 아님, 404 NPC·세션 없음, 409 닫힌 세션, **503 LLM 없음** |
 | `GET /api/play/sessions/{s}/npcs/{n}/history` | `Conversation` 200 / 404 |
 | `GET /api/play/sessions/{s}/npcs` | 현재 지역 NPC + 대화 여부(`has_conversation`, `message_count`) |
-| `lang: str = Depends(display_lang)`를 더하는 라우트 | `GET /api/play/sessions/{s}/region`, `GET /api/play/sessions/{s}/regions/{r}/knowledge`, `GET /api/knowledge/worlds/{w}/regions/{r}`, `GET /api/gm/sessions/{s}/regions/{r}/rumors`, `GET /api/gm/sessions/{s}/events`, `GET /api/gm/sessions/{s}/timeline`, `POST …/npcs/{n}/say` |
+| `lang: str = Depends(display_lang)`를 더하는 라우트 | `GET /api/play/sessions/{s}/region`, `GET /api/play/sessions/{s}/regions/{r}/knowledge`, `GET /api/knowledge/worlds/{w}/regions/{r}`, `GET /api/gm/sessions/{s}/regions/{r}/rumors`, `GET /api/gm/sessions/{s}/events`, `POST …/npcs/{n}/say` (`GET …/timeline`은 번역 필드가 없어 제외 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-09-30T12:41Z의 이월 결정 반영〕) |
 | 기존 계약 | `GET .../regions/{r}/knowledge`(FR-F5) 응답 형태 불변; gm 라우트 응답 형태 불변; 쓰기 라우트에는 `lang`을 붙이지 않는다(그 응답은 번역하지 않는다) |
 
 ## 8. LLM 없을 때 (NFR-4, US-1.4)

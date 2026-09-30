@@ -1,8 +1,10 @@
 """Retry + timeout policy for external model calls (ND1-Q1=A).
 
-3 attempts, exponential backoff (1s -> 2s -> 4s). The per-call timeout is
-configured on the underlying client (LangChain ``request_timeout``); here we
-own the retry/backoff concern so all providers share it.
+3 attempts with exponential backoff between them (waits 1s, then 2s — three
+attempts mean two waits). The per-call timeout (30s) is configured on the client and
+the providers pin ``max_retries=0`` so the SDK does not retry underneath this layer.
+Worst case per call: 30 × 3 + 1 + 2 = **93s**. The SDK timeout applies per phase
+(connect, read), so this is the practical bound rather than a strict one.
 """
 
 from __future__ import annotations

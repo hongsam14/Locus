@@ -29,3 +29,11 @@ class LlmUnavailableError(RuntimeError):
     The deterministic parts of a service stay usable: gating the whole service on the
     provider 503'd seven routes that never touch an LLM (code review U4-2 #13).
     """
+
+
+class ConversationExistsError(ValueError):
+    """A conversation for this session and NPC already exists (UNIQUE session_id, npc_id).
+
+    A dedicated type so the concurrent-first-message recovery in ``say`` does not
+    swallow unrelated ``ValueError`` s (U5 plan review R-03).
+    """

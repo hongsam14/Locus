@@ -2437,3 +2437,31 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **Context**: Code Generation Part 1 — Step 6.
 
 ---
+
+## Code Generation Plan Approved — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:41:51Z
+**User Input**: "Approve & Continue"
+**AI Response**: Plan approved (review iter 2 READY; R-13..R-16 → Accepted risk below). Starting Code Generation Part 2 from Step 1.
+**Context**: CONSTRUCTION / U5 — Code Generation Part 1 complete → Part 2.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:41:51Z
+**User Input**: (approval at gate; see above)
+**AI Response**:
+- R-13 → Accepted risk (carry: Step 6.3 wording is "six routes share five call sites")
+- R-14 → Accepted risk (carry: `SUPPORTED_LANGS` is read as a plain string field and split on commas in a property, avoiding pydantic-settings' JSON decoding of tuple fields; Step 2.4 covers "ko,en" and the empty value)
+- R-15 → Accepted risk (carry: the PostgreSQL adapter maps only the `conversations` unique violation — matched by constraint name, falling back to a pre-read — to `ConversationExistsError`; other integrity errors propagate. The PostgreSQL transaction-abort path stays operator-run and is named in the code summary)
+- R-16 → Accepted risk (carry: Step 4.4 extracts `region_knowledge` into a local in `assemble_play`; Step 4.8 only adds `dialogue`)
+**Context**: Code Generation Part 1 — dispositions recorded.
+
+---
+
+## U5 Code Generation Step 1.3 — approved-text corrections
+**Timestamp**: 2026-09-30T12:43:08Z
+**User Input**: (none — plan Step 1.3, part of the approved plan)
+**AI Response**: Amended the approved U5 design and NFR texts exactly where the gate dispositions changed them, each marked "〔Step 1.3 정정〕": `business-logic-model.md` §1 (`build_context` picks rumors first and shadows only the selected rumors' sources — FD R-12), §2.2 (`ScopeLimits.from_tuning(tuning)` instead of a method on shared's `PlayTuning`, which would make shared import play; 97s → 93s with `max_retries=0`), §7 (the timeline route no longer takes `lang` — FD R-04(2)); `business-rules.md` BR-U5-11 and TP-U5-1 (same ordering); `nfr-light.md` NFR-3 structural assertion (normal-path one `uow()`, two on the race-recovery path, at most two snapshot reads) and NFR-5/NFR-8 (93s). Review records still quote the old figures and stay unchanged.
+**Context**: CONSTRUCTION / U5 — Code Generation Part 2, Step 1.
+
+---

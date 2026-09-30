@@ -29,6 +29,9 @@ class OpenAILLMProvider(LLMProvider):
             model=model,
             temperature=temperature,
             timeout=CALL_TIMEOUT_SECONDS,
+            # Retries live in one place (retry.with_retry). Leaving the SDK's own
+            # 2 retries on stacked them, so one call could take ~270s (U5 NFR R-01).
+            max_retries=0,
         )
 
     def complete(self, prompt: str, *, system: str | None = None) -> str:
@@ -70,6 +73,9 @@ class OpenAIVLMProvider(VLMProvider):
             model=model,
             temperature=temperature,
             timeout=CALL_TIMEOUT_SECONDS,
+            # Retries live in one place (retry.with_retry). Leaving the SDK's own
+            # 2 retries on stacked them, so one call could take ~270s (U5 NFR R-01).
+            max_retries=0,
         )
 
     def analyze_image(self, image: bytes, prompt: str, *, system: str | None = None) -> str:

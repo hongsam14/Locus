@@ -37,3 +37,8 @@ class PlayTuning:
     max_new_rumors_per_region_turn: int = 2  # new rumors a turn may draft per region
     max_llm_calls_per_turn: int = 8  # LlmBudget per turn (one degree step = one call)
     max_active_rumors_per_region: int = 20  # a turn never pushes a region above this
+    # U5 NPC dialogue — prompt size (FD-U5 Q3=A without hearsay) and input cap (BR-U5-5)
+    npc_max_facts: int = 12
+    npc_max_rumors: int = 8
+    npc_max_recent_messages: int = 10
+    npc_max_message_chars: int = 500

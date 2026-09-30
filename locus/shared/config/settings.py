@@ -74,6 +74,11 @@ class Settings(BaseSettings):
     llm_max_calls_per_turn: int = Field(default=8, ge=0, alias="LLM_MAX_CALLS_PER_TURN")
     rumor_max_active_per_region: int = Field(default=20, ge=0, alias="RUMOR_MAX_ACTIVE_PER_REGION")
     turn_shutdown_timeout_s: float = Field(default=30.0, ge=0.0, alias="TURN_SHUTDOWN_TIMEOUT_S")
+    # U5 NPC dialogue (BR-U5-5/9): prompt limits and the message length cap
+    npc_max_facts: int = Field(default=12, ge=0, alias="NPC_MAX_FACTS")
+    npc_max_rumors: int = Field(default=8, ge=0, alias="NPC_MAX_RUMORS")
+    npc_max_recent_messages: int = Field(default=10, ge=0, alias="NPC_MAX_RECENT_MESSAGES")
+    npc_max_message_chars: int = Field(default=500, ge=1, alias="NPC_MAX_MESSAGE_CHARS")
 
     # --- Localization (UX Improvement / X1) ---
     # Translate LLM-generated session content (rumors, events) and canonical
@@ -83,6 +88,16 @@ class Settings(BaseSettings):
     translation_enabled: bool = Field(default=True, alias="TRANSLATION_ENABLED")
     translation_target_lang: str = Field(default="ko", alias="TRANSLATION_TARGET_LANG")
     translation_warm_workers: int = Field(default=2, ge=1, alias="TRANSLATION_WARM_WORKERS")
+    # U5 (FD-U5 Q1=A): display languages a request may ask for with ?lang=. Read as a
+    # plain comma-separated string — pydantic-settings would JSON-decode a tuple field,
+    # so "ko,en" would fail to load (plan review R-14).
+    supported_langs_raw: str = Field(default="ko,en", alias="SUPPORTED_LANGS")
+
+    @property
+    def supported_langs(self) -> tuple[str, ...]:
+        langs = tuple(part.strip().lower() for part in (self.supported_langs_raw or "").split(","))
+        langs = tuple(lang for lang in langs if lang)
+        return langs or ("ko", "en")
 
     # --- Data dir (World File backups before a replace, U2 BR-U2-11) ---
     data_dir: Path = Field(default=Path("data"), alias="LOCUS_DATA_DIR")
@@ -90,6 +105,18 @@ class Settings(BaseSettings):
     @property
     def backup_dir(self) -> Path:
         return self.data_dir / "backups"
+
+    @model_validator(mode="after")
+    def _default_lang_is_supported(self) -> "Settings":
+        """TRANSLATION_TARGET_LANG is the default display language, so it must be one a
+        request may ask for — otherwise every request without ?lang= answers 400
+        (U5 FD review R-04). Fail at startup instead."""
+        if self.translation_target_lang.lower() not in self.supported_langs:
+            raise ValueError(
+                f"TRANSLATION_TARGET_LANG={self.translation_target_lang!r} is not in "
+                f"SUPPORTED_LANGS={self.supported_langs_raw!r}"
+            )
+        return self
 
     @model_validator(mode="after")
     def _assemble_session_db_url(self) -> "Settings":
@@ -125,6 +152,10 @@ class Settings(BaseSettings):
             max_new_rumors_per_region_turn=self.rumor_max_new_per_region_turn,
             max_llm_calls_per_turn=self.llm_max_calls_per_turn,
             max_active_rumors_per_region=self.rumor_max_active_per_region,
+            npc_max_facts=self.npc_max_facts,
+            npc_max_rumors=self.npc_max_rumors,
+            npc_max_recent_messages=self.npc_max_recent_messages,
+            npc_max_message_chars=self.npc_max_message_chars,
         )
 
 

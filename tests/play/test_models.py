@@ -185,3 +185,53 @@ def test_u4_play_tuning_defaults_and_env(monkeypatch: pytest.MonkeyPatch) -> Non
     assert (tuned.max_move_cost, tuned.max_new_rumors_per_region_turn) == (3, 1)
     assert (tuned.max_llm_calls_per_turn, tuned.max_active_rumors_per_region) == (4, 9)
     assert s.turn_shutdown_timeout_s == 2.5
+
+
+# --------------------------------------------------------------------------- #
+# U5 NPC dialogue — models (Step 2.4)
+# --------------------------------------------------------------------------- #
+def test_u5_message_and_conversation_round_trip() -> None:
+    from locus.play.models import Conversation, Message
+
+    conv = Conversation(session_id="s", npc_id="n1", started_turn=2)
+    msg = Message(conversation_id=conv.id, role="player", text="hello", lang="ko", turn=2)
+    conv.messages.append(msg)
+    again = Conversation.model_validate(conv.model_dump())
+    assert again == conv and again.messages[0].role == "player"
+    with pytest.raises(ValidationError):
+        Message(conversation_id="c", role="narrator", text="x", lang="ko")  # type: ignore[arg-type]
+    with pytest.raises(ValidationError):
+        Message(conversation_id="c", role="npc", text="", lang="ko")
+
+
+def test_u5_scope_limits_come_from_the_tuning() -> None:
+    from locus.play.models import ScopeLimits
+    from locus.shared.config.tuning import PlayTuning
+
+    limits = ScopeLimits.from_tuning(PlayTuning(npc_max_facts=3, npc_max_rumors=0))
+    assert (limits.facts, limits.rumors, limits.recent_messages) == (3, 0, 10)
+    with pytest.raises(ValidationError):
+        ScopeLimits(facts=-1)
+
+
+def test_u5_regenerate_result_rumors_is_kept_plus_fresh() -> None:
+    from locus.play.models import RegenerateResult, SessionRumor
+
+    def r(i: str) -> SessionRumor:
+        return SessionRumor(
+            id=i, session_id="s", region_id="a", distorted_from_id="k", provenance=_prov()
+        )
+
+    res = RegenerateResult(kept=[r("k1")], fresh=[r("f1"), r("f2")], deleted_ids=["d1"])
+    assert [x.id for x in res.rumors] == ["k1", "f1", "f2"]
+    skipped = RegenerateResult(kept=[r("k1")], skipped_reason="llm_incomplete")
+    assert skipped.deleted_ids == [] and [x.id for x in skipped.rumors] == ["k1"]
+    with pytest.raises(ValidationError):
+        RegenerateResult(skipped_reason="bored")  # type: ignore[arg-type]
+
+
+def test_u5_npc_talked_is_appended_after_the_u4_kinds() -> None:
+    from locus.play.models import TimelineKind
+
+    kinds = [k.value for k in TimelineKind]
+    assert kinds[-1] == "npc_talked" and kinds.index("turn_run_failed") < kinds.index("npc_talked")

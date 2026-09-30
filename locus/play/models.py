@@ -16,6 +16,7 @@ from typing import Annotated, Literal, Union
 
 from pydantic import Field
 
+from locus.shared.config.tuning import PlayTuning
 from locus.shared.models import NPC, KnowledgeView, LocusModel, Provenance, new_id
 
 # Default per-region distortion when a session is started (FD-S1 Q1=B / BR-S1-3).
@@ -53,6 +54,8 @@ class TimelineKind(str, Enum):
     PLAYER_MOVED = "player_moved"
     PLAYER_WAITED = "player_waited"
     TURN_RUN_FAILED = "turn_run_failed"
+    # U5 NPC dialogue (additive): an EndTalk action closes a conversation (FR-C4)
+    NPC_TALKED = "npc_talked"
 
 
 class GameSession(LocusModel):
@@ -365,3 +368,84 @@ class RegionView(LocusModel):
     moves: list[MoveOption] = Field(default_factory=list)
     turn_running: bool = False
     llm_available: bool = True
+
+
+# --------------------------------------------------------------------------- #
+# U5 — NPC dialogue (FD: construction/U5-npc-dialogue-language/functional-design)
+# --------------------------------------------------------------------------- #
+class Message(LocusModel):
+    """One line of a conversation, stored in the display language it was written in
+    (A-1: never embedded, never put through the translation cache)."""
+
+    id: str = Field(default_factory=new_id)
+    conversation_id: str
+    role: Literal["player", "npc"]
+    text: str = Field(min_length=1)
+    lang: str = Field(min_length=2)
+    turn: int = Field(default=0, ge=0)
+    created_at: datetime | None = None
+
+
+class Conversation(LocusModel):
+    """The one conversation a session has with one NPC (BR-U5-1)."""
+
+    id: str = Field(default_factory=new_id)
+    session_id: str
+    npc_id: str  # canonical NPC id (reference only)
+    started_turn: int = Field(default=0, ge=0)
+    messages: list[Message] = Field(default_factory=list)
+    created_at: datetime | None = None
+
+
+class ScopeLimits(LocusModel):
+    """How much of the region an NPC prompt may carry (FD-U5 Q3=A without hearsay)."""
+
+    facts: int = Field(default=12, ge=0)
+    rumors: int = Field(default=8, ge=0)
+    recent_messages: int = Field(default=10, ge=0)
+
+    @classmethod
+    def from_tuning(cls, tuning: PlayTuning) -> ScopeLimits:
+        # Built here, not as a PlayTuning method: shared must not import play (FR-A2).
+        return cls(
+            facts=tuning.npc_max_facts,
+            rumors=tuning.npc_max_rumors,
+            recent_messages=tuning.npc_max_recent_messages,
+        )
+
+
+class NpcContext(LocusModel):
+    """What one NPC may draw on for one answer (BR-U5-7). No hearsay (deviation 1)."""
+
+    npc: NPC
+    facts: list[KnowledgeView] = Field(default_factory=list)
+    rumors: list[SessionRumor] = Field(default_factory=list)
+    recent: list[Message] = Field(default_factory=list)
+    allowed_ids: set[str] = Field(default_factory=set)
+
+
+class NpcReply(LocusModel):
+    """The NPC's answer to one ``say`` (exactly one LLM call, BR-U5-16)."""
+
+    message: Message
+    lang: str
+    llm_calls: int = 1
+    context_ids: list[str] = Field(default_factory=list)
+
+
+class RegenerateResult(LocusModel):
+    """Outcome of regenerating a region's rumors (U5 deviation 2).
+
+    The two skip paths U4's review settled (``llm_incomplete``, ``no_sources``) delete
+    nothing, so ``deleted_ids`` is empty there and the router purges nothing.
+    """
+
+    kept: list[SessionRumor] = Field(default_factory=list)
+    fresh: list[SessionRumor] = Field(default_factory=list)
+    deleted_ids: list[str] = Field(default_factory=list)
+    skipped_reason: Literal["llm_incomplete", "no_sources"] | None = None
+
+    @property
+    def rumors(self) -> list[SessionRumor]:
+        """What the region holds afterwards — the list the router has always returned."""
+        return self.kept + self.fresh

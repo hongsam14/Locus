@@ -2481,3 +2481,11 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **User Input**: (none — plan Step 8, part of the approved plan)
 **AI Response**: Gates: pytest 545 (baseline 475, +70, 0 regressions), vitest 56 (39 → 56), mypy 11 (= baseline), ruff/black clean on `locus api tests`, boundaries 4 passed, tsc and vite build clean, `docker build` OK (`locus-u5-check`; the image's OpenAPI lists the four dialogue routes and exactly six `lang` routes). Whole-repo `ruff check .` / `black --check .` flag only `examples/demo_world/generate_map.py`, untouched since `ce8fd98` (pre-U5; not fixed, noted). Two NFR test items the NFR note asked for were missing and were added: NFR-6 injection example and NFR-9 removed-NPC scenario (`tests/play/test_dialogue.py`). Code summary written (`construction/U5-npc-dialogue-language/code/code-summary.md`): results, file list, TP mapping (TP-U5-1 split into 1a scope / 1b composed), carry-forward locations, the complete deviation list (FD §7 ten + plan values + Step 1.3 corrections + six made during generation, incl. the 500 on a failed dialogue LLM call that BR-U5-30 leaves unspecified), operator-run live commands (US-6.1, PG race path R-15, latency), hand-offs to U6/U7/U3/U8.
 **Context**: CONSTRUCTION / U5 — Code Generation Part 2, Step 8.1–8.2; next: code gate (8.3).
+
+---
+
+## Code Generation Approval — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T15:36:53Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: Code approved with the four generation-time decisions as presented (ko timeline wording "대화: {npc_name} · {region_name}"; hard-coded Korean labels moved into the dictionaries too, enum codes kept; a dialogue LLM call that fails after retries answers 500; NFR-6 / NFR-9 tests added). CLAUDE.md test count corrected to 601 (545 + 56). Next: `/code-review` of the U5 diff (6ef8d38~1..HEAD), then U6 행적·전파.
+**Context**: CONSTRUCTION / U5 — Code Generation approved.

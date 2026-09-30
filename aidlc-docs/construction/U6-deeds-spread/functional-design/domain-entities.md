@@ -29,9 +29,11 @@ class Deed(LocusModel):
     witnessed_npc_ids: list[str] = Field(default_factory=list)  # 도착·선언 = 그 지역 NPC 전원, 발언 = 대화 상대 한 명
     voided: bool = False
     voided_turn: int | None = None
+    run_id: str | None = None           # 이 행적을 기록한 TurnRun (실패 보상이 지운다, BR-U6-36)
     created_at: datetime | None = None  # 앱이 찍는다(`next_timestamp()`); 체류 구간의 순서 기준
 ```
 - **체류(stay)**: 한 지역에 들어와 머무는 동안을 말한다. 플레이어의 가장 최근 `ARRIVAL` 행적부터 지금까지이고, 판단 대상의 창이 된다(A6-3, A-6). 세션 시작 위치도 `ARRIVAL` 행적을 남기므로 체류는 늘 정의된다.
+- **경계는 취소와 무관하다**: 체류 경계는 **취소 여부와 상관없이** 가장 최근 `ARRIVAL`로 정한다. 발언 요약 커서도 취소 여부와 상관없이 가장 최근 `STATEMENT`로 정한다. GM이 지금 체류의 도착을 취소해도 지난 체류의 행적이 되살아나지 않는다(검토 1차 R-05). 취소된 행적은 판단 대상과 컨텍스트에서만 빠진다.
 - 행적은 세션 레이어에만 있고 캐노니컬 월드를 바꾸지 않는다(FR-C8).
 
 ### 1.2 `DeedAppraisal`
@@ -67,7 +69,8 @@ class DeedView(LocusModel):
 ```python
 class DeclareAction(LocusModel):
     type: Literal["declare"] = "declare"
-    text: str = Field(min_length=1)      # 길이 상한(`declare_max_chars`)과 공백 검사는 서비스가 한다(400)
+    text: str                            # min_length를 두지 않는다: 빈 값도 서비스가 400으로 거절한다
+                                         # (모델 검증이면 FastAPI 422, 검토 1차 R-12). 상한은 `declare_max_chars`
 
 PlayerAction = Annotated[Union[MoveAction, WaitAction, EndTalkAction, DeclareAction], Field(discriminator="type")]
 ```
@@ -89,7 +92,7 @@ class SpreadTarget(LocusModel):
     from_region_id: str
     weight: float = Field(ge=0.0, le=1.0)     # 원점에서의 도달 가중치 w(Y)
     degree: float = Field(ge=0.0, le=1.0)     # max(부모 왜곡도, 1 − w(Y))
-    support: float = Field(ge=0.0, le=1.0)    # 부모 지지도 × 이 칸의 연결 가중치
+    support: float = Field(ge=0.0, le=1.0)    # 부모 지지도 × (0.5 + 0.5 × 이 칸의 연결 가중치), 검토 1차 R-01
 ```
 
 ### 2.4 `SessionRumor` 기원 필드 (추가만)
@@ -105,6 +108,11 @@ spread_from_region_id: str | None = None    # 씨앗은 None, 전파는 부모 �
 ### 2.5 결과·실행 기록 확장
 - `ActionResult.declaration: Narration | None`: 선언 행동의 서술이다. 기존 `narration: list[str]`은 턴 요약 템플릿이라 이름이 겹치지 않게 따로 둔다.
 - `TurnRun.lang: str | None`: 서술을 만들 표시 언어다. 선언 요청의 `?lang=`을 받아 배경 실행에 넘긴다.
+- **`turn_runs` 저장 보강(검토 1차 R-03)**
+  - 배경 실행은 실행 행을 저장소에서 다시 읽는다. 그래서 `lang`은 열로 저장해야 한다.
+  - 같은 까닭으로 U4의 `turns_charged`·`from_region_id`도 PostgreSQL에서 사라지고 있었다. `_start`가 `create_run`이 돌려준 DB 행으로 `run`을 덮어쓰기 때문이다. 이 때문에 PG에서는 실패 실행 보상(턴 환불, 위치 복원)이 동작하지 않았다(U4 잠재 결함).
+  - U6은 `turn_runs`에 세 열(`lang`, `turns_charged`, `from_region_id`)을 더한다. 두 어댑터가 저장하고 복원하며, 계약 테스트로 확인한다.
+- `RegionView.declare_max_chars: int`: 화면이 선언 길이 상한을 서버 값으로 쓴다(검토 1차 제안).
 - `TurnResult`에 `seeded_rumor_ids`·`spread_rumor_ids`를 더한다(`list[str]`). `RegionTurnChange.rumors_added`에도 함께 들어가므로 지역 알림은 그대로 뜬다.
 
 ## 3. 타임라인 (추가만; 페이로드에 `region_name`, FR-D3)
@@ -134,6 +142,8 @@ class DeedStore(Protocol):
     def list_appraisals(self, session_id: str, *, deed_ids: list[str] | None = None,
                         npc_id: str | None = None) -> list[DeedAppraisal]: ...
     def mark_seeded(self, session_id: str, appraisal_id: str, rumor_id: str) -> None: ...
+    def delete_by_run(self, session_id: str, run_id: str) -> int: ...
+        # 실패 보상 전용: 그 실행이 기록한 행적과 그 판단을 지운다 (BR-U6-36)
 ```
 
 ### 4.2 `RumorStore` 추가
@@ -146,13 +156,18 @@ def list_rumors_by_origin(self, session_id: str, *, deed_id: str | None = None,
 
 ### 4.3 테이블 (PostgreSQL, 추가만; 인메모리 트윈 같은 계약)
 - `deeds`
-  - 열: `id` PK, `session_id` idx, `player_id`, `region_id`, `turn`, `kind`, `text`, `declaration` null, `messages_through` null, `witnessed_npc_ids` JSON, `voided` bool, `voided_turn` null, `created_at` not null(앱이 찍는다)
+  - 열: `id` PK, `session_id` idx, `player_id`, `region_id`, `turn`, `kind`, `text`, `declaration` null, `messages_through` null, `witnessed_npc_ids` JSON, `voided` bool, `voided_turn` null, `run_id` null idx, `created_at` not null(앱이 찍는다)
 - `deed_appraisals`
   - 열: `id` PK, `session_id` idx, `deed_id` idx, `npc_id`, `noteworthy`, `salience`, `slant`, `retelling`, `turn`, `seeded_rumor_id` null, `created_at` not null
   - 제약: **`UNIQUE (deed_id, npc_id)`** 이름 `uq_deed_appraisals_deed_npc`
 - `session_rumors` 열 추가
   - `origin_kind` not null default `'canonical'`, `origin_deed_id` null idx, `origin_appraisal_id` null, `spread_from_region_id` null
-  - `ensure_play_schema`가 없으면 `ALTER TABLE … ADD COLUMN`을 실행한다. 선례와 같은 방식이고 기존 행은 `canonical`이 된다(A6-12).
+  - 기존 행은 `canonical`이 된다(A6-12).
+- `turn_runs` 열 추가(검토 1차 R-03): `lang` null, `turns_charged` not null default 0, `from_region_id` null.
+- **열 추가 방식(검토 1차 R-11)**
+  - `ensure_play_schema`는 SQLAlchemy inspector로 **두 방언 모두**에서 빠진 열을 찾고, `ALTER TABLE … ADD COLUMN`을 실행한다.
+  - 이것은 선례와 다르다. 선례는 PG 전용 `ADD COLUMN IF NOT EXISTS`이고 SQLite를 건너뛴다.
+  - 그래서 오프라인 테스트가 옛 스키마에서 열이 생기는지 확인할 수 있다.
 
 ## 5. 조정값 (`PlayTuning`, `Settings` env)
 | 값 | 기본 | env | 쓰임 |
@@ -189,3 +204,12 @@ def list_rumors_by_origin(self, session_id: str, *, deed_id: str | None = None,
 | 9 | FR-C8 "지역 도착" | 세션 시작 위치도 `ARRIVAL` 행적을 남긴다 | 체류 구간이 늘 정의되고, 시작 지역에서 한 선언도 판단 대상이 된다 |
 | 10 | P19 `plan_spread(snapshot, rumor, reached, tuning)` | `plan_spread(snapshot, rumor, *, origin_region_id, reached, tuning)` | 도달 가중치를 원점부터의 최대 곱 경로로 계산하려면 원점이 필요하다(열을 더하지 않는다) |
 | 11 | (없음) | `TurnRun.lang` | 배경 실행이 서술 언어를 알아야 한다 |
+| 12 | P12 불변식 "컨텍스트 ⊆ known ∪ 지역 활성 소문", A6-9 "그 NPC가 판단한 행적" | NPC 컨텍스트에 **현재 체류 중 목격했지만 아직 판단하지 않은 행적**도 넣는다(BR-U6-30) — **게이트에서 확인받을 것** | 방금 눈앞에서 한 선언을 NPC가 모르면 대화가 어색하다. 불변식은 "∪ (이 NPC의 판단 행적 ∪ 체류 중 목격 행적) − 취소"로 넓힌다(TP-U6-5) |
+| 13 | P13 `NpcDialogueService.appraise(session_id, npc_id, deeds) -> list[DeedAppraisal]`, P17 `GmNarrator.narrate(*, declaration, region_view, lang)`, P8 `seed_from_appraisal(session, deed, appraisal, *, budget)`·`spread(session, rumor, targets, *, budget)` | `appraise(session_id, npc_id, *, budget) -> AppraisalOutcome`(쓰기 없음), `narrate(*, declaration, scene: SceneBrief, lang) -> Narration`, `RumorService.seed(session, deed, ap, *, distortion)`(LLM 0)·`spread(session, parent, target) -> SessionRumor | None`(대상 하나) | 쓰기는 `DeedService` 한 곳에 모은다(검토 1차 R-07). 서술 입력은 `RegionView` 전체가 아니라 필요한 조각이다. 예산은 호출자(턴 루프)가 쥔다 |
+| 14 | A7 void 응답 `{deactivated_rumors: int}` | `{deed_id, deactivated_rumor_ids: [...]}` | GM 화면이 어떤 소문이 꺼졌는지 보여 준다 |
+| 15 | A6-4 지지도 `birth × (1 + salience)`, A6-5 전파 지지도 `부모 × w` | 씨앗 `birth × (1 + salience)`, 전파 `부모 × (0.5 + 0.5 × edge)`, **행적 기원 소문은 태어난 턴에 감쇠하지 않는다**, 전파 계획은 지지도가 `prune_floor + support_decay` 미만인 대상을 뺀다 | 검토 1차 R-01: 옛 식이면 먼 지역 소문이 태어난 턴에 가지치기되어 US-6.5가 기본값에서 성립하지 않는다 |
+| 16 | FR-E7 "최대 곱 경로" | 지나갈 수 있는 연결만, 양방향으로, `best_path_weights`로 원점부터 계산 | 이동과 같은 통행 규칙. knowledge의 계산은 방향이 있다 |
+| 17 | (없음) | 캐노니컬 소문 초안의 원천에서 **행적 기원 소문을 뺀다**(`_collect_sources`) | 검토 1차 R-02: 행적 계보가 캐노니컬 소문으로 새면 취소가 닿지 않는다 |
+| 18 | U4 `turn_runs`(열 9개) | `lang`·`turns_charged`·`from_region_id` 추가 | 검토 1차 R-03: PG에서 서술 언어와 U4 실패 보상 값이 사라진다(U4 잠재 결함을 함께 고친다) |
+| 19 | (없음) | `Deed.run_id`, `DeedStore.delete_by_run`; 턴이 하나도 진행되지 않은 실패 실행의 행적·판단을 지운다 | 검토 1차 R-08: 되돌린 이동의 도착, 실패한 선언이 유령 행적으로 남지 않게 한다 |
+| 20 | (없음) | `RegionView.declare_max_chars` | 화면의 상한을 서버 값과 맞춘다(검토 1차 제안) |

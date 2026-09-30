@@ -2521,3 +2521,19 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **User Input**: (none — automatic per plan-review.md)
 **AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/U6-deeds-spread/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/U6-deeds-spread/functional-design/reviews/functional-design-review-01.md`.
 **Context**: Functional Design — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — U6 행적·전파 (iteration 1)
+**Timestamp**: 2026-09-30T16:20:50Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: architecture-reviewer iteration 1: NOT-READY (3 Major, 11 Minor). Verified the three Majors against code: support arithmetic prunes far spreads at birth (R-01); canonical chain sources include deed rumors (`_collect_sources(include_existing=True)`, R-02); `turn_runs` has no `lang`/`turns_charged`/`from_region_id` columns and `_start` overwrites `run` with the stored row, so U4 failed-run compensation silently does nothing on PostgreSQL (R-03; latent U4 defect). All 14 addressed in the artifacts: newborn deed rumors skip decay + spread support `parent × (0.5 + 0.5 × edge)` + drop targets below `prune_floor + support_decay`; canonical sources exclude deed-origin rumors (BR-U6-35); `turn_runs` gains three columns (BR-U6-37); shared per-turn region quota (TP-U6-8); stay boundary and statement cursor ignore voiding; "talked" = new player lines since the cursor; `TurnAdvancer._prepare` owns the prep step, writes only in `DeedService`; failed runs with no advanced turn delete their deeds (`run_id`); void guarded by the router's `_idle` lease; deviations 12–20 listed; inspector-based column adds on both dialects; no `min_length` on the declaration; log-filter scope stated; `onDeclare` returns success. Suggestions taken: `DeedService.recent`, server-provided `declare_max_chars`, narrator injection guard.
+**Context**: Functional Design — adversarial round 1 fixes applied.
+
+---
+
+## Plan Review Requested — Functional Design — U6 행적·전파
+**Timestamp**: 2026-09-30T16:20:50Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 2) on `aidlc-docs/construction/U6-deeds-spread/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/U6-deeds-spread/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — review requested before approval gate.

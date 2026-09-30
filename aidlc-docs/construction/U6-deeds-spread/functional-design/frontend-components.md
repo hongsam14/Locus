@@ -19,15 +19,15 @@ GmPage
 ## 2. 컴포넌트별 정의
 
 ### 2.1 `ActionBar` 확장 (`features/play/ActionBar.tsx`)
-- **props 추가**: `onDeclare(text: string)`. `disabled`는 지금처럼 턴 진행 중이다.
+- **props 추가**: `onDeclare(text: string) => Promise<boolean>`(받아들여졌는지), `maxChars: number`(`RegionView.declare_max_chars`). `disabled`는 지금처럼 턴 진행 중이다(검토 1차 R-14).
 - **표시**
   - 여러 줄 입력 `declare-input`이 있고 placeholder는 `t("play.declarePlaceholder")`다.
-  - 글자 수 `{n}/{max}`를 보인다. `max`는 `DECLARE_MAX_CHARS = 300` 상수이고, 서버가 최종 판단한다.
+  - 글자 수 `{n}/{max}`를 보인다. `max`는 서버가 준 `maxChars`다(하드코딩 상수 없음).
   - 버튼 `declare-btn`의 라벨은 `t("play.declare")`("선언하기 (1턴)")다.
 - **동작**
   - 공백을 뺀 텍스트가 비었거나 `max`를 넘으면 버튼이 꺼진다.
-  - 누르면 `onDeclare(text)`를 부르고 입력을 비운다.
-  - 서버가 400을 주면 `PlayPage`가 오류를 보이고, 입력은 되살린다(낙관적 비움을 되돌린다).
+  - 누르면 입력을 비우고 `await onDeclare(text)`를 부른다.
+  - `false`가 오면 입력을 되살린다(낙관적 비움을 되돌린다). 400(오류 표시)과 409(턴 진행 중 알림) 모두 같다.
 
 ### 2.2 `NarrationCard` (`features/play/NarrationCard.tsx`, 새 파일)
 - **props**: `narration: Narration | null`
@@ -39,7 +39,8 @@ GmPage
   - 다음 행동을 시작하면 지운다.
 
 ### 2.3 `PlayPage` 연결
-- `declare(text)`는 `act({type: "declare", text})`를 부른다. 기존 `act`를 재사용하므로 202·폴링·409 알림이 그대로다.
+- `act(action)`이 `Promise<boolean>`을 돌려주도록 바꾼다. 202면 `true`이고, 400(오류 표시)이나 409(알림)면 `false`다. 기존 호출처(이동·기다리기·대화 마침)는 값을 쓰지 않으므로 그대로다.
+- `declare(text)`는 `act({type: "declare", text})`를 부르고 그 값을 돌려준다. 202·폴링·409 알림은 그대로다.
 - 폴링이 끝나면 `current.result?.declaration`을 `NarrationCard`에 넘긴다.
 - 선언 실행이 도는 동안에는 `ActionBar`의 진행 표시가 그대로 보인다. 서술은 결과와 함께 온다(A6-1).
 
@@ -47,10 +48,12 @@ GmPage
 - `RegionScene`의 소문 줄과 `SessionPanel`의 소문 카드에 배지를 단다. `r.origin_kind === "deed"`이면 `<Badge tone="event">{t("badge.deed")}</Badge>`다.
 - 승격 배지와 함께 보일 수 있다.
 
-### 2.5 `PlayLog` — GM 전용 줄 제외
+### 2.5 `PlayLog` — GM 전용 줄 제외 (검토 1차 R-13)
 - `GM_ONLY_KINDS = ["deed_appraised", "deed_seeded", "rumor_spread"]`인 줄은 플레이어 기록에서 뺀다.
-- NPC가 무엇을 전하기로 했는지는 플레이어에게 숨긴 정보다. 소문은 다른 지역에 가서 들어야 한다(US-6.5의 경험).
-- 전체 관점 필터(C6)는 U7이다.
+- **숨기는 범위**
+  - 숨기는 것은 두 가지다. 하나는 누가 어떻게 판단했는지이고, 다른 하나는 내 행적 소문이 **다른 지역 어디로** 퍼졌는지다.
+  - 플레이어가 지금 있는 지역의 소문(씨앗 포함)은 `RegionScene`에 "행적" 배지와 함께 보인다. 그 자리에 있으면 들리는 말이기 때문이다(US-6.5: 소문은 그 지역에 가서 듣는다).
+- **이 필터는 표시일 뿐이다.** `GET /log`는 지금처럼 모든 줄을 돌려준다. 1인 로컬 데모라 보안 경계가 아니다. 서버 쪽 플레이어 관점 필터(C6)는 U7이 한다.
 
 ### 2.6 `DeedPanel` (`features/gm/DeedPanel.tsx`, 새 파일) — US-5.6
 - **props**: `sessionId`, `closed: boolean`, `onChanged()`(소문이 바뀌었으니 `SessionPanel`을 다시 읽게 한다)
@@ -111,7 +114,7 @@ stateDiagram-v2
     [*] --> Idle
     Idle --> Submitting: 선언하기
     Submitting --> Idle: 400 (입력 되살림 + 오류)
-    Submitting --> Idle: 409 (턴 진행 중 알림)
+    Submitting --> Idle: 409 (입력 되살림 + 턴 진행 중 알림)
     Submitting --> Running: 202 TurnRun
     Running --> Narrated: done + declaration
     Running --> Idle: failed (턴 실패 알림)
@@ -119,10 +122,10 @@ stateDiagram-v2
 ```
 
 ## 6. 테스트 (vitest)
-- **`ActionBar`**: 빈 입력이나 301자에서 버튼이 꺼진다. 턴 진행 중에도 꺼진다. 누르면 `onDeclare`가 공백을 뺀 텍스트로 불린다.
+- **`ActionBar`**: 빈 입력이나 `maxChars + 1`자에서 버튼이 꺼진다. 턴 진행 중에도 꺼진다. 누르면 `onDeclare`가 공백을 뺀 텍스트로 불린다. `false`면 입력이 되살아난다.
 - **`PlayPage`**
   - 선언하면 `act`가 `{type: "declare", text}`로 불린다. 폴링이 끝나면 `NarrationCard`에 서술이 보인다.
-  - 400이면 입력이 되살아나고 오류가 보인다.
+  - 400이면 입력이 되살아나고 오류가 보인다. 409면 입력이 되살아나고 알림이 뜬다.
 - **배지**: `origin_kind="deed"` 소문에 "행적" 배지가 붙는다(지역 화면과 GM 소문 목록).
 - **`PlayLog`**: `deed_appraised`·`deed_seeded`·`rumor_spread` 줄이 없고, `action_declared` 줄은 있다.
 - **`DeedPanel`**

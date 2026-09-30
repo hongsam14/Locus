@@ -2405,3 +2405,19 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **Context**: CONSTRUCTION / U5 — Code Generation Part 1, Step 5a.
 
 ---
+
+## Plan Review Completed — Code Generation Part 1 — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:28:59Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 4 Major / 8 Minor; open 12. Record: `aidlc-docs/construction/plans/reviews/U5-npc-dialogue-language-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — builder fix + re-review.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:28:59Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Builder revised the plan for R-01..R-12. R-01: `_close_if_replaced` has five call sites and 291 sits in the `_import` helper the `file` and `file/upload` routes share, so `_import` gains a `loc` parameter and both callers change. R-02: the `PlayService` signature change and both construction sites now live in one sub-step (4.4), and the carry table points at it. R-03: the unique-violation recovery is explicitly outside the unit of work — a typed `ConversationExistsError` is caught, the conversation re-read, and a second append-only unit of work opened, because PostgreSQL aborts the transaction and the in-memory twin restores state. R-04: `assemble_play` gains a `dialogue_llm` injection point defaulting to `shared.llm`, and `compose_play`/`play_fixtures` pass a fake, without which the `say` 200 tests could not be composed. Minors: keep the player-region check before `region_sources` so U4's message survives; spell out the adapter work including the in-memory rollback state tuple and both unit-of-work properties; point the docs work at the right step and correct the U4 section of operations.md; add Step 1.3 to amend the approved design and NFR texts the dispositions changed (rumor-first ordering, the timeline `lang` row, 97s → 93s, the structural assertion, and `ScopeLimits.from_tuning` instead of a method on shared's `PlayTuning`); put the same-language translation skip in `enrichment_for`; note that pinning `max_retries=0` changes every LLM and VLM call and pin it with a test; declare `tests/shared/test_config.py` as new; and state the write-route blast radius and the timeline exclusion from `withLang`. Dispatching architecture-reviewer (class adversarial, iteration 2) with prior findings carried forward. Review record: `aidlc-docs/construction/plans/reviews/U5-npc-dialogue-language-code-generation-plan-review-02.md`.
+**Context**: Code Generation Part 1 — review requested before approval gate.
+
+---

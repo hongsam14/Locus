@@ -2315,3 +2315,19 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **Context**: Functional Design — U5 — review requested before approval gate.
 
 ---
+
+## Plan Review Completed — Functional Design — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:03:03Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: 0 Critical / 1 Major open (R-04 narrowed: the default language is never checked against the supported set, and the timeline route has a meaningless `lang`) / 2 Minor open (R-12 `shadowed` is computed before the rumor cap, so a cut rumor can hide its own source and the NPC knows neither; R-13 the purge must sit outside `_close_if_replaced`'s early return and the six routes need a `loc` dependency); R-01..R-03, R-05..R-11 Resolved. Record: `aidlc-docs/construction/U5-npc-dialogue-language/functional-design/reviews/functional-design-review-02.md`. Artifacts frozen per plan-review.md §3.5 until the human answers the gate.
+**Context**: Functional Design — U5 — next: approval gate.
+
+---
+
+## Approval Prompt — Functional Design — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:03:03Z
+**User Input**: (none — gate prompt logging)
+**AI Response**: Presenting the four U5 functional-design artifacts with the Review brief (iteration 2 READY; R-04 Unresolved, R-12/R-13 New). The gate also carries the hearsay decision explicitly: the design now follows FR-C4/US-4.2 and excludes hearsay from the NPC context, although FD-U5 Q3's option text mentioned "hearsay 6", so the human may put it back. Options: Continue to Next Stage (open findings → Accepted risk, settled as one-line instructions in the code-generation plan) / Request Changes.
+**Context**: Functional Design — U5 — approval gate.
+
+---

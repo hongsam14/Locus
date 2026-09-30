@@ -1,17 +1,38 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
-import type { GameSession } from "./types";
+import { NewSessionForm } from "./features/play/NewSessionForm";
+import { t } from "./i18n";
+import type { GameSession, Region, SessionStartOut } from "./types";
 import { Button } from "./ui";
 
 interface Props {
   worldId: string;
   sessionId: string | null;
   onSelect: (session: GameSession | null) => void;
+  /** "picker": choose/start only (editor screen); "full": also close + status (GM screen). */
+  variant?: "full" | "picker";
+  /** Offer the "— none —" entry. The GM screen always has a session, so it hides it. */
+  allowNone?: boolean;
+  /** U4: regions of the loaded world for the player-mode start form. */
+  regions?: Region[];
+  /** U4: when given, a "플레이 시작" button opens the player-mode form; the
+   * created session is handed here (the editor navigates to /play/:id). */
+  onPlay?: (out: SessionStartOut) => void;
 }
 
-export function SessionBar({ worldId, sessionId, onSelect }: Props) {
+export function SessionBar({
+  worldId,
+  sessionId,
+  onSelect,
+  variant = "full",
+  allowNone = true,
+  regions = [],
+  onPlay,
+}: Props) {
   const [sessions, setSessions] = useState<GameSession[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [playOpen, setPlayOpen] = useState(false);
+  const [playBusy, setPlayBusy] = useState(false);
 
   async function refresh() {
     setError(null);
@@ -42,6 +63,21 @@ export function SessionBar({ worldId, sessionId, onSelect }: Props) {
     }
   }
 
+  async function startPlay(name: string, startRegionId: string) {
+    setError(null);
+    setPlayBusy(true);
+    try {
+      const out = await api.startSession(worldId, { name, start_region_id: startRegionId });
+      setPlayOpen(false);
+      await refresh();
+      onPlay?.(out);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setPlayBusy(false);
+    }
+  }
+
   async function close() {
     if (!sessionId) return;
     setError(null);
@@ -66,7 +102,7 @@ export function SessionBar({ worldId, sessionId, onSelect }: Props) {
         onChange={(e) => onSelect(sessions.find((s) => s.id === e.target.value) ?? null)}
         className="sketch-border bg-paper-card px-2 py-1 text-sm"
       >
-        <option value="">— none —</option>
+        {allowNone && <option value="">— none —</option>}
         {sessions.map((s) => (
           <option key={s.id} value={s.id}>
             {s.id.slice(0, 8)} · turn {s.turn} · {s.status}
@@ -76,15 +112,31 @@ export function SessionBar({ worldId, sessionId, onSelect }: Props) {
       <Button size="sm" variant="primary" data-testid="session-new-btn" onClick={start}>
         New Session
       </Button>
-      <Button
-        size="sm"
-        data-testid="session-close-btn"
-        onClick={close}
-        disabled={!current || current.status === "closed"}
-      >
-        Close
-      </Button>
-      {current && (
+      {onPlay && (
+        <Button size="sm" data-testid="session-play-btn" onClick={() => setPlayOpen(true)}>
+          {t("session.play")}
+        </Button>
+      )}
+      {onPlay && (
+        <NewSessionForm
+          open={playOpen}
+          regions={regions}
+          busy={playBusy}
+          onSubmit={startPlay}
+          onCancel={() => setPlayOpen(false)}
+        />
+      )}
+      {variant === "full" && (
+        <Button
+          size="sm"
+          data-testid="session-close-btn"
+          onClick={close}
+          disabled={!current || current.status === "closed"}
+        >
+          Close
+        </Button>
+      )}
+      {variant === "full" && current && (
         <span data-testid="session-status" className="text-xs text-ink-soft">
           turn {current.turn} · {current.status}
         </span>

@@ -1,0 +1,661 @@
+{
+  "connections": [
+    {
+      "kind": "blocked",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": "Spine Mountains block the pass",
+        "refs": [
+          "prior-mountain-barrier"
+        ],
+        "source": "inferred"
+      },
+      "rationale": "The Spine Mountains block the pass most of the year.",
+      "source_region_id": "region-highcrag",
+      "target_region_id": "region-riverton",
+      "weight": 0.2,
+      "wiki_prior_ref": "prior-mountain-barrier",
+      "world_id": "aldermoor"
+    },
+    {
+      "kind": "blocked",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": "Spine Mountains block the pass",
+        "refs": [
+          "prior-mountain-barrier"
+        ],
+        "source": "inferred"
+      },
+      "rationale": "The Spine Mountains block the pass most of the year.",
+      "source_region_id": "region-riverton",
+      "target_region_id": "region-highcrag",
+      "weight": 0.2,
+      "wiki_prior_ref": "prior-mountain-barrier",
+      "world_id": "aldermoor"
+    }
+  ],
+  "entities": [
+    {
+      "confidence": 0.9,
+      "description": "The river that runs past Riverton to the coast.",
+      "entity_type": "terrain",
+      "id": "entity-aldwen-river",
+      "located_in": "region-greenvale",
+      "name": "Aldwen River",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "aldermoor"
+    },
+    {
+      "confidence": 0.9,
+      "description": "Mayor of Riverton, patron of the river festival.",
+      "entity_type": "person",
+      "id": "entity-mayor-tomas",
+      "located_in": "region-riverton",
+      "name": "Mayor Tomas",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "aldermoor"
+    },
+    {
+      "confidence": 0.9,
+      "description": "Riverton's summer festival on the Aldwen.",
+      "entity_type": "event",
+      "id": "entity-river-festival",
+      "located_in": "region-riverton",
+      "name": "River Festival",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "aldermoor"
+    },
+    {
+      "confidence": 0.9,
+      "description": "The range that splits Aldermoor's two provinces.",
+      "entity_type": "terrain",
+      "id": "entity-spine-mountains",
+      "located_in": "region-aldermoor",
+      "name": "Spine Mountains",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "aldermoor"
+    },
+    {
+      "confidence": 0.9,
+      "description": "Riverton's weekly riverside market.",
+      "entity_type": "event",
+      "id": "entity-sunday-market",
+      "located_in": "region-riverton",
+      "name": "Sunday Market",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "aldermoor"
+    }
+  ],
+  "exported_at": null,
+  "format_version": 1,
+  "knowledge": [
+    {
+      "about_entity_ids": [
+        "entity-sunday-market"
+      ],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "knowledge-coast-traders",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Traders from the coast bring salt and rumors to Riverton's market.",
+      "title": "Coast traders",
+      "topic": null,
+      "world_id": "aldermoor"
+    },
+    {
+      "about_entity_ids": [],
+      "confidence": 0.8,
+      "derived_from_prior_ids": [],
+      "id": "knowledge-frostreach-winters",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Frostreach endures long winters; roads close from first snow to thaw.",
+      "title": "Frostreach winters",
+      "topic": null,
+      "world_id": "aldermoor"
+    },
+    {
+      "about_entity_ids": [
+        "entity-aldwen-river"
+      ],
+      "confidence": 0.8,
+      "derived_from_prior_ids": [],
+      "id": "knowledge-greenvale-farms",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Greenvale's river valleys grow most of the kingdom's grain.",
+      "title": "Greenvale grain",
+      "topic": null,
+      "world_id": "aldermoor"
+    },
+    {
+      "about_entity_ids": [
+        "entity-spine-mountains"
+      ],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "knowledge-highcrag-isolated",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Highcrag lies beyond the Spine Mountains and sees few travelers.",
+      "title": "Isolated Highcrag",
+      "topic": null,
+      "world_id": "aldermoor"
+    },
+    {
+      "about_entity_ids": [
+        "entity-sunday-market"
+      ],
+      "confidence": 0.6,
+      "derived_from_prior_ids": [],
+      "id": "knowledge-market-legend",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "In Highcrag, Riverton's market is spoken of only as a half-remembered legend.",
+      "title": "Market legend",
+      "topic": null,
+      "world_id": "aldermoor"
+    },
+    {
+      "about_entity_ids": [
+        "entity-mayor-tomas",
+        "entity-river-festival"
+      ],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "knowledge-mayor-tomas",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Mayor Tomas governs Riverton and is known for the river festival.",
+      "title": "Mayor Tomas",
+      "topic": null,
+      "world_id": "aldermoor"
+    },
+    {
+      "about_entity_ids": [
+        "entity-river-festival"
+      ],
+      "confidence": 0.8,
+      "derived_from_prior_ids": [],
+      "id": "knowledge-river-festival",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "The river festival fills Riverton with lanterns each midsummer.",
+      "title": "River festival",
+      "topic": null,
+      "world_id": "aldermoor"
+    },
+    {
+      "about_entity_ids": [
+        "entity-spine-mountains"
+      ],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [
+        "prior-mountain-barrier"
+      ],
+      "id": "knowledge-spine-split",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "The Spine Mountains split Aldermoor into two provinces.",
+      "title": "Spine Mountains",
+      "topic": null,
+      "world_id": "aldermoor"
+    },
+    {
+      "about_entity_ids": [],
+      "confidence": 1.0,
+      "derived_from_prior_ids": [],
+      "id": "knowledge-sun-rises-east",
+      "is_global": true,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "The sun rises in the east across all of Aldermoor.",
+      "title": "Sunrise",
+      "topic": null,
+      "world_id": "aldermoor"
+    },
+    {
+      "about_entity_ids": [
+        "entity-sunday-market",
+        "entity-aldwen-river"
+      ],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "knowledge-sunday-market",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Riverton holds a market every Sunday by the Aldwen River.",
+      "title": "Sunday market",
+      "topic": null,
+      "world_id": "aldermoor"
+    }
+  ],
+  "npcs": [
+    {
+      "description": "A coastal trader who sets up at the Sunday market and carries news along the river.",
+      "home_region_id": "region-riverton",
+      "id": "npc-brann",
+      "name": "Brann",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "salt trader",
+      "traits": [
+        "shrewd",
+        "gossipy"
+      ],
+      "world_id": "aldermoor"
+    },
+    {
+      "description": "Keeps the pass road at Highcrag; sees the few travelers who cross the Spine.",
+      "home_region_id": "region-highcrag",
+      "id": "npc-kell",
+      "name": "Kell",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "watchman",
+      "traits": [
+        "dutiful",
+        "blunt"
+      ],
+      "world_id": "aldermoor"
+    },
+    {
+      "description": "Riverton's genial mayor; proud of the river festival and quick to talk about trade.",
+      "home_region_id": "region-riverton",
+      "id": "npc-mayor-tomas",
+      "name": "Mayor Tomas",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "mayor",
+      "traits": [
+        "genial",
+        "proud",
+        "talkative"
+      ],
+      "world_id": "aldermoor"
+    },
+    {
+      "description": "Highcrag's herbalist; distrusts lowland tales but remembers every one of them.",
+      "home_region_id": "region-highcrag",
+      "id": "npc-old-maren",
+      "name": "Old Maren",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "herbalist",
+      "traits": [
+        "wary",
+        "long-memoried"
+      ],
+      "world_id": "aldermoor"
+    },
+    {
+      "description": "Steward of Greenvale's granaries; counts every cart that leaves for the coast.",
+      "home_region_id": "region-greenvale",
+      "id": "npc-reeve-ana",
+      "name": "Reeve Ana",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "province reeve",
+      "traits": [
+        "precise",
+        "stern"
+      ],
+      "world_id": "aldermoor"
+    },
+    {
+      "description": "Ranges Frostreach's snowbound forests and trades furs when the roads open.",
+      "home_region_id": "region-frostreach",
+      "id": "npc-sorrel",
+      "name": "Sorrel",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "hunter",
+      "traits": [
+        "quiet",
+        "hardy"
+      ],
+      "world_id": "aldermoor"
+    }
+  ],
+  "prior_links": [],
+  "priors": [
+    {
+      "condition": "a mountain range lies between two settlements",
+      "confidence": 0.9,
+      "description": "Mountains isolate the towns on either side.",
+      "domains": [
+        "geography"
+      ],
+      "effect": "travel and news pass rarely; connection weight is low",
+      "id": "prior-mountain-barrier",
+      "prior_type": "terrain_rule",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "aldermoor"
+    }
+  ],
+  "regions": [
+    {
+      "attributes": {},
+      "description": "A kingdom of two provinces split by the Spine Mountains.",
+      "id": "region-aldermoor",
+      "level": "continent",
+      "name": "Aldermoor",
+      "parent_id": null,
+      "position": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "aldermoor"
+    },
+    {
+      "attributes": {},
+      "description": "The cold eastern province beyond the Spine Mountains.",
+      "id": "region-frostreach",
+      "level": "province",
+      "name": "Frostreach",
+      "parent_id": "region-aldermoor",
+      "position": {
+        "x": 0.74,
+        "y": 0.38
+      },
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "aldermoor"
+    },
+    {
+      "attributes": {},
+      "description": "The green western province along the Aldwen River.",
+      "id": "region-greenvale",
+      "level": "province",
+      "name": "Greenvale",
+      "parent_id": "region-aldermoor",
+      "position": {
+        "x": 0.28,
+        "y": 0.6
+      },
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "aldermoor"
+    },
+    {
+      "attributes": {
+        "terrain_kind": "mountain"
+      },
+      "description": "An isolated mountain town.",
+      "id": "region-highcrag",
+      "level": "town",
+      "name": "Highcrag",
+      "parent_id": "region-frostreach",
+      "position": {
+        "x": 0.76,
+        "y": 0.3
+      },
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "aldermoor"
+    },
+    {
+      "attributes": {
+        "terrain_kind": "river"
+      },
+      "description": "A market town on the Aldwen River.",
+      "id": "region-riverton",
+      "level": "town",
+      "name": "Riverton",
+      "parent_id": "region-greenvale",
+      "position": {
+        "x": 0.3,
+        "y": 0.68
+      },
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "aldermoor"
+    }
+  ],
+  "relations": [
+    {
+      "confidence": 0.9,
+      "id": "relation-market-river",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "relation_type": "held_beside",
+      "source_id": "entity-sunday-market",
+      "target_id": "entity-aldwen-river",
+      "world_id": "aldermoor"
+    },
+    {
+      "confidence": 0.9,
+      "id": "relation-tomas-festival",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "relation_type": "hosts",
+      "source_id": "entity-mayor-tomas",
+      "target_id": "entity-river-festival",
+      "world_id": "aldermoor"
+    }
+  ],
+  "scopes": [
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "knowledge-coast-traders",
+      "region_id": "region-riverton",
+      "scope_type": "direct",
+      "world_id": "aldermoor"
+    },
+    {
+      "confidence": 0.8,
+      "is_rumor": false,
+      "knowledge_id": "knowledge-frostreach-winters",
+      "region_id": "region-frostreach",
+      "scope_type": "direct",
+      "world_id": "aldermoor"
+    },
+    {
+      "confidence": 0.8,
+      "is_rumor": false,
+      "knowledge_id": "knowledge-greenvale-farms",
+      "region_id": "region-greenvale",
+      "scope_type": "direct",
+      "world_id": "aldermoor"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "knowledge-highcrag-isolated",
+      "region_id": "region-highcrag",
+      "scope_type": "direct",
+      "world_id": "aldermoor"
+    },
+    {
+      "confidence": 0.6,
+      "is_rumor": false,
+      "knowledge_id": "knowledge-market-legend",
+      "region_id": "region-highcrag",
+      "scope_type": "direct",
+      "world_id": "aldermoor"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "knowledge-mayor-tomas",
+      "region_id": "region-riverton",
+      "scope_type": "direct",
+      "world_id": "aldermoor"
+    },
+    {
+      "confidence": 0.8,
+      "is_rumor": false,
+      "knowledge_id": "knowledge-river-festival",
+      "region_id": "region-riverton",
+      "scope_type": "direct",
+      "world_id": "aldermoor"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "knowledge-spine-split",
+      "region_id": "region-aldermoor",
+      "scope_type": "direct",
+      "world_id": "aldermoor"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "knowledge-sunday-market",
+      "region_id": "region-riverton",
+      "scope_type": "direct",
+      "world_id": "aldermoor"
+    }
+  ],
+  "world": {
+    "description": "A small kingdom split by the Spine Mountains — the Locus demo world.",
+    "id": "aldermoor",
+    "name": "Aldermoor"
+  }
+}

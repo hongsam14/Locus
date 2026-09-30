@@ -19,6 +19,6 @@ npm run build      # tsc type-check + vite production build -> dist/
 ## Map overlay
 - Region markers are placed by `region.position` (normalized 0..1), derived from the map
   input (GeoJSON centroid / Locus Map x,y / VLM estimate) or auto-laid-out on a circle.
-- Drag a marker to reposition → persisted via `PUT /api/authoring/.../regions/{id}`.
+- Drag a marker to reposition → persisted via `PUT /api/world/worlds/{world_id}/regions/{id}`.
 - Pick a background map image (top toolbar) to overlay the graph on your world map.
 - Connection lines: width/opacity by weight; `blocked` = red dashed (e.g. mountain barrier).

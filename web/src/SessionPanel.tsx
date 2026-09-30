@@ -21,6 +21,7 @@ import {
   Range,
 } from "./ui";
 import type { Notif } from "./ui";
+import { changeSummary, changeTitle } from "./features/play/summary";
 import type { RegionTurnChange, TurnResult } from "./types";
 
 const EVENT_TONE: Record<string, "neutral" | "event" | "danger"> = {
@@ -44,19 +45,6 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (x: T) => Promise<R
   }
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
   return out;
-}
-
-// Build the per-region notification body from a RegionTurnChange (FR-UX2.6).
-function changeSummary(rc: RegionTurnChange): string {
-  const segs: string[] = [];
-  if (rc.promoted.length) segs.push(t("notif.promoted", { n: rc.promoted.length }));
-  if (rc.demoted.length) segs.push(t("notif.demoted", { n: rc.demoted.length }));
-  if (rc.pruned.length) segs.push(t("notif.pruned", { n: rc.pruned.length }));
-  if (rc.rumors_added.length) segs.push(t("notif.rumors_added", { n: rc.rumors_added.length }));
-  if (rc.events_applied.length) segs.push(t("notif.events_applied", { n: rc.events_applied.length }));
-  if (rc.events_resolved.length)
-    segs.push(t("notif.events_resolved", { n: rc.events_resolved.length }));
-  return segs.join(", ");
 }
 
 interface Props {
@@ -150,7 +138,7 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
       const result = (await api.advanceTurn(session.id)) as TurnResult;
       for (const rc of result.region_changes ?? []) {
         const body = changeSummary(rc);
-        if (body) addNotif({ region_id: rc.region_id, title: t("notif.title", { region_id: rc.region_id }), body });
+        if (body) addNotif({ region_id: rc.region_id, title: changeTitle(rc), body });
       }
       await refresh();
       onChanged?.();

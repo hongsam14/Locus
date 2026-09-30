@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
-import type { QueryResult } from "./types";
+import type { KnowledgeView, QueryResult } from "./types";
 import { Badge, Button, Card, LocalizedText, Panel } from "./ui";
 
 interface Props {
@@ -8,6 +8,19 @@ interface Props {
   regionId: string;
   sessionId?: string | null; // when set, show the session NPC view (FR-R5.1)
   onDeleted?: () => void;
+}
+
+// Badge text (U1 §11.4): canonical hearsay vs. session rumor vs. scope.
+export function badgeLabel(it: KnowledgeView): string {
+  if (it.is_hearsay) return "hearsay";
+  if (it.source?.startsWith("rumor")) return "rumor";
+  return it.scope_type;
+}
+
+function badgeTone(it: KnowledgeView): "neutral" | "event" | "promoted" {
+  if (it.is_hearsay) return "neutral";
+  if (it.source?.startsWith("rumor")) return "event";
+  return it.scope_type === "direct" ? "promoted" : "neutral"; // emphasize local knowledge
 }
 
 export function RegionPanel({ worldId, regionId, sessionId, onDeleted }: Props) {
@@ -56,24 +69,18 @@ export function RegionPanel({ worldId, regionId, sessionId, onDeleted }: Props) 
                 data-testid={`knowledge-item-${it.knowledge_id}`}
                 className="flex items-start gap-2 text-sm"
               >
-                <Badge
-                  tone={
-                    it.is_rumor
-                      ? "event"
-                      : it.scope_type === "direct"
-                        ? "promoted" // emphasize locally-authored knowledge (mono-safe)
-                        : "neutral"
-                  }
-                >
-                  {it.is_rumor ? "rumor" : it.scope_type}
-                </Badge>
+                <Badge tone={badgeTone(it)}>{badgeLabel(it)}</Badge>
                 <span className="flex-1">
                   <LocalizedText
                     testId={`knowledge-text-${it.knowledge_id}`}
                     ko={it.statement_ko}
                     original={it.statement}
                   />
-                  <span className="text-ink-soft text-xs"> ({it.confidence.toFixed(2)})</span>
+                  <span className="text-ink-soft text-xs">
+                    {" "}({it.confidence.toFixed(2)}
+                    {it.path_decay != null ? ` · decay ${it.path_decay.toFixed(2)}` : ""}
+                    {it.distortion != null ? ` · d${it.distortion.toFixed(2)}` : ""})
+                  </span>
                 </span>
                 <Button
                   size="sm"

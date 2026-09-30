@@ -1,22 +1,24 @@
 # Demo world (Aldermoor)
 
-A tiny fictional world for end-to-end validation (SC-1/2/4). Same content is
-available via `locus.demo.load_demo_world()`.
+A tiny fictional world for end-to-end validation (SC-1/2/4). These are the raw
+sources; the hand-authored World File the app loads without an LLM lives in
+`locus/world/demo/worlds/aldermoor.world.json` (`locus.world.demo.DemoWorlds`).
 
 - `memo.txt` — designer notes (regions, people, customs, a rumor, a global fact).
 - `map.json` — Locus Map JSON (hierarchy + a mountain-blocked connection).
 - `map.png` — a stylized map image (Sea · Greenvale + Aldwen River · Spine Mountains · Frostreach · Riverton/Highcrag) used to exercise the **VLM** ingestion path. Regenerate with `python examples/demo_world/generate_map.py` (needs Pillow).
 
-`load_demo_world()` includes `map.png` when present, so `locus build-world --demo` runs the VLM
+`load_demo_world()` includes `map.png` when present, so `locus world build --world <id> --demo-sources` runs the VLM
 on the image (live, needs `OPENAI_API_KEY`) in addition to the structured map + memo.
 
 Build and query it:
 
 ```bash
-locus build-world --world aldermoor --demo   # also distills this world's own commonsense priors
+locus world demo --name aldermoor --world aldermoor   # packaged World File, no LLM (U2)
+locus world build --world aldermoor --demo-sources   # or: build from these sources (LLM); also distills priors
 # then query via the serving API:
-#   GET /api/query/regions/<region_id>/knowledge?world_id=aldermoor
-locus export --world aldermoor --out aldermoor.json
+#   GET /api/knowledge/worlds/aldermoor/regions/<region_id>
+locus world export --world aldermoor --out aldermoor.world.json
 ```
 
 Expectation: Riverton's market knowledge reaches Highcrag only weakly (mountain

@@ -23,19 +23,117 @@ export interface WorldExport {
   world_id: string;
   regions: Region[];
   connections: ConnectionEdge[];
+  entities: unknown[];
   knowledge: unknown[];
   scopes: unknown[];
+}
+
+// --- World File v1 (U2 FR-B8): the save format; a superset of WorldExport ---- //
+export interface WorldFileMeta {
+  id: string;
+  name: string;
+  description?: string | null;
+}
+
+export interface WorldFile {
+  format_version: number;
+  world: WorldFileMeta;
+  exported_at?: string | null;
+  regions: Region[];
+  connections: ConnectionEdge[];
+  entities: unknown[];
+  relations: unknown[];
+  knowledge: unknown[];
+  scopes: unknown[];
+  priors: unknown[];
+  prior_links: unknown[];
+  npcs: NPC[];
+}
+
+export interface NPC {
+  id: string;
+  world_id: string;
+  name: string;
+  role: string;
+  description: string;
+  home_region_id: string;
+  traits: string[];
+  provenance: { source: string; generated_by?: string | null; refs?: string[]; note?: string | null };
+}
+
+export interface BuildWarning {
+  stage: string;
+  item_id?: string | null;
+  message: string;
+  severity: "warning" | "error";
+}
+
+export interface BuildReport {
+  world_id: string;
+  regions_created: number;
+  connections_created: number;
+  entities_created: number;
+  knowledge_created: number;
+  corroborations_created: number;
+  warnings: BuildWarning[];
+  unscoped_knowledge_ids: string[];
+  llm_calls: number;
+  embedding_calls: number;
+  replaced: boolean;
+  closed_session_ids: string[];
+  ok: boolean;
+}
+
+export interface ImportReport {
+  world_id: string;
+  format_version: number;
+  source_world_id: string;
+  remapped: boolean;
+  forced: boolean;
+  replaced: boolean;
+  backup_path?: string | null;
+  closed_session_ids: string[];
+  counts: Record<string, number>;
+  warnings: BuildWarning[];
+  ok: boolean;
+}
+
+export interface WorldInfo {
+  id: string;
+  name: string;
+  description?: string | null;
+  region_count: number;
+  updated_at?: string | null;
+  last_writer?: string | null;
+  open_sessions?: number | null;
+}
+
+export interface DemoInfo {
+  name: string;
+  title: string;
+  description?: string | null;
+  file: string;
+}
+
+export interface RegionBrief {
+  region_id: string;
+  name: string;
+  level: string;
+  level_path: string[];
+  description?: string | null;
+  top_knowledge: string[];
 }
 
 export interface KnowledgeView {
   knowledge_id: string;
   statement: string;
   title?: string | null;
-  scope_type: string;
-  is_rumor: boolean;
+  scope_type: string; // direct | inherited | hearsay
+  is_hearsay: boolean; // canonical distance-decayed knowledge (legacy: is_rumor)
   confidence: number;
-  distortion_degree?: number | null;
-  source?: string | null;
+  path_decay?: number | null; // hearsay: decay along the topology path
+  distortion?: number | null; // session rumor views: LLM distortion degree
+  source?: string | null; // provenance source, or "rumor" / "rumor:promoted" in a session view
   region_id?: string | null;
   // X1 localization (response-only): ko translation, null when unresolved
   statement_ko?: string | null;
@@ -58,7 +156,8 @@ export interface AugQuestion {
   kind: string;
 }
 
-export interface AugSession {
+// AugmentationRun — one designer Q&A run over a world (legacy name: augment session).
+export interface AugRun {
   id: string;
   world_id: string;
   round: number;
@@ -118,6 +217,7 @@ export interface TimelineEntry {
 
 export interface RegionTurnChange {
   region_id: string;
+  region_name?: string; // U4 (FR-D3): filled by the backend from the snapshot
   promoted: string[];
   demoted: string[];
   pruned: string[];
@@ -136,6 +236,92 @@ export interface TurnResult {
   pruned_rumor_ids?: string[];
   feedback_regions?: string[];
   region_changes?: RegionTurnChange[]; // X1 per-region turn-change summary (FR-UX2.6)
+  // U4 (additive): LLM budget accounting
+  llm_calls?: number;
+  budget_exhausted?: boolean;
+  llm_failed?: boolean;
+  rumors_skipped_regions?: string[];
+  rumors_capped_regions?: string[];
+}
+
+// --- Player mode (U4) --------------------------------------------------------- //
+export interface Player {
+  id: string;
+  session_id: string;
+  name: string;
+  region_id: string;
+  turns_spent: number;
+  created_at?: string | null;
+}
+
+export interface PlayerCreate {
+  name: string;
+  start_region_id: string;
+}
+
+export type PlayerAction =
+  | { type: "move"; to_region_id: string }
+  | { type: "wait" }
+  | { type: "end_talk"; npc_id: string };
+
+export interface MoveOption {
+  region_id: string;
+  region_name: string;
+  kind: string;
+  weight: number;
+  cost_turns: number;
+  passable: boolean;
+  reason?: string | null;
+}
+
+export interface RegionView {
+  session_id: string;
+  turn: number;
+  player: Player;
+  region_id: string;
+  region_name: string;
+  level: string;
+  description: string;
+  level_path: string[];
+  npcs: NPC[];
+  facts: KnowledgeView[];
+  hearsay: KnowledgeView[];
+  rumors: SessionRumor[];
+  moves: MoveOption[];
+  turn_running: boolean;
+  llm_available: boolean;
+}
+
+export type TurnRunStatus = "running" | "done" | "failed";
+
+export interface ActionResult {
+  session: GameSession;
+  player: Player | null;
+  turns: TurnResult[];
+  changes: RegionTurnChange[];
+  narration: string[];
+  llm_calls: number;
+  budget_exhausted: boolean;
+  llm_failed: boolean;
+  llm_available: boolean;
+}
+
+export interface TurnRun {
+  id: string;
+  session_id: string;
+  action: PlayerAction | null;
+  cost_turns: number;
+  status: TurnRunStatus;
+  started_turn: number;
+  started_at?: string | null;
+  finished_at?: string | null;
+  result?: ActionResult | null;
+  error?: string | null;
+}
+
+export interface SessionStartOut {
+  session: GameSession;
+  player: Player;
 }
 
 // --- Session events (Phase 2) --------------------------------------------- //

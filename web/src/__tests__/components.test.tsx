@@ -1,16 +1,23 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MapOverlay } from "../MapOverlay";
 import { RegionPanel } from "../RegionPanel";
 import { AugmentPanel } from "../AugmentPanel";
 import { SessionBar } from "../SessionBar";
 import { SessionPanel } from "../SessionPanel";
+import { App } from "../App";
 import type { ConnectionEdge, GameSession, Region } from "../types";
 
 vi.mock("../api", () => ({
   api: {
     regionKnowledge: vi.fn(),
     sessionKnowledge: vi.fn(),
+    exportWorld: vi.fn(),
+    buildWorldDemo: vi.fn(),
+    loadDemo: vi.fn(),
+    upsertRegion: vi.fn(),
+    getSession: vi.fn(),
     startAugment: vi.fn(),
     submitAnswer: vi.fn(),
     revertAugment: vi.fn(),
@@ -18,6 +25,12 @@ vi.mock("../api", () => ({
     listSessions: vi.fn(),
     startSession: vi.fn(),
     closeSession: vi.fn(),
+    getPlayer: vi.fn(),
+    getRegion: vi.fn(),
+    act: vi.fn(),
+    getTurnRun: vi.fn(),
+    listTurnRuns: vi.fn(),
+    getLog: vi.fn(),
     getTimeline: vi.fn(),
     listRumors: vi.fn(),
     generateRumors: vi.fn(),
@@ -74,7 +87,7 @@ describe("RegionPanel", () => {
       world_id: "w",
       region_id: "r1",
       items: [
-        { knowledge_id: "k1", statement: "Sunday market", scope_type: "direct", is_rumor: false, confidence: 0.9 },
+        { knowledge_id: "k1", statement: "Sunday market", scope_type: "direct", is_hearsay: false, confidence: 0.9 },
       ],
       shared_ids: [],
       unique_ids: ["k1"],
@@ -82,6 +95,29 @@ describe("RegionPanel", () => {
     render(<RegionPanel worldId="w" regionId="r1" />);
     await waitFor(() => expect(screen.getByTestId("knowledge-item-k1")).toBeInTheDocument());
     expect(screen.getByText(/Sunday market/)).toBeInTheDocument();
+  });
+});
+
+describe("RegionPanel badges (U1 §11.4)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("labels canonical hearsay, session rumors and scope distinctly", async () => {
+    (api.regionKnowledge as Mock).mockResolvedValue({
+      world_id: "w",
+      region_id: "r1",
+      items: [
+        { knowledge_id: "h1", statement: "far tale", scope_type: "hearsay", is_hearsay: true, confidence: 0.4, path_decay: 0.5 },
+        { knowledge_id: "s1", statement: "session tale", scope_type: "direct", is_hearsay: false, confidence: 0.5, source: "rumor:promoted", distortion: 0.3 },
+        { knowledge_id: "d1", statement: "local fact", scope_type: "direct", is_hearsay: false, confidence: 0.9 },
+      ],
+      shared_ids: [],
+      unique_ids: [],
+    });
+    render(<RegionPanel worldId="w" regionId="r1" />);
+    await waitFor(() => expect(screen.getByTestId("knowledge-item-h1")).toBeInTheDocument());
+    expect(screen.getByTestId("knowledge-item-h1")).toHaveTextContent("hearsay");
+    expect(screen.getByTestId("knowledge-item-s1")).toHaveTextContent("rumor");
+    expect(screen.getByTestId("knowledge-item-d1")).toHaveTextContent("direct");
   });
 });
 
@@ -340,5 +376,120 @@ describe("RegionPanel session view", () => {
     render(<RegionPanel worldId="w" regionId="r1" sessionId="s1" />);
     await waitFor(() => expect(api.sessionKnowledge).toHaveBeenCalledWith("s1", "r1"));
     expect(api.regionKnowledge).not.toHaveBeenCalled();
+  });
+});
+
+describe("App routing (F1 / AD-R8)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (api.listSessions as Mock).mockResolvedValue([]);
+    (api.getTimeline as Mock).mockResolvedValue([]);
+    (api.listEvents as Mock).mockResolvedValue([]);
+    (api.listDistortions as Mock).mockResolvedValue([]);
+  });
+
+  it("redirects / to the default world editor and loads that world", async () => {
+    (api.exportWorld as Mock).mockResolvedValue({
+      world_id: "aldermoor", regions: [{ id: "r1", name: "Riverton", level: "town" }],
+      connections: [], entities: [], knowledge: [], scopes: [],
+    });
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <App />
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId("world-input")).toHaveValue("aldermoor");
+    expect(screen.getByTestId("augment-panel")).toBeInTheDocument();
+    await waitFor(() => expect(api.exportWorld).toHaveBeenCalledWith("aldermoor"));
+    await waitFor(() => expect(screen.getByTestId("graph-status")).toBeInTheDocument());
+    expect(screen.queryByTestId("session-close-btn")).not.toBeInTheDocument(); // picker-only bar
+    await waitFor(() => expect(api.listSessions).toHaveBeenCalledWith("aldermoor"));
+  });
+
+  it("refuses to load an empty world id instead of navigating to /editor/", async () => {
+    (api.exportWorld as Mock).mockResolvedValue({
+      world_id: "aldermoor", regions: [], connections: [], entities: [], knowledge: [], scopes: [],
+    });
+    render(
+      <MemoryRouter initialEntries={["/editor/aldermoor"]}>
+        <App />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(api.exportWorld).toHaveBeenCalledTimes(1));
+    fireEvent.change(screen.getByTestId("world-input"), { target: { value: "" } });
+    fireEvent.click(screen.getByTestId("load-btn"));
+    expect(screen.getByText(/world id를 입력하세요/)).toBeInTheDocument();
+    expect(api.exportWorld).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the GameMaster screen for /gm/:sessionId", async () => {
+    (api.getSession as Mock).mockResolvedValue(OPEN_SESSION);
+    (api.exportWorld as Mock).mockResolvedValue({
+      world_id: "w", regions: [], connections: [], entities: [], knowledge: [], scopes: [],
+    });
+    render(
+      <MemoryRouter initialEntries={["/gm/s1"]}>
+        <App />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId("session-panel")).toBeInTheDocument());
+    expect(api.getSession).toHaveBeenCalledWith("s1");
+    expect(api.exportWorld).toHaveBeenCalledWith("w");
+    expect(screen.getByTestId("nav-gm")).toHaveAttribute("href", "/gm/s1");
+  });
+
+  it("keeps the GM screen recoverable when the session cannot be loaded", async () => {
+    (api.getSession as Mock).mockRejectedValueOnce(new Error("404 Not Found: no session"));
+    (api.getSession as Mock).mockResolvedValueOnce(OPEN_SESSION);
+    (api.exportWorld as Mock).mockResolvedValue({
+      world_id: "w", regions: [], connections: [], entities: [], knowledge: [], scopes: [],
+    });
+    render(
+      <MemoryRouter initialEntries={["/gm/s1"]}>
+        <App />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId("gm-error")).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId("gm-retry-btn"));
+    await waitFor(() => expect(screen.getByTestId("session-panel")).toBeInTheDocument());
+    expect(screen.queryByText("— none —")).not.toBeInTheDocument(); // no dead entry on GM
+  });
+
+  it("shows the player screen hint for /play without a session (U4)", () => {
+    render(
+      <MemoryRouter initialEntries={["/play"]}>
+        <App />
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId("play-empty")).toBeInTheDocument();
+  });
+});
+
+describe("EditorPage demo load (BR-U2-25)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (api.listSessions as Mock).mockResolvedValue([]);
+    (api.exportWorld as Mock).mockResolvedValue({
+      world_id: "aldermoor", regions: [], connections: [], entities: [], knowledge: [], scopes: [],
+    });
+  });
+
+  it("asks before closing open sessions and retries with confirm", async () => {
+    (api.loadDemo as Mock)
+      .mockRejectedValueOnce(new Error('409 Conflict: {"detail":{"open_sessions":2}}'))
+      .mockResolvedValueOnce({ ok: true, closed_session_ids: ["s1", "s2"] });
+    render(
+      <MemoryRouter initialEntries={["/editor/aldermoor"]}>
+        <App />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(api.exportWorld).toHaveBeenCalled());
+    fireEvent.click(screen.getByTestId("build-world-btn"));
+    await waitFor(() => expect(screen.getByTestId("replace-confirm")).toBeInTheDocument());
+    expect(api.loadDemo).toHaveBeenCalledWith("aldermoor", "aldermoor", { replace: true, confirm: false });
+    fireEvent.click(screen.getByText("닫고 교체"));
+    await waitFor(() =>
+      expect(api.loadDemo).toHaveBeenLastCalledWith("aldermoor", "aldermoor", { replace: true, confirm: true }),
+    );
   });
 });

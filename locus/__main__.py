@@ -1,7 +1,10 @@
-"""Locus CLI (U9). Commands: init-schema, build-world, export.
+"""Locus CLI.
 
-Each world self-distills its own WikiPriors during build-world (FR-IM1.3); there
-is no separate real-world wiki build step.
+Commands: ``init-schema``, ``world build|export|import|demo|list`` (U2), plus the
+pre-U2 aliases ``build-world`` and ``export``. Composition goes through the boundary
+``assemble_*`` functions, so each command connects only the resources it needs.
+Replacing a world with open sessions needs ``--force`` (NFR-9, BR-U2-26); a report
+that is not ``ok`` exits 1 (BR-U2-13).
 """
 
 from __future__ import annotations
@@ -9,106 +12,321 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 
-from .config import get_settings
-from .demo import load_demo_world
-from .ingestion.service import WorldInputs
-from .llm.factory import ProviderFactory
-from .query import WorldLoader
-from .services import Exporter, PipelineOrchestrator
-from .storage import Neo4jGraphRepository, OpenSearchRepository, SchemaInitializer
+from locus.knowledge.cache import WorldCache
+from locus.knowledge.loader import WorldLoader
+from locus.localization.storage.schema import ensure_localization_schema
+from locus.play.session_service import SessionService
+from locus.play.storage.postgres_repo import PostgresPlayRepository
+from locus.play.storage.schema import ensure_play_schema
+from locus.shared.config import Settings, get_settings
+from locus.shared.storage.schema import ensure_world_schema
+from locus.shared.wiring import SharedContainer, assemble_shared
+from locus.world.build import WorldBuilder, WorldExistsError
+from locus.world.demo import DemoWorlds, load_demo_world
+from locus.world.ingestion.service import WorldInputs
+from locus.world.worldfile import (
+    UnsupportedWorldFile,
+    WorldFile,
+    WorldFileExporter,
+    WorldFileImporter,
+    to_json_bytes,
+)
 
 
-def _repos():
-    s = get_settings()
-    graph = Neo4jGraphRepository(
-        uri=s.neo4j_uri, user=s.neo4j_user, password=s.neo4j_password.get_secret_value()
-    )
-    search = OpenSearchRepository(
-        url=s.opensearch_url, index=s.opensearch_index, vector_dimension=s.embedding_dimension
-    )
-    graph.connect()
-    search.connect()
-    return s, graph, search
-
-
-def _load_inputs(path: str | None, demo: bool) -> WorldInputs:
-    if demo:
+def _load_inputs(path: str | None, demo_sources: bool) -> WorldInputs:
+    if demo_sources:
         return load_demo_world()
     if path:
         with open(path, encoding="utf-8") as fh:
             return WorldInputs(**json.load(fh))
-    raise SystemExit("provide --inputs <file.json> or --demo")
+    raise SystemExit("provide --inputs <file.json> or --demo-sources")
 
 
-def cmd_init_schema(_args: argparse.Namespace) -> int:
-    s, graph, search = _repos()
+# --- composition helpers (CLI is a composition root) ------------------------------ #
+def _world_services(shared: SharedContainer, settings: Settings, *, with_builder: bool):
+    assert shared.graph is not None
+    cache = WorldCache(WorldLoader(shared.graph))
+    exporter = WorldFileExporter(cache)
+    if shared.search is None:  # export / list only
+        return exporter, None, None, None
+    importer = WorldFileImporter(
+        shared.graph,
+        shared.search,
+        shared.embedding,
+        cache,
+        exporter=exporter,
+        backup_dir=settings.backup_dir,
+    )
+    builder = None
+    if with_builder:
+        if shared.factory is None:
+            raise SystemExit("building needs an LLM provider (OPENAI_API_KEY)")
+        builder = WorldBuilder.from_factory(
+            shared.factory,
+            shared.graph,
+            shared.search,
+            cache=cache,
+            exporter=exporter,
+            backup_dir=settings.backup_dir,
+        )
+    return exporter, importer, DemoWorlds(importer, builder), builder
+
+
+def _session_service(shared: SharedContainer) -> SessionService | None:
+    """Play boundary for the open-session check; None when PostgreSQL is not configured."""
+    if shared.sql_engine is None or shared.graph is None:
+        return None
+    # U4: the session service reads the canonical world through a snapshot source
+    # (world existence / regions); the CLI only lists and closes sessions here.
+    return SessionService(
+        PostgresPlayRepository(engine=shared.sql_engine), WorldCache(WorldLoader(shared.graph))
+    )
+
+
+def _guard_open_sessions(shared: SharedContainer, world_id: str, *, force: bool) -> list[str]:
+    """Exit 1 when the world has open sessions and --force was not given (BR-U2-26).
+    Returns the ids to close once the replace has really happened (nothing closed yet)."""
+    sessions = _session_service(shared)
+    if sessions is None:
+        return []
+    open_ids = [s.id for s in sessions.list_sessions(world_id) if str(s.status) == "open"]
+    if open_ids and not force:
+        raise SystemExit(
+            f"world {world_id!r} has {len(open_ids)} open session(s): {', '.join(open_ids)}. "
+            "Re-run with --force to close them and replace the world."
+        )
+    return open_ids
+
+
+def _print_report(report, open_ids: list[str], shared: SharedContainer) -> int:
+    """Close the confirmed sessions only after a real replace; print; exit 1 unless ok."""
+    closed: list[str] = []
+    sessions = _session_service(shared) if open_ids else None
+    if sessions is not None and getattr(report, "replaced", False):
+        for sid in open_ids:
+            sessions.close_session(sid)
+        closed = list(open_ids)
+    report.closed_session_ids = closed
+    print(report.model_dump_json(indent=2))
+    return 0 if report.ok else 1
+
+
+# --- commands ---------------------------------------------------------------- #
+def cmd_init_schema(args: argparse.Namespace) -> int:
+    want_world, want_play, want_l10n = args.world, args.play, args.localization
+    if not (want_world or want_play or want_l10n):
+        want_world = want_play = want_l10n = True
+    s = get_settings()
+    done: list[str] = []
+    shared = assemble_shared(
+        s, graph=want_world, search=want_world, llm=False, sql=(want_play or want_l10n)
+    )
     try:
-        SchemaInitializer(graph, search).initialize()
-        # Session layer (PostgreSQL) tables — idempotent (SI-Q5=A).
-        from .storage.postgres_session_repo import PostgresSessionRepository
+        if want_world:
+            if shared.graph is None or shared.search is None:
+                raise SystemExit("Neo4j / OpenSearch not configured")
+            ensure_world_schema(shared.graph, shared.search)
+            done.append("world (Neo4j constraints/indexes + OpenSearch index)")
+        if want_play or want_l10n:
+            if shared.sql_engine is None:
+                raise SystemExit("SESSION_DB_URL (PostgreSQL) not configured")
+            if want_play:
+                ensure_play_schema(shared.sql_engine)
+                done.append("play (PostgreSQL session tables)")
+            if want_l10n:
+                ensure_localization_schema(shared.sql_engine)
+                done.append("localization (PostgreSQL translations table)")
+    finally:
+        shared.close()
+    print("Schema initialized: " + "; ".join(done))
+    return 0
 
-        session_repo = PostgresSessionRepository(s.session_db_url)
+
+def cmd_world_build(args: argparse.Namespace) -> int:
+    settings = get_settings()
+    shared = assemble_shared(settings)
+    try:
+        _e, _i, _d, builder = _world_services(shared, settings, with_builder=True)
+        assert builder is not None
+        inputs = _load_inputs(args.inputs, args.demo_sources)  # fail before touching sessions
+        open_ids = (
+            _guard_open_sessions(shared, args.world, force=args.force) if args.replace else []
+        )
         try:
-            session_repo.connect()
-            session_repo.ensure_schema()
-            print(
-                "Schema initialized: Neo4j constraints/indexes + OpenSearch index "
-                "+ PostgreSQL session tables ready."
+            report = builder.build(args.world, inputs, replace=args.replace)
+        except WorldExistsError as exc:
+            raise SystemExit(f"{exc}; pass --replace to rebuild it") from exc
+        return _print_report(report, open_ids, shared)
+    finally:
+        shared.close()
+
+
+def cmd_world_export(args: argparse.Namespace) -> int:
+    settings = get_settings()
+    shared = assemble_shared(settings, search=False, llm=False, sql=False)
+    try:
+        exporter, *_ = _world_services(shared, settings, with_builder=False)
+        try:
+            file = exporter.export(args.world)
+        except LookupError as exc:
+            raise SystemExit(str(exc)) from exc
+        Path(args.out).write_bytes(to_json_bytes(file))
+        print(f"Exported world '{args.world}' -> {args.out} ({file.counts()})")
+        return 0
+    finally:
+        shared.close()
+
+
+def cmd_world_import(args: argparse.Namespace) -> int:
+    settings = get_settings()
+    shared = assemble_shared(settings, llm=False)
+    try:
+        _e, importer, *_ = _world_services(shared, settings, with_builder=False)
+        assert importer is not None
+        try:
+            file = WorldFile.parse(json.loads(Path(args.file).read_text(encoding="utf-8")))
+        except (OSError, ValueError, UnsupportedWorldFile) as exc:
+            raise SystemExit(f"cannot read world file: {exc}") from exc
+        open_ids = (
+            _guard_open_sessions(shared, args.world, force=args.force) if args.replace else []
+        )
+        try:
+            report = importer.import_(
+                args.world, file, replace=args.replace, force_remap=args.remap
             )
-        finally:
-            session_repo.disconnect()
+        except WorldExistsError as exc:
+            raise SystemExit(f"{exc}; pass --replace to overwrite it") from exc
+        return _print_report(report, open_ids, shared)
     finally:
-        graph.disconnect()
-        search.disconnect()
-    return 0
+        shared.close()
 
 
-def cmd_build_world(args: argparse.Namespace) -> int:
-    s, graph, search = _repos()
-    factory = ProviderFactory(s)
-    orch = PipelineOrchestrator.from_factory(factory, graph, search)
-    inputs = _load_inputs(args.inputs, args.demo)
+def cmd_world_demo(args: argparse.Namespace) -> int:
+    settings = get_settings()
+    if args.list:
+        for info in DemoWorlds(None).list():  # type: ignore[arg-type]
+            print(f"{info.name}\t{info.title}\t{info.description or ''}")
+        return 0
+    if not (args.name and args.world):
+        raise SystemExit("provide --list, or --name <demo> --world <world_id>")
+    shared = assemble_shared(settings, llm=False)
     try:
-        report = orch.build_world(args.world, inputs)
-        print(f"World built: {report.model_dump_json()}")
+        _e, _i, demos, _b = _world_services(shared, settings, with_builder=False)
+        assert demos is not None
+        try:
+            demos.info(args.name)  # validate the name before the session gate
+        except LookupError as exc:
+            raise SystemExit(str(exc)) from exc
+        open_ids = (
+            _guard_open_sessions(shared, args.world, force=args.force) if args.replace else []
+        )
+        try:
+            report = demos.load(args.name, args.world, replace=args.replace)
+        except LookupError as exc:
+            raise SystemExit(str(exc)) from exc
+        except WorldExistsError as exc:
+            raise SystemExit(f"{exc}; pass --replace to overwrite it") from exc
+        return _print_report(report, open_ids, shared)
     finally:
-        graph.disconnect()
-        search.disconnect()
-    return 0
+        shared.close()
 
 
-def cmd_export(args: argparse.Namespace) -> int:
-    _s, graph, search = _repos()
+def cmd_world_list(args: argparse.Namespace) -> int:
+    settings = get_settings()
+    shared = assemble_shared(settings, search=False, llm=False, sql=False)
     try:
-        data = Exporter(WorldLoader(graph)).export_world(args.world)
-        with open(args.out, "w", encoding="utf-8") as fh:
-            json.dump(data, fh, ensure_ascii=False, indent=2)
-        print(f"Exported world '{args.world}' -> {args.out}")
+        assert shared.graph is not None
+        from locus.shared.storage import graph_mapping as gm
+
+        for wid in shared.graph.list_world_ids():
+            metas = shared.graph.find_nodes(wid, "WorldMeta")
+            meta = gm.node_to_worldmeta(metas[0]) if metas else None
+            regions = len(shared.graph.find_nodes(wid, "Region"))
+            name = meta.name if meta else wid
+            updated = meta.updated_at.isoformat() if meta else "-"
+            print(f"{wid}\t{name}\tregions={regions}\tupdated={updated}")
+        return 0
     finally:
-        graph.disconnect()
-        search.disconnect()
-    return 0
+        shared.close()
+
+
+# --- parser ------------------------------------------------------------------ #
+def _add_replace_flags(p: argparse.ArgumentParser) -> None:
+    p.add_argument(
+        "--replace",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="replace an existing world (default) / --no-replace to fail if it exists",
+    )
+    p.add_argument(
+        "--force", action="store_true", help="close open sessions of the world before replacing"
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="locus", description="Locus CLI")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser(
-        "init-schema", help="Create Neo4j constraints/indexes + OpenSearch index"
-    ).set_defaults(func=cmd_init_schema)
+    p_schema = sub.add_parser(
+        "init-schema",
+        help="Create schemas: --world (Neo4j+OpenSearch), --play / --localization (PostgreSQL); "
+        "no flag = all",
+    )
+    p_schema.add_argument("--world", action="store_true")
+    p_schema.add_argument("--play", action="store_true")
+    p_schema.add_argument("--localization", action="store_true")
+    p_schema.set_defaults(func=cmd_init_schema)
 
-    p_world = sub.add_parser("build-world", help="Build a game world graph")
-    p_world.add_argument("--world", required=True, help="world id")
-    p_world.add_argument("--inputs", help="JSON file with WorldInputs")
-    p_world.add_argument("--demo", action="store_true", help="use the bundled demo world")
-    p_world.set_defaults(func=cmd_build_world)
+    p_world = sub.add_parser("world", help="Build, save, load and list worlds")
+    wsub = p_world.add_subparsers(dest="world_command", required=True)
 
-    p_export = sub.add_parser("export", help="Export a world graph to JSON")
-    p_export.add_argument("--world", required=True, help="world id")
-    p_export.add_argument("--out", required=True, help="output JSON file")
-    p_export.set_defaults(func=cmd_export)
+    p_build = wsub.add_parser("build", help="Build a world from sources (LLM)")
+    p_build.add_argument("--world", required=True, help="world id")
+    p_build.add_argument("--inputs", help="JSON file with WorldInputs (images base64)")
+    p_build.add_argument(
+        "--demo-sources", action="store_true", help="use the bundled Aldermoor sources"
+    )
+    _add_replace_flags(p_build)
+    p_build.set_defaults(func=cmd_world_build)
+
+    p_export = wsub.add_parser("export", help="Save a world as a World File (v1)")
+    p_export.add_argument("--world", required=True)
+    p_export.add_argument("--out", required=True, help="output .world.json")
+    p_export.set_defaults(func=cmd_world_export)
+
+    p_import = wsub.add_parser("import", help="Load a World File (no LLM)")
+    p_import.add_argument("--world", required=True, help="target world id")
+    p_import.add_argument("--file", required=True, help="World File (v1) or legacy export JSON")
+    p_import.add_argument(
+        "--remap", action="store_true", help="force id remapping (id collision recovery)"
+    )
+    _add_replace_flags(p_import)
+    p_import.set_defaults(func=cmd_world_import)
+
+    p_demo = wsub.add_parser("demo", help="List or load packaged demo worlds (no LLM)")
+    p_demo.add_argument("--list", action="store_true")
+    p_demo.add_argument("--name", help="demo name, e.g. aldermoor")
+    p_demo.add_argument("--world", help="target world id")
+    _add_replace_flags(p_demo)
+    p_demo.set_defaults(func=cmd_world_demo)
+
+    p_list = wsub.add_parser("list", help="List stored worlds")
+    p_list.set_defaults(func=cmd_world_list)
+
+    # pre-U2 aliases (one cycle)
+    p_alias_build = sub.add_parser("build-world", help="alias of `world build`")
+    p_alias_build.add_argument("--world", required=True)
+    p_alias_build.add_argument("--inputs")
+    p_alias_build.add_argument("--demo", dest="demo_sources", action="store_true")
+    _add_replace_flags(p_alias_build)
+    p_alias_build.set_defaults(func=cmd_world_build)
+
+    p_alias_export = sub.add_parser("export", help="alias of `world export`")
+    p_alias_export.add_argument("--world", required=True)
+    p_alias_export.add_argument("--out", required=True)
+    p_alias_export.set_defaults(func=cmd_world_export)
 
     return parser
 

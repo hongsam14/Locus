@@ -19,7 +19,6 @@ export function Toolbar({
 }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-ink px-3 py-2 bg-paper-card">
-      <strong className="font-display text-2xl mr-1">Locus</strong>
       <Field
         data-testid="world-input"
         value={worldId}
@@ -31,7 +30,7 @@ export function Toolbar({
         Load
       </Button>
       <Button variant="primary" data-testid="build-world-btn" onClick={onBuildDemo} disabled={busy}>
-        Build World (demo)
+        Load demo world
       </Button>
       <label className="text-xs text-ink-soft inline-flex items-center gap-1">
         Map:

@@ -129,10 +129,14 @@ services:
       - NEO4J_URI=bolt://neo4j:7687
       - OPENSEARCH_URL=http://opensearch:9200
       - SESSION_DB_URL=postgresql+psycopg://${SESSION_DB_USER:-locus}:${SESSION_DB_PASSWORD:?SESSION_DB_PASSWORD is required (set it in .env)}@postgres:5432/${SESSION_DB_NAME:-locus_session}
+      - LOCUS_DATA_DIR=/app/data   # World File backups (<dir>/backups) survive container recreation
+    volumes:
+      - locus_data:/app/data
     ports:
       - "${API_PORT:-8000}:8000"
-    # bootstrap schema (no API key needed) then serve the API
-    command: ["sh", "-c", "python -m locus init-schema && uvicorn api.main:app --host 0.0.0.0 --port 8000"]
+    # bootstrap schema (no API key needed) then serve the API.
+    # --workers 1: the in-process WorldCache assumes a single worker (U2 Q6=A).
+    command: ["sh", "-c", "python -m locus init-schema && uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 1"]
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
       interval: 15s
@@ -195,6 +199,8 @@ volumes:
       type: none
       o: bind
       device: ./data/opensearch
+  locus_data:
+    driver: local
   postgres_data:
     driver: local
     driver_opts:

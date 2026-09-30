@@ -1,0 +1,130 @@
+"""SessionService — GameSession lifecycle (FD §4; U4 BLM §1).
+
+Thin layer over PlayRepository. Starting a session (1) validates the world
+exists through the canonical snapshot (``SnapshotSource``; LookupError ->
+``WorldNotFoundError``, 404) and (2) seeds a default RegionDistortion row for
+every region (FD-S1 Q1=B, BR-S1-3) — in **one unit of work** (RE C4, BR-U4-2).
+Canonical access is read-only (NFR-R2).
+
+``start(world_id, PlayerCreate)`` is the player-mode entry (US-3.1): it also
+creates the solo player and the ``SESSION_STARTED`` timeline entry. The older
+``start_session(world_id)`` keeps creating player-less GM sessions (BR-U4-30)
+and writes no timeline entry (code-plan R-09).
+"""
+
+from __future__ import annotations
+
+from locus.knowledge.cache import SnapshotSource
+from locus.play.errors import InvalidActionError
+from locus.play.models import (
+    DEFAULT_DISTORTION_DEGREE,
+    GameSession,
+    Player,
+    PlayerCreate,
+    SessionStatus,
+    TimelineEntry,
+    TimelineKind,
+)
+from locus.play.ports import PlayRepository
+from locus.play.turn.guard import TurnGuard
+from locus.shared.models import WorldSnapshot
+
+
+class WorldNotFoundError(LookupError):
+    """Raised when starting a session for a world with no canonical data."""
+
+
+class SessionService:
+    def __init__(
+        self,
+        repo: PlayRepository,
+        snapshots: SnapshotSource,
+        guard: TurnGuard | None = None,
+    ) -> None:
+        self._repo = repo
+        self._snapshots = snapshots
+        self._guard = guard if guard is not None else TurnGuard()
+
+    def start_session(self, world_id: str) -> GameSession:
+        """GM session without a player (pre-U4 contract; no timeline entry)."""
+        snapshot = self._snapshot(world_id)
+        with self._repo.uow() as u:
+            session = u.sessions.create_session(world_id)
+            for region in snapshot.topo.regions:  # BR-S1-3
+                u.distortions.set_region_distortion(
+                    session.id, region.id, DEFAULT_DISTORTION_DEGREE
+                )
+        return session
+
+    def start(self, world_id: str, player: PlayerCreate) -> tuple[GameSession, Player]:
+        """Player-mode session start (US-3.1, BR-U4-1/2): session + player + default
+        distortions + ``SESSION_STARTED`` in one unit of work."""
+        snapshot = self._snapshot(world_id)
+        region = snapshot.regions_by_id.get(player.start_region_id)
+        if region is None:
+            raise InvalidActionError(f"start region not in world: {player.start_region_id}")
+        with self._repo.uow() as u:
+            session = u.sessions.create_session(world_id)
+            created = u.players.create_player(
+                Player(session_id=session.id, name=player.name, region_id=region.id)
+            )
+            for r in snapshot.topo.regions:
+                u.distortions.set_region_distortion(session.id, r.id, DEFAULT_DISTORTION_DEGREE)
+            u.timeline.append_timeline(
+                TimelineEntry(
+                    session_id=session.id,
+                    turn=session.turn,
+                    kind=TimelineKind.SESSION_STARTED,
+                    summary=f"{created.name} arrives in {region.name}",
+                    payload={
+                        "player_id": created.id,
+                        "player_name": created.name,
+                        "region_id": region.id,
+                        "region_name": region.name,
+                    },
+                )
+            )
+        return session, created
+
+    def close_session(self, session_id: str) -> GameSession:
+        current = self._require(session_id)
+        self._guard.assert_idle(session_id)  # BR-U4-5: not while a turn run is in progress
+        with self._repo.uow() as u:
+            closed = u.sessions.close_session(session_id)
+            if current.status != SessionStatus.CLOSED.value:  # write the entry once
+                u.timeline.append_timeline(
+                    TimelineEntry(
+                        session_id=session_id,
+                        turn=closed.turn,
+                        kind=TimelineKind.SESSION_CLOSED,
+                        summary="session closed",
+                        payload={},
+                    )
+                )
+        return closed
+
+    def get_session(self, session_id: str) -> GameSession:
+        return self._require(session_id)
+
+    def list_sessions(self, world_id: str) -> list[GameSession]:
+        return self._repo.list_sessions(world_id)
+
+    def get_timeline(self, session_id: str) -> list[TimelineEntry]:
+        self._require(session_id)
+        return self._repo.list_timeline(session_id)
+
+    # -- internals -----------------------------------------------------------
+    def _snapshot(self, world_id: str) -> WorldSnapshot:
+        try:
+            snapshot = self._snapshots.get(world_id)
+        except LookupError as exc:
+            raise WorldNotFoundError(f"world not found or empty: {world_id}") from exc
+        if not snapshot.topo.regions:
+            raise WorldNotFoundError(f"world not found or empty: {world_id}")
+        return snapshot
+
+    def _require(self, session_id: str) -> GameSession:
+        session = self._repo.get_session(session_id)
+        if session is None:
+            raise LookupError(f"session not found: {session_id}")
+        return session

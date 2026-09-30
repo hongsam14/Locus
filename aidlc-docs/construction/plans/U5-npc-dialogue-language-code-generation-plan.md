@@ -88,6 +88,6 @@
 - [x] 7.4 문서: `env.example`(env 5개), `operations.md` — 대화 절 신설(라우트, 호출 1회, **93초**, 컨텍스트 한도, 표시 언어, 정리 시점과 CLI 공백, 주입·빈도 제한 감수: 이월 NFR R-01/R-04/R-05) **그리고 U4 절의 "≈97초"(125·127행)를 93초로 정정**. `CLAUDE.md`(Status·`play/npc/`·테스트 수).
 
 ### Step 8 — 검증·요약
-- [ ] 8.1 전체: `pytest -q --no-cov`(기존 475 + 신규 GREEN, 회귀 0), `npx vitest run`, `ruff check`, `black --check`, `mypy locus api`(≤ 11), `tsc --noEmit`, `vite build`, `docker build`. 라이브(Neo4j/PG/OpenAI) 시나리오는 운영자 실행으로 남기고 명령을 code-summary에 적는다(지역 A·B의 NPC가 같은 사건을 다르게 말하는 US-6.1 확인 포함).
-- [ ] 8.2 `construction/U5-npc-dialogue-language/code/code-summary.md`: 기준선/결과 수치, 파일 목록, 설계 이탈 완결 목록(FD domain-entities §7의 10건 + 이 플랜이 확정한 값 + Step 1.3의 승인 산출물 정정), 이월 결정별 구현 위치, 남긴 것(U6·U7 인계).
+- [x] 8.1 전체: `pytest -q --no-cov`(기존 475 + 신규 GREEN, 회귀 0), `npx vitest run`, `ruff check`, `black --check`, `mypy locus api`(≤ 11), `tsc --noEmit`, `vite build`, `docker build`. 라이브(Neo4j/PG/OpenAI) 시나리오는 운영자 실행으로 남기고 명령을 code-summary에 적는다(지역 A·B의 NPC가 같은 사건을 다르게 말하는 US-6.1 확인 포함).
+- [x] 8.2 `construction/U5-npc-dialogue-language/code/code-summary.md`: 기준선/결과 수치, 파일 목록, 설계 이탈 완결 목록(FD domain-entities §7의 10건 + 이 플랜이 확정한 값 + Step 1.3의 승인 산출물 정정), 이월 결정별 구현 위치, 남긴 것(U6·U7 인계).
 - [ ] 8.3 코드 게이트 제시 → 승인 뒤 `/code-review`.

@@ -2421,3 +2421,19 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **Context**: Code Generation Part 1 — review requested before approval gate.
 
 ---
+
+## Plan Review Completed — Code Generation Part 1 — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:30:58Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: 0 Critical / 0 Major open / 4 Minor open (R-13 the "five routes" wording against the six it lists; R-14 `SUPPORTED_LANGS=ko,en` needs `NoDecode` plus a before-validator because pydantic-settings JSON-decodes tuple fields; R-15 no stated mapping from the PostgreSQL unique violation to `ConversationExistsError`, and SQLite cannot exercise the transaction abort; R-16 `region_knowledge` is built inline in `assemble_play`, so extracting it to a local belongs in 4.4 as well as 4.8); R-01..R-12 Resolved. Record: `aidlc-docs/construction/plans/reviews/U5-npc-dialogue-language-code-generation-plan-review-02.md`. Plan frozen per plan-review.md §3.5 until the human answers the gate.
+**Context**: Code Generation Part 1 — next: approval gate.
+
+---
+
+## Approval Prompt — Code Generation Plan — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:30:58Z
+**User Input**: (none — Step 6 prompt logging)
+**AI Response**: Presenting `aidlc-docs/construction/plans/U5-npc-dialogue-language-code-generation-plan.md` (8 steps) for approval with the Review brief (iteration 2 READY; R-13..R-16 open Minor). Options: Approve & Continue (open findings → Accepted risk, settled while executing the named steps) / Request Changes.
+**Context**: Code Generation Part 1 — Step 6.
+
+---

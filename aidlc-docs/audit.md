@@ -2375,3 +2375,33 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **Context**: NFR (light) — approval gate.
 
 ---
+
+## NFR Requirements + Design (light) Approved — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:19:54Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: NFR (light) approved (advisory review iter 1 READY, 6 open → dispositions below). Next: U5 Code Generation Part 1 (plan).
+**Context**: CONSTRUCTION / U5 — NFR gate → Code Generation Part 1.
+
+---
+
+## Plan Review Dispositions — NFR Requirements (light) — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:19:54Z
+**User Input**: (approval at gate; see above)
+**AI Response**:
+- R-01 → Accepted risk (carry: the session verified the finding in the code — `stop_after_attempt(3)` waits twice, so the retry layer is 93s, and `ChatOpenAI` sets no `max_retries`, so the SDK's own 2 retries can stack. The code plan pins `max_retries=0` on both providers, making 93s the real bound, and aligns the number in the NFR note, the functional design and operations.md)
+- R-02 → Accepted risk (carry: restate the structural assertion as exactly one `LLM.complete`, exactly one `repo.uow()` entry, and at most two `SnapshotSource.get` calls with no direct graph/search access)
+- R-03 → Accepted risk (carry: catch the unique-constraint violation on a concurrent first `say`, re-read the conversation and append to it; one test fixes the behaviour)
+- R-04 → Accepted risk (carry: state that contamination persists through `recent` within a conversation, and that there is no request-rate limit — accepted for a local single-player demo)
+- R-05 → Accepted risk (carry: the latency target is operator-run; the offline gate is the structural assertion)
+- R-06 → Accepted risk (carry: `region_knowledge` is a required positional argument; `tests/play/test_player_mode.py::_services` is the one direct construction to update)
+**Context**: NFR (light) — dispositions recorded; note unchanged.
+
+---
+
+## Purpose Restructure Cycle — U5 Code Generation Part 1 (plan written)
+**Timestamp**: 2026-09-30T12:22:35Z
+**User Input**: (none — follows the NFR approval)
+**AI Response**: Plan written: `aidlc-docs/construction/plans/U5-npc-dialogue-language-code-generation-plan.md` (8 steps; unit context, the four external-contract changes, a carry-forward table that settles FD R-04/R-12/R-13 and NFR R-01..R-06 with step references, execution principles). Dispatching architecture-reviewer (class adversarial, iteration 1) on it. Review record: `aidlc-docs/construction/plans/reviews/U5-npc-dialogue-language-code-generation-plan-review-01.md`.
+**Context**: CONSTRUCTION / U5 — Code Generation Part 1, Step 5a.
+
+---

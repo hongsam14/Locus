@@ -10,7 +10,7 @@
 - [x] NFR-1~9와 U5의 접점 정리; 질문 필요 여부 판단
 - [x] `construction/U5-npc-dialogue-language/nfr/nfr-light.md` 작성(요구 + 설계 + 수치 + 검증 방법 + 코드 플랜 입력)
 - [x] Plan Review(architecture-reviewer, **advisory** 1회) → `construction/U5-npc-dialogue-language/nfr/reviews/nfr-light-review-01.md`
-- [ ] 완료 메시지 + 승인 게이트 → 다음: U5 Code Generation Part 1(플랜)
+- [x] 완료 메시지 + 승인 게이트 → 다음: U5 Code Generation Part 1(플랜)
 
 ## 질문
 없음. U5에 걸리는 값은 이미 정해져 있다. 컨텍스트 한도는 FD-U5 Q3=A(전언 제외로 facts 12 · rumors 8 · 메시지 10), 표시 언어는 Q1=A(서버 기본 + 요청별), 대화 한 번 = LLM 1회는 가정 A-1·FR-C4, 정리 시점은 Q4=A다. 아래 가정은 값이 비어 있던 곳을 채운 것이고 코드 생성 플랜의 질문에서 바꿀 수 있다.

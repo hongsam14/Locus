@@ -2489,3 +2489,35 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **User Input**: "Continue to Next Stage"
 **AI Response**: Code approved with the four generation-time decisions as presented (ko timeline wording "대화: {npc_name} · {region_name}"; hard-coded Korean labels moved into the dictionaries too, enum codes kept; a dialogue LLM call that fails after retries answers 500; NFR-6 / NFR-9 tests added). CLAUDE.md test count corrected to 601 (545 + 56). Next: `/code-review` of the U5 diff (6ef8d38~1..HEAD), then U6 행적·전파.
 **Context**: CONSTRUCTION / U5 — Code Generation approved.
+
+---
+
+## U6 Functional Design Part 1 — plan and questions
+**Timestamp**: 2026-09-30T15:41:25Z
+**User Input**: (continuation of "Continue to Next Stage" — U5 approved; next unit in the order U1→U2→U4→U5→**U6**)
+**AI Response**: `/code-review` of the U5 diff launched in the background. Wrote `construction/plans/U6-deeds-spread-functional-design-plan.md`: three questions (Q1 who appraises a deed, Q2 which LLM work the turn budget serves first, Q3 the language of a declaration's narration) and assumptions A6-1..13 (LLM calls inside the background run, deed kinds, pending window = current stay, zero-LLM seeding from the NPC's retelling with support `birth × (1 + salience)`, one-hop-per-turn spread excluding blocked edges with permanent reached set, no canonical spread, void semantics, no-LLM behaviour, NPC context and event-suggestion context, tuning/env, additive schema via `ensure_play_schema`, UI). Asking Q1·Q2 first.
+**Context**: CONSTRUCTION / U6 — Functional Design Part 1.
+
+---
+
+## U6 FD Q1·Q2 answers
+**Timestamp**: 2026-09-30T15:50:59Z
+**User Input**: Q1: "A와 C의 하이브리드. 대화는 A(1대1 communication이니까). 행동은 C(목격을 모두가 하기 때문)" · Q2: "A. 행적 전파가 먼저 (Recommended)"
+**AI Response**: Recorded in the plan. Q1 read as: a statement is appraised by its one listener and seeds at most once; arrival and declared actions are appraised by every witnessing NPC the player talks to, and each noteworthy appraisal seeds that NPC's own version. For action deeds the uniqueness invariant becomes (deed, appraising NPC, region); each version spreads on its own, bounded by the per-region per-turn spread cap and the per-region active cap. This reading is stated in the Q3 prompt for correction. Asking Q3.
+**Context**: CONSTRUCTION / U6 — Functional Design Part 1.
+
+---
+
+## U6 FD Q3 answer and artifacts
+**Timestamp**: 2026-09-30T16:03:18Z
+**User Input**: Q3: "A. 한 호출로 두 가지 (Recommended)" (no objection to the stated Q1 reading)
+**AI Response**: Wrote `construction/U6-deeds-spread/functional-design/{domain-entities,business-logic-model,business-rules,frontend-components}.md` (BR-U6-1..34, TP-U6-1..7, EX-1..15, eleven deviations in domain-entities §7). Spread treats connections as bidirectional like movement (knowledge's best_path_weights is directed, so reversed edges are added).
+**Context**: CONSTRUCTION / U6 — Functional Design Part 2.
+
+---
+
+## Plan Review Requested — Functional Design — U6 행적·전파
+**Timestamp**: 2026-09-30T16:03:18Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/U6-deeds-spread/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/U6-deeds-spread/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — review requested before approval gate.

@@ -2537,3 +2537,19 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **User Input**: (none — automatic per plan-review.md)
 **AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 2) on `aidlc-docs/construction/U6-deeds-spread/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/U6-deeds-spread/functional-design/reviews/functional-design-review-02.md`.
 **Context**: Functional Design — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — U6 행적·전파
+**Timestamp**: 2026-09-30T23:23:30Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: 0 Critical / 3 Major / 14 Minor; open 4 (R-10 Unresolved; R-15, R-16, R-17 New — all Minor). Record: `aidlc-docs/construction/U6-deeds-spread/functional-design/reviews/functional-design-review-02.md`. The reviewer wrote the record before the previous session ended; the record is complete and the artifacts are unchanged since (mtimes precede the record date, no diff since 0ffd807). Artifacts frozen until the gate answer.
+**Context**: Functional Design — next: approval gate.
+
+---
+
+## U5 /code-review result received
+**Timestamp**: 2026-09-30T23:23:30Z
+**User Input**: (none — background review finished)
+**AI Response**: Record `aidlc-docs/construction/U5-npc-dialogue-language/code/reviews/code-review-01.md`: 15 correctness findings (1 high, several medium), 6 cleanup findings, 1 capped, 1 rejected. The heaviest (#1) breaks BR-U5-11: the rumor-shadowing rule only covers the first chain link, so an NPC can hold an original and its distortion together (reproduced on the aldermoor demo after a GM regenerate). The code is approved, so fixing it changes approved code: asking the human (record §7 options), per the global rule on reworking approved artifacts.
+**Context**: CONSTRUCTION / U5 — post-approval code review.

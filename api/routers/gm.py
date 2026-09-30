@@ -132,7 +132,7 @@ def regenerate_region(
     loc: LocalizationContainer | None = Depends(get_localization),
 ) -> list[RumorOut]:
     try:
-        rumors = p.rumors.regenerate_region(session_id, region_id)
+        rumors = p.rumors.regenerate_region(session_id, region_id).rumors
     except PLAY_ERRORS as exc:
         raise http_error(exc) from exc
     return _rumors_out(loc, session_id, rumors, enrich=False)

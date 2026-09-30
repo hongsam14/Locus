@@ -269,3 +269,66 @@ def test_u4_timeline_keeps_append_order_within_one_transaction(
     assert [e.kind for e in got] == [k.value for k in kinds]
     stamps = [e.created_at for e in got]
     assert all(a < b for a, b in zip(stamps, stamps[1:], strict=False))  # strictly increasing
+
+
+# --------------------------------------------------------------------------- #
+# U5 — conversations on the SQL adapter (Step 4.3). The PostgreSQL transaction abort
+# on a unique violation is operator-run: SQLite cannot reproduce it (plan review R-15).
+# --------------------------------------------------------------------------- #
+def test_u5_sql_conversation_round_trip_and_uniqueness(repo: PostgresPlayRepository) -> None:
+    from locus.play.errors import ConversationExistsError
+    from locus.play.models import Conversation, Message
+
+    s = repo.create_session("w")
+    conv = repo.create_conversation(Conversation(session_id=s.id, npc_id="n1", started_turn=3))
+    assert conv.started_turn == 3 and conv.created_at is not None
+    with pytest.raises(ConversationExistsError):
+        repo.create_conversation(Conversation(session_id=s.id, npc_id="n1"))
+    for i in range(3):
+        repo.append_message(
+            Message(conversation_id=conv.id, role="npc", text=f"m{i}", lang="en", turn=3)
+        )
+    got = repo.get_conversation(s.id, "n1")
+    assert [m.text for m in got.messages] == ["m0", "m1", "m2"]
+    assert all(m.lang == "en" and m.turn == 3 for m in got.messages)
+    with pytest.raises(KeyError):
+        repo.append_message(Message(conversation_id="nope", role="npc", text="x", lang="en"))
+    assert [c.id for c in repo.list_conversations(s.id)] == [conv.id]
+
+
+def test_u5_sql_unique_violation_maps_only_that_constraint(repo: PostgresPlayRepository) -> None:
+    """The race window: two inserts for the same pair. Only this violation becomes
+    ConversationExistsError; the pre-read is bypassed to reach the insert."""
+    from locus.play.errors import ConversationExistsError
+    from locus.play.models import Conversation
+    from locus.play.storage import postgres_repo as pg
+
+    s = repo.create_session("w")
+    repo.create_conversation(Conversation(session_id=s.id, npc_id="n1"))
+    original = pg._PgStores._conversation_row
+    calls = {"n": 0}
+
+    def blind_first_read(self, session_id, npc_id):
+        calls["n"] += 1
+        return None if calls["n"] == 1 else original(self, session_id, npc_id)
+
+    pg._PgStores._conversation_row = blind_first_read  # type: ignore[method-assign]
+    try:
+        with pytest.raises(ConversationExistsError):
+            repo.create_conversation(Conversation(session_id=s.id, npc_id="n1"))
+    finally:
+        pg._PgStores._conversation_row = original  # type: ignore[method-assign]
+
+
+def test_u5_sql_rollback_discards_the_conversation(repo: PostgresPlayRepository) -> None:
+    from locus.play.models import Conversation, Message
+
+    s = repo.create_session("w")
+    with pytest.raises(RuntimeError):
+        with repo.uow() as u:
+            conv = u.conversations.create_conversation(Conversation(session_id=s.id, npc_id="n1"))
+            u.conversations.append_message(
+                Message(conversation_id=conv.id, role="player", text="hi", lang="ko")
+            )
+            raise RuntimeError("boom")
+    assert repo.get_conversation(s.id, "n1") is None

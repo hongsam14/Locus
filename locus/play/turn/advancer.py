@@ -219,10 +219,35 @@ class TurnAdvancer(SessionAppService):
                                 },
                             )
                         )
-                    elif isinstance(action, EndTalkAction):  # dialogue itself is U5
+                    elif isinstance(action, EndTalkAction):  # closes a conversation (U5)
                         run.turns_charged = 1
                         player.turns_spent += 1
                         u.players.update_player(player)
+                        region = snapshot.regions_by_id[player.region_id]
+                        npc = next(
+                            (
+                                n
+                                for n in snapshot.npcs_by_region.get(region.id, [])
+                                if n.id == action.npc_id
+                            ),
+                            None,
+                        )  # validate_action already guaranteed the NPC is here
+                        npc_name = npc.name if npc is not None else action.npc_id
+                        conv = u.conversations.get_conversation(session_id, action.npc_id)
+                        u.timeline.append_timeline(
+                            self._entry(
+                                session,
+                                TimelineKind.NPC_TALKED,
+                                f"{player.name} spoke with {npc_name}",
+                                {
+                                    "npc_id": action.npc_id,
+                                    "npc_name": npc_name,
+                                    "region_id": region.id,
+                                    "region_name": region.name,
+                                    "messages": len(conv.messages) if conv else 0,
+                                },
+                            )
+                        )
                 run = u.runs.create_run(run)
         except BaseException:
             self._guard.release(session_id)

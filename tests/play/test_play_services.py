@@ -81,7 +81,7 @@ def test_generate_rumors_creates_chain_and_timeline() -> None:
 def test_regenerate_deletes_then_recreates() -> None:
     repo, loader, gm, session = _setup()
     first = gm.rumors.generate_rumors(session.id, loader.region.id)
-    regen = gm.rumors.regenerate_region(session.id, loader.region.id)
+    regen = gm.rumors.regenerate_region(session.id, loader.region.id).rumors
     ids_first = {r.id for r in first}
     ids_now = {r.id for r in repo.list_rumors(session.id, loader.region.id)}
     assert ids_now.isdisjoint(ids_first)  # old ones gone
@@ -97,7 +97,7 @@ def test_regenerate_preserves_promoted_rumors() -> None:
     promoted.promoted = True
     repo.upsert_rumor(promoted)
 
-    regen = gm.rumors.regenerate_region(session.id, loader.region.id)
+    regen = gm.rumors.regenerate_region(session.id, loader.region.id).rumors
     now = repo.list_rumors(session.id, loader.region.id)
     ids_now = {r.id for r in now}
     assert promoted.id in ids_now  # promoted survived
@@ -178,7 +178,7 @@ def test_regenerate_keeps_everything_when_generation_produces_nothing() -> None:
     assert first  # something to lose
     gm.rumors._gen = RumorGenerator(_DeadLLM())  # the provider goes down
 
-    regen = gm.rumors.regenerate_region(session.id, loader.region.id)
+    regen = gm.rumors.regenerate_region(session.id, loader.region.id).rumors
 
     still_there = repo.list_rumors(session.id, loader.region.id)
     assert {r.id for r in still_there} == {r.id for r in first}  # nothing destroyed

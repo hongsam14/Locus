@@ -7,6 +7,12 @@ other rumors are added as ``source="rumor"`` views (BR-S2-18/20). This is the
 input for the play-layer NPC scope (U5) and the externally exposed session
 region-knowledge API. No translation here: display localization is applied by
 the API layer (FR-A2: play does not depend on localization).
+
+U5: ``region_sources`` resolves a region's material once — static facts, hearsay and
+active rumors, kept apart — and is the single consensus resolve behind three
+consumers: the NPC scope, U4's player screen and the external ``QueryResult``
+(design deviation 5). Hearsay is for the player screen only; the NPC scope never
+receives it (deviation 1).
 """
 
 from __future__ import annotations
@@ -16,7 +22,17 @@ from locus.knowledge.consensus import DEFAULT_PARAMS, ConsensusEngine, Consensus
 from locus.knowledge.query import region_known
 from locus.play.models import SessionRumor
 from locus.play.ports import SessionRumorStore
-from locus.shared.models import KnowledgeView, QueryResult, ScopeType
+from locus.shared.models import KnowledgeView, LocusModel, QueryResult, ScopeType
+
+
+class RegionSources(LocusModel):
+    """One region's material inside a session (not U4's ``RegionView`` screen DTO)."""
+
+    world_id: str
+    region_id: str
+    facts: list[KnowledgeView]  # region_known(view): direct + inherited + global
+    hearsay: list[KnowledgeView]  # the player screen only — never an NPC's knowledge
+    rumors: list[SessionRumor]  # the region's active session rumors
 
 
 class SessionKnowledgeService:
@@ -30,7 +46,8 @@ class SessionKnowledgeService:
         self._snapshots = snapshots
         self._params = params
 
-    def knowledge_for_region(self, session_id: str, region_id: str) -> QueryResult:
+    def region_sources(self, session_id: str, region_id: str) -> RegionSources:
+        """The region's facts, hearsay and active rumors, resolved once (BLM §1.1)."""
         session = self._repo.get_session(session_id)
         if session is None:
             raise LookupError(f"session not found: {session_id}")
@@ -38,19 +55,29 @@ class SessionKnowledgeService:
         if region_id not in snapshot.regions_by_id:
             raise LookupError(f"region not found: {region_id}")
         view = ConsensusEngine.from_snapshot(snapshot, self._params).resolve(region_id)
+        return RegionSources(
+            world_id=session.world_id,
+            region_id=region_id,
+            facts=region_known(view),  # direct + inherited + global (FR-R5.1)
+            hearsay=list(view.hearsay),
+            rumors=self._repo.list_rumors(session_id, region_id),
+        )
 
-        canonical = region_known(view)  # direct + inherited + global (FR-R5.1)
-        rumors = self._repo.list_rumors(session_id, region_id)
-        promoted = [_rumor_view(r) for r in rumors if r.promoted]
-        other = [_rumor_view(r) for r in rumors if not r.promoted]
+    def knowledge_for_region(self, session_id: str, region_id: str) -> QueryResult:
+        src = self.region_sources(session_id, region_id)
+        promoted = [_rumor_view(r) for r in src.rumors if r.promoted]
+        other = [_rumor_view(r) for r in src.rumors if not r.promoted]
 
-        items = canonical + promoted + other
+        items = src.facts + promoted + other
         # unique = region-specific (direct) + promoted rumors (direct-like);
         # shared = inherited + global. Non-promoted rumors are supplementary.
-        unique_ids = [v.knowledge_id for v in view.direct] + [v.knowledge_id for v in promoted]
-        shared_ids = [v.knowledge_id for v in view.inherited + view.global_knowledge]
+        direct = ScopeType.DIRECT.value
+        shared_scopes = (ScopeType.INHERITED.value, ScopeType.GLOBAL.value)
+        unique_ids = [k.knowledge_id for k in src.facts if str(k.scope_type) == direct]
+        unique_ids += [v.knowledge_id for v in promoted]
+        shared_ids = [k.knowledge_id for k in src.facts if str(k.scope_type) in shared_scopes]
         return QueryResult(
-            world_id=session.world_id,
+            world_id=src.world_id,
             region_id=region_id,
             items=items,
             shared_ids=shared_ids,

@@ -12,6 +12,7 @@ from locus.knowledge.wiring import KnowledgeContainer
 from locus.play.distortion_service import DistortionService
 from locus.play.event.service import EventService
 from locus.play.event.suggester import EventSuggester
+from locus.play.npc.dialogue import NpcDialogueService
 from locus.play.player.service import PlayService
 from locus.play.ports import PlayRepository
 from locus.play.region_knowledge import SessionKnowledgeService
@@ -24,6 +25,7 @@ from locus.play.turn.advancer import TurnAdvancer
 from locus.play.turn.executor import ThreadTurnExecutor, TurnExecutor
 from locus.play.turn.guard import TurnGuard
 from locus.shared.config.tuning import PlayTuning
+from locus.shared.llm.base import LLMProvider
 from locus.shared.wiring import SharedContainer
 
 
@@ -43,6 +45,8 @@ class PlayContainer:
     # without a provider and only the LLM-needing ones raise 503 (code review U4-2 #13).
     rumors: RumorService
     events: EventService
+    # U5 — always assembled; without a provider only `say` answers 503 (BR-U5-29)
+    dialogue: NpcDialogueService
 
 
 def assemble_play(
@@ -54,6 +58,7 @@ def assemble_play(
     suggester: EventSuggester | None = None,
     tuning: PlayTuning | None = None,
     executor: TurnExecutor | None = None,
+    dialogue_llm: LLMProvider | None = None,
 ) -> PlayContainer:
     """Build the play services. Pass ``repo`` (e.g. in-memory) to bypass PostgreSQL;
     ``generator``/``suggester``/``tuning`` override the LLM-backed defaults (tests
@@ -86,17 +91,35 @@ def assemble_play(
     )
     feedback = RumorFeedbackService(store, tuning)
     turns = TurnAdvancer(store, loader, rumors, feedback, tuning, guard=guard, executor=executor)
+    region_knowledge = SessionKnowledgeService(store, loader, knowledge.params)
     container = PlayContainer(
         repo=store,
         sessions=SessionService(store, loader, guard),
         distortions=DistortionService(store),
-        region_knowledge=SessionKnowledgeService(store, loader, knowledge.params),
+        region_knowledge=region_knowledge,
         feedback=feedback,
         turns=turns,
-        play=PlayService(store, loader, knowledge.params, guard=guard, turns=turns, tuning=tuning),
+        play=PlayService(
+            store,
+            loader,
+            region_knowledge,
+            knowledge.params,
+            guard=guard,
+            turns=turns,
+            tuning=tuning,
+        ),
         guard=guard,
         executor=executor,
         rumors=rumors,
         events=EventService(store, loader, suggester=suggester),
+        dialogue=NpcDialogueService(
+            store,
+            loader,
+            region_knowledge,
+            dialogue_llm if dialogue_llm is not None else shared.llm,
+            tuning,
+            default_lang=shared.settings.translation_target_lang,
+            supported_langs=shared.settings.supported_langs,
+        ),
     )
     return container

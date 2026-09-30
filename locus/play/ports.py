@@ -12,7 +12,9 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from locus.play.models import (
+    Conversation,
     GameSession,
+    Message,
     Player,
     RegionDistortion,
     SessionEvent,
@@ -97,6 +99,20 @@ class TurnRunStore(Protocol):
 
 
 @runtime_checkable
+class ConversationStore(Protocol):
+    """U5 — NPC conversations: one per (session, NPC), messages in order (BR-U5-1/31)."""
+
+    def create_conversation(
+        self, conversation: Conversation
+    ) -> Conversation: ...  # ConversationExistsError if the (session, npc) pair exists
+    def get_conversation(
+        self, session_id: str, npc_id: str
+    ) -> Conversation | None: ...  # messages filled, ordered by (created_at, id)
+    def append_message(self, message: Message) -> Message: ...  # KeyError: no conversation
+    def list_conversations(self, session_id: str) -> list[Conversation]: ...  # no messages
+
+
+@runtime_checkable
 class PlayUnitOfWork(Protocol):
     """One transaction spanning every store (U4, BR-U4-14). Enter opens it; a clean
     exit commits, an exception rolls back. Services inside a UoW write only through
@@ -118,6 +134,8 @@ class PlayUnitOfWork(Protocol):
     def players(self) -> PlayerStore: ...
     @property
     def runs(self) -> TurnRunStore: ...
+    @property
+    def conversations(self) -> ConversationStore: ...
 
     def __enter__(self) -> PlayUnitOfWork: ...
     def __exit__(self, exc_type, exc, tb) -> None: ...
@@ -133,6 +151,7 @@ class PlayRepository(
     EventStore,
     PlayerStore,
     TurnRunStore,
+    ConversationStore,
     Protocol,
 ):
     """Everything a play adapter provides (the union of the concern ports).

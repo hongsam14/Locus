@@ -11,7 +11,13 @@ from locus.knowledge.cache import SnapshotSource
 from locus.knowledge.consensus import DEFAULT_PARAMS, ConsensusEngine, ConsensusParams
 from locus.play.base import SessionAppService
 from locus.play.errors import LlmUnavailableError
-from locus.play.models import DEFAULT_DISTORTION_DEGREE, GameSession, SessionRumor, TimelineKind
+from locus.play.models import (
+    DEFAULT_DISTORTION_DEGREE,
+    GameSession,
+    RegenerateResult,
+    SessionRumor,
+    TimelineKind,
+)
 from locus.play.ports import PlayRepository
 from locus.play.rumor import dynamics as rumor_dynamics
 from locus.play.rumor.generator import RumorGenerator
@@ -82,7 +88,9 @@ class RumorService(SessionAppService):
         )
         return rumors
 
-    def regenerate_region(self, session_id: str, region_id: str) -> list[SessionRumor]:
+    def regenerate_region(self, session_id: str, region_id: str) -> RegenerateResult:
+        """Replace the region's non-promoted rumors (U5: returns what was deleted so
+        the API can purge their translations — the two skip paths delete nothing)."""
         self._require_generator()
         session = self._require_open(session_id)
         existing = self._repo.list_rumors(session_id, region_id)
@@ -116,7 +124,7 @@ class RumorService(SessionAppService):
                     "reason": "llm_incomplete",
                 },
             )
-            return existing
+            return RegenerateResult(kept=existing, skipped_reason="llm_incomplete")
         if not fresh and not dropped:
             self._timeline(
                 session,
@@ -131,7 +139,7 @@ class RumorService(SessionAppService):
                     "reason": "no_sources",
                 },
             )
-            return existing
+            return RegenerateResult(kept=existing, skipped_reason="no_sources")
         with self._repo.uow() as u:  # swap in one transaction (BR-U4-14)
             for r in dropped:
                 u.rumors.delete_rumor(session_id, r.id)
@@ -149,7 +157,7 @@ class RumorService(SessionAppService):
                     },
                 )
             )
-        return kept + saved
+        return RegenerateResult(kept=kept, fresh=saved, deleted_ids=[r.id for r in dropped])
 
     def adjust_support(self, session_id: str, rumor_id: str, support: float) -> SessionRumor:
         session = self._require_open(session_id)

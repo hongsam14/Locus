@@ -30,6 +30,8 @@ from locus.play.models import (
     TimelineKind,
     default_lifecycle,
 )
+from locus.play.npc.dialogue import NpcDialogueService
+from locus.play.npc.scope import build_context
 from locus.play.ports import (
     DistortionStore,
     EventStore,
@@ -41,7 +43,7 @@ from locus.play.ports import (
     SessionStore,
     TimelineStore,
 )
-from locus.play.region_knowledge import SessionKnowledgeService, is_rumor_view
+from locus.play.region_knowledge import RegionSources, SessionKnowledgeService, is_rumor_view
 from locus.play.rumor import dynamics as rumor_dynamics
 from locus.play.rumor import promotion
 from locus.play.rumor.dynamics import DEFAULT_RUMOR_DYNAMICS
@@ -72,6 +74,9 @@ __all__ = [
     "CATEGORY_DEFAULT_LIFECYCLE",
     "default_lifecycle",
     "RegionTurnChange",
+    "NpcDialogueService",
+    "build_context",
+    "RegionSources",
     # ports + adapters
     "PlayStorage",
     "SessionStore",

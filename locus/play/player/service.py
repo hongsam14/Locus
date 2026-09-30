@@ -10,13 +10,14 @@ pre-validates the action for a friendly 400 and hands it to
 from __future__ import annotations
 
 from locus.knowledge.cache import SnapshotSource
-from locus.knowledge.consensus import DEFAULT_PARAMS, ConsensusEngine, ConsensusParams
-from locus.knowledge.query import level_path, region_known
+from locus.knowledge.consensus import DEFAULT_PARAMS, ConsensusParams
+from locus.knowledge.query import level_path
 from locus.play.base import SessionAppService
 from locus.play.errors import InvalidActionError
 from locus.play.models import Player, PlayerAction, RegionView, TimelineEntry, TurnRun
 from locus.play.player import movement
 from locus.play.ports import PlayRepository
+from locus.play.region_knowledge import SessionKnowledgeService
 from locus.play.turn.advancer import TurnAdvancer
 from locus.play.turn.guard import TurnGuard
 from locus.shared.config.tuning import PlayTuning
@@ -28,6 +29,7 @@ class PlayService(SessionAppService):
         self,
         repo: PlayRepository,
         snapshots: SnapshotSource,
+        region_knowledge: SessionKnowledgeService,
         params: ConsensusParams = DEFAULT_PARAMS,
         *,
         guard: TurnGuard,
@@ -36,6 +38,7 @@ class PlayService(SessionAppService):
     ) -> None:
         super().__init__(repo)
         self._snapshots = snapshots
+        self._region_knowledge = region_knowledge  # the one consensus resolve (U5 dev. 5)
         self._params = params
         self._guard = guard
         self._turns = turns
@@ -56,9 +59,9 @@ class PlayService(SessionAppService):
         player = self._require_player(session_id)
         snapshot = self._snapshots.get(session.world_id)
         region = snapshot.regions_by_id.get(player.region_id)
-        if region is None:
+        if region is None:  # checked first so this message survives (NFR-9)
             raise LookupError(f"player region no longer exists: {player.region_id}")
-        view = ConsensusEngine.from_snapshot(snapshot, self._params).resolve(region.id)
+        src = self._region_knowledge.region_sources(session.id, region.id)
         return RegionView(
             session_id=session.id,
             turn=session.turn,
@@ -69,9 +72,9 @@ class PlayService(SessionAppService):
             description=region.description or "",
             level_path=level_path(region, snapshot),
             npcs=list(snapshot.npcs_by_region.get(region.id, [])),
-            facts=region_known(view),
-            hearsay=list(view.hearsay),
-            rumors=self._repo.list_rumors(session.id, region.id),
+            facts=src.facts,
+            hearsay=src.hearsay,
+            rumors=src.rumors,
             moves=movement.move_options(snapshot, region.id, self._tuning),
             turn_running=self._guard.is_running(session.id),
             llm_available=self._turns.llm_available,

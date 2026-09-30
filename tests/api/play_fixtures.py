@@ -72,7 +72,24 @@ class Loader:
         return snapshot_of(self._kg, self._topo)
 
 
-def play_container(*, with_suggester: bool = False, executor=None) -> PlayContainer:
+class DialogueLLM:
+    """NPC answers for the API tests: records each call, answers in a fixed voice."""
+
+    def __init__(self, answer: str = "They say the river rose again.") -> None:
+        self.answer = answer
+        self.calls: list[tuple[str, str | None]] = []
+
+    def structured(self, prompt, schema, *, system=None):  # pragma: no cover
+        raise AssertionError("dialogue never uses structured output")
+
+    def complete(self, prompt, *, system=None):
+        self.calls.append((prompt, system))
+        return self.answer
+
+
+def play_container(
+    *, with_suggester: bool = False, executor=None, dialogue_llm=None
+) -> PlayContainer:
     repo = InMemoryPlayRepository()
     loader = Loader()
     suggester = EventSuggester(SuggestLLM()) if with_suggester else None
@@ -82,4 +99,5 @@ def play_container(*, with_suggester: bool = False, executor=None) -> PlayContai
         loader,
         suggester=suggester,
         executor=executor or SyncTurnExecutor(),
+        dialogue_llm=dialogue_llm if dialogue_llm is not None else DialogueLLM(),
     )

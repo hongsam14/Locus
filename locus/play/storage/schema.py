@@ -17,6 +17,7 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -122,6 +123,35 @@ turn_runs = Table(
     Column("finished_at", DateTime(timezone=True), nullable=True),
     Column("result", _JSON, nullable=True),
     Column("error", Text, nullable=True),
+)
+
+# U5 NPC dialogue — one conversation per (session, NPC), its messages in order.
+# The unique constraint is named so the adapter can tell *this* violation apart from
+# any other integrity error (plan review R-15).
+CONVERSATION_UNIQUE = "uq_conversations_session_npc"
+
+conversations = Table(
+    "conversations",
+    play_metadata,
+    Column("id", String, primary_key=True),
+    Column("session_id", String, nullable=False, index=True),
+    Column("npc_id", String, nullable=False),
+    Column("started_turn", Integer, nullable=False, default=0),
+    Column("created_at", DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP")),
+    UniqueConstraint("session_id", "npc_id", name=CONVERSATION_UNIQUE),
+)
+
+messages = Table(
+    "messages",
+    play_metadata,
+    Column("id", String, primary_key=True),
+    Column("conversation_id", String, nullable=False, index=True),
+    Column("role", String, nullable=False),
+    Column("text", Text, nullable=False),
+    Column("lang", String, nullable=False),
+    Column("turn", Integer, nullable=False, default=0),
+    # stamped by the application (next_timestamp) so order survives one transaction
+    Column("created_at", DateTime(timezone=True), nullable=False),
 )
 
 

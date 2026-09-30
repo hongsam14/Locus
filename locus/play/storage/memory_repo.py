@@ -20,8 +20,11 @@ from datetime import datetime, timezone
 from functools import wraps
 from typing import Any, Callable, TypeVar
 
+from locus.play.errors import ConversationExistsError
 from locus.play.models import (
+    Conversation,
     GameSession,
+    Message,
     Player,
     RegionDistortion,
     SessionEvent,
@@ -32,6 +35,7 @@ from locus.play.models import (
     TurnRunStatus,
 )
 from locus.play.ports import (
+    ConversationStore,
     DistortionStore,
     EventStore,
     PlayerStore,
@@ -68,6 +72,9 @@ class InMemoryPlayRepository:
         self._events: dict[str, dict[str, SessionEvent]] = {}  # session_id -> {event_id: event}
         self._players: dict[str, Player] = {}  # session_id -> player (U4)
         self._runs: dict[str, dict[str, TurnRun]] = {}  # session_id -> {run_id: run} (U4)
+        # U5: session_id -> {npc_id: conversation (no messages)}; conversation_id -> messages
+        self._conversations: dict[str, dict[str, Conversation]] = {}
+        self._messages: dict[str, list[Message]] = {}
         self._clock = 0
 
     # --- internal ---
@@ -76,7 +83,18 @@ class InMemoryPlayRepository:
         self._clock += 1
         return datetime.fromtimestamp(self._clock, tz=timezone.utc)
 
-    _STATE = ("_sessions", "_rumors", "_distortions", "_timeline", "_events", "_players", "_runs")
+    # Everything a unit of work must be able to roll back — conversations included (U5).
+    _STATE = (
+        "_sessions",
+        "_rumors",
+        "_distortions",
+        "_timeline",
+        "_events",
+        "_players",
+        "_runs",
+        "_conversations",
+        "_messages",
+    )
 
     def _snapshot_state(self) -> dict[str, Any]:
         state = {name: deepcopy(getattr(self, name)) for name in self._STATE}
@@ -325,6 +343,52 @@ class InMemoryPlayRepository:
                     count += 1
         return count
 
+    # --- conversations (U5) ---
+    @_synchronized
+    def create_conversation(self, conversation: Conversation) -> Conversation:
+        self._require_session(conversation.session_id)
+        by_npc = self._conversations.setdefault(conversation.session_id, {})
+        if conversation.npc_id in by_npc:
+            raise ConversationExistsError(
+                f"conversation exists: {conversation.session_id}/{conversation.npc_id}"
+            )
+        stored = conversation.model_copy(deep=True, update={"messages": []})
+        if stored.created_at is None:
+            stored.created_at = self._now()
+        by_npc[conversation.npc_id] = stored
+        self._messages.setdefault(stored.id, [])
+        return deepcopy(stored)
+
+    @_synchronized
+    def get_conversation(self, session_id: str, npc_id: str) -> Conversation | None:
+        conv = self._conversations.get(session_id, {}).get(npc_id)
+        if conv is None:
+            return None
+        out = deepcopy(conv)
+        out.messages = self._ordered_messages(conv.id)
+        return out
+
+    @_synchronized
+    def append_message(self, message: Message) -> Message:
+        if message.conversation_id not in self._messages:
+            raise KeyError(f"conversation not found: {message.conversation_id}")
+        stored = deepcopy(message)
+        if stored.created_at is None:
+            stored.created_at = self._now()
+        self._messages[message.conversation_id].append(stored)
+        return deepcopy(stored)
+
+    @_synchronized
+    def list_conversations(self, session_id: str) -> list[Conversation]:
+        out = [deepcopy(c) for c in self._conversations.get(session_id, {}).values()]
+        out.sort(key=lambda c: (c.created_at or datetime.min.replace(tzinfo=timezone.utc), c.id))
+        return out
+
+    def _ordered_messages(self, conversation_id: str) -> list[Message]:
+        msgs = [deepcopy(m) for m in self._messages.get(conversation_id, [])]
+        msgs.sort(key=lambda m: (m.created_at or datetime.min.replace(tzinfo=timezone.utc), m.id))
+        return msgs
+
     # --- internal ---
     def _require_session(self, session_id: str) -> GameSession:
         s = self._sessions.get(session_id)
@@ -377,6 +441,10 @@ class _MemoryUnitOfWork:
 
     @property
     def runs(self) -> TurnRunStore:
+        return self._s
+
+    @property
+    def conversations(self) -> ConversationStore:
         return self._s
 
     def __enter__(self) -> PlayUnitOfWork:

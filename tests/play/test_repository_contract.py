@@ -298,3 +298,61 @@ def test_u4_uow_rollback_does_not_erase_other_threads_writes() -> None:
     tb.join(timeout=5)
     assert repo.get_player(s.id) is not None  # B's write survived A's rollback
     assert repo.get_region_distortion(s.id, "r1") is None  # A's write was rolled back
+
+
+# --------------------------------------------------------------------------- #
+# U5 — conversations (Step 4.3; BR-U5-1/3/31)
+# --------------------------------------------------------------------------- #
+def test_u5_one_conversation_per_session_and_npc() -> None:
+    from locus.play.errors import ConversationExistsError
+    from locus.play.models import Conversation
+
+    repo = _repo()
+    a, b = repo.create_session("w"), repo.create_session("w")
+    first = repo.create_conversation(Conversation(session_id=a.id, npc_id="n1", started_turn=2))
+    assert first.created_at is not None and first.messages == []
+    with pytest.raises(ConversationExistsError):
+        repo.create_conversation(Conversation(session_id=a.id, npc_id="n1"))
+    repo.create_conversation(Conversation(session_id=b.id, npc_id="n1"))  # other session: fine
+    assert repo.get_conversation(a.id, "n1").id == first.id
+    assert repo.get_conversation(a.id, "n2") is None
+    assert [c.npc_id for c in repo.list_conversations(a.id)] == ["n1"]
+
+
+def test_u5_messages_come_back_in_order_and_need_a_conversation() -> None:
+    from locus.play.models import Conversation, Message
+
+    repo = _repo()
+    s = repo.create_session("w")
+    conv = repo.create_conversation(Conversation(session_id=s.id, npc_id="n1"))
+    for i in range(5):
+        repo.append_message(
+            Message(
+                conversation_id=conv.id,
+                role="player" if i % 2 == 0 else "npc",
+                text=f"m{i}",
+                lang="ko",
+            )
+        )
+    got = repo.get_conversation(s.id, "n1").messages
+    assert [m.text for m in got] == [f"m{i}" for i in range(5)]
+    stamps = [m.created_at for m in got]
+    assert all(x < y for x, y in zip(stamps, stamps[1:], strict=False))
+    with pytest.raises(KeyError):
+        repo.append_message(Message(conversation_id="nope", role="npc", text="x", lang="ko"))
+    assert repo.list_conversations(s.id)[0].messages == []  # listing stays light
+
+
+def test_u5_a_rolled_back_unit_of_work_takes_the_conversation_with_it() -> None:
+    from locus.play.models import Conversation, Message
+
+    repo = _repo()
+    s = repo.create_session("w")
+    with pytest.raises(RuntimeError):
+        with repo.uow() as u:
+            conv = u.conversations.create_conversation(Conversation(session_id=s.id, npc_id="n1"))
+            u.conversations.append_message(
+                Message(conversation_id=conv.id, role="player", text="hi", lang="ko")
+            )
+            raise RuntimeError("the NPC answer could not be stored")
+    assert repo.get_conversation(s.id, "n1") is None  # BR-U5-3: no empty conversation left

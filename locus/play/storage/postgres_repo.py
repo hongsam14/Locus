@@ -29,9 +29,13 @@ from sqlalchemy import (
     update,
 )
 from sqlalchemy.engine import Connection, Engine
+from sqlalchemy.exc import IntegrityError
 
+from locus.play.errors import ConversationExistsError
 from locus.play.models import (
+    Conversation,
     GameSession,
+    Message,
     Player,
     RegionDistortion,
     SessionEvent,
@@ -45,8 +49,11 @@ from locus.play.models import (
 from locus.play.ports import PlayUnitOfWork
 from locus.play.storage.clock import next_timestamp
 from locus.play.storage.schema import (
+    CONVERSATION_UNIQUE,
+    conversations,
     ensure_play_schema,
     game_sessions,
+    messages,
     players,
     region_distortions,
     session_events,
@@ -94,6 +101,10 @@ class _PgStores:
 
     @property
     def runs(self) -> _PgStores:
+        return self
+
+    @property
+    def conversations(self) -> _PgStores:
         return self
 
     # -- sessions --------------------------------------------------------- #
@@ -452,6 +463,92 @@ class _PgStores:
         )
         return int(res.rowcount or 0)
 
+    # -- conversations (U5) ----------------------------------------------- #
+    def create_conversation(self, conversation: Conversation) -> Conversation:
+        # Pre-read first: the common race loser never reaches the insert. The insert
+        # still maps the named unique violation (and only that one) for the narrow
+        # window between the read and the write (plan review R-15).
+        if self._conversation_row(conversation.session_id, conversation.npc_id) is not None:
+            raise ConversationExistsError(
+                f"conversation exists: {conversation.session_id}/{conversation.npc_id}"
+            )
+        try:
+            self._conn.execute(
+                conversations.insert().values(
+                    id=conversation.id,
+                    session_id=conversation.session_id,
+                    npc_id=conversation.npc_id,
+                    started_turn=conversation.started_turn,
+                )
+            )
+        except IntegrityError as exc:
+            if _is_conversation_unique_violation(exc):
+                raise ConversationExistsError(
+                    f"conversation exists: {conversation.session_id}/{conversation.npc_id}"
+                ) from exc
+            raise
+        row = self._conversation_row(conversation.session_id, conversation.npc_id)
+        return _row_to_conversation(row, [])
+
+    def get_conversation(self, session_id: str, npc_id: str) -> Conversation | None:
+        row = self._conversation_row(session_id, npc_id)
+        if row is None:
+            return None
+        msg_rows = (
+            self._conn.execute(
+                select(messages)
+                .where(messages.c.conversation_id == row["id"])
+                .order_by(messages.c.created_at, messages.c.id)
+            )
+            .mappings()
+            .all()
+        )
+        return _row_to_conversation(row, [_row_to_message(m) for m in msg_rows])
+
+    def append_message(self, message: Message) -> Message:
+        exists = self._conn.execute(
+            select(conversations.c.id).where(conversations.c.id == message.conversation_id)
+        ).scalar_one_or_none()
+        if exists is None:
+            raise KeyError(f"conversation not found: {message.conversation_id}")
+        stored = message.model_copy(update={"created_at": message.created_at or next_timestamp()})
+        self._conn.execute(
+            messages.insert().values(
+                id=stored.id,
+                conversation_id=stored.conversation_id,
+                role=stored.role,
+                text=stored.text,
+                lang=stored.lang,
+                turn=stored.turn,
+                created_at=stored.created_at,
+            )
+        )
+        return stored
+
+    def list_conversations(self, session_id: str) -> list[Conversation]:
+        rows = (
+            self._conn.execute(
+                select(conversations)
+                .where(conversations.c.session_id == session_id)
+                .order_by(conversations.c.created_at, conversations.c.id)
+            )
+            .mappings()
+            .all()
+        )
+        return [_row_to_conversation(r, []) for r in rows]
+
+    def _conversation_row(self, session_id: str, npc_id: str):
+        return (
+            self._conn.execute(
+                select(conversations).where(
+                    conversations.c.session_id == session_id,
+                    conversations.c.npc_id == npc_id,
+                )
+            )
+            .mappings()
+            .one_or_none()
+        )
+
 
 class _PgUnitOfWork:
     """One ``engine.begin()`` transaction; every store attribute is the same
@@ -503,6 +600,10 @@ class _PgUnitOfWork:
 
     @property
     def runs(self) -> _PgStores:
+        return self._s
+
+    @property
+    def conversations(self) -> _PgStores:
         return self._s
 
 
@@ -647,6 +748,19 @@ class PostgresPlayRepository:
     def fail_stale_runs(self, *, reason: str) -> int:
         return self._tx(lambda s: s.fail_stale_runs(reason=reason))
 
+    # -- conversations (U5) ----------------------------------------------- #
+    def create_conversation(self, conversation: Conversation) -> Conversation:
+        return self._tx(lambda s: s.create_conversation(conversation))
+
+    def get_conversation(self, session_id: str, npc_id: str) -> Conversation | None:
+        return self._tx(lambda s: s.get_conversation(session_id, npc_id))
+
+    def append_message(self, message: Message) -> Message:
+        return self._tx(lambda s: s.append_message(message))
+
+    def list_conversations(self, session_id: str) -> list[Conversation]:
+        return self._tx(lambda s: s.list_conversations(session_id))
+
     # -- helpers ---------------------------------------------------------- #
     def _require_engine(self) -> Engine:
         if self._engine is None:
@@ -781,3 +895,40 @@ def _row_to_run(row) -> TurnRun:
 def _enum_value(v) -> str:
     """Enum field values are already strings (use_enum_values=True), but accept enums too."""
     return v.value if isinstance(v, Enum) else str(v)
+
+
+def _row_to_conversation(row, msgs: list[Message]) -> Conversation:
+    return Conversation(
+        id=row["id"],
+        session_id=row["session_id"],
+        npc_id=row["npc_id"],
+        started_turn=row["started_turn"],
+        created_at=row["created_at"],
+        messages=msgs,
+    )
+
+
+def _row_to_message(row) -> Message:
+    return Message(
+        id=row["id"],
+        conversation_id=row["conversation_id"],
+        role=row["role"],
+        text=row["text"],
+        lang=row["lang"],
+        turn=row["turn"],
+        created_at=row["created_at"],
+    )
+
+
+def _is_conversation_unique_violation(exc: IntegrityError) -> bool:
+    """Only the (session_id, npc_id) uniqueness — never an unrelated integrity error.
+
+    PostgreSQL names the constraint (``diag.constraint_name``); SQLite (offline tests)
+    only names the columns in the message.
+    """
+    diag = getattr(getattr(exc, "orig", None), "diag", None)
+    name = getattr(diag, "constraint_name", None)
+    if name is not None:
+        return name == CONVERSATION_UNIQUE
+    text_ = str(getattr(exc, "orig", exc))
+    return "conversations.session_id" in text_ and "conversations.npc_id" in text_

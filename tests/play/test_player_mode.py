@@ -630,6 +630,7 @@ def test_threading_import_used() -> None:
 # --------------------------------------------------------------------------- #
 from locus.play.models import DEFAULT_DISTORTION_DEGREE, PlayerCreate  # noqa: E402
 from locus.play.player.service import PlayService  # noqa: E402
+from locus.play.region_knowledge import SessionKnowledgeService  # noqa: E402
 from locus.play.session_service import SessionService, WorldNotFoundError  # noqa: E402
 
 
@@ -638,7 +639,10 @@ def _services(*, repo=None, snapshot=None):
     snap = snapshot or _play_world()
     gm = compose_play(repo, CountingGenerator(), _Snap(snap), executor=SyncTurnExecutor())
     sessions = SessionService(repo, _Snap(snap), gm.guard)
-    play = PlayService(repo, _Snap(snap), guard=gm.guard, turns=gm.turns, tuning=PlayTuning())
+    region_knowledge = SessionKnowledgeService(repo, _Snap(snap))
+    play = PlayService(
+        repo, _Snap(snap), region_knowledge, guard=gm.guard, turns=gm.turns, tuning=PlayTuning()
+    )
     return repo, gm, sessions, play
 
 
@@ -932,7 +936,9 @@ def test_regenerate_keeps_everything_when_only_part_of_a_chain_arrives() -> None
     assert len(first) >= 2
 
     gen.short = True  # the provider dies part-way through each chain
-    kept = svc.regenerate_region(session.id, "a")
+    result = svc.regenerate_region(session.id, "a")
+    assert result.deleted_ids == [] and result.skipped_reason == "llm_incomplete"
+    kept = result.rumors
 
     assert {r.id for r in repo.list_rumors(session.id, "a")} == {r.id for r in first}
     assert {r.id for r in kept} == {r.id for r in first}

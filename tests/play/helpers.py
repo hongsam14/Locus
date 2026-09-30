@@ -39,6 +39,7 @@ def compose_play(
     suggester: EventSuggester | None = None,
     tuning: PlayTuning = DEFAULT_RUMOR_DYNAMICS,
     executor=None,
+    dialogue_llm=None,
 ) -> PlayContainer:
     # Default to the inline executor: letting `assemble_play` start its daemon thread
     # leaked one per composition across the suite (code review U4-2).
@@ -54,4 +55,5 @@ def compose_play(
         suggester=suggester or EventSuggester(_NoSuggestLLM()),
         tuning=tuning,
         executor=executor or SyncTurnExecutor(),
+        dialogue_llm=dialogue_llm,
     )

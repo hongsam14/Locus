@@ -18,6 +18,7 @@ from sqlalchemy import (
     Table,
     Text,
     UniqueConstraint,
+    inspect,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -58,6 +59,11 @@ session_rumors = Table(
     Column("promoted", Boolean, nullable=False, default=False),
     Column("active", Boolean, nullable=False, default=True),  # soft-flag prune (BR-H1-5)
     Column("provenance", _JSON, nullable=False),
+    # U6: rumor origin (domain-entities §2.4); added to older DBs by ensure_play_schema
+    Column("origin_kind", String, nullable=False, default="canonical", server_default="canonical"),
+    Column("origin_deed_id", String, nullable=True, index=True),
+    Column("origin_appraisal_id", String, nullable=True),
+    Column("spread_from_region_id", String, nullable=True),
 )
 
 region_distortions = Table(
@@ -123,6 +129,12 @@ turn_runs = Table(
     Column("finished_at", DateTime(timezone=True), nullable=True),
     Column("result", _JSON, nullable=True),
     Column("error", Text, nullable=True),
+    # U6: kept so a background run re-read from the store still has them — before U6 the
+    # PostgreSQL adapter dropped turns_charged / from_region_id and U4's failed-run
+    # compensation silently did nothing (NFR review R-03).
+    Column("lang", String, nullable=True),
+    Column("turns_charged", Integer, nullable=False, default=0, server_default="0"),
+    Column("from_region_id", String, nullable=True),
 )
 
 # U5 NPC dialogue — one conversation per (session, NPC), its messages in order.
@@ -155,16 +167,79 @@ messages = Table(
 )
 
 
+# U6 deeds & spread — what the player did, and how each NPC who heard of it judged it.
+DEED_APPRAISAL_UNIQUE = "uq_deed_appraisals_deed_npc"
+
+deeds = Table(
+    "deeds",
+    play_metadata,
+    Column("id", String, primary_key=True),
+    Column("session_id", String, nullable=False, index=True),
+    Column("player_id", String, nullable=False),
+    Column("region_id", String, nullable=False),
+    Column("turn", Integer, nullable=False, default=0),
+    Column("kind", String, nullable=False),
+    Column("text", Text, nullable=False),
+    Column("declaration", Text, nullable=True),
+    Column("messages_through", DateTime(timezone=True), nullable=True),
+    Column("witnessed_npc_ids", _JSON, nullable=False),
+    Column("voided", Boolean, nullable=False, default=False),
+    Column("voided_turn", Integer, nullable=True),
+    Column("run_id", String, nullable=True, index=True),
+    # stamped by the application (next_timestamp): a stay is ordered by it
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+deed_appraisals = Table(
+    "deed_appraisals",
+    play_metadata,
+    Column("id", String, primary_key=True),
+    Column("session_id", String, nullable=False, index=True),
+    Column("deed_id", String, nullable=False, index=True),
+    Column("npc_id", String, nullable=False),
+    Column("noteworthy", Boolean, nullable=False),
+    Column("salience", Float, nullable=False),
+    Column("slant", Text, nullable=False, default=""),
+    Column("retelling", Text, nullable=False, default=""),
+    Column("turn", Integer, nullable=False, default=0),
+    Column("seeded_rumor_id", String, nullable=True),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    UniqueConstraint("deed_id", "npc_id", name=DEED_APPRAISAL_UNIQUE),
+)
+
+# Columns added to tables that older databases already have (create_all never alters an
+# existing table). One list for both dialects (U6 NFR review R-02; BR-U6-34) — the U-H1
+# ``active`` column, once a PostgreSQL-only special case, is the first entry.
+ADDED_COLUMNS: tuple[tuple[str, str, str], ...] = (
+    ("session_rumors", "active", "BOOLEAN NOT NULL DEFAULT TRUE"),
+    ("session_rumors", "origin_kind", "VARCHAR NOT NULL DEFAULT 'canonical'"),
+    ("session_rumors", "origin_deed_id", "VARCHAR"),
+    ("session_rumors", "origin_appraisal_id", "VARCHAR"),
+    ("session_rumors", "spread_from_region_id", "VARCHAR"),
+    ("turn_runs", "lang", "VARCHAR"),
+    ("turn_runs", "turns_charged", "INTEGER NOT NULL DEFAULT 0"),
+    ("turn_runs", "from_region_id", "VARCHAR"),
+)
+ADDED_INDEXES: tuple[tuple[str, str, str], ...] = (
+    ("ix_session_rumors_origin_deed_id", "session_rumors", "origin_deed_id"),
+)
+
+
 def ensure_play_schema(engine: Engine) -> None:
-    """Idempotent ``CREATE TABLE IF NOT EXISTS`` for the play tables (BR-S1-17)."""
+    """Idempotent: ``CREATE TABLE IF NOT EXISTS`` for the play tables (BR-S1-17), then the
+    columns and indexes older databases lack — found with the inspector on both dialects,
+    so existing sessions are kept (U6 N6-3) and offline SQLite tests cover the path."""
     play_metadata.create_all(engine, checkfirst=True)
-    # Additive column for existing DBs (idempotent). Skipped on SQLite offline
-    # tests, where create_all already includes the column (NFR-H4 / BR-H1-16).
-    if engine.dialect.name != "sqlite":
-        with engine.begin() as conn:
-            conn.execute(
-                text(
-                    "ALTER TABLE session_rumors "
-                    "ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE"
-                )
-            )
+    if_not_exists = "" if engine.dialect.name == "sqlite" else "IF NOT EXISTS "
+    with engine.begin() as conn:
+        insp = inspect(conn)
+        present: dict[str, set[str]] = {}
+        for table, column, ddl in ADDED_COLUMNS:
+            if table not in present:
+                present[table] = {c["name"] for c in insp.get_columns(table)}
+            if column in present[table]:
+                continue
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {if_not_exists}{column} {ddl}"))
+            present[table].add(column)
+        for name, table, column in ADDED_INDEXES:
+            conn.execute(text(f"CREATE INDEX IF NOT EXISTS {name} ON {table} ({column})"))

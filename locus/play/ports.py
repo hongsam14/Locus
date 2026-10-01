@@ -13,6 +13,8 @@ from typing import Protocol, runtime_checkable
 
 from locus.play.models import (
     Conversation,
+    Deed,
+    DeedAppraisal,
     GameSession,
     Message,
     Player,
@@ -52,6 +54,9 @@ class RumorStore(Protocol):
         self, session_id: str, region_id: str | None = None, *, include_pruned: bool = False
     ) -> list[SessionRumor]: ...  # active-only by default (BR-H1-6)
     def delete_rumor(self, session_id: str, rumor_id: str) -> None: ...
+    def list_rumors_by_origin(
+        self, session_id: str, *, deed_id: str | None = None, include_inactive: bool = False
+    ) -> list[SessionRumor]: ...  # U6: origin_kind == "deed" only, narrowed by deed
 
 
 @runtime_checkable
@@ -113,6 +118,26 @@ class ConversationStore(Protocol):
 
 
 @runtime_checkable
+class DeedStore(Protocol):
+    """U6 — deeds and the NPC appraisals of them (domain-entities §4.1)."""
+
+    def record_deed(self, deed: Deed) -> Deed: ...  # created_at = next_timestamp()
+    def get_deed(self, session_id: str, deed_id: str) -> Deed | None: ...
+    def list_deeds(
+        self, session_id: str, *, region_id: str | None = None, include_voided: bool = True
+    ) -> list[Deed]: ...  # ordered by (created_at, id)
+    def update_deed(self, deed: Deed) -> Deed: ...  # KeyError when missing
+    def save_appraisals(
+        self, appraisals: list[DeedAppraisal]
+    ) -> list[DeedAppraisal]: ...  # AppraisalExistsError on a (deed_id, npc_id) repeat
+    def list_appraisals(
+        self, session_id: str, *, deed_ids: list[str] | None = None, npc_id: str | None = None
+    ) -> list[DeedAppraisal]: ...  # ordered by (created_at, id)
+    def mark_seeded(self, session_id: str, appraisal_id: str, rumor_id: str) -> None: ...
+    def delete_by_run(self, session_id: str, run_id: str) -> int: ...  # deeds + appraisals
+
+
+@runtime_checkable
 class PlayUnitOfWork(Protocol):
     """One transaction spanning every store (U4, BR-U4-14). Enter opens it; a clean
     exit commits, an exception rolls back. Services inside a UoW write only through
@@ -136,6 +161,8 @@ class PlayUnitOfWork(Protocol):
     def runs(self) -> TurnRunStore: ...
     @property
     def conversations(self) -> ConversationStore: ...
+    @property
+    def deeds(self) -> DeedStore: ...
 
     def __enter__(self) -> PlayUnitOfWork: ...
     def __exit__(self, exc_type, exc, tb) -> None: ...
@@ -152,6 +179,7 @@ class PlayRepository(
     PlayerStore,
     TurnRunStore,
     ConversationStore,
+    DeedStore,
     Protocol,
 ):
     """Everything a play adapter provides (the union of the concern ports).

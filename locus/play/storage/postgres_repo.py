@@ -31,9 +31,11 @@ from sqlalchemy import (
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.exc import IntegrityError
 
-from locus.play.errors import ConversationExistsError
+from locus.play.errors import AppraisalExistsError, ConversationExistsError
 from locus.play.models import (
     Conversation,
+    Deed,
+    DeedAppraisal,
     GameSession,
     Message,
     Player,
@@ -50,7 +52,10 @@ from locus.play.ports import PlayUnitOfWork
 from locus.play.storage.clock import next_timestamp
 from locus.play.storage.schema import (
     CONVERSATION_UNIQUE,
+    DEED_APPRAISAL_UNIQUE,
     conversations,
+    deed_appraisals,
+    deeds,
     ensure_play_schema,
     game_sessions,
     messages,
@@ -105,6 +110,10 @@ class _PgStores:
 
     @property
     def conversations(self) -> _PgStores:
+        return self
+
+    @property
+    def deeds(self) -> _PgStores:
         return self
 
     # -- sessions --------------------------------------------------------- #
@@ -410,6 +419,9 @@ class _PgStores:
                 finished_at=run.finished_at,
                 result=run.result.model_dump(mode="json") if run.result is not None else None,
                 error=run.error,
+                lang=run.lang,
+                turns_charged=run.turns_charged,
+                from_region_id=run.from_region_id,
             )
         )
         row = self._conn.execute(select(turn_runs).where(turn_runs.c.id == run.id)).mappings().one()
@@ -436,6 +448,9 @@ class _PgStores:
                 finished_at=run.finished_at,
                 result=run.result.model_dump(mode="json") if run.result is not None else None,
                 error=run.error,
+                lang=run.lang,
+                turns_charged=run.turns_charged,
+                from_region_id=run.from_region_id,
             )
         )
         if res.rowcount == 0:
@@ -537,6 +552,120 @@ class _PgStores:
         )
         return [_row_to_conversation(r, []) for r in rows]
 
+    # -- deeds (U6) ------------------------------------------------------- #
+    def record_deed(self, deed: Deed) -> Deed:
+        stored = deed.model_copy(update={"created_at": deed.created_at or next_timestamp()})
+        self._conn.execute(deeds.insert().values(**_deed_to_values(stored)))
+        return stored
+
+    def get_deed(self, session_id: str, deed_id: str) -> Deed | None:
+        row = (
+            self._conn.execute(
+                select(deeds).where(deeds.c.session_id == session_id, deeds.c.id == deed_id)
+            )
+            .mappings()
+            .one_or_none()
+        )
+        return _row_to_deed(row) if row else None
+
+    def list_deeds(
+        self, session_id: str, *, region_id: str | None = None, include_voided: bool = True
+    ) -> list[Deed]:
+        stmt = select(deeds).where(deeds.c.session_id == session_id)
+        if region_id is not None:
+            stmt = stmt.where(deeds.c.region_id == region_id)
+        if not include_voided:
+            stmt = stmt.where(deeds.c.voided.is_(False))
+        rows = self._conn.execute(stmt.order_by(deeds.c.created_at, deeds.c.id)).mappings().all()
+        return [_row_to_deed(r) for r in rows]
+
+    def update_deed(self, deed: Deed) -> Deed:
+        values = _deed_to_values(deed)
+        values.pop("created_at")  # the stay order never moves
+        res = self._conn.execute(
+            update(deeds)
+            .where(deeds.c.id == deed.id, deeds.c.session_id == deed.session_id)
+            .values(**values)
+        )
+        if res.rowcount == 0:
+            raise KeyError(f"deed not found: {deed.id}")
+        return self.get_deed(deed.session_id, deed.id)  # type: ignore[return-value]
+
+    def save_appraisals(self, appraisals: list[DeedAppraisal]) -> list[DeedAppraisal]:
+        out: list[DeedAppraisal] = []
+        for a in appraisals:
+            taken = self._conn.execute(
+                select(deed_appraisals.c.id).where(
+                    deed_appraisals.c.deed_id == a.deed_id, deed_appraisals.c.npc_id == a.npc_id
+                )
+            ).scalar_one_or_none()
+            if taken is not None:
+                raise AppraisalExistsError(f"appraisal exists: {a.deed_id}/{a.npc_id}")
+            stored = a.model_copy(update={"created_at": a.created_at or next_timestamp()})
+            try:
+                self._conn.execute(deed_appraisals.insert().values(**_appraisal_to_values(stored)))
+            except IntegrityError as exc:
+                if _is_appraisal_unique_violation(exc):
+                    raise AppraisalExistsError(f"appraisal exists: {a.deed_id}/{a.npc_id}") from exc
+                raise
+            out.append(stored)
+        return out
+
+    def list_appraisals(
+        self, session_id: str, *, deed_ids: list[str] | None = None, npc_id: str | None = None
+    ) -> list[DeedAppraisal]:
+        stmt = select(deed_appraisals).where(deed_appraisals.c.session_id == session_id)
+        if deed_ids is not None:
+            if not deed_ids:
+                return []
+            stmt = stmt.where(deed_appraisals.c.deed_id.in_(deed_ids))
+        if npc_id is not None:
+            stmt = stmt.where(deed_appraisals.c.npc_id == npc_id)
+        rows = (
+            self._conn.execute(stmt.order_by(deed_appraisals.c.created_at, deed_appraisals.c.id))
+            .mappings()
+            .all()
+        )
+        return [_row_to_appraisal(r) for r in rows]
+
+    def mark_seeded(self, session_id: str, appraisal_id: str, rumor_id: str) -> None:
+        res = self._conn.execute(
+            update(deed_appraisals)
+            .where(deed_appraisals.c.id == appraisal_id, deed_appraisals.c.session_id == session_id)
+            .values(seeded_rumor_id=rumor_id)
+        )
+        if res.rowcount == 0:
+            raise KeyError(f"appraisal not found: {appraisal_id}")
+
+    def delete_by_run(self, session_id: str, run_id: str) -> int:
+        ids = list(
+            self._conn.execute(
+                select(deeds.c.id).where(deeds.c.session_id == session_id, deeds.c.run_id == run_id)
+            ).scalars()
+        )
+        if not ids:
+            return 0
+        self._conn.execute(delete(deed_appraisals).where(deed_appraisals.c.deed_id.in_(ids)))
+        self._conn.execute(delete(deeds).where(deeds.c.id.in_(ids)))
+        return len(ids)
+
+    def list_rumors_by_origin(
+        self, session_id: str, *, deed_id: str | None = None, include_inactive: bool = False
+    ) -> list[SessionRumor]:
+        stmt = select(session_rumors).where(
+            session_rumors.c.session_id == session_id, session_rumors.c.origin_kind == "deed"
+        )
+        if deed_id is not None:
+            stmt = stmt.where(session_rumors.c.origin_deed_id == deed_id)
+        if not include_inactive:
+            stmt = stmt.where(session_rumors.c.active.is_(True))
+        rows = (
+            self._conn.execute(stmt.order_by(session_rumors.c.region_id, session_rumors.c.id))
+            .mappings()
+            .all()
+        )
+        return [_row_to_rumor(r) for r in rows]
+
     def _conversation_row(self, session_id: str, npc_id: str):
         return (
             self._conn.execute(
@@ -604,6 +733,10 @@ class _PgUnitOfWork:
 
     @property
     def conversations(self) -> _PgStores:
+        return self._s
+
+    @property
+    def deeds(self) -> _PgStores:
         return self._s
 
 
@@ -761,6 +894,46 @@ class PostgresPlayRepository:
     def list_conversations(self, session_id: str) -> list[Conversation]:
         return self._tx(lambda s: s.list_conversations(session_id))
 
+    # -- deeds (U6) ------------------------------------------------------- #
+    def record_deed(self, deed: Deed) -> Deed:
+        return self._tx(lambda s: s.record_deed(deed))
+
+    def get_deed(self, session_id: str, deed_id: str) -> Deed | None:
+        return self._tx(lambda s: s.get_deed(session_id, deed_id))
+
+    def list_deeds(
+        self, session_id: str, *, region_id: str | None = None, include_voided: bool = True
+    ) -> list[Deed]:
+        return self._tx(
+            lambda s: s.list_deeds(session_id, region_id=region_id, include_voided=include_voided)
+        )
+
+    def update_deed(self, deed: Deed) -> Deed:
+        return self._tx(lambda s: s.update_deed(deed))
+
+    def save_appraisals(self, appraisals: list[DeedAppraisal]) -> list[DeedAppraisal]:
+        return self._tx(lambda s: s.save_appraisals(appraisals))
+
+    def list_appraisals(
+        self, session_id: str, *, deed_ids: list[str] | None = None, npc_id: str | None = None
+    ) -> list[DeedAppraisal]:
+        return self._tx(lambda s: s.list_appraisals(session_id, deed_ids=deed_ids, npc_id=npc_id))
+
+    def mark_seeded(self, session_id: str, appraisal_id: str, rumor_id: str) -> None:
+        return self._tx(lambda s: s.mark_seeded(session_id, appraisal_id, rumor_id))
+
+    def delete_by_run(self, session_id: str, run_id: str) -> int:
+        return self._tx(lambda s: s.delete_by_run(session_id, run_id))
+
+    def list_rumors_by_origin(
+        self, session_id: str, *, deed_id: str | None = None, include_inactive: bool = False
+    ) -> list[SessionRumor]:
+        return self._tx(
+            lambda s: s.list_rumors_by_origin(
+                session_id, deed_id=deed_id, include_inactive=include_inactive
+            )
+        )
+
     # -- helpers ---------------------------------------------------------- #
     def _require_engine(self) -> Engine:
         if self._engine is None:
@@ -796,6 +969,10 @@ def _rumor_to_values(r: SessionRumor) -> dict:
         "promoted": r.promoted,
         "active": r.active,
         "provenance": r.provenance.model_dump(),
+        "origin_kind": r.origin_kind,
+        "origin_deed_id": r.origin_deed_id,
+        "origin_appraisal_id": r.origin_appraisal_id,
+        "spread_from_region_id": r.spread_from_region_id,
     }
 
 
@@ -813,6 +990,10 @@ def _row_to_rumor(row) -> SessionRumor:
         promoted=row["promoted"],
         active=row["active"],
         provenance=Provenance.model_validate(row["provenance"]),
+        origin_kind=row["origin_kind"] or "canonical",
+        origin_deed_id=row["origin_deed_id"],
+        origin_appraisal_id=row["origin_appraisal_id"],
+        spread_from_region_id=row["spread_from_region_id"],
     )
 
 
@@ -889,7 +1070,20 @@ def _row_to_run(row) -> TurnRun:
         finished_at=row["finished_at"],
         result=row["result"],
         error=row["error"],
+        # U6: these three used to be dropped here, so U4's failed-run compensation (turn
+        # refund, position restore) never ran on PostgreSQL (NFR review R-03).
+        lang=row["lang"],
+        turns_charged=row["turns_charged"] or 0,
+        from_region_id=row["from_region_id"],
     )
+
+
+def _aware(value: datetime | None) -> datetime | None:
+    """SQLite (offline tests) drops the zone of a ``DateTime(timezone=True)`` column; a
+    stay boundary or a summary cursor compares these, so read them back as UTC (U6)."""
+    if value is None or value.tzinfo is not None:
+        return value
+    return value.replace(tzinfo=timezone.utc)
 
 
 def _enum_value(v) -> str:
@@ -916,7 +1110,7 @@ def _row_to_message(row) -> Message:
         text=row["text"],
         lang=row["lang"],
         turn=row["turn"],
-        created_at=row["created_at"],
+        created_at=_aware(row["created_at"]),
     )
 
 
@@ -932,3 +1126,83 @@ def _is_conversation_unique_violation(exc: IntegrityError) -> bool:
         return name == CONVERSATION_UNIQUE
     text_ = str(getattr(exc, "orig", exc))
     return "conversations.session_id" in text_ and "conversations.npc_id" in text_
+
+
+def _deed_to_values(d: Deed) -> dict:
+    return {
+        "id": d.id,
+        "session_id": d.session_id,
+        "player_id": d.player_id,
+        "region_id": d.region_id,
+        "turn": d.turn,
+        "kind": _enum_value(d.kind),
+        "text": d.text,
+        "declaration": d.declaration,
+        "messages_through": d.messages_through,
+        "witnessed_npc_ids": list(d.witnessed_npc_ids),
+        "voided": d.voided,
+        "voided_turn": d.voided_turn,
+        "run_id": d.run_id,
+        "created_at": d.created_at,
+    }
+
+
+def _row_to_deed(row) -> Deed:
+    return Deed(
+        id=row["id"],
+        session_id=row["session_id"],
+        player_id=row["player_id"],
+        region_id=row["region_id"],
+        turn=row["turn"],
+        kind=row["kind"],
+        text=row["text"],
+        declaration=row["declaration"],
+        messages_through=_aware(row["messages_through"]),
+        witnessed_npc_ids=list(row["witnessed_npc_ids"] or []),
+        voided=row["voided"],
+        voided_turn=row["voided_turn"],
+        run_id=row["run_id"],
+        created_at=_aware(row["created_at"]),
+    )
+
+
+def _appraisal_to_values(a: DeedAppraisal) -> dict:
+    return {
+        "id": a.id,
+        "session_id": a.session_id,
+        "deed_id": a.deed_id,
+        "npc_id": a.npc_id,
+        "noteworthy": a.noteworthy,
+        "salience": a.salience,
+        "slant": a.slant,
+        "retelling": a.retelling,
+        "turn": a.turn,
+        "seeded_rumor_id": a.seeded_rumor_id,
+        "created_at": a.created_at,
+    }
+
+
+def _row_to_appraisal(row) -> DeedAppraisal:
+    return DeedAppraisal(
+        id=row["id"],
+        session_id=row["session_id"],
+        deed_id=row["deed_id"],
+        npc_id=row["npc_id"],
+        noteworthy=row["noteworthy"],
+        salience=row["salience"],
+        slant=row["slant"],
+        retelling=row["retelling"],
+        turn=row["turn"],
+        seeded_rumor_id=row["seeded_rumor_id"],
+        created_at=_aware(row["created_at"]),
+    )
+
+
+def _is_appraisal_unique_violation(exc: IntegrityError) -> bool:
+    """Only the (deed_id, npc_id) uniqueness (same approach as conversations)."""
+    diag = getattr(getattr(exc, "orig", None), "diag", None)
+    name = getattr(diag, "constraint_name", None)
+    if name is not None:
+        return name == DEED_APPRAISAL_UNIQUE
+    text_ = str(getattr(exc, "orig", exc))
+    return "deed_appraisals.deed_id" in text_ and "deed_appraisals.npc_id" in text_

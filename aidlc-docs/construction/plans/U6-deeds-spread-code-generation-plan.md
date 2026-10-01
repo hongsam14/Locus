@@ -119,22 +119,22 @@
   - `tests/shared/test_config.py`: env 여섯 로딩
 
 ### Step 3 — 저장
-- [ ] 3.1 `locus/play/storage/schema.py`
+- [x] 3.1 `locus/play/storage/schema.py`
   - 테이블 `deeds`·`deed_appraisals`(`uq_deed_appraisals_deed_npc`)를 만든다.
   - 기존 두 테이블에 열 7개를 더한다(위 표).
   - `ensure_play_schema`를 inspector 방식으로 바꾼다. 두 방언에서 빠진 열만 `ALTER`하고, 색인은 `CREATE INDEX IF NOT EXISTS`로 만든다. 기존 `active` 열 선례도 같은 경로로 옮긴다.
-- [ ] 3.2 `locus/play/ports.py`
+- [x] 3.2 `locus/play/ports.py`
   - `DeedStore`를 만든다(domain-entities §4.1과 `delete_by_run`).
   - `RumorStore.list_rumors_by_origin`
   - `PlayUnitOfWork.deeds`(읽기 전용 프로퍼티). `PlayRepository`에 `DeedStore`를 넣는다.
-- [ ] 3.3 어댑터 둘. 포트 추가와 어댑터 구현 **사이 구간은 붉다**. 프로토콜 검사 테스트가 3.3 끝에 다시 GREEN이 된다.
+- [x] 3.3 어댑터 둘. 포트 추가와 어댑터 구현 **사이 구간은 붉다**. 프로토콜 검사 테스트가 3.3 끝에 다시 GREEN이 된다.
   - **인메모리**
     - `_deeds`·`_appraisals`를 `_STATE`에 넣어 롤백을 복원한다.
     - `@_synchronized` 메서드들과 `_MemoryUnitOfWork.deeds`를 둔다.
     - **테스트용 표시 `uow_depth`**: UoW가 열려 있는지 알려 준다(NFR-3 구조 단언).
   - **PG**: `_PgStores`에 행적·판단 메서드를 두고, `created_at`은 `next_timestamp()`로 찍는다.
   - **공통**: `_rumor_to_values`·`_row_to_rumor`에 기원 넷, `create_run`·`update_run`·`_row_to_run`에 `lang`·`turns_charged`·`from_region_id`를 매핑한다(U4 잠재 결함 수정). 위임 메서드도 둔다.
-- [ ] 3.4 테스트
+- [x] 3.4 테스트
   - `test_repository_contract.py`·`test_postgres_repo.py`(두 어댑터 공통)
     - 행적 기록과 순서
     - 판단 유일(`AppraisalExistsError`), `mark_seeded`, `delete_by_run`(판단 포함)

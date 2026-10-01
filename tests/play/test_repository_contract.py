@@ -356,3 +356,173 @@ def test_u5_a_rolled_back_unit_of_work_takes_the_conversation_with_it() -> None:
             )
             raise RuntimeError("the NPC answer could not be stored")
     assert repo.get_conversation(s.id, "n1") is None  # BR-U5-3: no empty conversation left
+
+
+# --- U6 deeds, appraisals, rumor origin, run columns — both adapters (Step 3.4) ------ #
+@pytest.fixture(params=["memory", "sql"])
+def any_repo(request):
+    if request.param == "memory":
+        return InMemoryPlayRepository()
+    pytest.importorskip("sqlalchemy")
+    from sqlalchemy import create_engine
+
+    from locus.play.storage.postgres_repo import PostgresPlayRepository
+
+    r = PostgresPlayRepository(engine=create_engine("sqlite://", future=True))
+    r.ensure_schema()
+    return r
+
+
+def _rumor(session_id: str) -> SessionRumor:
+    return SessionRumor(
+        session_id=session_id, region_id="a", distorted_from_id="k", provenance=_prov()
+    )
+
+
+def _deed(session_id: str, region: str = "a", *, kind="arrival", run_id=None, text="Ari came."):
+    from locus.play.models import Deed
+
+    return Deed(
+        session_id=session_id,
+        player_id="p",
+        region_id=region,
+        kind=kind,
+        text=text,
+        witnessed_npc_ids=["n1", "n2"],
+        run_id=run_id,
+    )
+
+
+def test_u6_deeds_keep_their_order_and_filters(any_repo) -> None:
+    s = any_repo.create_session("w")
+    first = any_repo.record_deed(_deed(s.id, "a"))
+    second = any_repo.record_deed(_deed(s.id, "b", kind="declared_action", text="Ari sang."))
+    third = any_repo.record_deed(_deed(s.id, "a", kind="statement", text="Ari asked."))
+    assert first.created_at is not None and first.created_at < second.created_at < third.created_at
+    assert [d.id for d in any_repo.list_deeds(s.id)] == [first.id, second.id, third.id]
+    assert [d.id for d in any_repo.list_deeds(s.id, region_id="a")] == [first.id, third.id]
+    voided = second.model_copy(update={"voided": True, "voided_turn": 3})
+    assert any_repo.update_deed(voided).voided is True
+    assert [d.id for d in any_repo.list_deeds(s.id, include_voided=False)] == [first.id, third.id]
+    got = any_repo.get_deed(s.id, second.id)
+    assert got.voided_turn == 3 and got.created_at == second.created_at  # order never moves
+    assert got.witnessed_npc_ids == ["n1", "n2"] and got.kind == "declared_action"
+    assert any_repo.get_deed(s.id, "missing") is None
+    with pytest.raises(KeyError):
+        any_repo.update_deed(_deed(s.id))
+
+
+def test_u6_appraisals_are_unique_per_deed_and_npc(any_repo) -> None:
+    from locus.play.errors import AppraisalExistsError
+    from locus.play.models import DeedAppraisal
+
+    s = any_repo.create_session("w")
+    deed = any_repo.record_deed(_deed(s.id))
+
+    def ap(npc, **kw):
+        return DeedAppraisal(
+            session_id=s.id,
+            deed_id=deed.id,
+            npc_id=npc,
+            noteworthy=True,
+            salience=0.6,
+            slant="wary",
+            retelling="A stranger came.",
+            **kw,
+        )
+
+    saved = any_repo.save_appraisals([ap("n1"), ap("n2")])
+    assert [a.npc_id for a in any_repo.list_appraisals(s.id)] == ["n1", "n2"]
+    assert [a.npc_id for a in any_repo.list_appraisals(s.id, npc_id="n2")] == ["n2"]
+    assert any_repo.list_appraisals(s.id, deed_ids=[]) == []
+    with pytest.raises(AppraisalExistsError):
+        any_repo.save_appraisals([ap("n1")])
+    any_repo.mark_seeded(s.id, saved[0].id, "rumor-1")
+    assert any_repo.list_appraisals(s.id, npc_id="n1")[0].seeded_rumor_id == "rumor-1"
+    with pytest.raises(KeyError):
+        any_repo.mark_seeded(s.id, "missing", "rumor-1")
+
+
+def test_u6_delete_by_run_takes_only_that_runs_deeds_and_their_appraisals(any_repo) -> None:
+    from locus.play.models import DeedAppraisal
+
+    s = any_repo.create_session("w")
+    kept = any_repo.record_deed(_deed(s.id, run_id="run-a"))
+    gone = any_repo.record_deed(_deed(s.id, run_id="run-b"))
+    any_repo.save_appraisals(
+        [
+            DeedAppraisal(
+                session_id=s.id, deed_id=d.id, npc_id="n1", noteworthy=False, salience=0.0
+            )
+            for d in (kept, gone)
+        ]
+    )
+    assert any_repo.delete_by_run(s.id, "run-b") == 1
+    assert [d.id for d in any_repo.list_deeds(s.id)] == [kept.id]
+    assert [a.deed_id for a in any_repo.list_appraisals(s.id)] == [kept.id]
+    assert any_repo.delete_by_run(s.id, "run-none") == 0
+
+
+def test_u6_rumor_origin_round_trips_and_filters(any_repo) -> None:
+    s = any_repo.create_session("w")
+    canon = _rumor(s.id)
+    seed = _rumor(s.id).model_copy(
+        update={"origin_kind": "deed", "origin_deed_id": "d1", "origin_appraisal_id": "ap1"}
+    )
+    hop = _rumor(s.id).model_copy(
+        update={
+            "origin_kind": "deed",
+            "origin_deed_id": "d1",
+            "origin_appraisal_id": "ap1",
+            "spread_from_region_id": "a",
+            "active": False,
+        }
+    )
+    other = _rumor(s.id).model_copy(update={"origin_kind": "deed", "origin_deed_id": "d2"})
+    any_repo.upsert_rumors([canon, seed, hop, other])
+    assert any_repo.get_rumor(s.id, canon.id).origin_kind == "canonical"
+    back = any_repo.get_rumor(s.id, hop.id)
+    assert (back.origin_deed_id, back.origin_appraisal_id, back.spread_from_region_id) == (
+        "d1",
+        "ap1",
+        "a",
+    )
+    assert {r.id for r in any_repo.list_rumors_by_origin(s.id)} == {seed.id, other.id}
+    assert {r.id for r in any_repo.list_rumors_by_origin(s.id, deed_id="d1")} == {seed.id}
+    assert {
+        r.id for r in any_repo.list_rumors_by_origin(s.id, deed_id="d1", include_inactive=True)
+    } == {seed.id, hop.id}
+
+
+def test_u6_turn_runs_keep_lang_charge_and_origin(any_repo) -> None:
+    """NFR review R-03 / EX-19: the background run re-reads its row — before U6 the SQL
+    adapter dropped turns_charged and from_region_id, so U4 compensation never ran."""
+    from locus.play.models import TurnRun, TurnRunStatus
+
+    s = any_repo.create_session("w")
+    run = any_repo.create_run(
+        TurnRun(session_id=s.id, lang="en", turns_charged=2, from_region_id="a", cost_turns=2)
+    )
+    back = any_repo.get_run(s.id, run.id)
+    assert (back.lang, back.turns_charged, back.from_region_id) == ("en", 2, "a")
+    back.status = TurnRunStatus.FAILED
+    updated = any_repo.update_run(back)
+    assert (updated.lang, updated.turns_charged, updated.from_region_id) == ("en", 2, "a")
+
+
+def test_u6_a_rolled_back_unit_of_work_takes_deeds_and_appraisals_with_it(any_repo) -> None:
+    from locus.play.models import DeedAppraisal
+
+    s = any_repo.create_session("w")
+    with pytest.raises(RuntimeError):
+        with any_repo.uow() as u:
+            d = u.deeds.record_deed(_deed(s.id))
+            u.deeds.save_appraisals(
+                [
+                    DeedAppraisal(
+                        session_id=s.id, deed_id=d.id, npc_id="n1", noteworthy=True, salience=0.5
+                    )
+                ]
+            )
+            raise RuntimeError("boom")
+    assert any_repo.list_deeds(s.id) == [] and any_repo.list_appraisals(s.id) == []

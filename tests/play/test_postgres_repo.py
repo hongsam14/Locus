@@ -332,3 +332,54 @@ def test_u5_sql_rollback_discards_the_conversation(repo: PostgresPlayRepository)
             )
             raise RuntimeError("boom")
     assert repo.get_conversation(s.id, "n1") is None
+
+
+def test_u6_ex15_an_old_schema_gains_the_new_columns_and_keeps_its_rows() -> None:
+    """EX-15 / BR-U6-34: ensure_play_schema adds the missing columns on SQLite too (the
+    inspector path), old rumors read back as canonical, and a second call is a no-op."""
+    from sqlalchemy import inspect, text
+
+    engine = create_engine("sqlite://", future=True)
+    with engine.begin() as conn:  # the shape of a pre-U6 database
+        conn.execute(
+            text(
+                "CREATE TABLE session_rumors (id VARCHAR PRIMARY KEY, session_id VARCHAR NOT NULL,"
+                " region_id VARCHAR NOT NULL, distorted_from_id VARCHAR NOT NULL,"
+                " distorted_from_kind VARCHAR NOT NULL, statement TEXT NOT NULL,"
+                " distortion_degree FLOAT NOT NULL, support FLOAT NOT NULL, confidence FLOAT NOT NULL,"
+                " promoted BOOLEAN NOT NULL, provenance JSON NOT NULL)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE TABLE turn_runs (id VARCHAR PRIMARY KEY, session_id VARCHAR NOT NULL,"
+                " status VARCHAR NOT NULL, action JSON, cost_turns INTEGER NOT NULL,"
+                " started_turn INTEGER NOT NULL, started_at DATETIME, finished_at DATETIME,"
+                " result JSON, error TEXT)"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO session_rumors VALUES ('r1','s1','a','k','knowledge','old',0.3,0.2,0.7,0,"
+                '\'{"source": "simulation"}\')'
+            )
+        )
+    repo = PostgresPlayRepository(engine=engine)
+    repo.ensure_schema()
+    repo.ensure_schema()  # idempotent
+    cols = {c["name"] for c in inspect(engine).get_columns("session_rumors")}
+    assert {
+        "active",
+        "origin_kind",
+        "origin_deed_id",
+        "origin_appraisal_id",
+        "spread_from_region_id",
+    } <= cols
+    assert {"lang", "turns_charged", "from_region_id"} <= {
+        c["name"] for c in inspect(engine).get_columns("turn_runs")
+    }
+    assert "ix_session_rumors_origin_deed_id" in {
+        i["name"] for i in inspect(engine).get_indexes("session_rumors")
+    }
+    old = repo.get_rumor("s1", "r1")
+    assert old.origin_kind == "canonical" and old.active is True

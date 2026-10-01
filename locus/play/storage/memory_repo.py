@@ -20,9 +20,11 @@ from datetime import datetime, timezone
 from functools import wraps
 from typing import Any, Callable, TypeVar
 
-from locus.play.errors import ConversationExistsError
+from locus.play.errors import AppraisalExistsError, ConversationExistsError
 from locus.play.models import (
     Conversation,
+    Deed,
+    DeedAppraisal,
     GameSession,
     Message,
     Player,
@@ -36,6 +38,7 @@ from locus.play.models import (
 )
 from locus.play.ports import (
     ConversationStore,
+    DeedStore,
     DistortionStore,
     EventStore,
     PlayerStore,
@@ -47,6 +50,9 @@ from locus.play.ports import (
 )
 
 F = TypeVar("F", bound=Callable[..., Any])
+
+
+_EPOCH = datetime.min.replace(tzinfo=timezone.utc)
 
 
 def _synchronized(fn: F) -> F:
@@ -75,7 +81,13 @@ class InMemoryPlayRepository:
         # U5: session_id -> {npc_id: conversation (no messages)}; conversation_id -> messages
         self._conversations: dict[str, dict[str, Conversation]] = {}
         self._messages: dict[str, list[Message]] = {}
+        # U6: session_id -> {deed_id: deed}; session_id -> {appraisal_id: appraisal}
+        self._deeds: dict[str, dict[str, Deed]] = {}
+        self._appraisals: dict[str, dict[str, DeedAppraisal]] = {}
         self._clock = 0
+        # How many units of work are open right now. Tests read it to assert that no LLM
+        # call happens inside a transaction (U6 NFR-3 structural assertion).
+        self.uow_depth = 0
 
     # --- internal ---
     def _now(self) -> datetime:
@@ -94,6 +106,8 @@ class InMemoryPlayRepository:
         "_runs",
         "_conversations",
         "_messages",
+        "_deeds",
+        "_appraisals",
     )
 
     def _snapshot_state(self) -> dict[str, Any]:
@@ -194,6 +208,20 @@ class InMemoryPlayRepository:
             if (region_id is None or r.region_id == region_id) and (include_pruned or r.active)
         ]
         out.sort(key=lambda r: (r.region_id, r.id))  # same order as the SQL adapter
+        return out
+
+    @_synchronized
+    def list_rumors_by_origin(
+        self, session_id: str, *, deed_id: str | None = None, include_inactive: bool = False
+    ) -> list[SessionRumor]:
+        out = [
+            deepcopy(r)
+            for r in self._rumors.get(session_id, {}).values()
+            if r.origin_kind == "deed"
+            and (deed_id is None or r.origin_deed_id == deed_id)
+            and (include_inactive or r.active)
+        ]
+        out.sort(key=lambda r: (r.region_id, r.id))
         return out
 
     @_synchronized
@@ -389,6 +417,91 @@ class InMemoryPlayRepository:
         msgs.sort(key=lambda m: (m.created_at or datetime.min.replace(tzinfo=timezone.utc), m.id))
         return msgs
 
+    # --- deeds (U6) ---
+    @_synchronized
+    def record_deed(self, deed: Deed) -> Deed:
+        self._require_session(deed.session_id)
+        stored = deepcopy(deed)
+        if stored.created_at is None:
+            stored.created_at = self._now()
+        self._deeds.setdefault(deed.session_id, {})[stored.id] = stored
+        return deepcopy(stored)
+
+    @_synchronized
+    def get_deed(self, session_id: str, deed_id: str) -> Deed | None:
+        deed = self._deeds.get(session_id, {}).get(deed_id)
+        return deepcopy(deed) if deed is not None else None
+
+    @_synchronized
+    def list_deeds(
+        self, session_id: str, *, region_id: str | None = None, include_voided: bool = True
+    ) -> list[Deed]:
+        out = [
+            deepcopy(d)
+            for d in self._deeds.get(session_id, {}).values()
+            if (region_id is None or d.region_id == region_id) and (include_voided or not d.voided)
+        ]
+        out.sort(key=lambda d: (d.created_at or _EPOCH, d.id))
+        return out
+
+    @_synchronized
+    def update_deed(self, deed: Deed) -> Deed:
+        by_id = self._deeds.get(deed.session_id, {})
+        if deed.id not in by_id:
+            raise KeyError(f"deed not found: {deed.id}")
+        stored = deed.model_copy(deep=True, update={"created_at": by_id[deed.id].created_at})
+        by_id[deed.id] = stored
+        return deepcopy(stored)
+
+    @_synchronized
+    def save_appraisals(self, appraisals: list[DeedAppraisal]) -> list[DeedAppraisal]:
+        taken = {
+            (a.deed_id, a.npc_id) for by_id in self._appraisals.values() for a in by_id.values()
+        }
+        for a in appraisals:  # all or nothing, like the SQL transaction
+            if (a.deed_id, a.npc_id) in taken:
+                raise AppraisalExistsError(f"appraisal exists: {a.deed_id}/{a.npc_id}")
+            taken.add((a.deed_id, a.npc_id))
+        out: list[DeedAppraisal] = []
+        for a in appraisals:
+            stored = deepcopy(a)
+            if stored.created_at is None:
+                stored.created_at = self._now()
+            self._appraisals.setdefault(a.session_id, {})[stored.id] = stored
+            out.append(deepcopy(stored))
+        return out
+
+    @_synchronized
+    def list_appraisals(
+        self, session_id: str, *, deed_ids: list[str] | None = None, npc_id: str | None = None
+    ) -> list[DeedAppraisal]:
+        wanted = set(deed_ids) if deed_ids is not None else None
+        out = [
+            deepcopy(a)
+            for a in self._appraisals.get(session_id, {}).values()
+            if (wanted is None or a.deed_id in wanted) and (npc_id is None or a.npc_id == npc_id)
+        ]
+        out.sort(key=lambda a: (a.created_at or _EPOCH, a.id))
+        return out
+
+    @_synchronized
+    def mark_seeded(self, session_id: str, appraisal_id: str, rumor_id: str) -> None:
+        appraisal = self._appraisals.get(session_id, {}).get(appraisal_id)
+        if appraisal is None:
+            raise KeyError(f"appraisal not found: {appraisal_id}")
+        appraisal.seeded_rumor_id = rumor_id
+
+    @_synchronized
+    def delete_by_run(self, session_id: str, run_id: str) -> int:
+        deeds = self._deeds.get(session_id, {})
+        gone = {d.id for d in deeds.values() if d.run_id == run_id}
+        for deed_id in gone:
+            del deeds[deed_id]
+        appraisals = self._appraisals.get(session_id, {})
+        for aid in [a.id for a in appraisals.values() if a.deed_id in gone]:
+            del appraisals[aid]
+        return len(gone)
+
     # --- internal ---
     def _require_session(self, session_id: str) -> GameSession:
         s = self._sessions.get(session_id)
@@ -447,10 +560,15 @@ class _MemoryUnitOfWork:
     def conversations(self) -> ConversationStore:
         return self._s
 
+    @property
+    def deeds(self) -> DeedStore:
+        return self._s
+
     def __enter__(self) -> PlayUnitOfWork:
         self._repo._lock.acquire()
         self._saved = self._repo._snapshot_state()
         self._open = True
+        self._repo.uow_depth += 1
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
@@ -460,4 +578,5 @@ class _MemoryUnitOfWork:
         finally:
             self._open = False
             self._saved = None
+            self._repo.uow_depth -= 1
             self._repo._lock.release()

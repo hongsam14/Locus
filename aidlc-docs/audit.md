@@ -4035,3 +4035,11 @@ Docs: `construction/build-and-test/purpose-restructure/` (build, unit, integrati
 **Context**: CONSTRUCTION / Build and Test — Purpose Restructure cycle.
 
 ---
+
+## Build and Test — UI check
+**Timestamp**: 2026-10-01T19:00:45Z
+**User Input**: "최초 동작 화면은 확인했고 화면 고도화는 후속 테스크임"
+**AI Response**: Recorded: the human checked the first-run screens; screen polish goes on the next-cycle list (U8 code-summary §10, B&T summary). Next: the Build and Test approval gate (→ Operations, placeholder).
+**Context**: CONSTRUCTION / Build and Test — Purpose Restructure cycle.
+
+---

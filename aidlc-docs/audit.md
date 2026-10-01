@@ -3431,3 +3431,11 @@ R-16 → Accepted risk
 **Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 12.
 
 ---
+
+## U3 Code Generation — approval gate
+**Timestamp**: 2026-10-01T10:51:42Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U3 code approved. Running `/code-review` on the U3 diff (`git diff 9228861..bc1bd3a`, code plan commit → code summary) in the background. Next unit in the order U1→U2→U4→U5→U6→U7→U3→**U8**: U8 데모·배포·문서 (Functional Design light).
+**Context**: CONSTRUCTION / U3 — Code Generation complete.
+
+---

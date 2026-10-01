@@ -3572,3 +3572,24 @@ Tests: pytest +7, vitest +5; every fix caught by a mutation. Gates: pytest 857, 
 **Context**: CONSTRUCTION / U3 post-approval review fixes.
 
 ---
+
+## U8 Functional Design — Plan Review iteration 2 verdict
+**Timestamp**: 2026-10-01T13:46:15Z
+**AI Response**: Reviewer (architecture-reviewer, adversarial, iter 2 of 2) returned READY: R-01..R-04 and R-06..R-11 resolved; R-05 lowered to Minor and still unresolved (T3→T4 step missing in the live scenario); new Minor R-12 (startSeed type SessionEvent vs EventOut) and R-13 (Ironcrag hearsay list narrower than the table). Terminal verdict: artifacts frozen; the three open findings go to the gate.
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Plan Review complete; gate next.
+
+---
+
+## U8 Functional Design — approval gate
+**Timestamp**: 2026-10-01T13:48:04Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U8 FD approved. Next: U8 Infrastructure Design (light).
+**Context**: CONSTRUCTION / U8 — Functional Design (light) complete.
+
+## Plan Review Dispositions — Functional Design — U8 데모·배포·문서
+**Timestamp**: 2026-10-01T13:48:04Z
+- R-05 → Accepted risk (code plan Step 1 correction: add a T3→T4 step or restate steps 10·11 at T3)
+- R-12 → Accepted risk (code plan Step 1 correction: `api.startSeed` returns `EventOut`)
+- R-13 → Accepted risk (code plan Step 1 correction: the Ironcrag hearsay list is every town at ≥ 0.15 in the table, asserted from the table)
+
+---

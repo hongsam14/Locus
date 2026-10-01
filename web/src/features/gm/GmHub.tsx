@@ -11,11 +11,10 @@ import { DistortionPanel } from "./DistortionPanel";
 import { EventPanel } from "./EventPanel";
 import type { NewEvent } from "./EventPanel";
 import { ManualTurnPanel } from "./ManualTurnPanel";
-import type { BulkProgress } from "./ManualTurnPanel";
 import { RumorPanel } from "./RumorPanel";
 import { SeedPanel } from "./SeedPanel";
 import { TimelinePanel } from "./TimelinePanel";
-import { BULK_LIMIT, mapLimit } from "./bulk";
+import { useBulkRumors } from "./useBulkRumors";
 
 let _notifSeq = 0;
 
@@ -28,8 +27,8 @@ interface Props {
 }
 
 /** The GameMaster hub (U7 split of the old SessionPanel, NFR-7): it owns the session
- * reads (one parallel round, latest answer wins), the write wrapper, bulk runs and
- * turn notifications; the panels only draw and call back. Every `data-testid` of the
+ * reads (one parallel round, latest answer wins), the write wrapper and turn
+ * notifications; bulk runs live in `useBulkRumors` (U8); the panels only draw and call back. Every `data-testid` of the
  * old panel is kept on the same element (BR-U7-25). */
 export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKey = 0 }: Props) {
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
@@ -38,7 +37,6 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
   const [distortions, setDistortions] = useState<Record<string, { degree: number; share: number }>>({});
   const [error, setError] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Notif[]>([]);
-  const [progress, setProgress] = useState<BulkProgress | null>(null);
   const [suggestN, setSuggestN] = useState(1);
   const [confirm, setConfirm] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const closed = session.status === "closed";
@@ -98,6 +96,16 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
       .catch(() => {});
   }, [session.id]);
 
+  const { progress, generateAll, regenAll } = useBulkRumors(session.id, {
+    notify: addNotif,
+    fail: setError,
+    after: async () => {
+      await refreshRef.current();
+      onChanged?.();
+    },
+    onCap: setMaxSuggest,
+  });
+
   /** A GM write, then a re-read; true when it was saved. A 409 for a closed session
    * tells the page, which re-reads the session and locks the controls (U7 review #11). */
   async function run(fn: () => Promise<unknown>): Promise<boolean> {
@@ -131,59 +139,6 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
     }
   }
 
-  // Run an op over many regions with bounded concurrency + progress (FR-UX2.3 / SEC-E).
-  async function runBulk(ids: string[], op: (rid: string) => Promise<unknown>, label: string) {
-    setError(null);
-    let done = 0;
-    let failed = 0;
-    setProgress({ done, total: ids.length, failed });
-    // a worker pool: one slow region does not hold back the next ones (U7 review C8)
-    await mapLimit(ids, BULK_LIMIT, (rid) =>
-      op(rid)
-        .catch(() => {
-          failed += 1;
-        })
-        .finally(() => {
-          done += 1;
-          setProgress({ done, total: ids.length, failed });
-        }),
-    );
-    setProgress(null);
-    const ok = ids.length - failed;
-    addNotif({
-      region_id: "bulk",
-      title: label,
-      body: `${t("progress.done", { done: ok, total: ids.length })}${failed ? ` · ${t("progress.failed", { failed })}` : ""}`,
-    });
-    await refreshRef.current();
-    onChanged?.();
-  }
-
-  // "Generate all" — regions with no canonical rumor (Q5=C / Q6=B). A deed rumor does not
-  // make a region "full" of the world's rumors (U6 review #5). One state read gives the
-  // counts — no per-region rumor read, so no translation warm per region (U7 review C1).
-  async function generateAll() {
-    if (progress != null) return; // in-flight guard (review #2)
-    setProgress({ done: 0, total: 0, failed: 0 }); // gate the button during the pre-scan
-    try {
-      const state = await api.getWorldState(session.id);
-      // the cap read on mount may have failed: this read corrects it (U3 review S13)
-      if (state.max_event_suggestions) setMaxSuggest(state.max_event_suggestions);
-      const empty = state.regions
-        .filter((r) => r.active_rumors - r.deed_rumors === 0)
-        .map((r) => r.region_id);
-      if (empty.length === 0) {
-        setProgress(null);
-        addNotif({ region_id: "bulk", title: t("gm.generateAll"), body: t("notif.noTargets") });
-        return;
-      }
-      await runBulk(empty, (rid) => api.generateRumors(session.id, rid), t("gm.generateAll"));
-    } catch (e) {
-      setProgress(null);
-      setError(String(e));
-    }
-  }
-
   const ask = (message: string, onConfirm: () => void) => setConfirm({ message, onConfirm });
   const here = regionId ? distortions[regionId] : undefined;
 
@@ -202,9 +157,7 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
         onSuggest={() => run(() => api.suggestEvents(session.id, Math.min(suggestN, maxSuggest)))}
         onGenerateAll={generateAll}
         onRegenAll={() =>
-          ask(t("confirm.regenAll"), () =>
-            runBulk(Object.keys(distortions), (rid) => api.regenRumors(session.id, rid), t("gm.regenAll")),
-          )
+          ask(t("confirm.regenAll"), () => regenAll(Object.keys(distortions)))
         }
       />
       <EventPanel

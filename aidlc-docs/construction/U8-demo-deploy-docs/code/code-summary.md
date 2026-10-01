@@ -1,19 +1,21 @@
-# U8 데모·배포·문서 — Code Summary (작성 중)
+# U8 데모·배포·문서 — Code Summary
 
 **원하시는 것**: 세계관 자료로 월드를 만들고, 그 안에서 소문과 사건이 지형을 따라 퍼지며 지역마다 NPC가 다르게 아는 것을 직접 겪는 솔로 TRPG.
-**지금 하는 것**: U8 코드 생성 중입니다. 이 문서는 단계마다 바뀐 것과 그 검증을 모읍니다(Step 16에서 마무리).
+**지금 하는 것**: U8 코드 생성을 마쳤습니다(Step 1~16). 이 문서는 단계마다 바뀐 것, 검증, 이탈, 남은 결정, 운영자 확인을 모읍니다. 다음은 코드 승인 지점(Step 17)입니다.
 
 플랜: `construction/plans/U8-demo-deploy-docs-code-generation-plan.md` (17단계, 승인 2026-10-01).
 
 ## 1. 기준선과 결과
 | 항목 | 기준선 (Step 1.1, HEAD `589dc2b`) | 결과 (Step 16.1) |
 |---|---|---|
-| pytest | 857 | |
-| vitest | 129 | |
-| mypy (`locus api`) | 11 (6 파일) | |
-| ruff · black · tsc | clean | |
-| `npm ci` (깨끗한 설치) | 된다(202 패키지) | |
-| `npm audit --omit=dev` | moderate 2 (react-router 6.30.6) | |
+| pytest | 857 | **933** |
+| vitest | 129 | **197** |
+| mypy (`locus api`) | 11 (6 파일) | 11 (6 파일), 늘지 않음 |
+| ruff · black · tsc | clean | clean (`scripts` 포함) |
+| `npm ci` (깨끗한 설치) | 된다(202 패키지) | 된다(203 패키지, react-router 7.18.4) |
+| `npm audit --omit=dev` | moderate 2 (react-router 6.30.6) | **0** |
+| `dangerouslySetInnerHTML` | 0 | 0 |
+| 이미지 | — | app·web 빌드 됨, 설치본 `check_packaged()` [], `import api.main` 됨 (Step 12.7) |
 
 ## 2. 단계별 기록
 - **Step 1**
@@ -394,3 +396,142 @@
   - 문서: operations.md U8 절과 README 개발 절에 시나리오 명령 한 줄
   - 15.3 실제 실행은 Build & Test(운영자, 또는 사람이 허락한 이 호스트의 포트 덮어쓰기 기동)에서 한다. 아직 하지 않았다.
   - 게이트: pytest 933, ruff·black clean(`scripts` 포함), mypy 11
+- **Step 16** (검증·요약)
+  - 16.1 게이트: pytest 933, vitest 197, ruff·black(`locus api tests scripts`) clean, tsc clean, mypy 11, `npm audit --omit=dev` 0, `dangerouslySetInnerHTML` 0
+  - 250줄 게이트(NFR-7의 god component 기준으로 읽었다)
+    - U8이 250줄을 넘긴 컴포넌트 둘을 나눴다.
+      - `GmHub.tsx`: 275 → 228(일괄 생성·재생성을 `features/gm/useBulkRumors.ts` 훅으로)
+      - `AugmentPanel.tsx`: 258 → 182(질문 카드를 `features/editor/AugmentQuestion.tsx`로)
+      - vitest 197 그대로이고, S13·S28·#5 변이를 다시 잡았다.
+    - 남긴 것은 §6에 적었다.
+  - 16.2 이 요약의 §3~§9
+
+## 3. 바뀐 파일 (영역별)
+- **shared**: `models/{enums,graph,io,__init__}.py`(EventSeed, 사건 열거형 이동, 스냅샷 unscoped 규칙), `storage/{base,neo4j_repo,graph_mapping,persistence}.py`(EventSeed 라벨, `replace_edges`, `edges_touching`)
+- **knowledge**: `loader.py`(씨앗 읽기, 지역 없는 씨앗 빼기)
+- **world**
+  - `worldfile/{schema,remap,export,import_}.py`(`event_seeds`)
+  - `editor/*`(씨앗을 지우는 지역 삭제, U3 이월 9a)
+  - `demo/__init__.py` + `demo/worlds/`(매니페스트, Emberleaf World File·메모·지도)
+  - `augmentation/*`·`wiki/admin.py`(9b)
+  - `ingestion/service.py`(9c)
+  - `npc_drafts.py`(9e)
+  - STATUS docstring 넷
+- **play**
+  - `event/{service,seeds}.py`(SeedService)
+  - `storage/{memory_repo,postgres_repo}.py`(`update_event_contributions`, `for_update`)
+  - `distortion_service.py`, `gm/narrator.py`, `turn/advancer.py`, `rumor/{spread,generator,service}.py`(9d)
+- **api**
+  - `main.py`(`/api/capabilities`, 422 bytes)
+  - `deps.py`(`need_service`), `errors.py`(SeedAlreadyRunning 409), `schemas.py`(DemoInfoOut, SeedView, WorldInfo)
+  - `uploads.py`(root_path, 여유)
+  - `routers/{world,world_editor,gm}.py`
+- **CLI**: `__main__.py`(`world build --demo`, `world demo --name`, WorldCatalog)
+- **web**
+  - 새 파일: `capabilities.ts`, `features/home/DemoCard(s).tsx`, `features/gm/{SeedPanel.tsx,useBulkRumors.ts}`, `features/editor/AugmentQuestion.tsx`, `ui/{LlmNotice,InProgressBadge}.tsx`
+  - 고친 파일: `api/{http,world,gm,meta}.ts`, `types.ts`, `i18n.ts`, 홈·에디터·GM·플레이 화면과 패널(Step 10·11)
+  - 지운 파일: `features/play/LlmBanner.tsx`
+- **배치**: `docker-compose.yml`, `.dockerignore`, `web/{Dockerfile,.dockerignore,nginx.conf}`, `env.example`, `scripts/setup-volumes.sh`, `web/package.json`·lock(react-router 7.18.4), `.github/workflows/ci.yml`
+- **메타·문서**: `pyproject.toml`, `requirements.txt`, `README.md`, `CLAUDE.md`, `web/README.md`, `aidlc-docs/operations/operations.md`, 〔U8 정정〕(U3 BLM §1.4, U3 nfr-light §3)
+- **스크립트**: `scripts/live_scenario.py`
+- **테스트**
+  - 새 파일: `tests/{test_demo_as_data,test_packaging,test_live_scenario}.py`, `tests/api/{test_seeds_api,test_keyless_api}.py`, `tests/shared/test_event_seed.py`, `tests/{world/editor,world/augmentation,play}/test_u3_review_carry.py`, `tests/fixtures/aldermoor/`(옛 데모 이동), `web/src/__tests__/capabilities.test.ts`
+  - 고친 파일: 각 경계의 기존 테스트(의도된 변경은 주석으로 표시)
+
+## 4. 검증 번호 → 테스트
+| 번호 | 테스트 |
+|---|---|
+| TP-U8-1·2, EX-5·6 | `tests/world/worldfile/test_worldfile.py`(씨앗 왕복, 재매핑, 씨앗 없는 옛 파일, 없는 지역의 씨앗) |
+| TP-U8-3, EX-7 | `tests/world/editor/test_region_delete.py`(씨앗 삭제, 끊고 재시도), `web` `editor.test`(계획의 씨앗 수) |
+| TP-U8-4, EX-9·10·11 | `tests/world/test_demo.py`(데모 모양, 경로 무게 표, 합의·전해 들음, 행적 3턴, 매니페스트 항목 검사) |
+| TP-U8-5, EX-4 | `tests/api/test_seeds_api.py`(시작 201·두 번째 409·해소 뒤 다시 201, 닫힘·바쁨·없음) |
+| TP-U8-6 | `tests/test_demo_as_data.py`(`locus`·`api`·`web/src`) |
+| TP-U8-7 | `tests/test_packaging.py`(requirements·MIT·설명·STATUS·README 첫 줄·프로필) |
+| TP-U8-8, EX-8 | `tests/api/test_keyless_api.py`, `web` `home.test`(안내·[바로 플레이] 켜짐), `editor.test`(초안·만들기 끔), `gm.test`(LLM 버튼 끔) |
+| EX-1·2·3·12·13·14 | `web/src/__tests__/home.test.tsx` |
+| BR-U8-36 | `tests/test_live_scenario.py`(실제 API 프로세스 안 실행 + 흉내 서버) |
+
+## 5. U3 리뷰 이월의 위치
+| 항목 | 단계(커밋) |
+|---|---|
+| #10 | 9d `4d29984` |
+| #12 | 서버 9b `3135873`, 패널 11b `acb47e7` |
+| #13 | 9a `87d4603` |
+| #14·#15 | 11a `c85609b` |
+| S01 | AppNav 10 `dbcf861`, 나머지(세션 띠·문구) 11a |
+| S02·S04·S08·S13·S14 | 11c `d4d147f` |
+| S03·S09·S10·S15 | 9b |
+| S05·S21(화면)·S23·S24·S25·S31 | 11a |
+| S06·S28 | 11b |
+| S07·S19·S20·S27 | 9c `2c85b3c` |
+| S11 | C17과 같이(9a 서버, 11a 웹) |
+| S12·S21(서버)·S26·S29·S30·S32 | 9a |
+| S16 | 알려진 한계(§6, operations.md) |
+| S17·S18 | 9d |
+| S22 | 9e |
+| C1 | 11a |
+| C2 | 서버 9b, 웹 11b |
+| C3·C4·C6·C11 | 9a |
+| C5 | 서버 10 `dbcf861`(9.3 체크했으나 Step 9 커밋에 빠져 있었다), 웹 11a |
+| C7·C9·C13·C15 | 9c |
+| C8 | 훅 10, BuildPanel·WorldFileBar 11a |
+| C10 | 9b |
+| C12 | 11a |
+| C14 | 10 |
+| C16 | 9d |
+| C17 | 서버 9a, 웹 11a |
+| 설계 메모 9(nginx) | 12 `4eeb1a9` |
+| 설계 메모 10(409 모양) | 10(`openSessionsOf`) |
+| 문서(503 문장, 지식 삭제·번역, BLM §1.4, nfr-light §3) | 14 `552b003` |
+
+## 6. 이탈·알려진 한계
+- **US-1.1 "명령 하나"**: 사람의 결정(Infra Q1=B)으로 시작이 준비 명령(`setup-volumes.sh`)과 기동 명령 둘이다. README 시작 절이 두 줄로 적는다.
+- **S16**: 보강 답의 변경 기록은 주시 노드 주변 엣지 차이다. 그래서 그 답의 임베딩 호출(약 1초) 사이에 한 지도 저장이 섞일 수 있다. 제작자 한 명 전제(A-4) 안의 한계로 operations.md에 적었다.
+- **PostgreSQL 행 잠금(#10)**: 오프라인 테스트는 `FOR UPDATE`의 실제 동시성을 돌리지 못한다(SQLite가 무시함). 운영자 확인 몫이다.
+- **250줄 게이트에서 남긴 것**
+  - `neo4j_repo.py`(249 → 306): 포트 메서드 둘을 더한 저장소 어댑터라 컴포넌트가 아니다.
+  - `scripts/live_scenario.py`(350): 혼자 도는 스크립트라 한 파일이 의도다.
+  - 테스트 파일 둘(`home.test` 277, 에디터 `test_u3_review_carry` 278)
+  - 데모 World File(데이터 1691줄)
+  - U8 이전부터 250줄을 넘던 파일(`postgres_repo.py`, `advancer.py`, `i18n.ts` 등)은 고친 곳만 손댔다.
+- **dev 의존성 audit**: 전체 `npm audit`에는 dev 의존성 4건(browserslist 등)이 남아 있다. 게이트는 `--omit=dev`(FD Q5=A)라 손대지 않았다.
+- **설계 메모(코드)**
+  - S23: 포인터는 svg가 아니라 지역 표식이 잡는다(클릭을 잡은 요소로 보내는 브라우저에서도 지역 고르기가 살게).
+  - 라이브 시나리오 2단계: `ImportReport`에 `llm_calls`가 없어서 `ok`와 지역 12로 판정한다.
+  - 10단계: 10a(왜곡도)와 10b(대화)로 나눴다.
+- **기록(늦게 바로잡은 것)**
+  - C5 서버 커밋: 9.3에 체크했지만 커밋에 빠져 있었다. Step 10에서 넣었다.
+  - S01: 세션 띠와 문구를 Step 10에서 빠뜨렸다. Step 11a에서 넣었다.
+  - 키 없음 안내: 켜는 법이 빠져 있었다. Step 14에서 더했다.
+  - 키 없는 테스트 fixture: `KnowledgeContainer(params=None)` 조립이었다. Step 15에서 고쳤다.
+
+## 7. 변이 결과
+| 단계 | 결과 |
+|---|---|
+| 10 | 18건 중 17 잡음. 남은 1은 같은 동작(`useCapabilities` 캐시 확인) |
+| 11a | 20/20 |
+| 11b | 8/8. `detailOf`는 단언을 정확한 문장으로 바꾼 뒤 잡았다 |
+| 11c | 7/7 |
+| 13 | 4/4 |
+| 14 | 2/2 |
+| 15 | 5/5. 같은 동작인 변이 1건은 의미 있는 변이로 바꿨다 |
+| 16 | 추출 뒤 다시 3/3(S13, S28, #5) |
+| 2~9 | 단계별 기록(§2)에 적은 대로 모두 잡음 |
+
+## 8. 남은 결정 (U8 범위 밖, U3 리뷰 설계 메모)
+1. **전역 지식의 자리**
+   - 지금: 전역 지식은 스코프가 없다. 그래서 에디터 어디에도 나오지 않고, 보강도 묻지 않는다.
+   - 정할 것: 전역 탭을 둘지, 스코프 없음 목록에 전역 절을 둘지.
+2. **"맞음"이 wiki_conflict를 끝내는 방법**
+   - 지금: "맞음"은 신뢰도만 올린다. 같은 질문이 다시 나오고, 빈 변경이 쌓여 되돌리기를 막는다.
+   - 정할 것: (지식, 지형) 판정을 "확인함"으로 기억할지, 그 선택지를 뺄지.
+5. **보강 예산 모델(U3 #8)**
+   - 정할 것: 다시 탐지의 따라잡기를 시작 때만 할지, 바뀐 것에 예산을 남길지, NFR-5 확인을 고칠지.
+   - 이 답이 BR-U3-41·NFR-5 문구를 정한다.
+
+## 9. 운영자 확인 (사람이 할 일)
+- **compose 기동** (Infra R-01): `./scripts/setup-volumes.sh` → `.env` 두 값 → `docker compose --profile service up -d --build` → 다섯 서비스 healthy, :3000에서 [바로 플레이]
+  - 이 호스트는 7474·7687을 다른 컨테이너(`sigraph-neo4j-1`)가 쓴다. `.env`에 `NEO4J_HTTP_PORT`·`NEO4J_BOLT_PORT`를 더해 띄운다. 그 컨테이너는 멈추지 않는다.
+- **라이브 시나리오(15.3)**: 띄운 스택에 `python scripts/live_scenario.py`를 돌린다. 키가 있으면 LLM 단계까지, 없으면 9 PASS·5 SKIP이 기대값이다(프로세스 안 실행과 같음).
+- **CI 첫 실행**: 브랜치를 원격에 push하면 네 작업이 돈다. 배지와 이미지 작업의 데모 확인을 본다.
+- **PostgreSQL 동시성(#10)**: 실제 PG에서 GM 설정 ∥ 사건 해소를 겹쳐 돌려, 해소된 사건이 되살아나지 않는지 본다.

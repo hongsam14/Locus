@@ -3941,3 +3941,20 @@ The actual run against a live stack (15.3) is left to Build & Test. Gates: pytes
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 15.
 
 ---
+
+## U8 Code Generation Part 2 — Step 16 (gates and summary)
+**Timestamp**: 2026-10-01T16:10:07Z
+**AI Response**: Gates:
+- pytest 933, vitest 197
+- ruff/black (incl. scripts) and tsc clean; mypy 11
+- `npm audit --omit=dev` 0; `dangerouslySetInnerHTML` 0
+
+250-line gate, read as NFR-7's god-component rule:
+- GmHub 275 → 228 (`useBulkRumors` hook).
+- AugmentPanel 258 → 182 (`AugmentQuestion`).
+- The remaining long files are recorded as deviations with reasons.
+
+The code summary is finalized: results, changed files, TP/EX → tests, where each U3 carry item closed, deviations and known limits, mutation results, remaining decisions (design memos 1·2·5), operator checks.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 16. Next: code gate (Step 17).
+
+---

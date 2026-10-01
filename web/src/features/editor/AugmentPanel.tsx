@@ -2,30 +2,9 @@ import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { detailOf, statusOf } from "../../api/http";
 import { t } from "../../i18n";
-import type {
-  AugAction,
-  AugInput,
-  AugQuestion,
-  AugRun,
-  NameRef,
-  QuestionTarget,
-  Region,
-  WikiPrior,
-} from "../../types";
-import { Badge, Button, Card, Field, Panel } from "../../ui";
-
-type Inputs = { statement?: string; title?: string; confidence?: string; region?: string; ref?: string };
-
-/** Every input any of the question's actions takes — the server says which (U3 C2). */
-const inputsOf = (q: AugQuestion): Set<AugInput> =>
-  new Set(Object.values(q.needs ?? {}).flat() as AugInput[]);
-
-/** A confidence box's value when it is a number in [0, 1]; otherwise nothing is sent. */
-function confidenceOf(text?: string): number | undefined {
-  if (text == null || text.trim() === "") return undefined;
-  const v = Number(text);
-  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : undefined;
-}
+import type { AugAction, AugQuestion, AugRun, NameRef, QuestionTarget, Region, WikiPrior } from "../../types";
+import { Button, Panel } from "../../ui";
+import { AugmentQuestion, type Inputs, confidenceOf } from "./AugmentQuestion";
 
 /** The augmentation Q&A (US-2.6, BR-U3-24..28): one run kept by the screen; each
  * question names its target, offers only the server's actions and shows the inputs the
@@ -162,48 +141,9 @@ export function AugmentPanel({
           {run.status === "converged" && <div className="text-sm">{t("augment.converged")}</div>}
           {run.status === "stopped" && <div className="text-sm">{t("augment.stopped")}</div>}
           {run.open_questions.map((q) => (
-            <Card key={q.id} data-testid="augment-question" className="text-sm flex flex-col gap-1">
-              {q.target && (
-                <div className="flex flex-wrap items-center gap-1" data-testid="augment-target">
-                  <Badge>{t(`augment.target.${q.target.kind}`)}</Badge>
-                  <strong>{q.target.name}</strong>
-                  {q.target.region_name && <span className="text-xs text-ink-soft">@ {q.target.region_name}</span>}
-                  {q.target.field && <code className="text-xs">{q.target.field}</code>}
-                </div>
-              )}
-              <div>{q.text}</div>
-              {inputsOf(q).has("statement") && (
-                <Field label={t("augment.statement")} data-testid="augment-statement"
-                  value={input[q.issue_key]?.statement ?? ""}
-                  onChange={(e) => set(q.issue_key, { statement: e.target.value })} />
-              )}
-              {inputsOf(q).has("title") && (
-                <Field label={t("augment.titleLabel")} data-testid="augment-title"
-                  value={input[q.issue_key]?.title ?? ""}
-                  onChange={(e) => set(q.issue_key, { title: e.target.value })} />
-              )}
-              {inputsOf(q).has("confidence") && (
-                <Field label={t("augment.confidence")} data-testid="augment-confidence" type="number"
-                  min={0} max={1} step={0.05} value={input[q.issue_key]?.confidence ?? ""}
-                  onChange={(e) => set(q.issue_key, { confidence: e.target.value })} />
-              )}
-              {inputsOf(q).has("region") && (
-                <Select testId="augment-region" label={t("augment.region")} value={input[q.issue_key]?.region}
-                  options={regions} onChange={(v) => set(q.issue_key, { region: v })} />
-              )}
-              {inputsOf(q).has("ref") && (
-                <Select testId="augment-ref" label={t("augment.ref")} value={input[q.issue_key]?.ref}
-                  options={refOptions(q)} onChange={(v) => set(q.issue_key, { ref: v })} />
-              )}
-              <div className="flex flex-wrap gap-1">
-                {q.actions.map((a) => (
-                  <Button key={a} size="sm" disabled={busy} data-testid={`augment-action-${a}`}
-                    variant={a === "remove" ? "danger" : "ghost"} onClick={() => answer(q, a)}>
-                    {t(`augment.action.${a}`)}
-                  </Button>
-                ))}
-              </div>
-            </Card>
+            <AugmentQuestion key={q.id} question={q} inputs={input[q.issue_key] ?? {}} regions={regions}
+              refOptions={refOptions(q)} busy={busy} onInput={(patch) => set(q.issue_key, patch)}
+              onAnswer={(a) => answer(q, a)} />
           ))}
           {run.history.length > 0 && <h3 className="font-display">{t("augment.changed")}</h3>}
           {[...run.history].reverse().map((c) => (
@@ -238,21 +178,5 @@ export function AugmentPanel({
         </div>
       )}
     </Panel>
-  );
-}
-
-function Select({ testId, label, value, options, onChange }: {
-  testId: string;
-  label: string;
-  value?: string;
-  options: NameRef[];
-  onChange: (v: string) => void;
-}) {
-  return (
-    <select data-testid={testId} aria-label={label} value={value ?? ""}
-      onChange={(e) => onChange(e.target.value)} className="sketch-border bg-paper-card px-1 text-xs">
-      <option value="">{label}</option>
-      {options.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-    </select>
   );
 }

@@ -227,8 +227,8 @@
 - [ ] 15.3 실제 실행은 Build & Test(운영자 또는 사람이 허락한 이 호스트의 포트 덮어쓰기 기동)에서 한다. 첫 확인 항목은 compose 기동(Infra R-01).
 
 ### Step 16 — 검증·요약
-- [ ] 16.1 전체 게이트: pytest, vitest, ruff, black --check, tsc, mypy(≤ 11), `npm audit --omit=dev` 0건, `dangerouslySetInnerHTML` 0곳, 새·고친 파일 250줄 이하.
-- [ ] 16.2 code-summary: 기준선과 결과, 바뀐 파일, 검증 번호 → 테스트, 이월 결정의 위치, 이탈·알려진 한계(S16, US-1.1 두 명령), 변이 결과, 남은 결정(설계 메모 1·2·5), 운영자 확인(라이브 시나리오, compose 기동, CI 첫 실행).
+- [x] 16.1 전체 게이트: pytest, vitest, ruff, black --check, tsc, mypy(≤ 11), `npm audit --omit=dev` 0건, `dangerouslySetInnerHTML` 0곳, 새·고친 파일 250줄 이하.
+- [x] 16.2 code-summary: 기준선과 결과, 바뀐 파일, 검증 번호 → 테스트, 이월 결정의 위치, 이탈·알려진 한계(S16, US-1.1 두 명령), 변이 결과, 남은 결정(설계 메모 1·2·5), 운영자 확인(라이브 시나리오, compose 기동, CI 첫 실행).
 
 ### Step 17 — 게이트
 - [ ] 17.1 코드 게이트를 제시한다. 승인 뒤 `/code-review`를 돌린다. 그다음 Build and Test.

@@ -239,15 +239,15 @@
   - 기존 U4·U5 턴 테스트는 그대로 GREEN이다.
 
 ### Step 7 — API
-- [ ] 7.1 `api/routers/play.py`
+- [x] 7.1 `api/routers/play.py`
   - `act`에 `lang: str = Depends(display_lang)`를 더하고 `p.play.act(..., lang=lang)`를 부른다.
   - `DeclareAction`이 `PlayerAction` body에 들어간다.
   - `RegionView.declare_max_chars`는 `PlayService.current_region`이 채운다.
-- [ ] 7.2 `api/routers/gm.py`
+- [x] 7.2 `api/routers/gm.py`
   - `GET /sessions/{s}/deeds`(`lang=Depends(display_lang)`) → `list[DeedViewOut]`. 이름은 스냅샷에서 채우고, 번역은 `enrichment_for`를 쓴다. kind는 `deed`의 `text`, `deed_appraisal`의 `retelling`이고, 소문은 기존 `rumor`다.
   - `POST /sessions/{s}/deeds/{d}/void`(`dependencies=[Depends(_idle)]`) → `VoidOut{deed_id, deactivated_rumor_ids}`
   - `api/schemas.py`에 DTO `DeedViewOut`·`DeedAppraisalOut`·`VoidOut`을 둔다.
-- [ ] 7.3 테스트 `tests/api/test_deeds_api.py`
+- [x] 7.3 테스트 `tests/api/test_deeds_api.py`
   - `act{declare}` 202, 빈 선언 400(422가 아니다), 301자 400, 닫힌 세션 409
   - `GET deeds`: 이름·번역·`?lang=fr` 400
   - void: 200과 멱등, 없음 404, 턴 진행 중 409(리스), 닫힌 세션 409

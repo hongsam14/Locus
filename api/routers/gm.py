@@ -10,6 +10,9 @@ from fastapi import APIRouter, Depends
 from api.deps import display_lang, get_localization, get_play
 from api.errors import PLAY_ERRORS, http_error
 from api.schemas import (
+    DeedAppraisalOut,
+    DeedOut,
+    DeedViewOut,
     DistortionUpdate,
     EventCreate,
     EventOut,
@@ -21,7 +24,13 @@ from api.schemas import (
 )
 from locus.localization.wiring import LocalizationContainer
 from locus.play.errors import TurnInProgressError
-from locus.play.models import RegionDistortion, SessionEvent, SessionRumor, TimelineEntry
+from locus.play.models import (
+    RegionDistortion,
+    SessionEvent,
+    SessionRumor,
+    TimelineEntry,
+    VoidResult,
+)
 from locus.play.turn.advancer import TurnResult
 from locus.play.wiring import PlayContainer
 from locus.shared.models.util import clamp01
@@ -313,5 +322,77 @@ def resolve_event(
 def discard_event(session_id: str, event_id: str, p: PlayContainer = Depends(get_play)) -> None:
     try:
         p.events.discard_event(session_id, event_id)
+    except PLAY_ERRORS as exc:
+        raise http_error(exc) from exc
+
+
+# --- U6 deeds (BLM §8; BR-U6-27/28/33) ---------------------------------------- #
+@router.get("/sessions/{session_id}/deeds", response_model=list[DeedViewOut])
+def list_deeds(
+    session_id: str,
+    lang: str = Depends(display_lang),
+    p: PlayContainer = Depends(get_play),
+    loc: LocalizationContainer | None = Depends(get_localization),
+) -> list[DeedViewOut]:
+    """Every deed with its appraisals and rumors, newest first (US-5.6)."""
+    try:
+        views = p.deeds.views(session_id)
+        regions, npcs = p.deeds.names(session_id)
+    except PLAY_ERRORS as exc:
+        raise http_error(exc) from exc
+    deeds = [v.deed for v in views]
+    appraisals = [a for v in views for a in v.appraisals if a.retelling]
+    deed_tr = enrichment_for(
+        loc, deeds, kind="deed", fields=["text"], session_id=session_id, lang=lang
+    )
+    appraisal_tr = enrichment_for(
+        loc,
+        appraisals,
+        kind="deed_appraisal",
+        fields=["retelling"],
+        session_id=session_id,
+        lang=lang,
+    )
+    rumors_out = {
+        r.id: r
+        for r in _rumors_out(loc, session_id, [r for v in views for r in v.rumors], lang=lang)
+    }
+    out: list[DeedViewOut] = []
+    for v in views:
+        deed = DeedOut(
+            **v.deed.model_dump(),
+            text_ko=deed_tr.get(v.deed.id, {}).get("text"),
+            region_name=regions.get(v.deed.region_id, v.deed.region_id),
+            witness_names=[npcs.get(n, n) for n in v.deed.witnessed_npc_ids],
+        )
+        judged = [
+            DeedAppraisalOut(
+                **a.model_dump(),
+                retelling_ko=appraisal_tr.get(a.id, {}).get("retelling"),
+                npc_name=npcs.get(a.npc_id, a.npc_id),
+            )
+            for a in v.appraisals
+        ]
+        out.append(
+            DeedViewOut(
+                deed=deed,
+                appraisals=judged,
+                rumors=[rumors_out[r.id] for r in v.rumors],
+                reached_region_ids=v.reached_region_ids,
+                reached_region_names=[regions.get(r, r) for r in v.reached_region_ids],
+            )
+        )
+    return out
+
+
+@router.post(
+    "/sessions/{session_id}/deeds/{deed_id}/void",
+    response_model=VoidResult,
+    dependencies=[Depends(_idle)],  # the GM write lease, held to the commit (BR-U6-28)
+)
+def void_deed(session_id: str, deed_id: str, p: PlayContainer = Depends(get_play)) -> VoidResult:
+    """Undo a deed and every rumor it produced (US-5.6). 404 / 409, idempotent."""
+    try:
+        return p.deeds.void(session_id, deed_id)
     except PLAY_ERRORS as exc:
         raise http_error(exc) from exc

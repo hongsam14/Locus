@@ -17,6 +17,8 @@ from locus.localization.service import Enrichment
 from locus.localization.wiring import LocalizationContainer
 from locus.play.models import (
     Conversation,
+    Deed,
+    DeedAppraisal,
     EventCategory,
     EventLifecycle,
     GameSession,
@@ -301,3 +303,26 @@ def purge_translations(
     except Exception:
         _log.exception("translation purge failed (kind=%s, world=%s)", kind, world_id)
         return 0
+
+
+# --- U6 deeds (GM view) ---------------------------------------------------------- #
+class DeedOut(Deed):
+    text_ko: str | None = None
+    region_name: str = ""
+    witness_names: list[str] = []
+
+
+class DeedAppraisalOut(DeedAppraisal):
+    retelling_ko: str | None = None
+    npc_name: str = ""
+
+
+class DeedViewOut(BaseModel):
+    """A deed for the GM panel: names filled from the snapshot (an id when the region or
+    the NPC was edited away), translations from the cache (BR-U6-33)."""
+
+    deed: DeedOut
+    appraisals: list[DeedAppraisalOut]
+    rumors: list[RumorOut]
+    reached_region_ids: list[str]
+    reached_region_names: list[str]

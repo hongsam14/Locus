@@ -118,12 +118,14 @@ def current_region(
 def act(
     session_id: str,
     action: PlayerAction = Body(...),
+    lang: str = Depends(display_lang),
     p: PlayContainer = Depends(get_play),
 ) -> TurnRun:
-    """Move / wait / end a talk (FR-C3). Validates, applies the immediate state and
-    answers 202 with the running ``TurnRun``; poll ``turn-runs/{id}`` (Q4=A)."""
+    """Move / wait / end a talk / declare (FR-C3, FR-C9). Validates, applies the
+    immediate state and answers 202 with the running ``TurnRun``; poll
+    ``turn-runs/{id}`` (Q4=A). ``lang`` is the language a declaration is narrated in."""
     try:
-        return p.play.act(session_id, action)
+        return p.play.act(session_id, action, lang=lang)
     except PLAY_ERRORS as exc:
         raise http_error(exc) from exc
 

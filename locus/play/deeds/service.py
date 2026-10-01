@@ -303,6 +303,15 @@ class DeedService(SessionAppService):
             for d in deeds
         ]
 
+    def names(self, session_id: str) -> tuple[dict[str, str], dict[str, str]]:
+        """Region and NPC names of the session's world, for the GM view."""
+        session = self._require_session(session_id)
+        snapshot = self._snapshots.get(session.world_id)
+        return (
+            {r.id: r.name for r in snapshot.topo.regions},
+            {n.id: n.name for n in snapshot.npcs},
+        )
+
     def void(self, session_id: str, deed_id: str) -> VoidResult:
         """Undo a deed (BR-U6-27). The router holds the GM write lease (`_idle`) from
         here to the commit, so no turn can seed or spread it meanwhile (BR-U6-28)."""

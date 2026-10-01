@@ -4027,3 +4027,11 @@ Docs: `construction/build-and-test/purpose-restructure/` (build, unit, integrati
 **Context**: CONSTRUCTION / Build and Test — Purpose Restructure cycle.
 
 ---
+
+## Build and Test — Old worlds cleaned up
+**Timestamp**: 2026-10-01T18:56:34Z
+**User Input**: (ran in the prompt) close the open sessions of aldermoor/demo/demo00; delete the three worlds from the graph and search index.
+**AI Response**: The first close attempt joined ids without a space and missed aldermoor's two sessions; this was pointed out and the human re-ran it. All sessions are closed. After the delete, `list_world_ids()` = ['emberleaf']. Claude restarted the app container (cache only). `/api/world/worlds` lists emberleaf alone (12 regions, 1 open session from the live scenario); `/health` ok. Backups: `data/backups/*-before-u8-cleanup.world.json`.
+**Context**: CONSTRUCTION / Build and Test — Purpose Restructure cycle.
+
+---

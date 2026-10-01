@@ -11,13 +11,18 @@ from __future__ import annotations
 
 from typing import TypedDict
 
+from locus.shared.models import WorldSnapshot
 from locus.world.augmentation.engine import AugmentationEngine
+from locus.world.augmentation.run_store import RunState
+from locus.world.augmentation.types import AugmentationRun
 
 
 class AugState(TypedDict, total=False):
     world_id: str
     issues: list
     questions: list
+    snapshot: WorldSnapshot
+    run: RunState
 
 
 def build_detection_graph(engine: AugmentationEngine):
@@ -25,10 +30,15 @@ def build_detection_graph(engine: AugmentationEngine):
     from langgraph.graph import END, StateGraph
 
     def _detect(state: AugState) -> AugState:
-        return {**state, "issues": engine.detect_issues(state["world_id"])}
+        run = RunState(run=AugmentationRun(world_id=state["world_id"]))
+        issues, snapshot = engine.detect(state["world_id"], run, lambda: False)
+        return {**state, "issues": issues, "snapshot": snapshot, "run": run}
 
     def _generate(state: AugState) -> AugState:
-        return {**state, "questions": engine.generate_questions(state.get("issues", []))}
+        questions = engine.questions(
+            state.get("issues", []), state["snapshot"], state["run"], lambda: False
+        )
+        return {**state, "questions": questions}
 
     graph = StateGraph(AugState)
     graph.add_node("detect", _detect)

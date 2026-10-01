@@ -90,3 +90,42 @@
   - `WorldContainer.npc_drafts`(LLM이 있을 때만)
   - 테스트 7개: EX-6, 실패, `n`·지역 검사, 6,000자, 주입, 자르기
   - pytest 785
+- **Step 6**
+  - 보강 모델(`types.py`)
+    - `Issue.key`·`target_kind`·`field`·`broken_id`, `QuestionTarget`, `actions`
+    - `ChangeSet.nodes_after`·`edges_*`, `AnswerResult`
+    - `AugmentationConflict` 계열 409 넷
+  - 탐지기(`detectors.py`)
+    - 스냅샷 위 순수 다섯(dangling은 id 속성·목록은 id마다, unscoped 새로)
+    - `conflict_pairs`(지식, 지형) 쌍과 `select`(키·무시·심각도 20)
+  - 질문(`questions.py`)
+    - 대상 이름, 고정 행동
+    - 다듬기는 탐지마다 5개, 이슈 키 캐시, 입력은 템플릿 + 대상 필드
+  - 엔진(`engine.py`)
+    - 편집 클래스를 주입받는다.
+    - wiki_conflict: 검색 전용(`fallback=False`), 근거가 없으면 판정 없음, 쌍 20, 판정 캐시(지식 id, 진술, 지형)
+    - 실패한 판정은 캐시하지 않는다.
+  - run 저장(`run_store.py`): `RunState`(run, 잠금, 캐시 셋), 월드마다 20개
+  - 서비스(`service.py`)
+    - 답 상한 30, LLM 예산 60
+    - 상태 전이와 R-08a
+    - 되돌리기 검사 순서: 404 → 이미 → 순서 → 충돌
+  - `apply.py`: 위 실행 메모의 방식이다. 되돌리기는 충돌 검사 뒤에 노드·엣지·검색 문서를 되살린다.
+  - 조립: 보강은 LLM 없이도 조립한다. LLM이 있으면 wiki는 `CommonsenseWiki(search, None, …)`(검색 전용)이다.
+  - 라우터(6.8a, R-15)
+    - `answer` → `AnswerResult`, `revert` → 200 + run, `GET runs/{id}`, `unignore`
+    - 409 매핑(`api/errors.py`), `UnignoreIn`(`api/schemas.py`)
+  - 의도된 변경(`# U3 intended change`)
+    - `test_augmentation.py`: `test_detect_gaps_empty_region_and_dangling`, `test_question_generator_template`, `test_run_store_roundtrip`, `test_service_loop_converges`, `test_engine_apply_and_revert_invalidate_cache`
+    - `test_augment_api.py` 전체 머리말(C-3): answer·revert 단언 바뀜
+  - 같은 이름으로 API만 바꾼 테스트: `test_detect_low_confidence`, `test_detect_orphans`, `test_apply_*` 둘(4.7에서 바뀜)
+  - 새 테스트(보강 25 + API 6)
+    - TP-U3-4·5, EX-7·8·9
+    - B1 대상 무시, 허용되지 않은 행동, 바깥 편집 충돌, R-08a 전이
+    - 동시 되돌리기 잠금
+    - LLM 캐시·상한·예산, 근거 없음, LLM 없는 run
+  - 변이(모두 잡음)
+    - 되돌리기에서 엣지 복원을 빼면 TP-U3-4가 실패한다.
+    - 충돌 검사를 빼면 바깥 편집 테스트가 실패한다.
+    - 순서 검사를 빼면 TP-U3-4가 실패한다.
+  - pytest 803

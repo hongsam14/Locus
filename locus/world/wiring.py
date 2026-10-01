@@ -1,9 +1,9 @@
 """world boundary composition (AD-R2): ``assemble_world(shared, knowledge) -> WorldContainer``.
 
 Graph + search + the knowledge cache are enough for the LLM-free services (editor,
-World File export/import, demo load, world list). Builder, augmentation and the
-wiki tools need an LLM and stay ``None`` without one, so an API key is not
-required to open the editor or load the demo (NFR-4, review R-14).
+World File export/import, demo load, world list, the augmentation Q&A on templates).
+The builder and NPC drafts need an LLM and stay ``None`` without one, so an API key
+is not required to open the editor or load the demo (NFR-4, review R-14).
 """
 
 from __future__ import annotations
@@ -65,13 +65,15 @@ def assemble_world(shared: SharedContainer, knowledge: KnowledgeContainer) -> Wo
         cross_world=CrossWorldWikiExplorer(graph, search, embedding),
     )
 
+    def wiki_for(world_id: str) -> CommonsenseWiki:  # single-world (BR-A9), search only
+        return CommonsenseWiki(search, None, embedding, world_id=world_id)  # NFR R-03
+
+    # The Q&A runs without an LLM on templates and skips wiki conflicts (U3 NFR-4)
+    container.augmentation = AugmentationService(AugmentationEngine(editors))
+
     builder: WorldBuilder | None = None
     if shared.llm is not None and shared.factory is not None:
         llm = shared.llm
-
-        def wiki_for(world_id: str) -> CommonsenseWiki:  # single-world (BR-A9)
-            return CommonsenseWiki(search, llm, embedding, world_id=world_id)
-
         builder = WorldBuilder.from_factory(
             shared.factory,
             graph,
@@ -84,7 +86,7 @@ def assemble_world(shared: SharedContainer, knowledge: KnowledgeContainer) -> Wo
         container.builder = builder
         container.npc_drafts = NpcDraftService(llm, cache)
         container.augmentation = AugmentationService(
-            AugmentationEngine(cache, editors, graph, wiki_provider=wiki_for, llm=llm, cache=cache)
+            AugmentationEngine(editors, wiki_provider=wiki_for, llm=llm)
         )
     container.demo = DemoWorlds(importer, builder)
     return container

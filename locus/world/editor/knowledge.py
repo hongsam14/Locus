@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from locus.shared.models import Knowledge, ScopeLink, ScopeType
 from locus.shared.storage import graph_mapping as gm
-from locus.shared.storage.base import EdgeKey
+from locus.shared.storage.base import Edge, EdgeKey
 from locus.world.editor.writes import EditorWrites, require_region
 
 
@@ -79,6 +79,41 @@ class KnowledgeEditor:
                     )
                 )
         return wanted
+
+    def repoint(
+        self, world_id: str, knowledge_id: str, field: str, old_id: str, new_id: str | None
+    ) -> Knowledge:
+        """Replace one id in ``derived_from_prior_ids`` / ``about_entity_ids`` (or drop it
+        when ``new_id`` is None) and its DERIVED_FROM / ABOUT edge (FD 검토 02 R-11)."""
+        edge_type = {"derived_from_prior_ids": "DERIVED_FROM", "about_entity_ids": "ABOUT"}.get(
+            field
+        )
+        if edge_type is None:
+            raise ValueError(f"not a reference list: {field}")
+        snapshot = self._w.snapshot(world_id)
+        item = next((k for k in snapshot.kg.knowledge if k.id == knowledge_id), None)
+        if item is None:
+            raise LookupError(f"knowledge not found: {knowledge_id}")
+        ids = [new_id if i == old_id else i for i in getattr(item, field)]
+        ids = [i for i in dict.fromkeys(ids) if i]
+        changed = item.model_copy(update={field: ids, "region_hint": None})
+        with self._w.writing(world_id):
+            if new_id:
+                self._w.graph.upsert_edges(
+                    [
+                        Edge(
+                            type=edge_type,
+                            source_id=knowledge_id,
+                            target_id=new_id,
+                            world_id=world_id,
+                        )
+                    ]
+                )
+            self._write_item(changed)
+            self._w.graph.delete_edges(
+                world_id, [EdgeKey(type=edge_type, source_id=knowledge_id, target_id=old_id)]
+            )
+        return changed
 
     def delete_knowledge(self, world_id: str, knowledge_id: str) -> None:
         """Graph first, then search. An item already gone still has its document removed

@@ -66,6 +66,12 @@ class WorldInfo(BaseModel):
     open_sessions: int | None = None  # None when the play boundary is not assembled
 
 
+class UnignoreIn(BaseModel):
+    """``POST /augmentation/runs/{id}/unignore`` body (U3, FD 검토 R-08)."""
+
+    issue_key: str
+
+
 class LocalizedKnowledgeView(KnowledgeView):
     statement_ko: str | None = None
     title_ko: str | None = None

@@ -434,7 +434,7 @@
   - 초과 출력 자르기
 
 ### Step 6 — 보강 Q&A (BLM §4, Q3=A, FD R-08·R-08a·R-11, NFR R-03)
-- [ ] 6.1 `augmentation/types.py`
+- [x] 6.1 `augmentation/types.py`
   - `IssueType.UNSCOPED`
   - `Issue.field`·`broken_id`·`target_kind`·`key`(키 = 유형:대상 종류:대상 id:속성:끊긴 id)
   - `QuestionTarget(kind, id, name, region_id, region_name, field, broken_id)`
@@ -444,28 +444,29 @@
   - `AugmentationRun.issues`·`ignored_keys`·`answers`(was `round`)·`llm_calls`·`llm_budget_exhausted`
   - `AnswerResult(change: ChangeSet | None, run, changed)`
   - 오류: `ChangeAlreadyRevertedError`, `RevertOrderError`, `RevertConflictError`, `RunFinishedError`(stopped에서 unignore·converged/stopped에서 답, 모두 409)
-- [ ] 6.2 `augmentation/detectors.py`
+- [x] 6.2 `augmentation/detectors.py`
   - 탐지기 여섯(BR-U3-22). `wiki_conflict`는 `attributes.terrain_kind`를 읽는다.
   - `detect_dangling(snapshot, prior_ids)`(BR-U3-23): 목록 속성은 끊긴 id마다 이슈다(FD R-11). NPC는 뺀다.
   - `detect_unscoped`
   - `detect_gaps` 안의 "끝점 없는 관계" 분기를 지운다.
   - `detect_all`: 이슈 키로 중복을 없애고, `ignored_keys`를 빼고, 심각도 순 20개
   - `prior_ids`는 엔진이 `editors.prior_ids` 1회로 읽는다(스냅샷에 prior가 없다).
-- [ ] 6.3 `augmentation/questions.py`
+- [x] 6.3 `augmentation/questions.py`
   - 템플릿 + `QuestionTarget` + 이슈 종류별 고정 `actions`
   - 다듬기
     - 탐지마다 아직 다듬지 않은 질문 5개까지다.
     - 입력은 템플릿 문장 + 대상 필드다(NFR R-07). `MATERIAL` 머리말을 두고 ≤ 1,000자다.
     - 결과는 run 캐시(이슈 키)에 둔다.
     - LLM은 문장만 바꾼다.
-- [ ] 6.4 `wiki_conflict` 판정
+- [x] 6.4 `wiki_conflict` 판정
   - LLM이 없거나 run 예산이 다 되었으면 빈 결과다.
   - 단위는 (지식, terrain_kind) 쌍이고 탐지마다 20쌍까지다.
   - 근거는 `wiki.lookup_similar(…, k=2, fallback=False)`이다. 같은 `(terrain_kind, 지역 이름)` 질의는 run에서 한 번만 조회한다.
   - prior가 없으면 판정하지 않는다.
   - 캐시 키는 `(지식 id, 진술, terrain_kind)`다. 프롬프트는 ≤ 1,500자다.
   - `reason`은 `one_line(…, 200)`이다.
-- [ ] 6.5 `augmentation/apply.py` `apply_answer(question, answer, *, world_id, editors) -> ChangeSet | None`
+- [x] 6.5 `augmentation/apply.py` `apply_answer(question, answer, *, world_id, editors) -> ChangeSet | None`
+  - 〔실행 메모〕 `apply_answer(issue, question, answer, *, world_id, editors)`로 이슈를 함께 받는다. 질문에는 이슈 종류·속성이 없고 run이 이슈를 갖고 있기 때문이다. 변경 기록은 지켜보는 노드의 앞뒤와, 그 노드에 닿은 엣지의 앞뒤 차이로 만든다. 바뀐 노드만 `nodes_before`·`nodes_after`에 남긴다. 그래서 바뀌지 않은 노드를 밖에서 고쳐도 되돌리기는 막히지 않는다. 목록 속성 처리는 `KnowledgeEditor.repoint`(새 메서드)가 한다.
   - BLM §4.2 표를 따른다. 대상은 `question.target`에서 읽는다(B1). ignore는 None이다.
   - Entity confirm·edit는 `editors.entities`를 쓴다(B3).
   - dangling/edit
@@ -474,10 +475,10 @@
     - 연결 `wiki_prior_ref`는 `editors.connections.set_prior_ref`로 두 방향을 쓴다.
     - 목록 속성은 `target.broken_id`만 바꾸거나 뺀다.
   - 노드 쓰기는 교체다. `nodes_before`·`nodes_after`·`edges_*`를 기록한다.
-- [ ] 6.6 `revert(change, *, world_id, editors)`
+- [x] 6.6 `revert(change, *, world_id, editors)`
   - 먼저 검사한다(FD R-08): `editors.get_node`로 읽은 지금 노드가 `nodes_after`와 다르거나 `added_ids` 노드가 없으면 `RevertConflictError`이고 쓰지 않는다.
   - 그다음 BLM §4.3의 순서로 쓴다. 검색 문서는 다시 색인하거나 지운다.
-- [ ] 6.7 `augmentation/service.py` `AugmentationService(engine, store, *, max_answers=30, llm_budget=60)`
+- [x] 6.7 `augmentation/service.py` `AugmentationService(engine, store, *, max_answers=30, llm_budget=60)`
   - `start_run`
   - `answer -> AnswerResult`: ignore도 `answers += 1`(FD R-08a)
   - `revert -> AugmentationRun`: 검사 순서는 FD R-08이다.
@@ -486,18 +487,18 @@
   - BLM §4.3 상태 전이 표 + FD R-08a 행을 따른다.
   - LLM 호출을 세고, 예산이 다 되면 템플릿만 쓰고 판정을 쉰다.
   - `run_store.py`: run마다 `threading.Lock`을 둔다(NFR N3-7). 월드마다 최근 20개만 남긴다(BR-U3-42).
-- [ ] 6.8 `augmentation/engine.py`·`wiring.py`
+- [x] 6.8 `augmentation/engine.py`·`wiring.py`
   - 엔진은 `editors`와 `wiki_provider`를 받는다.
   - `assemble_world`는 보강을 LLM 없이도 조립한다(NFR-4). 이때 `CommonsenseWiki(search, llm=None, …)`(3.1)를 쓴다. LLM이 있으면 다듬기·판정을 켠다.
   - `augmentation/graph.py`(LangGraph 보기, 미배선)는 새 시그니처에 맞춘다.
-- [ ] 6.8a 〔검토 02 처리 R-15〕 보강 라우터(`api/routers/world.py:459-485`)를 6.9 전에 바꾼다.
+- [x] 6.8a 〔검토 02 처리 R-15〕 보강 라우터(`api/routers/world.py:459-485`)를 6.9 전에 바꾼다.
   - `POST runs`는 LLM 없이도 200이다.
   - `answer`는 `response_model=AnswerResult`다.
   - `revert`는 200 + `AugmentationRun`이다.
   - `unignore` 경로를 더한다.
   - 409 매핑(8.5의 보강 오류)도 여기서 한다.
   - 8.4에는 wiki·초안 경로만 남는다.
-- [ ] 6.9 테스트
+- [x] 6.9 테스트
   - 의도된 변경(C-3), `tests/world/augmentation/test_augmentation.py`
     - `:101` 질문 `options`, `:155` `ChangeSet.removed/updated`, `:175` `_StubEngine`의 `options=["add"]`, `:193` `max_rounds=5` → `max_answers`
     - `terrain` 키 fixture

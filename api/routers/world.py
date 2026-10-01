@@ -19,7 +19,7 @@ from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Respons
 
 from api.deps import get_localization, get_play_optional, get_shared, get_world
 from api.errors import http_error
-from api.schemas import WorldInfo, purge_translations
+from api.schemas import UnignoreIn, WorldInfo, purge_translations
 from locus.localization.wiring import LocalizationContainer
 from locus.play.errors import TurnInProgressError
 from locus.play.wiring import PlayContainer
@@ -33,7 +33,12 @@ from locus.shared.models import (
 )
 from locus.shared.models.reports import BuildWarning
 from locus.shared.wiring import SharedContainer
-from locus.world.augmentation.types import AugmentationAnswer, AugmentationRun, ChangeSet
+from locus.world.augmentation.types import (
+    AnswerResult,
+    AugmentationAnswer,
+    AugmentationConflict,
+    AugmentationRun,
+)
 from locus.world.build import WorldExistsError
 from locus.world.demo import DemoInfo
 from locus.world.ingestion.service import WorldInputs
@@ -434,31 +439,56 @@ def upsert_knowledge(
     return _need(w.editors, "world editor").knowledge.upsert_knowledge(knowledge)
 
 
-# --- augmentation runs --------------------------------------------------------- #
+# --- augmentation runs (U3 BLM §4.3 〔Step 1.3 정정〕) ---------------------------- #
+_AUG_ERRORS = (LookupError, ValueError, AugmentationConflict)
+
+
 @router.post("/worlds/{world_id}/augmentation/runs", response_model=AugmentationRun)
 def start_augmentation(world_id: str, w: WorldContainer = Depends(get_world)) -> AugmentationRun:
+    """Without an LLM the run asks template questions and skips wiki conflicts (NFR-4)."""
     try:
-        return _need(w.augmentation, "augmentation (LLM provider)").start_run(world_id)
+        return _need(w.augmentation, "augmentation").start_run(world_id)
     except LookupError as exc:  # unknown / empty world (loader) -> 404
         raise http_error(exc) from exc
 
 
-@router.post("/augmentation/runs/{run_id}/answer", response_model=ChangeSet)
+@router.get("/augmentation/runs/{run_id}", response_model=AugmentationRun)
+def get_augmentation(run_id: str, w: WorldContainer = Depends(get_world)) -> AugmentationRun:
+    """Read a kept run again; 404 after a restart (runs live in memory, BR-U3-42)."""
+    run = _need(w.augmentation, "augmentation").get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"augmentation run not found: {run_id}")
+    return run
+
+
+@router.post("/augmentation/runs/{run_id}/answer", response_model=AnswerResult)
 def answer_augmentation(
     run_id: str, answer: AugmentationAnswer, w: WorldContainer = Depends(get_world)
-) -> ChangeSet:
+) -> AnswerResult:
     try:
-        return _need(w.augmentation, "augmentation (LLM provider)").answer(run_id, answer)
-    except LookupError as exc:
+        return _need(w.augmentation, "augmentation").answer(run_id, answer)
+    except _AUG_ERRORS as exc:
         raise http_error(exc) from exc
 
 
-@router.post("/augmentation/runs/{run_id}/revert", status_code=204)
+@router.post("/augmentation/runs/{run_id}/revert", response_model=AugmentationRun)
 def revert_augmentation(
     run_id: str, change_id: str, w: WorldContainer = Depends(get_world)
-) -> Response:
+) -> AugmentationRun:
+    """200 + the run detected again; 409 when already undone, not the latest, or the
+    target was edited outside the run."""
     try:
-        _need(w.augmentation, "augmentation (LLM provider)").revert(run_id, change_id)
-    except LookupError as exc:
+        return _need(w.augmentation, "augmentation").revert(run_id, change_id)
+    except _AUG_ERRORS as exc:
         raise http_error(exc) from exc
-    return Response(status_code=204)
+
+
+@router.post("/augmentation/runs/{run_id}/unignore", response_model=AugmentationRun)
+def unignore_augmentation(
+    run_id: str, body: UnignoreIn, w: WorldContainer = Depends(get_world)
+) -> AugmentationRun:
+    """Ask an ignored issue again (FD 검토 R-08); 409 on a stopped run."""
+    try:
+        return _need(w.augmentation, "augmentation").unignore(run_id, body.issue_key)
+    except _AUG_ERRORS as exc:
+        raise http_error(exc) from exc

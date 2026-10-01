@@ -3342,3 +3342,18 @@ R-16 → Accepted risk
 **Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 5.
 
 ---
+
+## U3 Code Generation Part 2 — Step 6 (augmentation Q&A)
+**Timestamp**: 2026-10-01T10:04:38Z
+**AI Response**: Rewrote augmentation for U3:
+- Six detectors (dangling by id property, one per broken id; unscoped).
+- Targeted questions with fixed actions; polish capped at 5 per detection and cached.
+- wiki_conflict: search only, skipped without a prior, 20 pairs, cached verdicts.
+- Editor-backed apply/revert with node and edge diffs, an outside-edit conflict check and search doc restore.
+- Run state with lock and caches (20 per world); 30 answers; LLM budget 60; R-08a transitions; revert check order.
+- LLM-free assembly; router moved up (6.8a, R-15).
+- Tests: 31 new or rewritten (TP-U3-4/5, EX-7/8/9). Mutations caught.
+- Gates: pytest 803, mypy 11.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 6.
+
+---

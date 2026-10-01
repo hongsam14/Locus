@@ -58,11 +58,15 @@ class SessionKnowledgeService:
         *,
         session: GameSession | None = None,
         snapshot: WorldSnapshot | None = None,
+        lineage: bool = True,
     ) -> RegionSources:
         """The region's facts, hearsay and active rumors, resolved once (BLM §1.1).
 
         A caller that already read the session and the snapshot passes them in, so one
         screen is built from one snapshot and does not read them twice (review U5 #13).
+        ``lineage=False`` reads active rumors only: regenerations deactivate instead of
+        deleting (BR-U7-16), so the inactive rows grow, and only the dialogue, appraisal
+        and narration scenes need them to hide a rumor's source (U7 review C2).
         """
         if session is None:
             session = self._repo.get_session(session_id)
@@ -73,7 +77,7 @@ class SessionKnowledgeService:
         if region_id not in snapshot.regions_by_id:
             raise LookupError(f"region not found: {region_id}")
         view = ConsensusEngine.from_snapshot(snapshot, self._params).resolve(region_id)
-        every = self._repo.list_rumors(session_id, region_id, include_pruned=True)
+        every = self._repo.list_rumors(session_id, region_id, include_pruned=lineage)
         return RegionSources(
             world_id=session.world_id,
             region_id=region_id,
@@ -84,7 +88,7 @@ class SessionKnowledgeService:
         )
 
     def knowledge_for_region(self, session_id: str, region_id: str) -> QueryResult:
-        src = self.region_sources(session_id, region_id)
+        src = self.region_sources(session_id, region_id, lineage=False)
         promoted = [_rumor_view(r) for r in src.rumors if r.promoted]
         other = [_rumor_view(r) for r in src.rumors if not r.promoted]
 

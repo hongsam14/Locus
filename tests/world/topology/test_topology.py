@@ -167,9 +167,10 @@ def test_u7_compute_weight_reads_the_given_tuning() -> None:
 
     tuned = WorldTuning(
         base_weights=MappingProxyType({"route": 0.9}),
-        default_base=0.1,
         terrain_modifiers=MappingProxyType({"swamp": 0.5}),
     )
     assert compute_weight("route", ["swamp"], tuning=tuned) == 0.45
-    assert compute_weight("river", [], tuning=tuned) == 0.1  # missing kind -> default_base
+    # U3 intended change: A3-15 — no default_base; a kind missing from the table falls to
+    # the adjacent weight (the builder maps unknown kinds to adjacent before this)
+    assert compute_weight("river", [], tuning=tuned) == 0.8
     assert compute_weight("route", ["swamp"]) == 0.6  # defaults: no swamp modifier

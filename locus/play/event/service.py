@@ -12,7 +12,13 @@ from typing import TYPE_CHECKING
 
 from locus.knowledge.cache import SnapshotSource
 from locus.knowledge.query import region_briefs
-from locus.play.base import SessionAppService, require_region
+from locus.play.base import (
+    SessionAppService,
+    SnapshotNames,
+    names_of,
+    region_name,
+    require_region,
+)
 from locus.play.errors import InvalidActionError, LlmUnavailableError
 from locus.play.event import dynamics
 from locus.play.event import suggest_context as ctx
@@ -35,7 +41,7 @@ if TYPE_CHECKING:  # wired by assemble_play
     from locus.play.deeds.service import DeedService
 
 
-class EventService(SessionAppService):
+class EventService(SnapshotNames, SessionAppService):
     """Create / resolve / discard events and run the suggest->approve gate."""
 
     def __init__(
@@ -189,6 +195,9 @@ class EventService(SessionAppService):
         session = self._require_open(session_id)
         snapshot = self._snapshots.get(session.world_id)
         shown = self._shown_regions(session, snapshot)
+        if not shown:  # a world with no region: nothing to suggest, no call (U7 review §3)
+            return []
+        every = region_briefs(snapshot, top_k=0)
         drafts = self._suggester.suggest(
             context=ctx.suggestion_context(
                 shown, self._event_lines(session, snapshot), self._deed_lines(session)
@@ -198,8 +207,10 @@ class EventService(SessionAppService):
         )
         out: list[SessionEvent] = []
         for d in drafts:
-            region_id = ctx.match_region(d.region_id, shown)
-            if region_id is None:  # skip a region the prompt did not show (BR-P2-10)
+            # by id or unambiguous name among all the world's regions: an event in a region
+            # the prompt left out but a line named is still the world's (U7 review §3)
+            region_id = ctx.match_region(d.region_id, every)
+            if region_id is None:  # not a region of this world (BR-P2-10)
                 continue
             cat = EventCategory(d.category)
             event = SessionEvent(
@@ -248,7 +259,7 @@ class EventService(SessionAppService):
                 "event_id": event_id,
                 "region_id": event.region_id,
                 "region_name": name,
-                "category": str(event.category),
+                "category": EventCategory(event.category).value,
             },
         )
         return saved
@@ -259,11 +270,6 @@ class EventService(SessionAppService):
         if event is None:
             raise LookupError(f"event not found: {event_id}")
         return event
-
-    def _region_name(self, session: GameSession, region_id: str) -> str:
-        """FR-D3: lines name regions; the id stands in when the world lost the region."""
-        region = self._snapshots.get(session.world_id).regions_by_id.get(region_id)
-        return region.name if region is not None else region_id
 
     def _shown_regions(self, session: GameSession, snapshot) -> list:
         """The regions the suggestion prompt shows, in the FD review R-06 order."""
@@ -278,23 +284,20 @@ class EventService(SessionAppService):
             event_region_ids={e.region_id for e in events},
             rumor_counts=counts,
             limit=self._tuning.suggest_max_regions,
+            parent_ids={r.parent_id for r in snapshot.topo.regions if r.parent_id},
         )
 
     def _event_lines(self, session: GameSession, snapshot) -> list[str]:
         """The latest five events that are not mere suggestions, newest first."""
-        names = {r.id: r.name for r in snapshot.topo.regions}
-        events = [
-            e
-            for e in self._repo.list_events(session.id)
-            if str(e.status) != EventStatus.SUGGESTED.value
-        ]
+        names = names_of(snapshot)
+        events = [e for e in self._repo.list_events(session.id) if not e.is_suggested()]
         events.sort(key=lambda e: (e.created_turn, e.id), reverse=True)
         return [
             ctx.event_line(
-                names.get(e.region_id, e.region_id),
-                str(e.category),
+                region_name(names, e.region_id),
+                EventCategory(e.category).value,
                 e.magnitude,
-                str(e.status),
+                EventStatus(e.status).value,  # an enum member in memory (U7 review #13)
                 e.description,
             )
             for e in events[:5]
@@ -305,9 +308,9 @@ class EventService(SessionAppService):
         traveler did lately can give rise to events. Voided deeds are left out."""
         if self._deeds is None:
             return []
-        names = {r.id: r.name for r in self._snapshots.get(session.world_id).topo.regions}
+        names = names_of(self._snapshots.get(session.world_id))
         lines = []
         for deed, appraisals in self._deeds.recent(session.id, 5):
             told = next((a.retelling for a in appraisals if a.noteworthy and a.retelling), None)
-            lines.append(ctx.deed_line(names.get(deed.region_id, deed.region_id), deed.text, told))
+            lines.append(ctx.deed_line(region_name(names, deed.region_id), deed.text, told))
         return lines

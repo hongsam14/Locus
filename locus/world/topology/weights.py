@@ -7,19 +7,21 @@ separately), not the numeric value — so weights are reproducible/testable.
 
 from __future__ import annotations
 
-from locus.shared.config.tuning import WorldTuning
+from locus.shared.config.tuning import DEFAULT_BASE_WEIGHTS, WorldTuning
+from locus.shared.models import ConnectionKind
 from locus.shared.models.util import clamp01
 
 # The tables live in ``WorldTuning`` (U7, FR-A7: env-tunable); these are its defaults.
 _DEFAULTS = WorldTuning()
-BASE_WEIGHT = _DEFAULTS.base_weights
-DEFAULT_BASE = _DEFAULTS.default_base
-TERRAIN_MODIFIER = _DEFAULTS.terrain_modifiers  # terrain kind -> multiplicative modifier
 DEFAULT_MODIFIER = 1.0
 
 
 def base_weight(kind: str, tuning: WorldTuning = _DEFAULTS) -> float:
-    return tuning.base_weights.get(str(kind), tuning.default_base)
+    """The kind's base weight. The kinds are an enum of four and the builder turns an
+    unknown kind into ``adjacent`` first (U3 A3-15: no separate default knob)."""
+    adjacent = ConnectionKind.ADJACENT.value
+    fallback = tuning.base_weights.get(adjacent, DEFAULT_BASE_WEIGHTS[adjacent])
+    return tuning.base_weights.get(str(kind), fallback)
 
 
 def terrain_modifier(terrain_kind: str, tuning: WorldTuning = _DEFAULTS) -> float:

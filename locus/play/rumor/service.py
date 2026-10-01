@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from locus.knowledge.cache import SnapshotSource
 from locus.knowledge.consensus import DEFAULT_PARAMS, ConsensusEngine, ConsensusParams
-from locus.play.base import SessionAppService
+from locus.play.base import SessionAppService, SnapshotNames
 from locus.play.errors import LlmUnavailableError
 from locus.play.models import (
     DEFAULT_DISTORTION_DEGREE,
@@ -43,7 +43,7 @@ def chain_degrees_for(distortion: float | None) -> list[float]:
     return [clamp01(f * d) for f in DEFAULT_CHAIN_FRACTIONS]
 
 
-class RumorService(SessionAppService):
+class RumorService(SnapshotNames, SessionAppService):
     """Generate / regenerate rumors and adjust their support."""
 
     def __init__(
@@ -78,11 +78,6 @@ class RumorService(SessionAppService):
 
     # -- actions -------------------------------------------------------------
 
-    def _region_name(self, session: GameSession, region_id: str) -> str:
-        """The region's name for timeline lines (FR-D3); its id when the world lost it."""
-        region = self._snapshots.get(session.world_id).regions_by_id.get(region_id)
-        return region.name if region is not None else region_id
-
     def generate_rumors(
         self, session_id: str, region_id: str, *, degrees: list[float] | None = None
     ) -> list[SessionRumor]:
@@ -90,15 +85,12 @@ class RumorService(SessionAppService):
         session = self._require_open(session_id)
         degrees = degrees or self._chain_degrees(session_id, region_id)
         rumors = self._generate_for_region(session, region_id, degrees)
+        name = self._region_name(session, region_id)
         self._timeline(
             session,
             TimelineKind.GENERATE,
-            f"generated {len(rumors)} rumors in {self._region_name(session, region_id)}",
-            {
-                "region_id": region_id,
-                "region_name": self._region_name(session, region_id),
-                "rumor_ids": [r.id for r in rumors],
-            },
+            f"generated {len(rumors)} rumors in {name}",
+            {"region_id": region_id, "region_name": name, "rumor_ids": [r.id for r in rumors]},
         )
         return rumors
 
@@ -189,18 +181,18 @@ class RumorService(SessionAppService):
         rumor = self._repo.get_rumor(session_id, rumor_id)
         if rumor is None:
             raise LookupError(f"rumor not found: {rumor_id}")
-        rumor.support = clamp01(support)
+        rumor.support = rumor_dynamics.settle(support)
         saved = self._repo.upsert_rumor(rumor)
+        name = self._region_name(session, rumor.region_id)
         self._timeline(
             session,
             TimelineKind.ADJUST_SUPPORT,
-            f"support of a rumor in {self._region_name(session, rumor.region_id)}"
-            f" -> {rumor.support:.2f}",
+            f"support of a rumor in {name} -> {rumor.support:.2f}",
             {
                 "rumor_id": rumor_id,
                 "support": rumor.support,
                 "region_id": rumor.region_id,
-                "region_name": self._region_name(session, rumor.region_id),
+                "region_name": name,
             },
         )
         return saved

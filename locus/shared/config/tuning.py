@@ -47,7 +47,6 @@ class WorldTuning:
     table and the ontology dedup bar."""
 
     base_weights: Mapping[str, float] = field(default_factory=lambda: DEFAULT_BASE_WEIGHTS)
-    default_base: float = 0.5  # a connection kind missing from the table
     terrain_modifiers: Mapping[str, float] = field(
         default_factory=lambda: DEFAULT_TERRAIN_MODIFIERS
     )

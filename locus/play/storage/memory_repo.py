@@ -529,7 +529,7 @@ class InMemoryPlayRepository:
             and not deeds[a.deed_id].voided
             and a.noteworthy
             and a.salience >= min_salience
-            and a.retelling.strip()
+            and a.retelling != ""
             and a.seeded_rumor_id is None
         ]
         out.sort(

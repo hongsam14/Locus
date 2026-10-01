@@ -10,14 +10,9 @@ from pydantic import ValidationError
 
 from locus.shared.config import Settings
 
-_KEYS = (
-    "NPC_MAX_FACTS",
-    "NPC_MAX_RUMORS",
-    "NPC_MAX_RECENT_MESSAGES",
-    "NPC_MAX_MESSAGE_CHARS",
-    "SUPPORTED_LANGS",
-    "TRANSLATION_TARGET_LANG",
-)
+# Every env name Settings reads (U3, U7 review test memo): a knob exported in the shell
+# (e.g. an old .env's RUMOR_HIGH_SUPPORT_THRESHOLD) must not leak into the default tests.
+_KEYS = tuple(f.alias for f in Settings.model_fields.values() if f.alias)
 
 
 @pytest.fixture(autouse=True)
@@ -145,7 +140,7 @@ def test_tp_u7_8_default_settings_build_the_dataclass_defaults() -> None:
     default = WorldTuning()
     assert dict(world.base_weights) == dict(default.base_weights)
     assert dict(world.terrain_modifiers) == dict(default.terrain_modifiers)
-    assert (world.default_base, world.dedup_threshold) == (0.5, 0.86)
+    assert world.dedup_threshold == 0.86  # U3 intended change: A3-15, no default_base
 
 
 @pytest.mark.parametrize(
@@ -154,7 +149,6 @@ def test_tp_u7_8_default_settings_build_the_dataclass_defaults() -> None:
         ("CONSENSUS_PROPAGATE_MIN", "0.6", lambda s: s.knowledge_tuning().propagate_min),
         ("CONSENSUS_HEARSAY_MIN", "0.1", lambda s: s.knowledge_tuning().hearsay_min),
         ("ONTOLOGY_DEDUP_THRESHOLD", "0.9", lambda s: s.world_tuning().dedup_threshold),
-        ("TOPOLOGY_DEFAULT_BASE", "0.4", lambda s: s.world_tuning().default_base),
         ("RUMOR_HIGH_SUPPORT_THRESHOLD", "0.5", lambda s: s.play_tuning().high_support_threshold),
         ("RUMOR_FEEDBACK_CAP", "0.2", lambda s: s.play_tuning().feedback_cap),
         ("RUMOR_FEEDBACK_RESTORE", "0.1", lambda s: s.play_tuning().feedback_restore),
@@ -188,6 +182,10 @@ def test_tp_u7_8_table_env_overrides_only_the_named_keys(monkeypatch: pytest.Mon
         ("TOPOLOGY_BASE_WEIGHTS", '{"route": 1.2}'),  # out of range
         ("TOPOLOGY_BASE_WEIGHTS", '{"teleport": 0.5}'),  # unknown connection kind
         ("TOPOLOGY_TERRAIN_MODIFIERS", '{"road": -1}'),
+        ("TOPOLOGY_TERRAIN_MODIFIERS", '{"mountain": NaN}'),  # U3 (U7 review §3)
+        ("TOPOLOGY_TERRAIN_MODIFIERS", '{"mountain": Infinity}'),
+        ("TOPOLOGY_TERRAIN_MODIFIERS", '{"mountain": 1e400}'),
+        ("TOPOLOGY_BASE_WEIGHTS", '{"route": NaN}'),
         ("CONSENSUS_HEARSAY_MIN", "0.6"),  # above propagate_min 0.5
         ("EVENT_MAX_DELTA", "1.5"),
         ("EVENT_SUGGEST_MAX", "0"),

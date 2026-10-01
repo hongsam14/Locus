@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, Query
 from fastapi.responses import JSONResponse
 
 from api.deps import display_lang, get_localization, get_play
@@ -149,10 +149,14 @@ def get_turn_run(session_id: str, run_id: str, p: PlayContainer = Depends(get_pl
 
 
 @router.get("/sessions/{session_id}/log", response_model=list[TimelineEntry])
-def play_log(session_id: str, p: PlayContainer = Depends(get_play)) -> list[TimelineEntry]:
-    """The session timeline (U4 basic; the player-perspective filter is U7)."""
+def play_log(
+    session_id: str,
+    limit: int | None = Query(default=None, ge=1, le=1000),
+    p: PlayContainer = Depends(get_play),
+) -> list[TimelineEntry]:
+    """The player's log (U7 filter); ``limit`` keeps the newest lines (U3, U7 review C6)."""
     try:
-        return p.play.log(session_id)
+        return p.play.log(session_id, limit=limit)
     except PLAY_ERRORS as exc:
         raise http_error(exc) from exc
 

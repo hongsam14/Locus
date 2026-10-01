@@ -683,7 +683,7 @@ class _PgStores:
                 deeds.c.voided.is_(False),
                 deed_appraisals.c.noteworthy.is_(True),
                 deed_appraisals.c.salience >= min_salience,
-                func.trim(deed_appraisals.c.retelling) != "",
+                deed_appraisals.c.retelling != "",
                 deed_appraisals.c.seeded_rumor_id.is_(None),
             )
             .order_by(

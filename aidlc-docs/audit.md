@@ -3357,3 +3357,16 @@ R-16 → Accepted risk
 **Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 6.
 
 ---
+
+## U3 Code Generation Part 2 — Step 7 (U7 carry, backend)
+**Timestamp**: 2026-10-01T10:17:38Z
+**AI Response**: Closed the backend carry items in the plan's tables:
+- A3-15/C10/§3 NaN settings; Q6=A plus rollback; #9 settle.
+- #13/#14/#15 and §3 suggestion fixes; C11/C13.
+- C2/C3/C4/C5/C6/C9/C12; spread and void names.
+- §3 say narrowing; C14/C17/C18; NaN 422 (with a JSON-safe 422 handler); 409 body pins.
+- Tests: 28 new. Mutations caught.
+- Gates: pytest 833, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 7.
+
+---

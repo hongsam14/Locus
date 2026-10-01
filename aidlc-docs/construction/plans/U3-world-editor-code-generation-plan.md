@@ -520,38 +520,40 @@
   - LLM 없는 run 시작 → 템플릿, 호출 0
 
 ### Step 7 — U7 이월: 백엔드
-- [ ] 7.1 설정
+- [x] 7.1 설정
+  - 〔실행 메모〕 `base_weight`가 표에 없는 종류를 만나면 그 표의 `adjacent` 값을 쓴다. 표에 그것도 없으면 기본 표의 `adjacent` 값을 쓴다. 노브는 없다.
   - `TOPOLOGY_DEFAULT_BASE`·`WorldTuning.default_base`·`weights.py:15-17` 별칭 셋을 지운다(A3-15, C10).
     - `weights.py:22`는 `base_weights[str(kind)]`다. 빌더가 이미 모르는 종류를 `adjacent`로 바꾼다.
     - 호출처: `settings.py:110·213`, `tuning.py:50`, `tests/shared/test_config.py:148·157`, `tests/world/topology/test_topology.py:170-174`
   - 지형·가중치 표를 `FiniteFloat`로 바꾼다(§3 NaN).
   - `tests/shared/test_config.py`의 `_clean_env` fixture가 U7 키 전부를 지운다(U7 테스트 메모).
-- [ ] 7.2 왜곡도와 지지도
+- [x] 7.2 왜곡도와 지지도
   - Q6=A(BR-U3-38): `DistortionService.set_region_distortion`의 UoW 하나에서 설정, 몫, 사건 기여(`update_event`), 타임라인 `event_contributions_cleared`를 쓴다.
     - EX-12
     - 롤백 테스트: 타임라인 쓰기 실패 → 셋 모두 그대로
     - 의도된 변경 C-5: `tests/play/test_play_services.py:140`, `tests/api/test_play_gm_api.py:86`
   - #9: 지지도 반올림. 예제 0.35 + 0.1 → 강한 소문
-- [ ] 7.3 사건 제안과 세계 상태
+- [x] 7.3 사건 제안과 세계 상태
   - #13 enum 비교
   - #14 예산 순서
   - #15 `WorldState.max_event_suggestions`(`play/models.py:641`), `WorldStateService`가 채운다.
   - §3: 월드 기준 지역 맞추기, `pick_brief_regions` 정렬, `ID_MAX` 없음, 빈 `shown`
   - C11 `system()` 삭제·`_prompt`, C13 `normalize_name`
   - 테스트: `tests/play/test_gm_events.py`, `tests/play/test_world_state.py`
-- [ ] 7.4 엔진·지식 읽기
+- [x] 7.4 엔진·지식 읽기
   - C2 `region_sources(lineage=)`(호출처는 이월 표)
   - C3 `neighbour_map`만
   - C4 `region_name`·`where`(호출처는 이월 표)
   - C5 `deed_ids=`, C6 `/log?limit=`, C9 기본값, C12 `region_rows`·`FRESH`
   - §3 이름 summary: `rumor_spread`, `deed_voided.region_names`
   - 테스트: 사라진 지역 이름 폴백, 평행 간선·자기 고리, `limit`
-- [ ] 7.5 대화·저장
+- [x] 7.5 대화·저장
   - §3 `say` try 좁히기(판단·서술 같게)
   - C14 `one_line` 자르기 하나로(`narrator.py:32·80`, `suggest_context.py:95`)
   - C17 `retelling` 정규화와 계약 테스트(탭·줄바꿈·NBSP)
   - C18 `UtcDateTime` 쓰기 변환과 +09:00 왕복
-- [ ] 7.6 API 쪽 이월
+- [x] 7.6 API 쪽 이월
+  - 〔실행 메모〕 NaN이 든 요청의 422 본문이 JSON으로 쓰이지 못해 500이 되었다. 그래서 `api/main.py`에 422 처리기를 더했다. 처리기는 무한·NaN 입력을 글자로 돌려준다.
   - §3 NaN 값 → `Field(allow_inf_nan=False)`, 422 테스트 셋
   - #12 409 본문 고정 테스트(`session is closed`, `turn in progress`)
 

@@ -9,7 +9,7 @@ GM's view — live here too, so the stay rule (BR-U6-4) has one definition.
 from __future__ import annotations
 
 from locus.knowledge.cache import SnapshotSource
-from locus.play.base import SessionAppService
+from locus.play.base import SessionAppService, names_of, region_name
 from locus.play.errors import AppraisalExistsError
 from locus.play.models import (
     AppraisalOutcome,
@@ -319,6 +319,7 @@ class DeedService(SessionAppService):
             raise LookupError(f"deed not found: {deed_id}")
         if deed.voided:
             return VoidResult(deed_id=deed_id)
+        names = names_of(self._snapshots.get(session.world_id))  # read before the UoW
         with self._repo.uow() as u:
             deed.voided = True
             deed.voided_turn = session.turn
@@ -328,6 +329,7 @@ class DeedService(SessionAppService):
                 r.active = False
             if rumors:
                 u.rumors.upsert_rumors(rumors)
+            regions = sorted({r.region_id for r in rumors})  # names too (U7 review §3)
             u.timeline.append_timeline(
                 self._entry(
                     session,
@@ -336,7 +338,8 @@ class DeedService(SessionAppService):
                     {
                         "deed_id": deed_id,
                         "rumor_ids": [r.id for r in rumors],
-                        "region_ids": sorted({r.region_id for r in rumors}),
+                        "region_ids": regions,
+                        "region_names": [region_name(names, rid) for rid in regions],
                     },
                 )
             )

@@ -30,7 +30,13 @@ from pydantic import Field
 
 from locus.knowledge.cache import SnapshotSource
 from locus.knowledge.propagation import best_path_weights
-from locus.play.base import SessionAppService, SessionClosedError  # noqa: F401  (re-exported)
+from locus.play.base import (  # noqa: F401  (re-exported)
+    SessionAppService,
+    SessionClosedError,
+    names_of,
+    region_name,
+    where,
+)
 from locus.play.errors import InvalidActionError, TurnInProgressError  # noqa: F401
 from locus.play.event import dynamics
 from locus.play.gm import narrator as gm_narrator
@@ -244,7 +250,7 @@ class TurnAdvancer(SessionAppService):
                     u.players.update_player(player)
                     if isinstance(action, MoveAction):
                         to_id = action.to_region_id
-                        names = {r.id: r.name for r in snapshot.topo.regions}
+                        names = names_of(snapshot)
                         arrival = (  # U6: the arrival is a deed (BR-U6-1); a failed run
                             # with no turn advanced deletes it again (BR-U6-36)
                             self._deeds.arrival(
@@ -262,15 +268,15 @@ class TurnAdvancer(SessionAppService):
                             self._entry(
                                 session,
                                 TimelineKind.PLAYER_MOVED,
-                                f"{player.name} → {names.get(to_id, to_id)}",
+                                f"{player.name} → {region_name(names, to_id)}",
                                 {
                                     "player_id": player.id,
                                     "from_region_id": from_id,
-                                    "from_region_name": names.get(from_id, from_id),
+                                    "from_region_name": region_name(names, from_id),
                                     "to_region_id": to_id,
-                                    "to_region_name": names.get(to_id, to_id),
+                                    "to_region_name": region_name(names, to_id),
                                     "region_id": to_id,
-                                    "region_name": names.get(to_id, to_id),
+                                    "region_name": region_name(names, to_id),
                                     "cost_turns": run.cost_turns,
                                     "deed_id": arrival.id if arrival is not None else None,
                                 },
@@ -561,7 +567,7 @@ class TurnAdvancer(SessionAppService):
 
         # (a) compute: ACTIVE events -> post-event distortion, in memory
         events = self._compute_events(session, snapshot)
-        names = {r.id: r.name for r in snapshot.topo.regions}  # FR-D3: lines carry names
+        names = names_of(snapshot)  # FR-D3: lines carry names
 
         # (b) draft: new rumors per target region at the post-event distortion,
         #     under the turn budget and the per-region caps (LLM, outside any UoW)
@@ -593,9 +599,9 @@ class TurnAdvancer(SessionAppService):
                 if llm_failed or budget.exhausted:
                     skipped.append(region_id)
                     continue
-                distortion = events.distortions.get(region_id)
-                if distortion is None:
-                    distortion = self._repo.get_region_distortion(session.id, region_id)
+                # every event target is a key of `events.distortions`; a region without a
+                # stored row is at the default (U7 review C9)
+                distortion = events.distortions.get(region_id, DEFAULT_DISTORTION_DEGREE)
                 new, reason = rumor_service.append_for_turn(
                     session,
                     region_id,
@@ -629,9 +635,8 @@ class TurnAdvancer(SessionAppService):
             # map read before the multi-second LLM phase silently overwrote a concurrent
             # GM distortion edit and cost one upsert per region per turn
             # (code review U4-2 #8).
-            for rid in sorted(events.influenced_regions):
-                if rid in events.distortions:
-                    u.distortions.set_region_distortion(session.id, rid, events.distortions[rid])
+            for rid in sorted(events.influenced_regions):  # each is a key (C9)
+                u.distortions.set_region_distortion(session.id, rid, events.distortions[rid])
             for entry in events.timeline:
                 u.timeline.append_timeline(entry)
             added_by_region: dict[str, list[str]] = {}
@@ -666,8 +671,8 @@ class TurnAdvancer(SessionAppService):
                     self._entry(
                         session,
                         TimelineKind.PRUNE,
-                        f"pruned a rumor in {names.get(r.region_id, r.region_id)}",
-                        {"rumor_id": r.id, **_where(r.region_id, names)},
+                        f"pruned a rumor in {region_name(names, r.region_id)}",
+                        {"rumor_id": r.id, **where(names, r.region_id)},
                     )
                 )
             res = promotion.evaluate(survivors, promotion_threshold)
@@ -680,8 +685,8 @@ class TurnAdvancer(SessionAppService):
                         self._entry(
                             session,
                             TimelineKind.PROMOTE,
-                            f"promoted a rumor in {names.get(r.region_id, r.region_id)}",
-                            {"rumor_id": r.id, **_where(r.region_id, names)},
+                            f"promoted a rumor in {region_name(names, r.region_id)}",
+                            {"rumor_id": r.id, **where(names, r.region_id)},
                         )
                     )
                 elif r.id in demoted:
@@ -690,8 +695,8 @@ class TurnAdvancer(SessionAppService):
                         self._entry(
                             session,
                             TimelineKind.DEMOTE,
-                            f"demoted a rumor in {names.get(r.region_id, r.region_id)}",
-                            {"rumor_id": r.id, **_where(r.region_id, names)},
+                            f"demoted a rumor in {region_name(names, r.region_id)}",
+                            {"rumor_id": r.id, **where(names, r.region_id)},
                         )
                     )
             u.rumors.upsert_rumors(rumors)  # batch (FR-H5 / BR-H1-13)
@@ -802,7 +807,9 @@ class TurnAdvancer(SessionAppService):
             reached[r.origin_appraisal_id or ""].add(r.region_id)
         for appraisal, r in seeds:
             reached[appraisal.id].add(r.region_id)
-        origin = {d.id: d.region_id for d in self._repo.list_deeds(session.id)}
+        # only the parents' origin deeds, not the session's whole history (U7 review C5)
+        wanted = sorted({p.origin_deed_id for p in parents if p.origin_deed_id})
+        origin = {d.id: d.region_id for d in self._repo.list_deeds(session.id, deed_ids=wanted)}
         graph = passable_both_ways(snapshot)
         near = neighbour_map(graph)
         reach_from: dict[str, dict[str, float]] = {}  # memo per origin region (C4)
@@ -851,7 +858,7 @@ class TurnAdvancer(SessionAppService):
     ) -> set[str]:
         """(c) Save this turn's seeds and hops with their timeline lines; return their ids
         (they skip this turn's decay)."""
-        names = {r.id: r.name for r in snapshot.topo.regions}
+        names = names_of(snapshot)
         for appraisal, rumor in seeds:
             u.rumors.upsert_rumors([rumor])
             u.deeds.mark_seeded(session.id, appraisal.id, rumor.id)
@@ -860,14 +867,14 @@ class TurnAdvancer(SessionAppService):
                 self._entry(
                     session,
                     TimelineKind.DEED_SEEDED,
-                    f"deed rumor born in {names.get(rumor.region_id, rumor.region_id)}",
+                    f"deed rumor born in {region_name(names, rumor.region_id)}",
                     {
                         "deed_id": appraisal.deed_id,
                         "appraisal_id": appraisal.id,
                         "npc_name": teller.name if teller is not None else appraisal.npc_id,
                         "rumor_id": rumor.id,
                         "region_id": rumor.region_id,
-                        "region_name": names.get(rumor.region_id, rumor.region_id),
+                        "region_name": region_name(names, rumor.region_id),
                     },
                 )
             )
@@ -877,14 +884,15 @@ class TurnAdvancer(SessionAppService):
                 self._entry(
                     session,
                     TimelineKind.RUMOR_SPREAD,
-                    f"rumor spread {target.from_region_id} -> {target.region_id}",
+                    f"rumor spread {region_name(names, target.from_region_id)} -> "
+                    f"{region_name(names, target.region_id)}",
                     {
                         "deed_id": rumor.origin_deed_id,
                         "rumor_id": rumor.id,
                         "from_region_id": target.from_region_id,
-                        "from_region_name": names.get(target.from_region_id, target.from_region_id),
+                        "from_region_name": region_name(names, target.from_region_id),
                         "region_id": target.region_id,
-                        "region_name": names.get(target.region_id, target.region_id),
+                        "region_name": region_name(names, target.region_id),
                         "weight": round(target.weight, 4),
                         "degree": round(target.degree, 4),
                     },
@@ -932,8 +940,8 @@ class TurnAdvancer(SessionAppService):
                 self._entry(
                     session,
                     TimelineKind.EVENT_APPLIED,
-                    f"applied {ev.category} event in {names.get(ev.region_id, ev.region_id)}",
-                    {"event_id": ev.id, "deltas": effective, **_where(ev.region_id, names)},
+                    f"applied {ev.category} event in {region_name(names, ev.region_id)}",
+                    {"event_id": ev.id, "deltas": effective, **where(names, ev.region_id)},
                 )
             )
             if ev.is_one_shot():  # BR-P2-4: 1-shot, no restore
@@ -943,14 +951,9 @@ class TurnAdvancer(SessionAppService):
                     self._entry(
                         session,
                         TimelineKind.EVENT_RESOLVED,
-                        f"{ev.category} event in {names.get(ev.region_id, ev.region_id)} ended",
-                        {"event_id": ev.id, "restored": {}, **_where(ev.region_id, names)},
+                        f"{ev.category} event in {region_name(names, ev.region_id)} ended",
+                        {"event_id": ev.id, "restored": {}, **where(names, ev.region_id)},
                     )
                 )
         out.distortions = cur
         return out
-
-
-def _where(region_id: str, names: dict[str, str]) -> dict[str, str]:
-    """A timeline payload's region and its name (FR-D3; the id when the region is gone)."""
-    return {"region_id": region_id, "region_name": names.get(region_id, region_id)}

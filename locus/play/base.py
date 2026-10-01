@@ -10,6 +10,8 @@ identically everywhere.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from locus.knowledge.cache import SnapshotSource
 from locus.play.errors import InvalidActionError
 from locus.play.models import (
@@ -20,16 +22,44 @@ from locus.play.models import (
     TimelineKind,
 )
 from locus.play.ports import PlayRepository
+from locus.shared.models import Region, WorldSnapshot
 
 
 class SessionClosedError(RuntimeError):
     """Raised when a write action targets a CLOSED session (BR-S2-9)."""
 
 
-def require_region(snapshots: SnapshotSource, world_id: str, region_id: str) -> None:
-    """Validate a region exists in the canonical topology (read-only; BR-P1-2)."""
-    if region_id not in snapshots.get(world_id).regions_by_id:
+def require_region(snapshots: SnapshotSource, world_id: str, region_id: str) -> Region:
+    """The region, which must exist in the canonical topology (read-only; BR-P1-2)."""
+    region = snapshots.get(world_id).regions_by_id.get(region_id)
+    if region is None:
         raise LookupError(f"region not found: {region_id}")
+    return region
+
+
+# --- region names on timeline lines (FR-D3; one rule, U7 review C4) --------------- #
+def names_of(snapshot: WorldSnapshot) -> dict[str, str]:
+    """region id -> name, built once per call site."""
+    return {r.id: r.name for r in snapshot.topo.regions}
+
+
+def region_name(names: Mapping[str, str], region_id: str) -> str:
+    """The region's name; its id when the world no longer has it (FR-D3)."""
+    return names.get(region_id, region_id)
+
+
+def where(names: Mapping[str, str], region_id: str) -> dict[str, str]:
+    """The ``region_id`` / ``region_name`` pair a region line's payload carries."""
+    return {"region_id": region_id, "region_name": region_name(names, region_id)}
+
+
+class SnapshotNames:
+    """For services holding ``self._snapshots``: one way to name a region."""
+
+    _snapshots: SnapshotSource
+
+    def _region_name(self, session: GameSession, region_id: str) -> str:
+        return region_name(names_of(self._snapshots.get(session.world_id)), region_id)
 
 
 class SessionAppService:

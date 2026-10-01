@@ -129,3 +129,24 @@
     - 충돌 검사를 빼면 바깥 편집 테스트가 실패한다.
     - 순서 검사를 빼면 TP-U3-4가 실패한다.
   - pytest 803
+- **Step 7** (U7 이월, 백엔드)
+  - 7.1
+    - `TOPOLOGY_DEFAULT_BASE`·`default_base`·`weights.py` 별칭 셋을 없앴다(A3-15·C10). 표에 없는 종류는 `adjacent` 값이다.
+    - 표 env는 `FiniteFloat`다. NaN·Infinity·`1e400`이면 기동이 실패한다.
+    - `_clean_env`는 Settings의 모든 env를 지운다.
+  - 7.2: Q6=A(EX-12), 같은 UoW 롤백. #9 `settle`(반올림은 변화 방향을 거스르지 않는다)
+  - 7.3
+    - #13 enum 비교, #14 예산 순서, #15 `WorldState.max_event_suggestions`
+    - §3: 월드 기준 지역 맞추기, 잎·깊이·이름 정렬(`parent_ids`), id 자르지 않음, 빈 지역이면 호출 없음
+    - C11 `system()` 삭제·`_prompt`, C13 `normalize_name`
+  - 7.4
+    - C2 `region_sources(lineage=)`, C3 `neighbour_map`만, C4 `base.names_of`·`region_name`·`where`·`SnapshotNames`
+    - C5 `deed_ids`, C6 `/log?limit`, C9 기본값, C12 `region_rows`·`FRESH`
+    - §3 `rumor_spread` 이름 summary, `deed_voided.region_names`
+  - 7.5: `say`·판단·서술의 try 좁히기, C14 `one_line` 자르기, C17 `retelling` 정규화(모델 검증기, 두 어댑터 `!= ""`), C18 UTC 쓰기 변환
+  - 7.6: NaN 422 셋(+ 422 처리기), 409 본문 고정
+  - 테스트
+    - `tests/play/test_u3_carry.py` 22개, `tests/api/test_u3_carry_api.py` 6개
+    - 기존 테스트 의도된 변경: `test_config.py`(기본값 단언·env 표), `test_topology.py`(A3-15)
+  - 변이(모두 잡음): #13 문자열 비교로 되돌림, #14 옛 자르기, C17 검증기 제거, C18 변환 제거
+  - pytest 833

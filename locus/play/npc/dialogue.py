@@ -163,11 +163,11 @@ class NpcDialogueService(SessionAppService):
             lineage=src.lineage,
             deeds=self._deeds.memories(session_id, player, npc_id) if self._deeds else (),
         )
-        # exactly one LLM call, outside any transaction (BR-U4-14)
+        # exactly one LLM call, outside any transaction (BR-U4-14). The prompt is built
+        # first: a bug there is ours, not "say it again" (U7 review §3, like U6 #9)
+        prompt, system = user_prompt(ctx, body, lang), system_prompt(npc, lang)
         try:
-            answer = self._llm.complete(
-                user_prompt(ctx, body, lang), system=system_prompt(npc, lang)
-            )
+            answer = self._llm.complete(prompt, system=system)
         except Exception as exc:  # BR-U7-27: 503, nothing stored, no provider text out
             logger.exception("npc dialogue call failed for %s/%s", session_id, npc_id)
             raise LlmCallFailedError(NPC_UNAVAILABLE) from exc
@@ -248,13 +248,11 @@ class NpcDialogueService(SessionAppService):
             ),
             lineage=src.lineage,
         ).facts
+        prompt = appraisal_prompt(known, shown, list(refs.items()))
+        system = appraisal_system_prompt(npc)
         budget.take(1)
         try:
-            draft = self._llm.structured(
-                appraisal_prompt(known, shown, list(refs.items())),
-                AppraisalDraft,
-                system=appraisal_system_prompt(npc),
-            )
+            draft = self._llm.structured(prompt, AppraisalDraft, system=system)
         except Exception:
             return outcome.model_copy(update={"llm_calls": 1, "llm_failed": True})
         items: dict[str, AppraisalDraftItem] = {}

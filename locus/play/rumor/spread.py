@@ -38,17 +38,10 @@ def passable_both_ways(snapshot: WorldSnapshot) -> list[ConnectionEdge]:
     return edges + reverse
 
 
-def _neighbour_weights(edges: Sequence[ConnectionEdge], region_id: str) -> dict[str, float]:
-    """The strongest connection to each neighbour of ``region_id``."""
-    out: dict[str, float] = {}
-    for c in edges:
-        if c.source_region_id == region_id and c.target_region_id != region_id:
-            out[c.target_region_id] = max(out.get(c.target_region_id, 0.0), c.weight)
-    return out
-
-
 def neighbour_map(edges: Sequence[ConnectionEdge]) -> dict[str, dict[str, float]]:
-    """Every region's strongest connection to each neighbour, built once."""
+    """Every region's strongest connection to each neighbour, built once; a parallel
+    road and river count once at the stronger weight, a self loop not at all (the one
+    rule for the engine and the planner's own fallback, U7 review C3)."""
     out: dict[str, dict[str, float]] = {}
     for c in edges:
         if c.target_region_id != c.source_region_id:
@@ -88,7 +81,7 @@ def plan_spread(
     # Below this a rumor would be pruned by the next turn's decay: spend no LLM call on it.
     floor = tuning.prune_floor + tuning.support_decay
     out: list[SpreadTarget] = []
-    near = neighbours.get(here, {}) if neighbours is not None else _neighbour_weights(graph, here)
+    near = (neighbours if neighbours is not None else neighbour_map(graph)).get(here, {})
     for target, edge_w in near.items():
         if target in reached or target not in snapshot.regions_by_id:
             continue

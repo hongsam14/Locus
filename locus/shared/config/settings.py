@@ -7,7 +7,7 @@ from pathlib import Path
 from types import MappingProxyType
 from urllib.parse import quote_plus
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, FiniteFloat, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from locus.shared.config.tuning import (
@@ -104,11 +104,10 @@ class Settings(BaseSettings):
         default=0.15, ge=0.0, le=1.0, alias="CONSENSUS_HEARSAY_MIN"
     )
     # JSON objects; only the given keys override the defaults
-    topology_base_weights: dict[str, float] = Field(
+    topology_base_weights: dict[str, FiniteFloat] = Field(
         default_factory=dict, alias="TOPOLOGY_BASE_WEIGHTS"
     )
-    topology_default_base: float = Field(default=0.5, ge=0.0, le=1.0, alias="TOPOLOGY_DEFAULT_BASE")
-    topology_terrain_modifiers: dict[str, float] = Field(
+    topology_terrain_modifiers: dict[str, FiniteFloat] = Field(
         default_factory=dict, alias="TOPOLOGY_TERRAIN_MODIFIERS"
     )
     ontology_dedup_threshold: float = Field(
@@ -210,7 +209,6 @@ class Settings(BaseSettings):
         override only the keys they name."""
         return WorldTuning(
             base_weights=MappingProxyType({**DEFAULT_BASE_WEIGHTS, **self.topology_base_weights}),
-            default_base=self.topology_default_base,
             terrain_modifiers=MappingProxyType(
                 {
                     **DEFAULT_TERRAIN_MODIFIERS,

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from locus.play.models import DEFAULT_DISTORTION_DEGREE, GameSession, SessionRumor
+from locus.play.models import GameSession, SessionRumor
 from locus.play.ports import DistortionStore
 from locus.play.rumor import dynamics as rumor_dynamics
 from locus.play.rumor.dynamics import DEFAULT_RUMOR_DYNAMICS, FeedbackState
@@ -65,7 +65,7 @@ class RumorFeedbackService:
             for row in target.list_region_distortions(session.id)
         }
         for rid in deltas:
-            states.setdefault(rid, FeedbackState(degree=DEFAULT_DISTORTION_DEGREE, share=0.0))
+            states.setdefault(rid, rumor_dynamics.FRESH)
         steps = rumor_dynamics.step_feedback(
             states,
             deltas,

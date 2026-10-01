@@ -8,9 +8,12 @@ and only its routes answer 503; the others keep working.
 from __future__ import annotations
 
 import logging
+import math
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from api.deps import Containers, lang_settings
@@ -25,6 +28,17 @@ from locus.shared.wiring import SharedContainer
 from locus.world.wiring import WorldContainer
 
 logger = logging.getLogger(__name__)
+
+
+def _finite(value):
+    """``value`` with every NaN / Infinity float replaced by its text, for a JSON body."""
+    if isinstance(value, float) and not math.isfinite(value):
+        return str(value)
+    if isinstance(value, dict):
+        return {k: _finite(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_finite(v) for v in value]
+    return jsonable_encoder(value) if not isinstance(value, (str, int, float, bool)) else value
 
 
 def assemble_all(containers: Containers) -> Containers:  # pragma: no cover - live services
@@ -130,6 +144,13 @@ def create_app(
 
     app = FastAPI(title="Locus", version="0.2.0", lifespan=lifespan)
     app.state.containers = containers
+
+    @app.exception_handler(RequestValidationError)
+    async def _invalid(_request: Request, exc: RequestValidationError) -> JSONResponse:
+        """The default 422 body echoes the input, and a NaN or Infinity input cannot be
+        written as JSON (it became a 500). Non-finite numbers are echoed as text (U3,
+        U7 review §3)."""
+        return JSONResponse(status_code=422, content={"detail": _finite(exc.errors())})
 
     @app.get("/health", tags=["health"])
     def health() -> JSONResponse:

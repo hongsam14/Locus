@@ -59,7 +59,7 @@ class PlayService(SessionAppService):
         if region is None:  # checked first so this message survives (NFR-9)
             raise LookupError(f"player region no longer exists: {player.region_id}")
         src = self._region_knowledge.region_sources(
-            session.id, region.id, session=session, snapshot=snapshot
+            session.id, region.id, session=session, snapshot=snapshot, lineage=False
         )
         return RegionView(
             session_id=session.id,
@@ -91,11 +91,13 @@ class PlayService(SessionAppService):
         self._require_session(session_id)
         return self._repo.list_runs(session_id, status)
 
-    def log(self, session_id: str) -> list[TimelineEntry]:
+    def log(self, session_id: str, *, limit: int | None = None) -> list[TimelineEntry]:
         """The player's log: their own doings and what happened where they were
-        (U7, FR-C6, BR-U7-12). The GM timeline keeps every line."""
+        (U7, FR-C6, BR-U7-12). The GM timeline keeps every line. ``limit`` keeps the
+        newest lines after the filter — the screen shows 30 (U7 review C6)."""
         self._require_session(session_id)
-        return player_log(self._repo.list_timeline(session_id))
+        lines = player_log(self._repo.list_timeline(session_id))
+        return lines[-limit:] if limit else lines
 
     # -- actions -------------------------------------------------------------
     def act(self, session_id: str, action: PlayerAction, *, lang: str | None = None) -> TurnRun:

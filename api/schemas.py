@@ -11,7 +11,7 @@ import logging
 from collections.abc import Sequence
 from typing import Any, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from locus.localization.service import Enrichment
 from locus.localization.wiring import LocalizationContainer
@@ -36,18 +36,18 @@ from locus.shared.models import NPC, KnowledgeView, QueryResult
 
 
 class SupportUpdate(BaseModel):
-    support: float
+    support: float = Field(allow_inf_nan=False)  # NaN would clamp to 1.0 (U7 review §3)
 
 
 class DistortionUpdate(BaseModel):
-    degree: float
+    degree: float = Field(allow_inf_nan=False)
 
 
 class EventCreate(BaseModel):
     region_id: str
     category: EventCategory
     description: str = ""
-    magnitude: float
+    magnitude: float = Field(allow_inf_nan=False)
     lifecycle: EventLifecycle | None = None
 
 

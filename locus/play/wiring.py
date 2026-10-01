@@ -130,7 +130,7 @@ def assemble_play(
         repo=store,
         sessions=SessionService(store, loader, guard, deeds=deeds),
         distortions=DistortionService(store, loader),
-        world_state=WorldStateService(store, loader),
+        world_state=WorldStateService(store, loader, max_suggestions=tuning.max_event_suggestions),
         region_knowledge=region_knowledge,
         feedback=feedback,
         turns=turns,

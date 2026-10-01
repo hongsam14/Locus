@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from locus.knowledge.propagation import best_path_weights
 from locus.play.models import DEFAULT_DISTORTION_DEGREE, SessionRumor
+from locus.play.rumor.dynamics import settle
 from locus.shared.config.tuning import PlayTuning
 from locus.shared.models import ConnectionEdge
 from locus.shared.models.util import clamp01
@@ -93,5 +94,5 @@ def evolve_support(
     """
     for r in rumors:
         if r.region_id in influenced_region_ids:
-            r.support = clamp01(r.support + reinforce)
+            r.support = max(r.support, settle(r.support + reinforce))  # never lowers
     return rumors

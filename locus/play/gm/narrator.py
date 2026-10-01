@@ -29,7 +29,7 @@ def fallback(*, declaration: str, player_name: str, lang: str, llm_calls: int = 
     return Narration(
         text=_FALLBACK.get(lang, _FALLBACK["en"]),
         # one line: the record becomes deed text and enters other prompts (NFR R-03)
-        record=cap(one_line(f"{player_name} declared: {declaration}"), LINE_MAX),
+        record=one_line(f"{player_name} declared: {declaration}", LINE_MAX),
         lang=lang,
         llm_calls=llm_calls,
     )
@@ -72,10 +72,9 @@ class GmNarrator:
 
     def narrate(self, *, declaration: str, scene: SceneBrief, lang: str) -> Narration:
         """One LLM call. Raises when the call fails; empty parts fall back per part."""
-        draft = self._llm.structured(
-            user_prompt(scene, declaration), NarrationDraft, system=system_prompt(lang)
-        )
+        prompt, system = user_prompt(scene, declaration), system_prompt(lang)
+        draft = self._llm.structured(prompt, NarrationDraft, system=system)
         fb = fallback(declaration=declaration, player_name=scene.player_name, lang=lang)
         text = cap(draft.narration, NARRATION_MAX) or fb.text  # empty parts: U6 review C14
-        record = cap(one_line(draft.record), LINE_MAX) or fb.record
+        record = one_line(draft.record, LINE_MAX) or fb.record  # one line: one cut (C14)
         return Narration(text=text, record=record, lang=lang, llm_calls=1)

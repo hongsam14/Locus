@@ -14,7 +14,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Annotated, Literal, Union
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from locus.shared.config.tuning import PlayTuning
 from locus.shared.models import NPC, KnowledgeView, LocusModel, Provenance, new_id
@@ -548,6 +548,14 @@ class DeedAppraisal(LocusModel):
     salience: float = Field(ge=0.0, le=1.0)
     slant: str = ""
     retelling: str = ""  # English; "" when not noteworthy
+
+    @field_validator("retelling")
+    @classmethod
+    def _stripped(cls, value: str) -> str:
+        """Stored without surrounding whitespace (tabs, newlines, NBSP included), so both
+        adapters agree on "no retelling" (U7 review C17)."""
+        return value.strip()
+
     turn: int = Field(default=0, ge=0)
     seeded_rumor_id: str | None = None  # at most one seed per appraisal (BR-U6-12)
     # The turn run whose preparation saved it: a run that never advanced removes its
@@ -645,3 +653,4 @@ class WorldState(LocusModel):
     turn: int = Field(ge=0)
     player_region_id: str | None = None  # None for a GM session without a player
     regions: list[RegionState] = Field(default_factory=list)  # world regions, snapshot order
+    max_event_suggestions: int = Field(default=5, ge=1)  # the server's n cap (U7 review #15)

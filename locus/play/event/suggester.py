@@ -48,21 +48,16 @@ class EventSuggester:
 
     def suggest(self, *, context: str, turn: int, n: int = 1) -> list[EventDraft]:
         """Propose up to ``n`` events from ``context`` (the world as the prompt shows it,
-        U7 BR-U7-9). Graceful: [] on failure or without a context."""
-        if not context:
-            return []
+        U7 BR-U7-9). Graceful: [] on failure. The service does not call it without
+        a region to show (U7 review §3)."""
         try:
             result = self._llm.structured(
-                self.prompt(context, turn, n), EventDraftList, system=_SYSTEM
+                self._prompt(context, turn, n), EventDraftList, system=_SYSTEM
             )
         except Exception:
             return []  # graceful (NFR-P3, BR-P2-11)
         return result.drafts[:n]
 
     @staticmethod
-    def prompt(context: str, turn: int, n: int) -> str:
+    def _prompt(context: str, turn: int, n: int) -> str:
         return f"Turn: {turn}\n{context}\n\nPropose up to {n} event(s)."
-
-    @staticmethod
-    def system() -> str:
-        return _SYSTEM

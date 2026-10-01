@@ -24,6 +24,12 @@ from locus.shared.models.util import clamp01
 DEFAULT_RUMOR_DYNAMICS = PlayTuning()
 
 
+def settle(support: float) -> float:
+    """A support value as stored: clamped and rounded to 6 places, so 0.35 + 0.1 is
+    0.45 and meets a 0.45 threshold (U7 review #9; the slider steps by 0.05)."""
+    return round(clamp01(support), 6)
+
+
 def decay_support(
     rumors: list[SessionRumor],
     reinforced_region_ids: set[str],
@@ -44,7 +50,7 @@ def decay_support(
     for r in rumors:
         if r.promoted or r.region_id in reinforced_region_ids or r.id in exempt_ids:
             continue
-        r.support = clamp01(r.support - decay)
+        r.support = min(r.support, settle(r.support - decay))  # rounding never raises
     return rumors
 
 
@@ -125,6 +131,11 @@ class FeedbackState:
     share: float  # the part of ``degree`` feedback put there
 
 
+# A region with no stored row: the default degree, no feedback share (BR-U7-18; one
+# constant for the turn engine and ``step_feedback``, U7 review C12).
+FRESH = FeedbackState(degree=DEFAULT_DISTORTION_DEGREE, share=0.0)
+
+
 @dataclass(frozen=True)
 class FeedbackStep:
     """One region after the step."""
@@ -151,7 +162,7 @@ def step_feedback(
     """
     out: dict[str, FeedbackStep] = {}
     for rid in sorted(set(deltas) | {r for r, s in states.items() if s.share > 0}):
-        state = states.get(rid, FeedbackState(degree=DEFAULT_DISTORTION_DEGREE, share=0.0))
+        state = states.get(rid, FRESH)
         delta = deltas.get(rid, 0.0)
         if delta > 0:
             add = min(delta, max(0.0, cap - state.share))

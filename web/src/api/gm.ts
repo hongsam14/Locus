@@ -4,6 +4,7 @@ import type {
   EventCategory,
   EventLifecycle,
   RegionDistortion,
+  SeedView,
   SessionEvent,
   SessionRumor,
   TimelineEntry,
@@ -57,6 +58,10 @@ export const gmApi = {
     http<SessionEvent>(`${s(sid)}/events/${enc(eid)}/resolve`, { method: "POST" }),
   discardEvent: (sid: string, eid: string) =>
     http<void>(`${s(sid)}/events/${enc(eid)}`, { method: "DELETE" }),
+  // U8 event seeds (BLM §3): the start answers the event (the server's EventOut)
+  listSeeds: (sid: string) => http<SeedView[]>(`${s(sid)}/seeds`),
+  startSeed: (sid: string, seedId: string) =>
+    http<SessionEvent>(`${s(sid)}/seeds/${enc(seedId)}/start`, { method: "POST" }),
 
   // U7 world state overlay (US-5.5)
   getWorldState: (sid: string) => http<WorldState>(`${s(sid)}/state`),

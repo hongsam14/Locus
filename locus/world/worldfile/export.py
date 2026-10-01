@@ -66,4 +66,6 @@ class WorldFileExporter:
         legacy top-level ``world_id`` (the web client reads it)."""
         data = self.export(world_id).model_dump(mode="json")
         data["world_id"] = world_id
+        # the editor's "unscoped" count reads the server's rule (U3 review C5)
+        data["unscoped_knowledge_ids"] = self._snapshots.get(world_id).unscoped_knowledge_ids
         return data

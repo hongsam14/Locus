@@ -104,7 +104,10 @@ class WorldSnapshot(LocusModel):
 
     @property
     def unscoped_knowledge_ids(self) -> list[str]:
-        return self.kg.unscoped_knowledge_ids
+        """Knowledge neither global nor scoped anywhere (BR-U3-14) — the one rule the
+        editor list, the augmentation detector and the web count read (U3 review C5)."""
+        scoped = {s.knowledge_id for s in self.kg.scopes}
+        return [k.id for k in self.kg.knowledge if not k.is_global and k.id not in scoped]
 
 
 class SearchDoc(LocusModel):

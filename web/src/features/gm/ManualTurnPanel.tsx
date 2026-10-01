@@ -11,6 +11,7 @@ export interface BulkProgress {
  * generate / regenerate for every region, and the bulk progress bar. */
 export function ManualTurnPanel({
   closed,
+  llmOff = false,
   progress,
   suggestN,
   maxSuggest = 5,
@@ -21,6 +22,7 @@ export function ManualTurnPanel({
   onRegenAll,
 }: {
   closed: boolean;
+  llmOff?: boolean; // U8 (BR-U8-25): no LLM on the server — suggest and bulk generate off
   progress: BulkProgress | null;
   suggestN: number;
   maxSuggest?: number;
@@ -37,7 +39,8 @@ export function ManualTurnPanel({
         <Button variant="primary" data-testid="advance-turn-btn" onClick={onAdvance} disabled={closed}>
           {t("gm.advanceTurn")}
         </Button>
-        <Button data-testid="suggest-events-btn" onClick={onSuggest} disabled={closed}>
+        <Button data-testid="suggest-events-btn" onClick={onSuggest} disabled={closed || llmOff}
+          title={llmOff ? t("llm.required") : undefined}>
           {t("gm.suggestEvents")}
         </Button>
         <label className="inline-flex items-center gap-1 text-xs">
@@ -56,12 +59,15 @@ export function ManualTurnPanel({
             ))}
           </select>
         </label>
-        <Button data-testid="generate-all-btn" onClick={onGenerateAll} disabled={closed || bulk}>
+        <Button data-testid="generate-all-btn" onClick={onGenerateAll} disabled={closed || bulk || llmOff}
+          title={llmOff ? t("llm.required") : undefined}>
           {t("gm.generateAll")}
         </Button>
-        <Button variant="danger" data-testid="regen-all-btn" onClick={onRegenAll} disabled={closed || bulk}>
+        <Button variant="danger" data-testid="regen-all-btn" onClick={onRegenAll}
+          disabled={closed || bulk || llmOff} title={llmOff ? t("llm.required") : undefined}>
           {t("gm.regenAll")}
         </Button>
+        {llmOff && <span className="text-xs text-ink-soft" data-testid="llm-required">{t("llm.required")}</span>}
       </div>
       {progress && (
         <div data-testid="generate-progress" className="mt-2">

@@ -188,12 +188,12 @@
 - [x] 9.4 테스트: 항목마다 하나 이상(재현 조건 그대로). #10은 SQLite 위 `PostgresPlayRepository`로 해소 ∥ 설정 순서를 강제한 결정적 테스트. #13은 끊기 테스트. S26은 가짜 라벨 키 테스트. 의도된 변경 주석.
 
 ### Step 10 — 프런트엔드: U8 기능 (frontend-components)
-- [ ] 10.1 `api/*`·`types.ts`: `capabilities()`, `DemoInfo` 확장, `loadDemo(worldId, name, options)`(기본값 없음), `buildWorldDemo` 삭제, `listSeeds`, `startSeed`(사건 타입, R-12), `RegionDeletePlan.seed_ids`·`RegionDeleteReport.seeds_deleted`, `unscoped_knowledge_ids`(C5). `http.ts` `openSessionsOf(err)`(세 모양, 설계 메모 10)와 `useReplaceConfirm`(C8).
-- [ ] 10.2 `src/capabilities.ts`(`useCapabilities`, `llmOff`), `ui/LlmNotice.tsx`(LlmBanner 대체, PlayPage도), `ui/InProgressBadge.tsx`.
-- [ ] 10.3 `features/home/DemoCards.tsx`·`DemoCard.tsx`, `HomePage`(DEMO 상수 삭제, 카드 늘 보임, LlmNotice), `AppNav`(`/` 링크, 월드 없으면 에디터 링크 `/`, S01).
-- [ ] 10.4 `features/gm/SeedPanel.tsx`, `GmHub`(자리·LlmNotice·LLM 버튼 끄기), `ManualTurnPanel`·`RumorPanel` 끄기, `EditorPage`·`BuildPanel`(만들기 끄기, 컨셉 아트 InProgressBadge)·`NpcDraftCards` 끄기, 503 문구 `llm.required`(DialoguePanel 포함).
-- [ ] 10.5 i18n: 새 키(FC §4), C14의 21개 삭제, `timelineText`의 `seed_title`.
-- [ ] 10.6 테스트: `home.test`(EX-1·2·3·12·13·14, 카드 둘, 인자 순서), `gm.test`(SeedPanel, 끄기), `editor.test`(끄기, 배지, 삭제 계획 씨앗 수), `components.test`(AppNav, 의도된 변경), `capabilities.test`.
+- [x] 10.1 `api/*`·`types.ts`: `capabilities()`, `DemoInfo` 확장, `loadDemo(worldId, name, options)`(기본값 없음), `buildWorldDemo` 삭제, `listSeeds`, `startSeed`(사건 타입, R-12), `RegionDeletePlan.seed_ids`·`RegionDeleteReport.seeds_deleted`, `unscoped_knowledge_ids`(C5). `http.ts` `openSessionsOf(err)`(세 모양, 설계 메모 10)와 `useReplaceConfirm`(C8).
+- [x] 10.2 `src/capabilities.ts`(`useCapabilities`, `llmOff`), `ui/LlmNotice.tsx`(LlmBanner 대체, PlayPage도), `ui/InProgressBadge.tsx`.
+- [x] 10.3 `features/home/DemoCards.tsx`·`DemoCard.tsx`, `HomePage`(DEMO 상수 삭제, 카드 늘 보임, LlmNotice), `AppNav`(`/` 링크, 월드 없으면 에디터 링크 `/`, S01).
+- [x] 10.4 `features/gm/SeedPanel.tsx`, `GmHub`(자리·LlmNotice·LLM 버튼 끄기), `ManualTurnPanel`·`RumorPanel` 끄기, `EditorPage`·`BuildPanel`(만들기 끄기, 컨셉 아트 InProgressBadge)·`NpcDraftCards` 끄기, 503 문구 `llm.required`(DialoguePanel 포함).
+- [x] 10.5 i18n: 새 키(FC §4), C14의 21개 삭제, `timelineText`의 `seed_title`.
+- [x] 10.6 테스트: `home.test`(EX-1·2·3·12·13·14, 카드 둘, 인자 순서), `gm.test`(SeedPanel, 끄기), `editor.test`(끄기, 배지, 삭제 계획 씨앗 수), `components.test`(AppNav, 의도된 변경), `capabilities.test`.
 
 ### Step 11 — U3 이월: 프런트엔드
 - [ ] 11.1 정확성: #12(패널), #14, #15

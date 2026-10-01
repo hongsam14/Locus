@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../api";
-import { conflictKind } from "../../api/http";
+import { conflictKind, needsLlm } from "../../api/http";
+import { llmOff, useCapabilities } from "../../capabilities";
 import { t, useRequestLang } from "../../i18n";
 import type { GameSession, SessionEvent, SessionRumor, TimelineEntry, TurnResult } from "../../types";
-import { Modal, NotificationCenter, Panel } from "../../ui";
+import { LlmNotice, Modal, NotificationCenter, Panel } from "../../ui";
 import type { Notif } from "../../ui";
 import { changeSummary, changeTitle } from "../play/summary";
 import { DistortionPanel } from "./DistortionPanel";
@@ -12,6 +13,7 @@ import type { NewEvent } from "./EventPanel";
 import { ManualTurnPanel } from "./ManualTurnPanel";
 import type { BulkProgress } from "./ManualTurnPanel";
 import { RumorPanel } from "./RumorPanel";
+import { SeedPanel } from "./SeedPanel";
 import { TimelinePanel } from "./TimelinePanel";
 import { BULK_LIMIT, mapLimit } from "./bulk";
 
@@ -40,6 +42,8 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
   const [suggestN, setSuggestN] = useState(1);
   const [confirm, setConfirm] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const closed = session.status === "closed";
+  const noLlm = llmOff(useCapabilities()); // U8 (BR-U8-25): LLM buttons off, told why
+  const [seedKey, setSeedKey] = useState(0);
   const displayLang = useRequestLang(); // rumors / events carry translated fields: re-read
 
   const addNotif = useCallback(
@@ -104,7 +108,7 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
       onChanged?.();
       return true;
     } catch (e) {
-      setError(String(e));
+      setError(needsLlm(e) ? t("llm.required") : String(e)); // BR-U8-27
       if (conflictKind(e) === "closed") onChanged?.();
       return false;
     }
@@ -183,9 +187,11 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
 
   return (
     <Panel data-testid="session-panel" title={t("gm.title", { turn: session.turn })} className="min-w-80">
-      {error && <div className="text-danger mb-2">{error}</div>}
+      <LlmNotice visible={noLlm} />
+      {error && <div className="text-danger mb-2" data-testid="gm-hub-error">{error}</div>}
       <ManualTurnPanel
         closed={closed}
+        llmOff={noLlm}
         progress={progress}
         suggestN={Math.min(suggestN, maxSuggest)}
         maxSuggest={maxSuggest}
@@ -209,6 +215,17 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
         onResolve={(id) => run(() => api.resolveEvent(session.id, id))}
         onCreate={(body: NewEvent) => run(() => api.createEvent(session.id, body))}
       />
+      <SeedPanel
+        sessionId={session.id}
+        closed={closed}
+        busy={progress != null}
+        reloadKey={seedKey + reloadKey + timeline.length}
+        onStart={async (id) => {
+          const ok = await run(() => api.startSeed(session.id, id));
+          setSeedKey((k) => k + 1);
+          return ok;
+        }}
+      />
       {!regionId && (
         <div data-testid="gm-no-region" className="text-ink-soft text-xs mt-2">
           {t("gm.noRegion")}
@@ -227,6 +244,7 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
           <RumorPanel
             rumors={rumors}
             closed={closed}
+            llmOff={noLlm}
             busy={progress != null}
             onGenerate={() => run(() => api.generateRumors(session.id, regionId))}
             onRegen={() => ask(t("confirm.regen"), () => run(() => api.regenRumors(session.id, regionId)))}

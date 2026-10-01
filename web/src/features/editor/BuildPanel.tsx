@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { api } from "../../api";
-import { statusOf } from "../../api/http";
+import { needsLlm, statusOf } from "../../api/http";
+import { llmOff, useCapabilities } from "../../capabilities";
 import { t } from "../../i18n";
 import type { BuildReport } from "../../types";
-import { Button, Field, Modal } from "../../ui";
+import { Button, Field, InProgressBadge, Modal } from "../../ui";
 import { BuildReportPanel } from "./BuildReportPanel";
 
 const FIELDS = [
@@ -38,6 +39,7 @@ export function BuildPanel({
   const [memo, setMemo] = useState("");
   const [files, setFiles] = useState<Record<string, File[]>>({});
   const [ask, setAsk] = useState<"replace" | { sessions: number } | null>(null);
+  const noLlm = llmOff(useCapabilities()); // U8 (BR-U8-25): building calls the LLM
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<BuildReport | null>(null);
@@ -63,7 +65,7 @@ export function BuildPanel({
       const m = /"open_sessions":\s*(\d+)/.exec(String(e));
       if (statusOf(e) === 409 && m && !confirm) setAsk({ sessions: Number(m[1]) });
       else if (statusOf(e) === 409 && !replace && !m) setAsk("replace"); // the id exists
-      else setError(String(e));
+      else setError(needsLlm(e) ? t("llm.required") : String(e)); // BR-U8-27
     } finally {
       setBusy(false);
     }
@@ -88,7 +90,10 @@ export function BuildPanel({
         </label>
         {FIELDS.map((f) => (
           <label key={f.name} className="inline-flex flex-col gap-0.5 text-sm">
-            <span className="text-ink-soft">{t(f.label)}</span>
+            <span className="text-ink-soft">
+              {t(f.label)}
+              {f.name === "concept_arts" && <> <InProgressBadge note={t("build.conceptArtsWip")} /></>}
+            </span>
             <input type="file" multiple accept={f.accept} data-testid={`build-${f.name}`}
               onChange={(e) => setFiles({ ...files, [f.name]: Array.from(e.target.files ?? []) })} />
           </label>
@@ -96,9 +101,11 @@ export function BuildPanel({
         {busy && <div className="text-ink-soft text-sm" data-testid="build-working">{t("build.working")}</div>}
         {error && <div className="text-danger text-sm" data-testid="build-error">{error}</div>}
         {report && <BuildReportPanel report={report} />}
-        <div className="flex justify-end gap-2">
+        <div className="flex items-center justify-end gap-2">
+          {noLlm && <span className="text-xs text-ink-soft" data-testid="llm-required">{t("llm.required")}</span>}
           <Button size="sm" onClick={onClose}>{t("action.close")}</Button>
-          <Button size="sm" variant="primary" data-testid="build-submit" disabled={busy || !id || !hasInput}
+          <Button size="sm" variant="primary" data-testid="build-submit"
+            disabled={busy || !id || !hasInput || noLlm} title={noLlm ? t("llm.required") : undefined}
             onClick={() => (exists ? setAsk("replace") : send(false, false))}>
             {t("build.submit")}
           </Button>

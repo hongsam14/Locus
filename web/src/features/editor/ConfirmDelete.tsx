@@ -64,6 +64,9 @@ export function ConfirmDelete({
             {plan.entities_unlocated.length > 0 && (
               <li>{t("delete.region.entities", { n: plan.entities_unlocated.length })}</li>
             )}
+            {(plan.seed_ids?.length ?? 0) > 0 && ( // U8 (BR-U8-14): its event seeds go too
+              <li data-testid="delete-plan-seeds">{t("delete.region.seeds", { n: plan.seed_ids?.length ?? 0 })}</li>
+            )}
           </ul>
         )}
         {blocked && (

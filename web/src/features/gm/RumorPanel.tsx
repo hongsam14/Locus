@@ -7,6 +7,7 @@ import { Badge, Button, Card, CommitRange, LocalizedText } from "../../ui";
 export function RumorPanel({
   rumors,
   closed,
+  llmOff = false,
   busy,
   onGenerate,
   onRegen,
@@ -14,6 +15,7 @@ export function RumorPanel({
 }: {
   rumors: SessionRumor[];
   closed: boolean;
+  llmOff?: boolean; // U8 (BR-U8-25): generate and regenerate need the LLM
   busy: boolean;
   onGenerate: () => void;
   onRegen: () => void;
@@ -22,10 +24,12 @@ export function RumorPanel({
   return (
     <>
       <div className="flex flex-wrap gap-2">
-        <Button variant="primary" data-testid="generate-btn" onClick={onGenerate} disabled={closed || busy}>
+        <Button variant="primary" data-testid="generate-btn" onClick={onGenerate}
+          disabled={closed || busy || llmOff} title={llmOff ? t("llm.required") : undefined}>
           {t("gm.generate")}
         </Button>
-        <Button data-testid="regen-btn" onClick={onRegen} disabled={closed || busy}>
+        <Button data-testid="regen-btn" onClick={onRegen}
+          disabled={closed || busy || llmOff} title={llmOff ? t("llm.required") : undefined}>
           {t("gm.regen")}
         </Button>
       </div>

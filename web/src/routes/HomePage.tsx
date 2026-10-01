@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { llmOff, useCapabilities } from "../capabilities";
 import { BuildPanel } from "../features/editor/BuildPanel";
+import { DemoCards } from "../features/home/DemoCards";
 import { NewSessionForm } from "../features/play/NewSessionForm";
 import { t, useLang } from "../i18n";
 import type { Region, WorldInfo } from "../types";
-import { Button, Card, Panel } from "../ui";
+import { Button, Card, LlmNotice, Panel } from "../ui";
 import { AppNav } from "./AppNav";
 
-export const DEMO = "aldermoor";
-
-/** `/` — the world list (US-6.4, BR-U3-34): name, regions, last edit and open sessions,
- * with [edit] and [start session]. With no world: load the demo or build from sources. */
+/** `/` — the demo cards (U8, BR-U8-19: from the server's manifest, shown always) and the
+ * world list (US-6.4, BR-U3-34): name, regions, last edit and open sessions, with [edit]
+ * and [start session]; building from sources. Without an LLM key a line says so first. */
 export function HomePage() {
   useLang();
   const navigate = useNavigate();
@@ -20,9 +21,12 @@ export function HomePage() {
   const [busy, setBusy] = useState(false);
   const [start, setStart] = useState<{ worldId: string; regions: Region[] } | null>(null);
   const [building, setBuilding] = useState(false);
+  const [buildKey, setBuildKey] = useState(0);
+  const caps = useCapabilities();
 
+  const loadWorlds = () => api.listWorlds().then(setWorlds).catch((e) => setError(String(e)));
   useEffect(() => {
-    api.listWorlds().then(setWorlds).catch((e) => setError(String(e)));
+    loadWorlds();
   }, []);
 
   async function run(fn: () => Promise<void>) {
@@ -39,25 +43,23 @@ export function HomePage() {
 
   const openStart = (worldId: string) =>
     run(async () => setStart({ worldId, regions: (await api.exportWorld(worldId)).regions }));
-  const loadDemo = () =>
-    run(async () => {
-      await api.loadDemo(DEMO, DEMO);
-      navigate(`/editor/${DEMO}`);
-    });
+  const openBuild = () => {
+    setBuildKey((k) => k + 1); // a fresh panel each time: no files left from before (U3 #14)
+    setBuilding(true);
+  };
 
   return (
     <div className="min-h-full">
       <AppNav />
+      <LlmNotice visible={llmOff(caps)} />
       <Panel title={t("home.title")} className="m-3" data-testid="home">
         {error && <div className="text-danger text-sm">{error}</div>}
+        <DemoCards worlds={worlds} onLoaded={loadWorlds} />
         {worlds?.length === 0 && (
           <div className="flex flex-col gap-2" data-testid="home-empty">
             <span className="text-ink-soft">{t("home.empty")}</span>
             <div className="flex gap-2">
-              <Button variant="primary" data-testid="home-load-demo" disabled={busy} onClick={loadDemo}>
-                {t("home.loadDemo")}
-              </Button>
-              <Button data-testid="home-build" disabled={busy} onClick={() => setBuilding(true)}>
+              <Button data-testid="home-build" disabled={busy} onClick={openBuild}>
                 {t("home.buildFromSources")}
               </Button>
             </div>
@@ -91,7 +93,7 @@ export function HomePage() {
           ))}
         </div>
         {worlds && worlds.length > 0 && (
-          <Button size="sm" className="mt-2" data-testid="home-build" onClick={() => setBuilding(true)}>
+          <Button size="sm" className="mt-2" data-testid="home-build" onClick={openBuild}>
             {t("home.buildFromSources")}
           </Button>
         )}
@@ -104,7 +106,7 @@ export function HomePage() {
             navigate(`/play/${encodeURIComponent(out.session.id)}`);
           })
         } />
-      <BuildPanel open={building} exists={false} onClose={() => setBuilding(false)}
+      <BuildPanel key={buildKey} open={building} exists={false} onClose={() => setBuilding(false)}
         onBuilt={(worldId, report) =>
           // A replace stays on the report (what was replaced, the backup) — U3 review #6
           report.ok && !report.replaced && navigate(`/editor/${encodeURIComponent(worldId)}`)

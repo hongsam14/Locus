@@ -176,3 +176,46 @@
   - S22: 프롬프트의 REGION·KNOWN HERE·EXISTING NPCS가 하나의 `MATERIAL` 머리말 아래에 있고, 시스템 문장이 셋을 다 가리킨다.
   - 테스트 1, 변이 잡음
   - pytest 915
+- **Step 10** (프런트엔드: U8 기능)
+  - 10.1 API·타입
+    - `api.capabilities()`, `listSeeds`, `startSeed`(사건 타입)를 더했다. `loadDemo(worldId, name, options)`는 이름 기본값이 없다. `buildWorldDemo`는 지웠다.
+    - `types.ts`: `Capabilities`·`EventSeed`·`SeedView`, `DemoInfo` 확장, `RegionDeletePlan.seed_ids`·`RegionDeleteReport.seeds_deleted`, `WorldExport.unscoped_knowledge_ids`
+    - `http.ts`
+      - `openSessionsOf(err)`: 409 본문의 `open_sessions`·`busy_sessions`·`session_ids`를 읽는다.
+      - `needsLlm(err)`: 503이고 공급자를 말할 때만 참이다. 실패한 호출은 아니다.
+      - `useReplaceConfirm()`(C8): "교체?" → "열린 세션 N개 닫기?" 두 단계 질문. DemoCard가 쓴다. BuildPanel·WorldFileBar는 Step 11.3에서 옮긴다.
+    - C5 서버 쪽: `WorldSnapshot.unscoped_knowledge_ids`가 규칙을 직접 계산한다. 편집기 목록과 보강 탐지기가 이것을 읽고, export에도 싣는다.
+      - 〔기록〕 9.3에 체크했지만 Step 9 커밋에 빠져 있었다. 이 단계 커밋에 넣는다. 웹이 export 값을 쓰는 것은 C1(11.3)이다.
+  - 10.2 `capabilities.ts`, `LlmNotice`, `InProgressBadge`
+    - `useCapabilities`: 한 번 읽어 모듈에 두고 구독자에게 알린다. 실패하면(동기 예외 포함) `null`이고, 아무것도 끄지 않는다.
+    - `LlmNotice`가 `LlmBanner`를 대신한다(PlayPage는 `play.noLlm` 문구 그대로). `features/play/LlmBanner.tsx`는 지웠다.
+  - 10.3 `features/home/DemoCards`·`DemoCard`, `HomePage`, `AppNav`
+    - HomePage에서 DEMO 상수를 지웠다. 카드는 월드가 있어도 보인다. LlmNotice를 둔다.
+    - AppNav: "Locus"는 `/`로 가는 링크다. 월드가 없으면 에디터 링크도 `/`다(S01).
+  - 10.4 SeedPanel과 LLM 끄기
+    - `features/gm/SeedPanel.tsx`: 목록, [시작], "진행 중". 닫힌 세션이거나 일괄 작업 중이면 꺼진다.
+    - GmHub: LlmNotice, SeedPanel 자리. 오류 줄에 testid `gm-hub-error`가 생겼다(GmPage의 `gm-error`와 겹치지 않게).
+    - LLM 없을 때 끄는 버튼: [사건 제안]·[전체 생성]·[전체 재생성](ManualTurnPanel), [생성]·[재생성](RumorPanel), [만들기](BuildPanel), [초안](NpcDraftCards). 모두 `title`과 옆 글 `llm.required`를 붙인다.
+    - 컨셉 아트 칸에 InProgressBadge를 둔다. EditorPage에 LlmNotice를 둔다.
+    - 공급자가 없다는 503은 `llm.required`로 보인다(GmHub·BuildPanel·NpcDraftCards·DialoguePanel). DialoguePanel에서 실패한 호출은 지금처럼 `dialogue.failed`다.
+    - 지역 삭제 계획에 씨앗 수 줄 `delete.region.seeds`를 더했다(EX-7).
+  - 10.5 i18n
+    - 새 키 25개와 `delete.region.seeds`를 ko·en 같은 집합으로 넣었다.
+    - FC §4대로 키 이름은 `timeline.seedStarted`, 문구는 "씨앗 사건 시작: {title}"이다. `timelineText`는 `event_created`에 `seed_title`이 있으면 이 문구를 쓴다.
+    - C14의 21개와, 이번에 쓰지 않게 된 `home.loadDemo`를 지웠다(22개). 여러 줄 값이 남긴 이어지는 줄 4개도 지웠다. 머리말의 "~150 keys"를 고쳤다.
+  - 10.6 테스트
+    - 새로 쓴 테스트
+      - `capabilities.test.ts` 11: 읽기 한 번·실패·동기 예외, `openSessionsOf`·`needsLlm`, `useReplaceConfirm` 둘, 실제 URL로 본 `loadDemo` 인자 순서, 씨앗 라우트, 씨앗 타임라인 줄, 키 집합
+      - `home.test`: EX-1·2·3·8·12·13·14, 카드 둘, 지금 월드로 플레이, 에디터로 불러오기(+세션 질문), 모름, 목록 실패
+      - `gm.test` 6: 씨앗 목록·시작·409·닫힘·빈 목록, LLM 끄기, 모름, 503 문구
+      - `editor.test` 6: 만들기 끄기·켜기, 배지, 503 문구, 초안 끄기·503, 삭제 계획 씨앗 수
+      - `components.test` 3: AppNav 둘, 에디터 LlmNotice
+      - `dialogue.test`: 공급자 없음 503
+      - 서버 C5 둘(`tests/world/editor/test_u3_review_carry.py`)
+    - 의도된 변경: `home.test`(옛 데모 버튼), `play.test` 둘(`llm-banner`→`llm-notice`), `dialogue.test`(실패한 호출의 503 본문을 서버 실제 문구로), api 목에 `capabilities`·`listSeeds`·`listDemos` 기본값
+    - TP-U8-6: 검사 범위에 `web/src`를 넣었다(`web/src/__tests__` 제외). 검사가 비어 있지 않음을 보이는 테스트 하나를 더했다.
+    - 변이(18건 중 17건 잡음)
+      - 웹 14: busy, ok=false, 재사용 경로, `llmOff` 둘, 씨앗 닫힘, 삭제 계획 씨앗, 씨앗 타임라인, 대화 503, 초안 끄기, 만들기 끄기, 훅 confirmed, 훅 answer, DemoCard edit 경로
+      - 서버 3: C5 스냅샷 규칙, C5 export, 웹 소스의 데모 이름(TP-U8-6)
+      - 남은 하나는 같은 동작이다: `useCapabilities`에서 캐시 확인을 빼도 `useState(cached)`가 같은 값을 준다.
+  - 게이트: pytest 918, vitest 169, tsc·ruff·black clean, mypy 11

@@ -248,7 +248,10 @@ describe("DialoguePanel (US-4.1 / 4.3)", () => {
 
   it("a failed send takes the player's line back and keeps it in the input", async () => {
     (api.startDialogue as Mock).mockResolvedValue(conversation());
-    (api.say as Mock).mockRejectedValue(new HttpError(503, "Service Unavailable", "no llm"));
+    // U8 intended change: BR-U8-27 — a 503 naming the provider now reads "LLM key
+    // required", so this failed call carries the server's own failed-call words
+    (api.say as Mock).mockRejectedValue(new HttpError(503, "Service Unavailable",
+      '{"detail":"the NPC could not answer right now; try again"}'));
     renderPanel();
     await waitFor(() => expect(screen.getByTestId("dialogue-input")).toBeEnabled());
     typeAndSend("누구세요?");
@@ -257,6 +260,17 @@ describe("DialoguePanel (US-4.1 / 4.3)", () => {
       expect(screen.getByTestId("dialogue-error")).toHaveTextContent(t("dialogue.failed")),
     );
     expect(screen.queryByTestId("dialogue-msg-player")).not.toBeInTheDocument();
+    expect(screen.getByTestId("dialogue-input")).toHaveValue("누구세요?");
+  });
+
+  it("U8 BR-U8-27: a 503 for a missing provider says an LLM key is required", async () => {
+    (api.startDialogue as Mock).mockResolvedValue(conversation());
+    (api.say as Mock).mockRejectedValue(new HttpError(503, "Service Unavailable",
+      '{"detail":"npc dialogue needs an LLM provider (set OPENAI_API_KEY)"}'));
+    renderPanel();
+    await waitFor(() => expect(screen.getByTestId("dialogue-input")).toBeEnabled());
+    typeAndSend("누구세요?");
+    await waitFor(() => expect(screen.getByTestId("dialogue-error")).toHaveTextContent(t("llm.required")));
     expect(screen.getByTestId("dialogue-input")).toHaveValue("누구세요?");
   });
 

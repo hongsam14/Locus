@@ -2,7 +2,7 @@
 
 Scans the shipped code for the packaged demo's and the old demo's names and region
 names. Excluded: the demo package data itself, the test fixtures, and the web tests.
-``web/src`` joins the scan in U8 Step 10, once the home screen reads the manifest.
+``web/src`` joined the scan in U8 Step 10, when the home screen began reading the manifest.
 """
 
 from __future__ import annotations
@@ -11,8 +11,8 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SCANNED = ("locus", "api")
-SKIP = ("locus/world/demo/worlds/",)
+SCANNED = ("locus", "api", "web/src")
+SKIP = ("locus/world/demo/worlds/", "web/src/__tests__/")
 NAMES = re.compile(
     r"emberleaf|aldermoor|riverton|highcrag|greenvale|frostreach|saltwake|sylvarch|"
     r"ambermeadow|ironcrag|gutterlight|hollowdeep|sunstrand|ashen.dig|greenreach|stonebrow|"
@@ -34,3 +34,9 @@ def test_tp_u8_6_no_demo_name_in_code() -> None:
                 if NAMES.search(line):
                     hits.append(f"{rel}:{n}: {line.strip()}")
     assert hits == []
+
+
+def test_the_scan_reaches_the_web_source() -> None:
+    """The web scan is not vacuous: the screen that used to name the demo is in it."""
+    assert (ROOT / "web/src/routes/HomePage.tsx").is_file()
+    assert (ROOT / "web/src/features/home/DemoCard.tsx").is_file()

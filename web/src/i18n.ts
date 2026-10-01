@@ -1,6 +1,6 @@
 // Lightweight i18n (X3 / C10, extended by U5): two dictionaries (ko, en) and the
 // display language as module state, remembered in localStorage. No library (FD-U5
-// frontend §2.2): ~150 keys do not justify i18next. Korean is the default (Q2=A).
+// frontend §2.2): a few hundred flat keys (~320 in U8) do not justify i18next. Korean is the default (Q2=A).
 // UI static labels + timeline kind templates (F2a) + notification segments.
 import { useSyncExternalStore } from "react";
 import type { Lang } from "./types";
@@ -26,21 +26,9 @@ const ko = {
   "badge.rumor": "소문",
 
   // editor toolbar / editor screen
-  "toolbar.worldId": "월드 id",
-  "toolbar.load": "불러오기",
-  "toolbar.loadDemo": "데모 월드 불러오기",
   "toolbar.pickMap": "지도:",
-  "editor.enterWorldId": "world id를 입력하세요",
-  "editor.working": "작업 중…",
-  "editor.noWorld": "불러온 월드가 없습니다. {loadDemo} 또는 {load}을(를) 누르세요.",
-  "editor.emptyWorld":
-    "월드 {world}에 지역이 0개입니다. 데모를 불러오거나(위 버튼 또는 아래 명령) 빌드한 뒤 다시 불러오세요. world id가 맞는지 확인하세요.",
   "editor.status":
     "월드 {world} · 지역 {regions} · 연결 {connections} · 엔티티 {entities} · 지식 {knowledge}",
-  "editor.replaceTitle": "월드 교체",
-  "editor.replaceConfirm": "닫고 교체",
-  "editor.replaceBody":
-    "이 월드에 열린 세션이 {n}개 있습니다. 데모를 불러오면 그 세션을 닫고 월드를 교체합니다. 계속할까요?",
 
   // region knowledge panel (editor / GM)
   "region.title": "지역 지식",
@@ -50,10 +38,8 @@ const ko = {
 
   // knowledge augmentation
   "augment.title": "지식 보강",
-  "augment.start": "실행 시작",
   "augment.revert": "되돌리기",
   "augment.status": "상태: {status} · 답 {answers}/30",
-  "augment.none": "열린 질문이 없습니다 🎉",
 
   // session bar
   "session.title": "세션",
@@ -167,7 +153,6 @@ const ko = {
   "deed.kind.declared_action": "선언",
   "deed.declaration": "선언 원문",
   "deed.witnesses": "목격",
-  "deed.appraisals": "판단",
   "deed.salience": "열의",
   "deed.reached": "도달 지역",
   "deed.void": "취소",
@@ -224,12 +209,10 @@ const ko = {
   "home.empty": "아직 월드가 없습니다.",
   "home.edit": "편집",
   "home.startSession": "세션 시작",
-  "home.loadDemo": "데모 불러오기",
   "home.buildFromSources": "자료로 만들기",
   "home.regions": "지역 {n}",
   "home.updated": "수정 {when}",
   "home.openSessions": "열린 세션 {n}",
-  "home.newWorldId": "새 월드 id",
   "map.tool.select": "선택·이동",
   "map.tool.addRegion": "지역 추가",
   "map.tool.connect": "연결 긋기",
@@ -256,7 +239,6 @@ const ko = {
   "editor.connection.kind": "종류",
   "editor.connection.weight": "통하는 정도",
   "editor.connection.save": "저장",
-  "editor.connection.delete": "연결 삭제",
   "editor.connection.none": "연결이 없습니다",
   "editor.connection.prior": "근거: {effect}",
   "editor.connection.brokenPrior": "저장되지 않은 근거 ({id})",
@@ -266,7 +248,6 @@ const ko = {
   "editor.knowledge.statement": "진술",
   "editor.knowledge.edit": "고치기",
   "editor.knowledge.save": "저장",
-  "editor.knowledge.delete": "지식 삭제",
   "editor.knowledge.none": "이곳에 붙은 지식이 없습니다",
   "editor.scopes": "스코프",
   "editor.scopes.save": "스코프 저장",
@@ -277,7 +258,6 @@ const ko = {
   "editor.npc.description": "설명",
   "editor.npc.traits": "특성(쉼표로)",
   "editor.npc.save": "저장",
-  "editor.npc.delete": "NPC 삭제",
   "editor.npc.none": "이곳에 사는 NPC가 없습니다",
   "editor.npcDraft.suggest": "NPC 제안",
   "editor.npcDraft.accept": "받아들이기",
@@ -287,7 +267,6 @@ const ko = {
   "editor.unscoped.none": "모든 지식이 어느 지역엔가 붙어 있습니다",
   "editor.unscoped.pick": "지역 고르기",
   "editor.unscoped.assign": "지정",
-  "editor.saved": "저장했습니다",
   "delete.title": "삭제할까요?",
   "delete.confirm": "삭제",
   "delete.knowledge": "지식 \"{name}\"을(를) 지웁니다.",
@@ -301,6 +280,7 @@ const ko = {
   "delete.region.unscope": "지식 {n}개는 스코프 없음이 됩니다: {names}",
   "delete.region.scopeRemoved": "지식 {n}개는 이 지역 스코프만 빠집니다",
   "delete.region.entities": "엔티티 {n}개의 위치를 비웁니다",
+  "delete.region.seeds": "이 지역의 사건 씨앗 {n}개를 지웁니다",
   "delete.region.blocked": "열린 세션의 플레이어가 이곳에 있어 지울 수 없습니다: {ids}. GM 화면에서 세션을 닫거나 플레이어를 옮기세요.",
   "delete.region.done": "지웠습니다: 자식 {children} 옮김 · NPC {npcs} · 연결 {connections} · 스코프 없음 {unscoped}",
   "augment.find": "빈틈 찾기",
@@ -327,9 +307,6 @@ const ko = {
   "augment.lost": "보강 기록이 사라졌어요(서버 재시작). 새로 찾아 주세요.",
   "augment.conflict": "되돌릴 수 없습니다: {reason}",
   "wiki.title": "상식 근거",
-  "wiki.condition": "조건",
-  "wiki.effect": "효과",
-  "wiki.domains": "도메인",
   "wiki.confidence": "신뢰도",
   "wiki.refs": "참조 {n}",
   "wiki.broken": "저장되지 않은 근거",
@@ -362,6 +339,32 @@ const ko = {
   "file.replaceConfirm": "이 월드를 파일 내용으로 교체할까요?",
   "file.closeSessionsConfirm": "열린 세션 {n}개를 닫고 교체할까요?",
   "file.openSessions": "열린 세션 {n}개",
+  // U8: demo cards, the LLM-off notice, event seeds, the in-progress badge
+  "demo.heading": "데모 월드",
+  "demo.play": "바로 플레이",
+  "demo.edit": "에디터에서 보기",
+  "demo.playerName": "여행자",
+  "demo.existing": "{title} 월드가 이미 있습니다. 지금 월드로 할까요, 새로 불러올까요?",
+  "demo.keep": "지금 월드로 플레이",
+  "demo.reload": "새로 불러와 플레이",
+  "demo.closeSessions": "열린 세션 {n}개를 닫고 새로 불러올까요?",
+  "demo.loadFailed": "데모를 불러오지 못했습니다.",
+  "demo.busy": "이 월드의 세션이 턴을 진행하는 중입니다. 잠시 뒤에 다시 해 보세요.",
+  "demo.startMissing": "시작 지역이 지금 월드에 없습니다. 새로 불러오면 처음 상태로 돌아갑니다.",
+  "demo.loaded": "불러옴",
+  "demo.backup": "이전 월드는 {path}에 백업했습니다.",
+  "demo.replaceConfirm": "{title} 월드를 처음 상태로 다시 불러옵니다. 이 월드에서 고친 내용은 사라집니다.",
+  "llm.offNotice": "LLM 키가 없습니다. 데모 플레이·이동·편집은 되고, 생성·대화·제안은 꺼져 있습니다.",
+  "llm.required": "LLM 키가 필요합니다",
+  "seed.title": "사건 씨앗",
+  "seed.start": "시작",
+  "seed.running": "진행 중",
+  "seed.none": "이 월드에는 사건 씨앗이 없습니다",
+  "seed.category": "분류: {category}",
+  "seed.magnitude": "크기 {n}",
+  "timeline.seedStarted": "씨앗 사건 시작: {title}",
+  "build.conceptArtsWip": "올린 그림은 아직 월드 구성에 쓰이지 않거나 일부만 쓰입니다",
+  "wip.badge": "진행 중",
 };
 
 type Key = keyof typeof ko;
@@ -381,21 +384,9 @@ const en: Record<Key, string> = {
   "badge.hearsay": "hearsay",
   "badge.rumor": "rumor",
 
-  "toolbar.worldId": "world id",
-  "toolbar.load": "Load",
-  "toolbar.loadDemo": "Load demo world",
   "toolbar.pickMap": "Map:",
-  "editor.enterWorldId": "Enter a world id",
-  "editor.working": "working…",
-  "editor.noWorld": "No world loaded. Click {loadDemo} or {load}.",
-  "editor.emptyWorld":
-    "World {world} has 0 regions. Load the demo (button above or the command below) or build it, then Load. Check the world id matches.",
   "editor.status":
     "world {world} · regions {regions} · connections {connections} · entities {entities} · knowledge {knowledge}",
-  "editor.replaceTitle": "Replace world",
-  "editor.replaceConfirm": "Close and replace",
-  "editor.replaceBody":
-    "This world has {n} open session(s). Loading the demo closes them and replaces the world. Continue?",
 
   "region.title": "Region knowledge",
   "region.unique": "unique {n}",
@@ -403,10 +394,8 @@ const en: Record<Key, string> = {
   "region.empty": "Nothing is known here",
 
   "augment.title": "Knowledge augmentation",
-  "augment.start": "Start run",
   "augment.revert": "Revert",
   "augment.status": "status: {status} · {answers}/30 answers",
-  "augment.none": "No open questions 🎉",
 
   "session.title": "Session",
   "session.new": "New session",
@@ -512,7 +501,6 @@ const en: Record<Key, string> = {
   "deed.kind.declared_action": "declared",
   "deed.declaration": "declared as",
   "deed.witnesses": "witnessed by",
-  "deed.appraisals": "appraisals",
   "deed.salience": "eagerness",
   "deed.reached": "reached",
   "deed.void": "Void",
@@ -565,12 +553,10 @@ const en: Record<Key, string> = {
   "home.empty": "No world yet.",
   "home.edit": "Edit",
   "home.startSession": "Start session",
-  "home.loadDemo": "Load the demo",
   "home.buildFromSources": "Build from sources",
   "home.regions": "{n} regions",
   "home.updated": "edited {when}",
   "home.openSessions": "{n} open sessions",
-  "home.newWorldId": "New world id",
   "map.tool.select": "Select / move",
   "map.tool.addRegion": "Add region",
   "map.tool.connect": "Connect",
@@ -597,7 +583,6 @@ const en: Record<Key, string> = {
   "editor.connection.kind": "Kind",
   "editor.connection.weight": "Weight",
   "editor.connection.save": "Save",
-  "editor.connection.delete": "Delete connection",
   "editor.connection.none": "No connections",
   "editor.connection.prior": "Grounds: {effect}",
   "editor.connection.brokenPrior": "Unsaved grounds ({id})",
@@ -607,7 +592,6 @@ const en: Record<Key, string> = {
   "editor.knowledge.statement": "Statement",
   "editor.knowledge.edit": "Edit",
   "editor.knowledge.save": "Save",
-  "editor.knowledge.delete": "Delete knowledge",
   "editor.knowledge.none": "No knowledge here",
   "editor.scopes": "Scopes",
   "editor.scopes.save": "Save scopes",
@@ -618,7 +602,6 @@ const en: Record<Key, string> = {
   "editor.npc.description": "Description",
   "editor.npc.traits": "Traits (comma separated)",
   "editor.npc.save": "Save",
-  "editor.npc.delete": "Delete NPC",
   "editor.npc.none": "Nobody lives here yet",
   "editor.npcDraft.suggest": "Suggest NPCs",
   "editor.npcDraft.accept": "Accept",
@@ -628,7 +611,6 @@ const en: Record<Key, string> = {
   "editor.unscoped.none": "Every item is known somewhere",
   "editor.unscoped.pick": "Pick a region",
   "editor.unscoped.assign": "Assign",
-  "editor.saved": "Saved",
   "delete.title": "Delete?",
   "delete.confirm": "Delete",
   "delete.knowledge": "This deletes the knowledge \"{name}\".",
@@ -642,6 +624,7 @@ const en: Record<Key, string> = {
   "delete.region.unscope": "{n} item(s) become unscoped: {names}",
   "delete.region.scopeRemoved": "{n} item(s) lose this scope only",
   "delete.region.entities": "{n} entit(ies) lose their location",
+  "delete.region.seeds": "{n} event seed(s) of this region are deleted",
   "delete.region.blocked": "A player of an open session stands here: {ids}. Close the session or move the player first.",
   "delete.region.done": "Deleted: {children} moved · {npcs} NPCs · {connections} connections · {unscoped} unscoped",
   "augment.find": "Find gaps",
@@ -668,9 +651,6 @@ const en: Record<Key, string> = {
   "augment.lost": "The run is gone (the server restarted). Find gaps again.",
   "augment.conflict": "Cannot revert: {reason}",
   "wiki.title": "Common-sense grounds",
-  "wiki.condition": "Condition",
-  "wiki.effect": "Effect",
-  "wiki.domains": "Domains",
   "wiki.confidence": "Confidence",
   "wiki.refs": "{n} refs",
   "wiki.broken": "Unsaved grounds",
@@ -703,6 +683,32 @@ const en: Record<Key, string> = {
   "file.replaceConfirm": "Replace this world with the file?",
   "file.closeSessionsConfirm": "Close {n} open session(s) and replace?",
   "file.openSessions": "{n} open sessions",
+  // U8: demo cards, the LLM-off notice, event seeds, the in-progress badge
+  "demo.heading": "Demo worlds",
+  "demo.play": "Play now",
+  "demo.edit": "Open in editor",
+  "demo.playerName": "Traveler",
+  "demo.existing": "{title} is already here. Play this world, or load it fresh?",
+  "demo.keep": "Play this world",
+  "demo.reload": "Load fresh and play",
+  "demo.closeSessions": "Close {n} open sessions and load it fresh?",
+  "demo.loadFailed": "Could not load the demo.",
+  "demo.busy": "A session of this world is running a turn. Try again in a moment.",
+  "demo.startMissing": "The starting region is not in this world. Loading it fresh brings it back.",
+  "demo.loaded": "loaded",
+  "demo.backup": "The previous world was backed up to {path}.",
+  "demo.replaceConfirm": "Load {title} fresh? Edits made to this world will be lost.",
+  "llm.offNotice": "No LLM key: the demo, moving and editing work; generating, dialogue and suggestions are off.",
+  "llm.required": "An LLM key is required",
+  "seed.title": "Event seeds",
+  "seed.start": "Start",
+  "seed.running": "Running",
+  "seed.none": "This world has no event seeds",
+  "seed.category": "Category: {category}",
+  "seed.magnitude": "Size {n}",
+  "timeline.seedStarted": "Seed event started: {title}",
+  "build.conceptArtsWip": "Uploaded art is not used, or only partly used, to build the world yet",
+  "wip.badge": "In progress",
 };
 
 /** Both dictionaries, exported for the key-set test (same keys in ko and en). */
@@ -833,6 +839,10 @@ export function timelineText(
   summary?: string,
 ): string {
   let k = kind;
+  // U8 (BR-U8-18): a seed's start is an event_created line that names its seed
+  if (k === "event_created" && payload.seed_title != null) {
+    return t("timeline.seedStarted", { title: payload.seed_title });
+  }
   // older lines: one kind for create/suggest/approve, told apart by a flag (pre-U7) —
   // only when the line has what the newer wording needs (U7 review #10)
   if (k === "event_created" && payload.suggested && payload.category != null) k = "event_suggested";

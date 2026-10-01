@@ -223,3 +223,56 @@ def test_a_connection_between_regions_of_a_new_world_still_saves() -> None:
         provenance=_prov(),
     )
     assert len(stack.editors.connections.upsert_connection(edge)) == 2
+
+
+# --------------------------------------------------------------------------- #
+# C5 (U8 Step 10): one "unscoped" rule — the snapshot's — for the editor list, the
+# augmentation detector and the export the web counts from
+# --------------------------------------------------------------------------- #
+def test_c5_the_snapshot_rule_ignores_a_stale_stored_list_and_global_items() -> None:
+    from locus.shared.models import (
+        KnowledgeGraph,
+        RegionTopology,
+        ScopeLink,
+        ScopeType,
+        WorldSnapshot,
+    )
+    from locus.world.augmentation.detectors import detect_unscoped
+
+    def item(title: str, **kw) -> Knowledge:
+        return Knowledge(world_id="w", statement=title, title=title, provenance=_prov(), **kw)
+
+    orphan, common, placed = item("orphan"), item("common", is_global=True), item("placed")
+    snap = WorldSnapshot(
+        world_id="w",
+        kg=KnowledgeGraph(
+            world_id="w",
+            knowledge=[orphan, common, placed],
+            scopes=[
+                ScopeLink(
+                    world_id="w",
+                    knowledge_id=placed.id,
+                    region_id="r",
+                    scope_type=ScopeType.DIRECT,
+                )
+            ],
+            unscoped_knowledge_ids=[placed.id],  # stale: what the loader saw earlier
+        ),
+        topo=RegionTopology(world_id="w", regions=[]),
+    )
+    assert snap.unscoped_knowledge_ids == [orphan.id]
+    assert [i.target_ids for i in detect_unscoped(snap)] == [[orphan.id]]
+
+
+def test_c5_the_editor_list_and_the_export_agree() -> None:
+    stack, w = _aldermoor()
+    k = stack.editors.knowledge
+    well = Knowledge(world_id="w", statement="the well ran dry", title="well", provenance=_prov())
+    k.create_knowledge(well, w["hollow"].id)
+    k.set_scopes("w", well.id, [])
+    listed = [u.id for u in k.list_unscoped("w")]
+    assert well.id in listed
+    exported = stack.exporter.export_world("w")["unscoped_knowledge_ids"]
+    assert exported == listed == stack.cache.get("w").unscoped_knowledge_ids
+    k.set_scopes("w", well.id, [w["riverton"].id])
+    assert well.id not in stack.exporter.export_world("w")["unscoped_knowledge_ids"]

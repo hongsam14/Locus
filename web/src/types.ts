@@ -110,11 +110,13 @@ export interface RegionDeletePlan {
   knowledge_to_unscope: NameRef[];
   knowledge_scope_removed: NameRef[];
   entities_unlocated: NameRef[];
+  seed_ids?: string[]; // U8 (BR-U8-14): its event seeds go too
   blocked_by_sessions: string[];
 }
 
 export interface RegionDeleteReport extends RegionDeletePlan {
   deleted_ids: string[];
+  seeds_deleted?: number;
 }
 
 export interface NpcDraft {
@@ -169,6 +171,7 @@ export interface WorldExport {
   scopes: ScopeLink[];
   npcs?: NPC[];
   priors?: WikiPrior[];
+  unscoped_knowledge_ids?: string[]; // the server's "unscoped" rule (U3 review C5)
 }
 
 // --- World File v1 (U2 FR-B8): the save format; a superset of WorldExport ---- //
@@ -292,11 +295,40 @@ export interface WorldInfo {
   open_sessions?: number | null;
 }
 
+/** A manifest demo as the home screen sees it (U8, domain-entities §1). */
 export interface DemoInfo {
-  name: string;
+  name: string; // also the world id it loads into
   title: string;
   description?: string | null;
-  file: string;
+  credits?: string | null;
+  start_region_id: string;
+  has_sources: boolean;
+}
+
+/** Which providers the server has (U8, `GET /api/capabilities`). */
+export interface Capabilities {
+  llm: boolean;
+  vlm: boolean;
+  embedding: boolean;
+}
+
+/** A world's event seed (U8, domain-entities §2). */
+export interface EventSeed {
+  id: string;
+  world_id: string;
+  region_id: string;
+  title: string;
+  description: string;
+  category: EventCategory;
+  magnitude: number;
+  lifecycle?: EventLifecycle | null;
+}
+
+/** A seed as one session sees it (U8, domain-entities §3). */
+export interface SeedView {
+  seed: EventSeed;
+  region_name: string;
+  running_event_id?: string | null;
 }
 
 export interface RegionBrief {

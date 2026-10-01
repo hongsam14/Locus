@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { LangToggle } from "../features/play/LangToggle";
 import { t, useLang } from "../i18n";
 
@@ -14,13 +14,16 @@ const link = ({ isActive }: { isActive: boolean }) =>
 // and the display-language toggle on the right (U5, shown on every screen).
 export function AppNav({ worldId, sessionId }: Props) {
   useLang(); // labels follow the display language
-  const editorTo = `/editor/${encodeURIComponent(worldId || "aldermoor")}`;
+  // no world chosen yet: the world list is where one is picked (U8, BR-U8-1; U3 S01)
+  const editorTo = worldId ? `/editor/${encodeURIComponent(worldId)}` : "/";
   return (
     <nav
       data-testid="app-nav"
       className="flex flex-wrap items-center gap-2 border-b border-ink px-3 py-1.5 bg-paper-card text-sm"
     >
-      <strong className="font-display text-2xl mr-2">Locus</strong>
+      <Link to="/" data-testid="nav-home" className="font-display text-2xl mr-2 font-bold">
+        Locus
+      </Link>
       <NavLink data-testid="nav-editor" to={editorTo} className={link}>
         {t("nav.editor")}
       </NavLink>

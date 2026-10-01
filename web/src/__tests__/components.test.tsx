@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "../api/http";
 import { MapOverlay } from "../MapOverlay";
 // U3 intended change (C-8): the GM's read-only knowledge panel (was RegionPanel);
@@ -10,15 +10,20 @@ import { AugmentPanel } from "../features/editor/AugmentPanel";
 import { SessionBar } from "../SessionBar";
 import { GmHub } from "../features/gm/GmHub";
 import { App } from "../App";
+import { resetCapabilities } from "../capabilities";
+import { AppNav } from "../routes/AppNav";
 import { t } from "../i18n";
 import type { ConnectionEdge, GameSession, Region } from "../types";
 
 vi.mock("../api", () => ({
   api: {
+    capabilities: vi.fn().mockResolvedValue({ llm: true, vlm: true, embedding: true }),
+    listSeeds: vi.fn().mockResolvedValue([]),
+    startSeed: vi.fn(),
+    listDemos: vi.fn().mockResolvedValue([]),
     regionKnowledge: vi.fn(),
     sessionKnowledge: vi.fn(),
     exportWorld: vi.fn(),
-    buildWorldDemo: vi.fn(),
     loadDemo: vi.fn(),
     updateRegion: vi.fn(),
     getSession: vi.fn(),
@@ -546,5 +551,48 @@ describe("EditorPage demo load (BR-U2-25)", () => {
     fireEvent.change(screen.getByTestId("map-file-input"), { target: { files: [image] } });
     expect(made).toHaveBeenCalledWith(image);
     expect(screen.getByAltText("world map")).toHaveAttribute("src", "blob:map");
+  });
+});
+
+
+// --------------------------------------------------------------------------- //
+// U8: the nav with no world named, and the editor's LLM-off notice
+// --------------------------------------------------------------------------- //
+describe("AppNav and EditorPage after U8", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetCapabilities();
+    (api.capabilities as Mock).mockResolvedValue({ llm: true, vlm: true, embedding: true });
+    (api.listSessions as Mock).mockResolvedValue([]);
+    (api.listWorlds as Mock).mockResolvedValue([]);
+  });
+  afterEach(() => resetCapabilities());
+
+  it("the Locus label goes home; with no world the editor link is the world list", () => {
+    // U8 intended change: BR-U8-1 — the editor link no longer falls back to /editor/aldermoor
+    render(<MemoryRouter><AppNav /></MemoryRouter>);
+    expect(screen.getByTestId("nav-home")).toHaveAttribute("href", "/");
+    expect(screen.getByTestId("nav-editor")).toHaveAttribute("href", "/");
+  });
+
+  it("with a world named the editor link opens that world", () => {
+    render(<MemoryRouter><AppNav worldId="emberleaf" sessionId="s1" /></MemoryRouter>);
+    expect(screen.getByTestId("nav-editor")).toHaveAttribute("href", "/editor/emberleaf");
+    expect(screen.getByTestId("nav-play")).toHaveAttribute("href", "/play/s1");
+  });
+
+  it("the editor shows the LLM-off notice and keeps the World File bar", async () => {
+    (api.capabilities as Mock).mockResolvedValue({ llm: false, vlm: false, embedding: false });
+    (api.exportWorld as Mock).mockResolvedValue({
+      world_id: "emberleaf", regions: [{ id: "r1", name: "Saltwake", level: "town" }],
+      connections: [], entities: [], knowledge: [], scopes: [],
+    });
+    render(
+      <MemoryRouter initialEntries={["/editor/emberleaf"]}>
+        <App />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByTestId("llm-notice")).toHaveTextContent(t("llm.offNotice"));
+    expect(screen.getByTestId("file-input")).toBeEnabled();
   });
 });

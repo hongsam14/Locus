@@ -4,7 +4,6 @@ import { api } from "../api";
 import { conflictKind } from "../api/http";
 import { ActionBar } from "../features/play/ActionBar";
 import { DialoguePanel } from "../features/play/DialoguePanel";
-import { LlmBanner } from "../features/play/LlmBanner";
 import { NarrationCard } from "../features/play/NarrationCard";
 import { MovePanel } from "../features/play/MovePanel";
 import { PlayLog } from "../features/play/PlayLog";
@@ -20,7 +19,7 @@ import type {
   TimelineEntry,
   TurnRun,
 } from "../types";
-import { Button, NotificationCenter, Panel } from "../ui";
+import { Button, LlmNotice, NotificationCenter, Panel } from "../ui";
 import type { Notif } from "../ui";
 
 const LOG_LINES = 30; // the log shows the newest 30 lines (U7 review C6)
@@ -276,7 +275,7 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
         )}
         {view && (
           <>
-            <LlmBanner visible={!view.llm_available} />
+            <LlmNotice visible={!view.llm_available} text={t("play.noLlm")} />
             <RegionScene
               view={view}
               npcCounts={npcCounts}

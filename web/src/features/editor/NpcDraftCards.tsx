@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { api } from "../../api";
+import { needsLlm } from "../../api/http";
+import { llmOff, useCapabilities } from "../../capabilities";
 import { t } from "../../i18n";
 import type { NpcDraft } from "../../types";
 import { Button, Card } from "../../ui";
@@ -21,6 +23,7 @@ export function NpcDraftCards({
   const [failed, setFailed] = useState(false);
   const [asking, setAsking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const noLlm = llmOff(useCapabilities()); // U8 (BR-U8-25)
   async function suggest() {
     setAsking(true);
     setError(null);
@@ -30,16 +33,20 @@ export function NpcDraftCards({
       setDrafts(r.drafts);
       setFailed(r.failed);
     } catch (e) {
-      setError(String(e));
+      setError(needsLlm(e) ? t("llm.required") : String(e)); // BR-U8-27
     } finally {
       setAsking(false);
     }
   }
   return (
     <div className="flex flex-col gap-1" data-testid="npc-drafts">
-      <Button size="sm" data-testid="npc-suggest" disabled={busy || asking} onClick={suggest}>
-        {t("editor.npcDraft.suggest")}
-      </Button>
+      <span className="flex items-center gap-2">
+        <Button size="sm" data-testid="npc-suggest" disabled={busy || asking || noLlm} onClick={suggest}
+          title={noLlm ? t("llm.required") : undefined}>
+          {t("editor.npcDraft.suggest")}
+        </Button>
+        {noLlm && <span className="text-xs text-ink-soft" data-testid="llm-required">{t("llm.required")}</span>}
+      </span>
       {failed && <div className="text-xs text-danger" data-testid="npc-draft-failed">{t("editor.npcDraft.failed")}</div>}
       {error && <div className="text-xs text-danger">{error}</div>}
       {drafts && drafts.length === 0 && !failed && (

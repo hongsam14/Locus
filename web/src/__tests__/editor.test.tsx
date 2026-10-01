@@ -1,11 +1,13 @@
 // U3 world editor (frontend-components §6, EX-11, BR-U3-24..32).
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "../api/http";
+import { resetCapabilities } from "../capabilities";
 import { AugmentPanel } from "../features/editor/AugmentPanel";
 import { BuildPanel } from "../features/editor/BuildPanel";
 import { ConfirmDelete } from "../features/editor/ConfirmDelete";
+import { NpcDraftCards } from "../features/editor/NpcDraftCards";
 import { isDrag } from "../features/editor/drag";
 import { MapCanvas } from "../features/editor/MapCanvas";
 import { RegionInspector } from "../features/editor/RegionInspector";
@@ -16,6 +18,7 @@ import type { AugRun, EditorRegionView, Region, RegionDeletePlan } from "../type
 
 vi.mock("../api", () => ({
   api: {
+    capabilities: vi.fn().mockResolvedValue({ llm: true, vlm: true, embedding: true }),
     getEditorRegion: vi.fn(),
     updateRegion: vi.fn(),
     getDeletePlan: vi.fn(),
@@ -366,5 +369,83 @@ describe("BuildPanel (BR-U3-35)", () => {
     const second = (api.uploadBuild as Mock).mock.calls[1][1] as FormData;
     expect(second.get("replace")).toBe("true");
     expect(second.get("confirm")).toBe("false");
+  });
+});
+
+
+// --------------------------------------------------------------------------- //
+// U8: LLM buttons off without a key, the concept-art badge, seeds in the delete plan
+// (frontend-components §2.5–2.6, BR-U8-14/25/27, EX-7/8)
+// --------------------------------------------------------------------------- //
+describe("U8 editor", () => {
+  const noLlm = () => (api.capabilities as Mock).mockResolvedValue({ llm: false, vlm: false, embedding: false });
+  beforeEach(() => {
+    resetCapabilities();
+    (api.capabilities as Mock).mockResolvedValue({ llm: true, vlm: true, embedding: true });
+  });
+  afterEach(() => resetCapabilities());
+  const build = () =>
+    render(<MemoryRouter><BuildPanel open worldId="w" exists={false} onClose={() => {}} onBuilt={() => {}} /></MemoryRouter>);
+
+  it("EX-8: [build] is off and says why when the server has no LLM", async () => {
+    noLlm();
+    build();
+    fireEvent.change(screen.getByTestId("build-memo"), { target: { value: "a river town" } });
+    await waitFor(() => expect(screen.getByTestId("build-submit")).toBeDisabled());
+    expect(screen.getByTestId("build-submit")).toHaveAttribute("title", t("llm.required"));
+    expect(screen.getByTestId("llm-required")).toHaveTextContent(t("llm.required"));
+  });
+
+  it("with an LLM [build] is on once there is input", async () => {
+    build();
+    fireEvent.change(screen.getByTestId("build-memo"), { target: { value: "a river town" } });
+    await waitFor(() => expect(api.capabilities).toHaveBeenCalled());
+    expect(screen.getByTestId("build-submit")).toBeEnabled();
+    expect(screen.queryByTestId("llm-required")).not.toBeInTheDocument();
+  });
+
+  it("the concept-art field carries the in-progress badge with its note", () => {
+    build();
+    const badge = screen.getByTestId("wip-badge");
+    expect(badge).toHaveTextContent(t("wip.badge"));
+    expect(badge).toHaveAttribute("title", t("build.conceptArtsWip"));
+    expect(screen.getAllByTestId("wip-badge")).toHaveLength(1); // only that field
+  });
+
+  it("a build 503 for a missing provider reads 'LLM key required'", async () => {
+    (api.uploadBuild as Mock).mockRejectedValue(new HttpError(503, "Service Unavailable",
+      '{"detail":"world build (LLM provider) unavailable"}'));
+    build();
+    fireEvent.change(screen.getByTestId("build-memo"), { target: { value: "a river town" } });
+    fireEvent.click(screen.getByTestId("build-submit"));
+    await waitFor(() => expect(screen.getByTestId("build-error")).toHaveTextContent(t("llm.required")));
+  });
+
+  it("EX-8: [draft NPCs] is off without an LLM; a 503 reads 'LLM key required'", async () => {
+    noLlm();
+    const { unmount } = render(<NpcDraftCards worldId="w" regionId="r1" busy={false} onAccept={async () => true} />);
+    await waitFor(() => expect(screen.getByTestId("npc-suggest")).toBeDisabled());
+    expect(screen.getByTestId("npc-suggest")).toHaveAttribute("title", t("llm.required"));
+    unmount();
+    resetCapabilities();
+    (api.capabilities as Mock).mockRejectedValue(new Error("down")); // unknown: left on
+    (api.draftNpcs as Mock).mockRejectedValue(new HttpError(503, "Service Unavailable",
+      '{"detail":"NPC drafts need an LLM provider"}'));
+    render(<NpcDraftCards worldId="w" regionId="r1" busy={false} onAccept={async () => true} />);
+    await waitFor(() => expect(api.capabilities).toHaveBeenCalled());
+    expect(screen.getByTestId("npc-suggest")).toBeEnabled();
+    fireEvent.click(screen.getByTestId("npc-suggest"));
+    await waitFor(() => expect(screen.getByText(t("llm.required"))).toBeInTheDocument());
+  });
+
+  it("EX-7: the delete plan counts the region's event seeds", () => {
+    const plan: RegionDeletePlan = { region_id: "r1", region_name: "Ambermeadow", children: [],
+      connections: [], npcs: [], knowledge_to_unscope: [], knowledge_scope_removed: [],
+      entities_unlocated: [], blocked_by_sessions: [], seed_ids: ["seed-mushroom-blight"] };
+    const { unmount } = render(<ConfirmDelete open plan={plan} onConfirm={() => {}} onCancel={() => {}} />);
+    expect(screen.getByTestId("delete-plan-seeds")).toHaveTextContent(t("delete.region.seeds", { n: 1 }));
+    unmount();
+    render(<ConfirmDelete open plan={{ ...plan, seed_ids: [] }} onConfirm={() => {}} onCancel={() => {}} />);
+    expect(screen.queryByTestId("delete-plan-seeds")).not.toBeInTheDocument();
   });
 });

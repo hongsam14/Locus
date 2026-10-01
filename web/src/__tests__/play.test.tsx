@@ -99,7 +99,8 @@ describe("PlayPage", () => {
     expect(screen.getByTestId("move-c-blocked")).toHaveTextContent(t("play.blocked"));
     expect(screen.getByTestId("move-c-btn")).toBeDisabled(); // TP-U4-2 (UI)
     expect(screen.getByTestId("move-b-btn")).toBeEnabled();
-    expect(screen.queryByTestId("llm-banner")).not.toBeInTheDocument();
+    // U8 intended change: FC §2.2 — LlmBanner became the shared LlmNotice
+    expect(screen.queryByTestId("llm-notice")).not.toBeInTheDocument();
     expect(screen.getByTestId("log-session_started")).toHaveTextContent(
       t("timeline.session_started", { player_name: "Ari", region_name: "Riverton" }),
     );
@@ -156,7 +157,8 @@ describe("PlayPage", () => {
   it("EX-16: shows the LLM banner and still offers moves without a provider", async () => {
     (api.getRegion as Mock).mockResolvedValue(view({ llm_available: false }));
     renderPlay();
-    await waitFor(() => expect(screen.getByTestId("llm-banner")).toBeInTheDocument());
+    // U8 intended change: FC §2.2 — LlmBanner became the shared LlmNotice, same words
+    await waitFor(() => expect(screen.getByTestId("llm-notice")).toHaveTextContent(t("play.noLlm")));
     expect(screen.getByTestId("move-b-btn")).toBeEnabled();
   });
 

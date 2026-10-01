@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
 import { statusOf } from "../api/http";
+import { llmOff, useCapabilities } from "../capabilities";
 import { AugmentPanel } from "../features/editor/AugmentPanel";
 import { BuildPanel } from "../features/editor/BuildPanel";
 import { MapCanvas, type NewRegion } from "../features/editor/MapCanvas";
@@ -11,7 +12,7 @@ import { WikiPanel } from "../features/editor/WikiPanel";
 import { WorldFileBar } from "../features/editor/WorldFileBar";
 import { t, useLang } from "../i18n";
 import type { ConnectionEdge, ConnectionKind, NameRef, WorldExport, WorldInfo } from "../types";
-import { Button, Toast } from "../ui";
+import { Button, LlmNotice, Toast } from "../ui";
 import { AppNav } from "./AppNav";
 
 const PROV = { source: "input", generated_by: "designer" };
@@ -23,6 +24,7 @@ type Tab = "region" | "unscoped" | "augment" | "wiki";
 export function EditorPage() {
   useLang();
   const { worldId = "" } = useParams();
+  const caps = useCapabilities(); // U8 (BR-U8-25): the notice at the head of the editor
   const [data, setData] = useState<WorldExport | null>(null);
   const [info, setInfo] = useState<WorldInfo | null>(null);
   const [missing, setMissing] = useState(false);
@@ -92,6 +94,7 @@ export function EditorPage() {
     run(() => api.saveConnection(worldId, { world_id: worldId, source_region_id: a,
       target_region_id: b, kind, weight, provenance: PROV }));
 
+  const noLlm = llmOff(caps);
   const regions = data?.regions ?? [];
   const scoped = new Set((data?.scopes ?? []).map((s) => s.knowledge_id));
   const unscoped = (data?.knowledge ?? []).filter((k) => !k.is_global && !scoped.has(k.id)).length;
@@ -100,6 +103,7 @@ export function EditorPage() {
   return (
     <div className="min-h-full">
       <AppNav worldId={worldId} />
+      <LlmNotice visible={noLlm} />
       <WorldFileBar worldId={worldId} name={data?.world?.name ?? info?.name ?? worldId}
         openSessions={info?.open_sessions ?? null} regions={regions} onLoaded={reload}
         onBuild={() => setBuilding(true)} />

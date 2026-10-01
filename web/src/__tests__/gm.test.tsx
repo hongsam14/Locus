@@ -4,10 +4,11 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "../api/http";
 import type { Mock } from "vitest";
 import { conflictKind } from "../api/http";
+import { resetCapabilities } from "../capabilities";
 import { MapOverlay } from "../MapOverlay";
 import { ActionBar, declaredLength } from "../features/play/ActionBar";
 import { DeedPanel } from "../features/gm/DeedPanel";
@@ -18,11 +19,14 @@ import { WorldStateOverlay, overlayOf, useWorldState } from "../features/gm/Worl
 import { t, timelineText } from "../i18n";
 import { GmPage } from "../routes/GmPage";
 import { PlayPage } from "../routes/PlayPage";
-import type { GameSession, Region, SessionEvent, WorldState } from "../types";
+import type { GameSession, Region, SeedView, SessionEvent, WorldState } from "../types";
 import { CommitRange } from "../ui";
 
 vi.mock("../api", () => ({
   api: {
+    capabilities: vi.fn().mockResolvedValue({ llm: true, vlm: true, embedding: true }),
+    listSeeds: vi.fn().mockResolvedValue([]),
+    startSeed: vi.fn(),
     getSession: vi.fn(),
     getRegion: vi.fn(),
     getLog: vi.fn(),
@@ -559,5 +563,97 @@ describe("U7 review carry in U3", () => {
   it("A3-14: a region line written before regions were recorded reads its summary", () => {
     expect(timelineText("promote", { rumor_id: "rm1" }, 4, "promoted rm1")).toBe("promoted rm1");
     expect(timelineText("promote", { rumor_id: "rm1", region_name: "Riverton" }, 4, "x")).toContain("Riverton");
+  });
+});
+
+
+// --------------------------------------------------------------------------- //
+// U8 event seeds and the LLM-off hub (frontend-components §2.4–2.5, §5)
+// --------------------------------------------------------------------------- //
+describe("U8 seeds and LLM-off buttons", () => {
+  const seed = (id: string, running?: string): SeedView => ({
+    seed: { id, world_id: "w", region_id: "a", title: `Title ${id}`, description: "d", category: "plague", magnitude: 0.5 },
+    region_name: "Ambermeadow",
+    running_event_id: running ?? null,
+  });
+  function hubReads() {
+    (api.getTimeline as Mock).mockResolvedValue([]);
+    (api.listEvents as Mock).mockResolvedValue([]);
+    (api.listDistortions as Mock).mockResolvedValue([{ session_id: "s1", region_id: "a", distortion_degree: 0.3 }]);
+    (api.listRumors as Mock).mockResolvedValue([]);
+  }
+  beforeEach(() => {
+    resetCapabilities();
+    (api.capabilities as Mock).mockResolvedValue({ llm: true, vlm: true, embedding: true });
+    (api.listSeeds as Mock).mockResolvedValue([]);
+    hubReads();
+  });
+  afterEach(() => resetCapabilities());
+
+  it("lists the seeds; a running one says so, the other starts and the list is read again", async () => {
+    (api.listSeeds as Mock).mockResolvedValue([seed("seed-a"), seed("seed-b", "ev-1")]);
+    (api.startSeed as Mock).mockResolvedValue({ id: "ev-2" });
+    render(<GmHub session={OPEN} regionId="a" />);
+    const row = await screen.findByTestId("seed-row-seed-a");
+    expect(row).toHaveTextContent("Title seed-a");
+    expect(row).toHaveTextContent("Ambermeadow");
+    expect(row).toHaveTextContent("plague");
+    expect(row).toHaveTextContent("0.50");
+    expect(screen.getByTestId("seed-running-seed-b")).toHaveTextContent(t("seed.running"));
+    expect(screen.queryByTestId("seed-start-seed-b")).not.toBeInTheDocument();
+    const reads = (api.listSeeds as Mock).mock.calls.length;
+    await act(async () => fireEvent.click(screen.getByTestId("seed-start-seed-a")));
+    expect(api.startSeed).toHaveBeenCalledWith("s1", "seed-a");
+    await waitFor(() => expect((api.listSeeds as Mock).mock.calls.length).toBeGreaterThan(reads));
+  });
+
+  it("a refused start (409) is the hub's error line", async () => {
+    (api.listSeeds as Mock).mockResolvedValue([seed("seed-a")]);
+    (api.startSeed as Mock).mockRejectedValue(new HttpError(409, "Conflict", '{"detail":"seed seed-a is already running"}'));
+    render(<GmHub session={OPEN} regionId="a" />);
+    const start = await screen.findByTestId("seed-start-seed-a");
+    await act(async () => fireEvent.click(start));
+    await waitFor(() => expect(screen.getByTestId("gm-hub-error")).toHaveTextContent("already running"));
+  });
+
+  it("a closed session cannot start a seed; no seeds is one line", async () => {
+    (api.listSeeds as Mock).mockResolvedValue([seed("seed-a")]);
+    const { unmount } = render(<GmHub session={{ ...OPEN, status: "closed" }} regionId="a" />);
+    expect(await screen.findByTestId("seed-start-seed-a")).toBeDisabled();
+    unmount();
+    (api.listSeeds as Mock).mockResolvedValue([]);
+    render(<GmHub session={OPEN} regionId="a" />);
+    expect(await screen.findByTestId("seed-panel")).toHaveTextContent(t("seed.none"));
+  });
+
+  it("with no LLM the LLM buttons are off and say why; manual events stay on", async () => {
+    (api.capabilities as Mock).mockResolvedValue({ llm: false, vlm: false, embedding: false });
+    render(<GmHub session={OPEN} regionId="a" />);
+    expect(await screen.findByTestId("llm-notice")).toHaveTextContent(t("llm.offNotice"));
+    for (const id of ["suggest-events-btn", "generate-all-btn", "regen-all-btn", "generate-btn", "regen-btn"]) {
+      expect(screen.getByTestId(id)).toBeDisabled();
+      expect(screen.getByTestId(id)).toHaveAttribute("title", t("llm.required"));
+    }
+    expect(screen.getByTestId("llm-required")).toHaveTextContent(t("llm.required"));
+    expect(screen.getByTestId("event-create-btn")).toBeEnabled();
+    expect(screen.getByTestId("advance-turn-btn")).toBeEnabled();
+  });
+
+  it("with an LLM (or an unknown answer) nothing is switched off", async () => {
+    (api.capabilities as Mock).mockRejectedValue(new Error("down"));
+    render(<GmHub session={OPEN} regionId="a" />);
+    await waitFor(() => expect(api.capabilities).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByTestId("generate-btn")).toBeEnabled());
+    expect(screen.getByTestId("suggest-events-btn")).toBeEnabled();
+    expect(screen.queryByTestId("llm-notice")).not.toBeInTheDocument();
+  });
+
+  it("a 503 for a missing provider reads 'LLM key required' (BR-U8-27)", async () => {
+    (api.generateRumors as Mock).mockRejectedValue(new HttpError(503, "Service Unavailable",
+      '{"detail":"rumor generation needs an LLM provider (set OPENAI_API_KEY)"}'));
+    render(<GmHub session={OPEN} regionId="a" />);
+    await waitFor(() => expect(screen.getByTestId("generate-btn")).toBeEnabled());
+    await act(async () => fireEvent.click(screen.getByTestId("generate-btn")));
+    await waitFor(() => expect(screen.getByTestId("gm-hub-error")).toHaveTextContent(t("llm.required")));
   });
 });

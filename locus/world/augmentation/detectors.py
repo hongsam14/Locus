@@ -156,7 +156,7 @@ def detect_dangling(snapshot: WorldSnapshot, prior_ids: set[str]) -> list[Issue]
 
 
 def detect_unscoped(snapshot: WorldSnapshot) -> list[Issue]:
-    scoped = {s.knowledge_id for s in snapshot.kg.scopes}
+    unscoped = set(snapshot.unscoped_knowledge_ids)  # the snapshot's rule (U3 review C5)
     return [
         Issue(
             type=IssueType.UNSCOPED,
@@ -166,7 +166,7 @@ def detect_unscoped(snapshot: WorldSnapshot) -> list[Issue]:
             severity=0.65,
         )
         for k in snapshot.kg.knowledge
-        if not k.is_global and k.id not in scoped
+        if k.id in unscoped
     ]
 
 

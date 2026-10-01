@@ -1,4 +1,5 @@
 // Shared fetch helper for the four boundary API modules (U1 §11.2).
+import { useState } from "react";
 import { requestLang } from "../i18n";
 
 export const BASE = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL ?? "";
@@ -41,6 +42,59 @@ export function statusOf(err: unknown): number | null {
 export function conflictKind(err: unknown): "closed" | "busy" | null {
   if (statusOf(err) !== 409) return null;
   return /session is closed/i.test(String(err)) ? "closed" : "busy";
+}
+
+/** What a 409 body says about the world's sessions (U8; U3 review design memo 10): open
+ * sessions a replace would close, sessions mid-turn (retry later), or the sessions whose
+ * player stands in a region. `null` when the error is not such a 409. */
+export function openSessionsOf(
+  err: unknown,
+): { open?: number; busy?: number; sessionIds: string[] } | null {
+  if (statusOf(err) !== 409) return null;
+  const body = err instanceof HttpError ? err.body : String(err).replace(/^.*?: /, "");
+  try {
+    const detail = (JSON.parse(body) as { detail?: unknown }).detail;
+    if (!detail || typeof detail !== "object") return null;
+    const d = detail as { open_sessions?: number; busy_sessions?: number; session_ids?: string[] };
+    if (d.open_sessions == null && d.busy_sessions == null && !d.session_ids) return null;
+    return { open: d.open_sessions, busy: d.busy_sessions, sessionIds: d.session_ids ?? [] };
+  } catch {
+    return null;
+  }
+}
+
+/** The question a replace is waiting on: "replace?" first, then "close N sessions?". */
+export type ReplaceAsk = "replace" | { sessions: number } | null;
+
+/** The two-step replace question (U3 review C8), shared by the screens that replace a
+ * world: `askReplace()` opens the first question; `sessionsAsked(err, confirmed)` turns a
+ * 409 that names open sessions into the second one (true when it did — a mid-turn
+ * `busy_sessions` 409 is not a question); `answer()` closes the dialog and says whether
+ * the next send carries `confirm=true` (the session question was the one answered). */
+export function useReplaceConfirm() {
+  const [ask, setAsk] = useState<ReplaceAsk>(null);
+  return {
+    ask,
+    open: ask != null,
+    sessions: typeof ask === "object" && ask ? ask.sessions : 0,
+    askReplace: () => setAsk("replace"),
+    sessionsAsked(err: unknown, confirmed: boolean): boolean {
+      const s = openSessionsOf(err);
+      if (confirmed || !s?.open || s.busy) return false;
+      setAsk({ sessions: s.open });
+      return true;
+    },
+    answer(): boolean {
+      setAsk(null);
+      return ask != null && ask !== "replace";
+    },
+    cancel: () => setAsk(null),
+  };
+}
+
+/** A 503 because the server has no LLM provider (U8, BR-U8-27). */
+export function needsLlm(err: unknown): boolean {
+  return statusOf(err) === 503 && /llm|provider|openai_api_key/i.test(String(err));
 }
 
 export async function http<T>(path: string, init?: RequestInit): Promise<T> {

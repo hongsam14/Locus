@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../api";
-import { conflictKind, statusOf } from "../../api/http";
+import { conflictKind, needsLlm, statusOf } from "../../api/http";
 import { lang, t } from "../../i18n";
 import type { Message, NPC } from "../../types";
 import { Button, Field, Panel } from "../../ui";
@@ -111,7 +111,8 @@ export function DialoguePanel({
       if (conflictKind(e) === "closed") {
         setError(t("play.sessionClosed"));
         onClosed?.();
-      } else setError(statusOf(e) === 503 ? t("dialogue.failed") : String(e));
+      } else if (needsLlm(e)) setError(t("llm.required")); // no provider (BR-U8-27)
+      else setError(statusOf(e) === 503 ? t("dialogue.failed") : String(e));
     } finally {
       if (alive.current) setSending(false);
     }

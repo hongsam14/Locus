@@ -143,8 +143,8 @@ class KnowledgeEditor:
         """Not global and scoped nowhere (BR-U3-14): what the build could not place and
         what a region delete left behind."""
         snapshot = self._w.snapshot(world_id)
-        scoped = {s.knowledge_id for s in snapshot.kg.scopes}
-        return [k for k in snapshot.kg.knowledge if not k.is_global and k.id not in scoped]
+        unscoped = set(snapshot.unscoped_knowledge_ids)  # one rule (U3 review C5)
+        return [k for k in snapshot.kg.knowledge if k.id in unscoped]
 
 
 def _clean(knowledge: Knowledge) -> Knowledge:

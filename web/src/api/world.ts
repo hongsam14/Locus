@@ -82,16 +82,11 @@ export const worldApi = {
     ),
   listWorlds: () => http<WorldInfo[]>(`/api/world/worlds`),
   listDemos: () => http<DemoInfo[]>(`/api/world/demos`),
-  // Loads the packaged demo World File — no LLM call (FR-B3, US-1.3).
-  loadDemo: (worldId: string, name = "aldermoor", options?: ReplaceOptions) =>
+  // Loads a manifest demo's World File — no LLM call (FR-B3, US-1.3). No default name:
+  // the home screen reads the demos from the manifest (U8, BR-U8-1).
+  loadDemo: (worldId: string, name: string, options?: ReplaceOptions) =>
     http<ImportReport>(
       `/api/world/worlds/${enc(worldId)}/demo/${enc(name)}?${replaceQuery(options)}`,
-      { method: "POST" },
-    ),
-  // Development path: build the demo from its raw sources through the LLM pipeline.
-  buildWorldDemo: (worldId: string, options?: ReplaceOptions) =>
-    http<BuildReport>(
-      `/api/world/worlds/${enc(worldId)}/demo/aldermoor/build?${replaceQuery(options)}`,
       { method: "POST" },
     ),
   // --- U3 world editor (BLM §7) ---

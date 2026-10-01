@@ -15,6 +15,9 @@ import type { DeedViewOut, RegionView, SessionRumor, TurnRun } from "../types";
 
 vi.mock("../api", () => ({
   api: {
+    capabilities: vi.fn().mockResolvedValue({ llm: true, vlm: true, embedding: true }),
+    listSeeds: vi.fn().mockResolvedValue([]),
+    startSeed: vi.fn(),
     getSession: vi.fn(),
     getRegion: vi.fn(),
     getLog: vi.fn(),

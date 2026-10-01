@@ -3811,3 +3811,23 @@ Known limit recorded: offline tests cannot exercise PostgreSQL row locks. 7 test
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Steps 9d–9e.
 
 ---
+
+## U8 Code Generation Part 2 — Step 10 (frontend U8 features)
+**Timestamp**: 2026-10-01T15:24:17Z
+**AI Response**: Built the U8 screens:
+- capabilities read and the LLM-off notice and buttons (BR-U8-23..27)
+- manifest demo cards with the replace and open-session flow (EX-1..3, EX-12..14)
+- SeedPanel on the GM hub
+- the in-progress badge and seeds in the region delete plan
+- AppNav home link
+
+Also:
+- `useReplaceConfirm` (C8), used by DemoCard; BuildPanel and WorldFileBar move in Step 11.
+- i18n: new keys; the 21 C14 keys and `home.loadDemo` deleted.
+- TP-U8-6 now scans `web/src`.
+- C5 server change committed here: it had been checked in 9.3 but left out of the Step 9 commits.
+
+Intended test changes: home demo button, `llm-banner`, the dialogue 503 body. 17 of 18 mutations caught; the survivor is equivalent. Gates: pytest 918, vitest 169, tsc/ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 10.
+
+---

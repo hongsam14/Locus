@@ -3757,3 +3757,10 @@ Orchestrator evidence for R-06 (read-only): `npm audit` says both advisories (GH
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 7.
 
 ---
+
+## U8 Code Generation Part 2 — Step 8 (capabilities and the 503 sweep)
+**Timestamp**: 2026-10-01T14:34:35Z
+**AI Response**: Added GET /api/capabilities. TP-U8-8: on a keyless production-style assembly, the eight LLM routes are 503 and the keyless visitor path works; no 500 found. Gates: pytest 878, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 8.
+
+---

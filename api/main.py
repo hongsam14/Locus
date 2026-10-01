@@ -169,6 +169,18 @@ def create_app(
         status = "ok" if all(boundaries.values()) or not do_assemble else "degraded"
         return JSONResponse(content={"status": status, "boundaries": boundaries})
 
+    @app.get("/api/capabilities", tags=["meta"])
+    def capabilities() -> dict[str, bool]:
+        """Which providers this server has (U8, BR-U8-23): the screens warn ahead and
+        switch LLM buttons off when ``llm`` is false. Read from the providers assembled
+        at startup; ``/health`` is unchanged (a server without a key is still ``ok``)."""
+        shared = app.state.containers.shared
+        return {
+            "llm": shared is not None and shared.llm is not None,
+            "vlm": shared is not None and shared.vlm is not None,
+            "embedding": shared is not None and shared.embedding is not None,
+        }
+
     @app.get("/api/langs", tags=["meta"])
     def langs(request: Request) -> dict[str, object]:
         """The display languages this server accepts (review U5 #2). The web client sends

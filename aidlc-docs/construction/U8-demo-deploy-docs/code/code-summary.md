@@ -96,3 +96,10 @@
     - 404·턴 중 409·닫힘 409, 읽기는 닫혀도 됨
   - 변이: 진행 중 검사 빼기 → EX-4 실패(잡음)
   - pytest 877
+- **Step 8** (LLM 유무와 503)
+  - `GET /api/capabilities` → `{llm, vlm, embedding}`(조립된 shared 공급자). `/health`는 그대로다.
+  - TP-U8-8(`tests/api/test_keyless_api.py`): 공급자 없이 운영과 같은 방식(`assemble_world`·`assemble_play`)으로 조립한 앱
+    - BLM §4.1 표의 여덟 경로가 모두 503이다: build, build/upload, demo build, npc-drafts, 소문 생성·재생성, 사건 제안, 대화.
+    - 키 없이 쓰는 경로는 된다: 데모 불러오기 → 시작 지역 세션 → 강 이동 → 씨앗 시작, 보강 시작, `POST priors`.
+    - 표 밖에서 500이 나온 경로는 없었다(고칠 것 없음).
+  - pytest 878

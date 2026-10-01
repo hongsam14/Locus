@@ -33,3 +33,24 @@
   - 테스트 `test_port_contract.py` 13개
   - 변이: 가짜 `replace_nodes`를 병합으로 바꾸면 TP-U3-3이 실패한다(잡음).
   - pytest 748
+- **Step 3**
+  - `CommonsenseWiki`
+    - `llm`을 선택 인자로 바꿨다.
+    - `lookup_similar(…, fallback=)`, `created_priors`, `fallback_capped`
+    - 정규화 질의로 중복을 없앤다. 상한은 `WIKI_FALLBACK_MAX = 40`이다.
+  - 빌드
+    - 참조 정리는 `증류 ∪ 생성`이다.
+    - 토폴로지 단계 prior는 온톨로지 전에, 온톨로지 단계 prior는 지식 전에 저장한다.
+    - 상한에 닿으면 경고를 남긴다. `BuildReport.priors_created`(shared/models/reports.py)를 더했다.
+    - 빌드가 받는 wiki가 대역 객체일 수 있어 `_created_priors(wiki)`는 `getattr`로 읽는다(기존 `test_world_builder_passes_world_wiki_to_fresh_builders`).
+  - `locus/world/refs.py`(`ConnectionKey`, `NameRef`): 플랜 이탈이다. wiki가 편집 패키지보다 먼저라서다.
+  - wiki 모델과 관리
+    - `wiki/schemas.py`: `PriorRefView`·`PriorUsage`·`BrokenRef`
+    - `WikiAdmin.list_priors`(모델), `prior_refs`, `broken_refs`, `delete_prior`(그래프 → 검색, 없어도 검색 삭제 뒤 404)
+    - 순수 `prior_ref_view`·`usages`·`broken`
+  - 테스트 `test_wiki_evidence.py` 8개(EX-10, 중복·상한, 검색 전용, 참조·끊김, 재시도 삭제)
+  - 변이
+    - 빌드 참조 필터에서 생성 prior를 빼면 EX-10이 실패한다.
+    - 질의 중복 제거를 끄면 정규화 테스트가 실패한다.
+    - 둘 다 잡았다.
+  - pytest 756

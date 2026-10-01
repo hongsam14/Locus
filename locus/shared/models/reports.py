@@ -41,6 +41,7 @@ class BuildReport(LocusModel):
     replaced: bool = False  # an existing world was deleted first (RE A3)
     closed_session_ids: list[str] = Field(default_factory=list)  # filled by the API/CLI layer
     backup_path: str | None = None  # pre-replace World File backup (BR-U2-11)
+    priors_created: int = 0  # distilled + LLM-fallback WikiPriors stored by this build (U3)
 
     @computed_field  # type: ignore[prop-decorator]
     @property

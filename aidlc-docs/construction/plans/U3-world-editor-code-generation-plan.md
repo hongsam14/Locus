@@ -313,22 +313,24 @@
   - 경계 테스트 GREEN
 
 ### Step 3 — wiki 근거 (BLM §5, Q4=A)
-- [ ] 3.1 `locus/world/wiki/base.py` `CommonsenseWiki`
+- [x] 3.1 `locus/world/wiki/base.py` `CommonsenseWiki`
   - `llm: LLMProvider | None`
   - `lookup_similar(…, fallback=True)`. `fallback=False`거나 `llm`이 없으면 검색 결과만 돌려준다. `lookup_terrain_rule`은 그대로다.
   - `created_priors`: 정규화 질의(`casefold` + 공백 접기)로 묶고, `WIKI_FALLBACK_MAX = 40`이다. 넘으면 빈 결과와 경고 한 줄이다.
-- [ ] 3.2 빌드
+- [x] 3.2 빌드
   - `locus/shared/models/reports.py` `BuildReport.priors_created: int = 0`
   - `locus/world/build.py`
     - 참조 정리: `증류 ∪ created`에 없을 때만 버린다(이탈 4).
     - 커밋은 BLM §5.1의 다섯 단계 순서다. 토폴로지 단계 `created_priors` → 온톨로지 → 새로 생긴 것 → 나머지.
   - 호출처: `locus/__main__.py`, `api/routers/world.py`, `demo/__init__.py`의 `build_from_sources`(시그니처는 그대로)
-- [ ] 3.3 `locus/world/wiki/schemas.py`·`admin.py`
+- [x] 3.3 `locus/world/wiki/schemas.py`·`admin.py`
+  - 〔실행 메모〕 `ConnectionKey`·`NameRef`는 `locus/world/refs.py`에 둔다. wiki가 편집 패키지보다 먼저 만들어지는데 `PriorUsage`가 `ConnectionKey`를 쓰기 때문이다. 편집 패키지(4.1)는 이것을 가져다 쓴다.
   - `PriorRefView`, `PriorUsage`, `BrokenRef`(domain-entities §5)
   - 순수 계산 `prior_ref_view(prior_id, priors_by_id)`, `usages(snapshot, priors)`. 편집 패키지(4.3)가 이것을 쓴다.
   - `WikiAdmin.list_priors -> list[WikiPrior]`, `prior_refs -> list[PriorUsage]`, `broken_refs -> list[BrokenRef]`
   - `delete_prior`: 노드 → 검색이다. 노드가 없어도 검색 삭제를 부른 뒤 404다. 참조는 그대로 둔다.
-- [ ] 3.4 테스트(`tests/world/wiki/test_wiki_build.py` 고침 + 추가, `test_wiki.py`)
+- [x] 3.4 테스트(`tests/world/wiki/test_wiki_build.py` 고침 + 추가, `test_wiki.py`)
+  - 〔실행 메모〕 새 테스트는 `tests/world/wiki/test_wiki_evidence.py`(8개)에 모았다. 기존 테스트는 바뀌지 않았다. C-4로 고친 테스트는 0개다.
   - EX-10
   - 같은 질의 두 번 → 폴백 LLM 1회. 41번째 → 0회 + 경고
   - `fallback=False` → LLM 0회, `llm=None` → LLM 0회

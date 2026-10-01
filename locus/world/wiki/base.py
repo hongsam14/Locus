@@ -10,6 +10,11 @@ Lookup strategy:
 2. If a hit clears ``score_threshold`` -> return it (provenance: wiki).
 3. Otherwise -> LLM fallback inference grounded on any available context
    (provenance: inferred-wiki).
+
+U3 (Q4=A, BR-U3-29): a fallback prior is kept in ``created_priors`` so the build can
+store it; the same normalized query is answered by the first prior it made, and one
+wiki makes at most ``WIKI_FALLBACK_MAX``. ``fallback=False`` (augmentation, NFR R-03) or
+a wiki without an LLM answers from search only.
 """
 
 from __future__ import annotations
@@ -19,6 +24,12 @@ from pydantic import BaseModel, Field
 from locus.shared.llm.base import EmbeddingProvider, LLMProvider
 from locus.shared.models import PriorType, Provenance, SourceKind, WikiPrior
 from locus.shared.storage.base import SearchRepository
+
+WIKI_FALLBACK_MAX = 40  # LLM-made priors per wiki (= per build), BR-U3-29
+
+
+def _query_key(query: str) -> str:
+    return " ".join(query.casefold().split())
 
 
 class _PriorSuggestion(BaseModel):
@@ -34,7 +45,7 @@ class CommonsenseWiki:
     def __init__(
         self,
         search: SearchRepository,
-        llm: LLMProvider,
+        llm: LLMProvider | None,
         embedding: EmbeddingProvider | None = None,
         *,
         world_id: str,
@@ -45,6 +56,13 @@ class CommonsenseWiki:
         self._embedding = embedding
         self._world_id = world_id
         self._threshold = score_threshold
+        self._created: dict[str, WikiPrior] = {}  # normalized query -> fallback prior
+        self.fallback_capped = False  # a fallback was refused at WIKI_FALLBACK_MAX
+
+    @property
+    def created_priors(self) -> list[WikiPrior]:
+        """Priors this wiki made by LLM fallback, oldest first (the build stores them)."""
+        return list(self._created.values())
 
     # -- public API ------------------------------------------------------- #
     def lookup_terrain_rule(self, feature: str) -> list[WikiPrior]:
@@ -55,12 +73,15 @@ class CommonsenseWiki:
             k=3,
         )
 
-    def lookup_similar(self, query: str, k: int = 5) -> list[WikiPrior]:
-        """Find priors semantically similar to ``query`` (e.g. 'basin climate')."""
-        return self._lookup(query=query, fallback_prior_type=PriorType.FACT, k=k)
+    def lookup_similar(self, query: str, k: int = 5, *, fallback: bool = True) -> list[WikiPrior]:
+        """Find priors semantically similar to ``query`` (e.g. 'basin climate').
+        ``fallback=False`` never calls the LLM (an empty list on a search miss)."""
+        return self._lookup(query=query, fallback_prior_type=PriorType.FACT, k=k, fallback=fallback)
 
     # -- internals -------------------------------------------------------- #
-    def _lookup(self, query: str, fallback_prior_type: PriorType, k: int) -> list[WikiPrior]:
+    def _lookup(
+        self, query: str, fallback_prior_type: PriorType, k: int, *, fallback: bool = True
+    ) -> list[WikiPrior]:
         embedding = None
         if self._embedding is not None:
             embedding = self._embedding.embed([query])[0]
@@ -76,8 +97,19 @@ class CommonsenseWiki:
         if usable:
             return [self._hit_to_prior(h) for h in usable]
 
-        # graceful fallback: infer a prior from LLM world knowledge
-        return [self._fallback(query, fallback_prior_type)]
+        if not fallback or self._llm is None:
+            return []
+        # graceful fallback: infer a prior from LLM world knowledge, once per query
+        key = _query_key(query)
+        made = self._created.get(key)
+        if made is not None:
+            return [made]
+        if len(self._created) >= WIKI_FALLBACK_MAX:
+            self.fallback_capped = True
+            return []
+        prior = self._fallback(query, fallback_prior_type)
+        self._created[key] = prior
+        return [prior]
 
     def _hit_to_prior(self, hit) -> WikiPrior:
         meta = hit.meta or {}
@@ -94,6 +126,7 @@ class CommonsenseWiki:
         )
 
     def _fallback(self, query: str, prior_type: PriorType) -> WikiPrior:
+        assert self._llm is not None
         prompt = (
             "You encode real-world geographic/geological/logistical common sense as a rule. "
             f"For the following query, state the condition and its real-world effect.\n\nQuery: {query}"

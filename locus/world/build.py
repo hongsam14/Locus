@@ -44,7 +44,7 @@ from locus.shared.storage.persistence import persist_graph
 from locus.world.ingestion.service import IngestionService, WorldInputs
 from locus.world.ontology.builder import OntologyBuild, OntologyBuilder
 from locus.world.topology.builder import TopologyBuild, TopologyBuilder
-from locus.world.wiki.base import CommonsenseWiki
+from locus.world.wiki.base import WIKI_FALLBACK_MAX, CommonsenseWiki
 from locus.world.wiki.distiller import PriorDistiller
 from locus.world.wiki.linker import WikiPriorLinker
 
@@ -208,8 +208,10 @@ class WorldBuilder:
                 prior_links = self._linker_factory(llm, embedding).link(priors, world_id=world_id)
 
         # a replace deletes the old world's priors: connection refs into them would
-        # dangle, so keep the rationale text and drop the ref (review U2 #14)
-        new_prior_ids = {p.id for p in priors}
+        # dangle, so keep the rationale text and drop the ref (review U2 #14). Priors this
+        # build's wiki made by LLM fallback are stored, so refs to them stay (U3 BR-U3-29).
+        topo_created = _created_priors(wiki)
+        new_prior_ids = {p.id for p in priors} | {p.id for p in topo_created}
         for c in topology.connections:
             if c.wiki_prior_ref and c.wiki_prior_ref not in new_prior_ids:
                 warnings.append(
@@ -234,19 +236,41 @@ class WorldBuilder:
                 replaced = True  # the graph is gone from here on, whatever happens next
                 self._cache.invalidate(world_id)
                 self._search.delete_world(world_id)
-            if priors:  # persist first so corroboration's single-world wiki can find them
+            first_priors = priors + topo_created
+            if first_priors:  # persist first so corroboration's single-world wiki can find them
                 persist_graph(
                     self._graph,
                     self._search,
                     embedding,
                     world_id,
-                    priors=priors,
+                    priors=first_priors,
                     prior_links=prior_links,
                     warnings=warnings,
                 )
             onto_build = ontology_builder.build(ingestion, topology, world_id=world_id)
             kg = onto_build.kg
             warnings.extend(onto_build.warnings)
+            # priors the ontology step made go in before the knowledge whose DERIVED_FROM
+            # edges point at them (BLM §5.1)
+            topo_ids = {p.id for p in topo_created}
+            onto_created = [p for p in _created_priors(wiki) if p.id not in topo_ids]
+            if onto_created:
+                persist_graph(
+                    self._graph,
+                    self._search,
+                    embedding,
+                    world_id,
+                    priors=onto_created,
+                    warnings=warnings,
+                )
+            if getattr(wiki, "fallback_capped", False):
+                warnings.append(
+                    BuildWarning(
+                        stage="wiki",
+                        message=f"LLM fallback priors capped at {WIKI_FALLBACK_MAX}; later "
+                        "lookups kept the computed weight without a prior",
+                    )
+                )
             persist_graph(
                 self._graph,
                 self._search,
@@ -301,6 +325,7 @@ class WorldBuilder:
             embedding_calls=counter.embedding_calls,
             replaced=replaced,
             backup_path=str(backup_path) if backup_path else None,
+            priors_created=len(priors) + len(_created_priors(wiki)),
         )
 
     # ------------------------------------------------------------------ #
@@ -332,3 +357,9 @@ class WorldBuilder:
             warnings.append(BuildWarning(stage="backup", message=f"backup skipped: {exc}"))
             logger.warning("world backup failed for %s: %s", world_id, exc)
             return None
+
+
+def _created_priors(wiki) -> list[WikiPrior]:
+    """Priors the build's wiki made by LLM fallback (U3 BR-U3-29); a factory may hand
+    back a stand-in without them."""
+    return list(getattr(wiki, "created_priors", None) or [])

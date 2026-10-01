@@ -3310,3 +3310,16 @@ R-16 → Accepted risk
 **Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 2.
 
 ---
+
+## U3 Code Generation Part 2 — Step 3 (wiki evidence)
+**Timestamp**: 2026-10-01T09:38:27Z
+**AI Response**:
+- `CommonsenseWiki`: optional LLM, `fallback=` flag, dedupe, cap of 40, `created_priors`.
+- Build: stores fallback priors in two batches, keeps refs that point at distilled ∪ created priors, records `priors_created`.
+- New `world/refs.py` (plan deviation; recorded in code-summary).
+- WikiAdmin: `list_priors` returns models; added `prior_refs`, `broken_refs`, `delete_prior`.
+- Tests: 8 new; mutations caught.
+- Gates: pytest 756, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 3.
+
+---

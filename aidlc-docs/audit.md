@@ -3383,3 +3383,17 @@ R-16 → Accepted risk
 **Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 8.
 
 ---
+
+## U3 Code Generation Part 2 — Step 9 (frontend editor)
+**Timestamp**: 2026-10-01T10:36:26Z
+**AI Response**:
+- HttpError/statusOf (C16); fixtures converted.
+- Editor API and types.
+- Map tools with the 4px drag rule; inspector and sub-components; delete plan dialog; unscoped, augmentation (kept run, latest-first undo, unignore), wiki, build and World File panels.
+- `/` world list. RegionPanel moved to the GM's read-only RegionKnowledgePanel; Toolbar and the root AugmentPanel removed.
+- About 150 i18n keys.
+- Tests: 17 new, plus intended changes in components.test. EX-11 mutation caught.
+- Gates: vitest 111, tsc clean.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 9.
+
+---

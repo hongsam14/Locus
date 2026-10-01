@@ -2,13 +2,13 @@ import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { api } from "./api";
 import { configureLangs } from "./i18n";
-import { DEFAULT_WORLD, EditorPage } from "./routes/EditorPage";
+import { EditorPage } from "./routes/EditorPage";
 import { GmPage } from "./routes/GmPage";
+import { HomePage } from "./routes/HomePage";
 import { PlayPage } from "./routes/PlayPage";
 
-// Three screens (F1 / AD-R8): world editor, GameMaster, player.
+// The world list and three screens (F1 / AD-R8; U3 BR-U3-34: `/` lists the worlds).
 export function App() {
-  const home = `/editor/${DEFAULT_WORLD}`;
   // Learn the server's display languages once (review U5 #2). Until they arrive (or
   // if the call fails) no `?lang=` is sent and the server's default applies.
   useEffect(() => {
@@ -23,11 +23,11 @@ export function App() {
   }, []);
   return (
     <Routes>
-      <Route path="/" element={<Navigate to={home} replace />} />
+      <Route path="/" element={<HomePage />} />
       <Route path="/editor/:worldId" element={<EditorPage />} />
       <Route path="/gm/:sessionId" element={<GmPage />} />
       <Route path="/play/:sessionId?" element={<PlayPage />} />
-      <Route path="*" element={<Navigate to={home} replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

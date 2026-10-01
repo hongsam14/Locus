@@ -166,3 +166,30 @@
     - `test_uploads.py` 7
   - 변이: 청크 세기를 끄면 청크 테스트가 실패한다(잡음).
   - pytest 850
+- **Step 9** (프론트엔드 에디터)
+  - 9.1 `HttpError`·`statusOf`(메시지 형식 유지, R-16). `conflictKind`가 이것을 쓰고, `DialoguePanel`의 404·503 판정도 바꿨다. C16 거절 fixture 12곳을 `HttpError`로 바꿨다.
+  - 9.2
+    - `api/world.ts`: 편집 경로 전부, `startRun`·`getRun`·`answer`·`revert`·`unignore`. `deleteNode`·`startAugment`·`submitAnswer`·`revertAugment`·`upsertRegion`은 지웠다.
+    - `types.ts`: 에디터·보강·wiki 타입, `BuildReport.backup_path`·`priors_created`
+  - 9.3
+    - `features/editor/drag.ts`(4px)
+    - `MapOverlay`: 실제로 끌었을 때만 `onMove`, `draggable`, `onBackground`, `onSelectConnection`, 선택된 연결 굵게
+    - `MapCanvas`: 도구 셋, 지역·연결 폼
+  - 9.4~9.6: `RegionInspector`(조합) + `RegionForm`·`ConnectionList`·`KnowledgeList`(스코프 고르기)·`NpcEditorList`·`NpcDraftCards`, `ConfirmDelete`, `UnscopedPanel`, `AugmentPanel`, `WikiPanel`, `BuildPanel`·`BuildReportPanel`, `WorldFileBar`(열린 세션 띠 → SessionBar 피커)
+  - 9.7: `routes/HomePage.tsx`. `/`가 목록이고 `*`는 `/`로 간다.
+  - 9.8
+    - `EditorPage`는 조합만 한다.
+    - `Toolbar.tsx`·루트 `AugmentPanel.tsx`를 지웠다.
+    - `RegionPanel.tsx` → `features/gm/RegionKnowledgePanel.tsx`(✕ 없음)
+  - 9.9: i18n 키 약 150개(ko·en 같은 집합). `augment.status`는 답 수를 보인다.
+  - 9.10
+    - `editor.test.tsx` 14, `home.test.tsx` 3
+    - `components.test.tsx` 의도된 변경(`# U3 intended change` 주석)
+      - RegionPanel 두 묶음(import·✕ 없음)
+      - AugmentPanel
+      - App 라우팅 둘(C-7)
+      - 데모 불러오기 → World File 불러오기의 두 단계 확인
+  - 변이: `MapOverlay`가 매번 `onMove`를 부르게 하면 EX-11이 실패한다(잡음).
+  - 줄 수: `features/editor/*`·`EditorPage`·`HomePage` 모두 250 이하이고, 가장 큰 것은 `MapCanvas` 212줄이다.
+  - `dangerouslySetInnerHTML` 0곳
+  - vitest 111

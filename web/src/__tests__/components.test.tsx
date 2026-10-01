@@ -1,9 +1,12 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { HttpError } from "../api/http";
 import { MapOverlay } from "../MapOverlay";
-import { RegionPanel } from "../RegionPanel";
-import { AugmentPanel } from "../AugmentPanel";
+// U3 intended change (C-8): the GM's read-only knowledge panel (was RegionPanel);
+// the augmentation panel moved to features/editor with the kept-run API (C-3)
+import { RegionKnowledgePanel } from "../features/gm/RegionKnowledgePanel";
+import { AugmentPanel } from "../features/editor/AugmentPanel";
 import { SessionBar } from "../SessionBar";
 import { GmHub } from "../features/gm/GmHub";
 import { App } from "../App";
@@ -17,12 +20,16 @@ vi.mock("../api", () => ({
     exportWorld: vi.fn(),
     buildWorldDemo: vi.fn(),
     loadDemo: vi.fn(),
-    upsertRegion: vi.fn(),
+    updateRegion: vi.fn(),
     getSession: vi.fn(),
-    startAugment: vi.fn(),
-    submitAnswer: vi.fn(),
-    revertAugment: vi.fn(),
-    deleteNode: vi.fn(),
+    startRun: vi.fn(),
+    answer: vi.fn(),
+    revert: vi.fn(),
+    unignore: vi.fn(),
+    listPriors: vi.fn(),
+    listWorlds: vi.fn(),
+    importWorldFile: vi.fn(),
+    getWorldFile: vi.fn(),
     listSessions: vi.fn(),
     startSession: vi.fn(),
     closeSession: vi.fn(),
@@ -95,9 +102,10 @@ describe("RegionPanel", () => {
       shared_ids: [],
       unique_ids: ["k1"],
     });
-    render(<RegionPanel worldId="w" regionId="r1" />);
+    render(<RegionKnowledgePanel worldId="w" regionId="r1" />);
     await waitFor(() => expect(screen.getByTestId("knowledge-item-k1")).toBeInTheDocument());
     expect(screen.getByText(/Sunday market/)).toBeInTheDocument();
+    expect(screen.queryByTestId("delete-k1")).not.toBeInTheDocument(); // BR-U3-33: no ✕
   });
 });
 
@@ -116,7 +124,7 @@ describe("RegionPanel badges (U1 §11.4)", () => {
       shared_ids: [],
       unique_ids: [],
     });
-    render(<RegionPanel worldId="w" regionId="r1" />);
+    render(<RegionKnowledgePanel worldId="w" regionId="r1" />);
     await waitFor(() => expect(screen.getByTestId("knowledge-item-h1")).toBeInTheDocument());
     expect(screen.getByTestId("knowledge-item-h1")).toHaveTextContent(t("badge.hearsay"));
     expect(screen.getByTestId("knowledge-item-s1")).toHaveTextContent(t("badge.rumor"));
@@ -128,18 +136,19 @@ describe("AugmentPanel", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("starts a session and shows questions", async () => {
-    (api.startAugment as ReturnType<typeof vi.fn>).mockResolvedValue({
-      id: "s1",
-      world_id: "w",
-      round: 0,
-      status: "open",
-      open_questions: [{ id: "q1", issue_id: "i1", text: "What is known here?", options: ["add", "ignore"], kind: "confirm" }],
-      history: [],
+    // U3 intended change (C-3): a run with targets and fixed actions
+    (api.startRun as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "s1", world_id: "w", answers: 0, status: "open", ignored_keys: [], history: [],
+      llm_calls: 0, llm_budget_exhausted: false,
+      open_questions: [{ id: "q1", issue_id: "i1", issue_key: "gap:region:r1::",
+        text: "What is known here?", actions: ["add", "ignore"],
+        target: { kind: "region", id: "r1", name: "Riverton" } }],
     });
-    render(<AugmentPanel worldId="w" />);
-    fireEvent.click(screen.getByTestId("augment-start-btn"));
+    render(<AugmentPanel worldId="w" regions={regions} entities={[]} onChanged={() => {}} />);
+    fireEvent.click(screen.getByTestId("augment-find"));
     await waitFor(() => expect(screen.getByText(/What is known here/)).toBeInTheDocument());
-    expect(screen.getAllByTestId("augment-answer-btn").length).toBe(2);
+    expect(screen.getByTestId("augment-action-add")).toBeInTheDocument();
+    expect(screen.getByTestId("augment-action-ignore")).toBeInTheDocument();
   });
 });
 
@@ -380,7 +389,7 @@ describe("RegionPanel session view", () => {
     (api.sessionKnowledge as Mock).mockResolvedValue({
       world_id: "w", region_id: "r1", items: [], shared_ids: [], unique_ids: [],
     });
-    render(<RegionPanel worldId="w" regionId="r1" sessionId="s1" />);
+    render(<RegionKnowledgePanel worldId="w" regionId="r1" sessionId="s1" />);
     await waitFor(() => expect(api.sessionKnowledge).toHaveBeenCalledWith("s1", "r1"));
     expect(api.regionKnowledge).not.toHaveBeenCalled();
   });
@@ -396,37 +405,47 @@ describe("App routing (F1 / AD-R8)", () => {
   });
 
   it("redirects / to the default world editor and loads that world", async () => {
+    // U3 intended change (C-7, BR-U3-34): `/` is the world list; the editor loads
+    // the world its URL names
+    (api.listWorlds as Mock).mockResolvedValue([
+      { id: "aldermoor", name: "Aldermoor", region_count: 1, open_sessions: 0 },
+    ]);
     (api.exportWorld as Mock).mockResolvedValue({
       world_id: "aldermoor", regions: [{ id: "r1", name: "Riverton", level: "town" }],
       connections: [], entities: [], knowledge: [], scopes: [],
     });
-    render(
+    const { unmount } = render(
       <MemoryRouter initialEntries={["/"]}>
         <App />
       </MemoryRouter>,
     );
-    expect(screen.getByTestId("world-input")).toHaveValue("aldermoor");
-    expect(screen.getByTestId("augment-panel")).toBeInTheDocument();
-    await waitFor(() => expect(api.exportWorld).toHaveBeenCalledWith("aldermoor"));
-    await waitFor(() => expect(screen.getByTestId("graph-status")).toBeInTheDocument());
-    expect(screen.queryByTestId("session-close-btn")).not.toBeInTheDocument(); // picker-only bar
-    await waitFor(() => expect(api.listSessions).toHaveBeenCalledWith("aldermoor"));
-  });
-
-  it("refuses to load an empty world id instead of navigating to /editor/", async () => {
-    (api.exportWorld as Mock).mockResolvedValue({
-      world_id: "aldermoor", regions: [], connections: [], entities: [], knowledge: [], scopes: [],
-    });
+    await waitFor(() => expect(screen.getByTestId("world-row-aldermoor")).toBeInTheDocument());
+    unmount();
     render(
       <MemoryRouter initialEntries={["/editor/aldermoor"]}>
         <App />
       </MemoryRouter>,
     );
-    await waitFor(() => expect(api.exportWorld).toHaveBeenCalledTimes(1));
-    fireEvent.change(screen.getByTestId("world-input"), { target: { value: "" } });
-    fireEvent.click(screen.getByTestId("load-btn"));
-    expect(screen.getByText(t("editor.enterWorldId"))).toBeInTheDocument();
-    expect(api.exportWorld).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(api.exportWorld).toHaveBeenCalledWith("aldermoor"));
+    await waitFor(() => expect(screen.getByTestId("graph-status")).toBeInTheDocument());
+    expect(screen.queryByTestId("session-close-btn")).not.toBeInTheDocument();
+  });
+
+  it("refuses to load an empty world id instead of navigating to /editor/", async () => {
+    // U3 intended change (C-7): the id is asked where a world is made — building from
+    // sources needs one before it can be sent
+    (api.listWorlds as Mock).mockResolvedValue([]);
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <App />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId("home-empty")).toBeInTheDocument());
+    fireEvent.click(screen.getAllByTestId("home-build")[0]);
+    fireEvent.change(screen.getByTestId("build-memo"), { target: { value: "a note" } });
+    expect(screen.getByTestId("build-submit")).toBeDisabled();
+    fireEvent.change(screen.getByTestId("build-world-id"), { target: { value: "mine" } });
+    expect(screen.getByTestId("build-submit")).not.toBeDisabled();
   });
 
   it("renders the GameMaster screen for /gm/:sessionId", async () => {
@@ -446,7 +465,7 @@ describe("App routing (F1 / AD-R8)", () => {
   });
 
   it("keeps the GM screen recoverable when the session cannot be loaded", async () => {
-    (api.getSession as Mock).mockRejectedValueOnce(new Error("404 Not Found: no session"));
+    (api.getSession as Mock).mockRejectedValueOnce(new HttpError(404, "Not Found", "no session"));
     (api.getSession as Mock).mockResolvedValueOnce(OPEN_SESSION);
     (api.exportWorld as Mock).mockResolvedValue({
       world_id: "w", regions: [], connections: [], entities: [], knowledge: [], scopes: [],
@@ -476,14 +495,17 @@ describe("EditorPage demo load (BR-U2-25)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (api.listSessions as Mock).mockResolvedValue([]);
+    (api.listWorlds as Mock).mockResolvedValue([]);
     (api.exportWorld as Mock).mockResolvedValue({
       world_id: "aldermoor", regions: [], connections: [], entities: [], knowledge: [], scopes: [],
     });
   });
 
   it("asks before closing open sessions and retries with confirm", async () => {
-    (api.loadDemo as Mock)
-      .mockRejectedValueOnce(new Error('409 Conflict: {"detail":{"open_sessions":2}}'))
+    // U3 intended change (BR-U3-36): replacing a world is the World File bar's load —
+    // a yes to replace, then a yes to close the open sessions
+    (api.importWorldFile as Mock)
+      .mockRejectedValueOnce(new HttpError(409, "Conflict", '{"detail":{"open_sessions":2}}'))
       .mockResolvedValueOnce({ ok: true, closed_session_ids: ["s1", "s2"] });
     render(
       <MemoryRouter initialEntries={["/editor/aldermoor"]}>
@@ -491,12 +513,17 @@ describe("EditorPage demo load (BR-U2-25)", () => {
       </MemoryRouter>,
     );
     await waitFor(() => expect(api.exportWorld).toHaveBeenCalled());
-    fireEvent.click(screen.getByTestId("build-world-btn"));
-    await waitFor(() => expect(screen.getByTestId("replace-confirm")).toBeInTheDocument());
-    expect(api.loadDemo).toHaveBeenCalledWith("aldermoor", "aldermoor", { replace: true, confirm: false });
-    fireEvent.click(screen.getByText(t("editor.replaceConfirm")));
+    const file = new File(['{"format_version": 1}'], "w.world.json", { type: "application/json" });
+    fireEvent.change(screen.getByTestId("file-input"), { target: { files: [file] } });
+    await waitFor(() => expect(screen.getByTestId("file-confirm")).toHaveTextContent(t("file.replaceConfirm")));
+    fireEvent.click(screen.getByText(t("action.confirm")));
     await waitFor(() =>
-      expect(api.loadDemo).toHaveBeenLastCalledWith("aldermoor", "aldermoor", { replace: true, confirm: true }),
+      expect(api.importWorldFile).toHaveBeenCalledWith("aldermoor", { format_version: 1 }, { replace: true, confirm: false }),
+    );
+    await waitFor(() => expect(screen.getByTestId("file-confirm")).toHaveTextContent("2"));
+    fireEvent.click(screen.getByText(t("action.confirm")));
+    await waitFor(() =>
+      expect(api.importWorldFile).toHaveBeenLastCalledWith("aldermoor", { format_version: 1 }, { replace: true, confirm: true }),
     );
   });
 });

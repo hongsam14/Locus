@@ -1,16 +1,35 @@
-// `/api/world` — world editor: build, export, edit nodes, augmentation runs.
+// `/api/world` — world editor: build, export, World File, edits, wiki, augmentation runs.
 import type {
+  AnswerResult,
   AugAnswer,
   AugRun,
   BuildReport,
+  ConnectionEdge,
   DemoInfo,
+  EditorRegionView,
   ImportReport,
+  Knowledge,
+  NPC,
+  NpcDraftResult,
+  PriorRefsOut,
   Region,
+  RegionDeletePlan,
+  RegionDeleteReport,
+  WikiPrior,
   WorldExport,
   WorldFile,
   WorldInfo,
 } from "../types";
-import { BASE, enc, http } from "./http";
+import { BASE, enc, http, HttpError, withLang } from "./http";
+
+const w = (worldId: string) => `/api/world/worlds/${enc(worldId)}`;
+
+/** A knowledge item as the server takes it: the response-only translations removed. */
+function stripKo(k: Knowledge): Knowledge {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { statement_ko, title_ko, ...rest } = k;
+  return rest as Knowledge;
+}
 
 // Replace-confirmation flags shared by build / import / demo (BR-U2-25). A 409 means
 // the world has open sessions; retry with confirm=true to close them.
@@ -52,7 +71,7 @@ export const worldApi = {
       method: "POST",
       body: form,
     }).then(async (res) => {
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${await res.text()}`);
+      if (!res.ok) throw new HttpError(res.status, res.statusText, await res.text());
       return (await res.json()) as BuildReport;
     }),
   getWorldFile: (worldId: string) => http<WorldFile>(`/api/world/worlds/${enc(worldId)}/file`),
@@ -75,24 +94,81 @@ export const worldApi = {
       `/api/world/worlds/${enc(worldId)}/demo/aldermoor/build?${replaceQuery(options)}`,
       { method: "POST" },
     ),
-  upsertRegion: (worldId: string, region: Region) =>
-    http<Region>(`/api/world/worlds/${enc(worldId)}/regions/${enc(region.id)}`, {
+  // --- U3 world editor (BLM §7) ---
+  getEditorRegion: (worldId: string, regionId: string) =>
+    http<EditorRegionView>(withLang(`${w(worldId)}/regions/${enc(regionId)}/editor`)),
+  createRegion: (worldId: string, region: Partial<Region>) =>
+    http<Region>(`${w(worldId)}/regions`, { method: "POST", body: JSON.stringify(region) }),
+  updateRegion: (worldId: string, region: Region) =>
+    http<Region>(`${w(worldId)}/regions/${enc(region.id)}`, {
       method: "PUT",
       body: JSON.stringify(region),
     }),
-  deleteNode: (worldId: string, nodeId: string) =>
-    http(`/api/world/worlds/${enc(worldId)}/nodes/${enc(nodeId)}`, { method: "DELETE" }),
+  getDeletePlan: (worldId: string, regionId: string) =>
+    http<RegionDeletePlan>(`${w(worldId)}/regions/${enc(regionId)}/delete-plan`),
+  deleteRegion: (worldId: string, regionId: string) =>
+    http<RegionDeleteReport>(`${w(worldId)}/regions/${enc(regionId)}`, { method: "DELETE" }),
+  saveConnection: (worldId: string, edge: ConnectionEdge & { previous_kind?: string }) =>
+    http<ConnectionEdge[]>(`${w(worldId)}/connections`, {
+      method: "PUT",
+      body: JSON.stringify(edge),
+    }),
+  deleteConnection: (worldId: string, a: string, b: string, kind: string) =>
+    http<{ deleted: number }>(
+      `${w(worldId)}/connections?${new URLSearchParams({ a, b, kind }).toString()}`,
+      { method: "DELETE" },
+    ),
+  createKnowledge: (worldId: string, regionId: string, k: Partial<Knowledge>) =>
+    http<Knowledge>(`${w(worldId)}/regions/${enc(regionId)}/knowledge`, {
+      method: "POST",
+      body: JSON.stringify(k),
+    }),
+  updateKnowledge: (worldId: string, k: Knowledge) =>
+    http<Knowledge>(`${w(worldId)}/knowledge/${enc(k.id)}`, {
+      method: "PUT",
+      body: JSON.stringify(stripKo(k)),
+    }),
+  setScopes: (worldId: string, knowledgeId: string, regionIds: string[]) =>
+    http<{ region_ids: string[] }>(`${w(worldId)}/knowledge/${enc(knowledgeId)}/scopes`, {
+      method: "PUT",
+      body: JSON.stringify({ region_ids: regionIds }),
+    }),
+  deleteKnowledge: (worldId: string, knowledgeId: string) =>
+    http(`${w(worldId)}/knowledge/${enc(knowledgeId)}`, { method: "DELETE" }),
+  listUnscoped: (worldId: string) =>
+    http<Knowledge[]>(withLang(`${w(worldId)}/knowledge/unscoped`)),
+  createNpc: (worldId: string, npc: Partial<NPC>) =>
+    http<NPC>(`${w(worldId)}/npcs`, { method: "POST", body: JSON.stringify(npc) }),
+  updateNpc: (worldId: string, npc: NPC) =>
+    http<NPC>(`${w(worldId)}/npcs/${enc(npc.id)}`, { method: "PUT", body: JSON.stringify(npc) }),
+  deleteNpc: (worldId: string, npcId: string) =>
+    http(`${w(worldId)}/npcs/${enc(npcId)}`, { method: "DELETE" }),
+  draftNpcs: (worldId: string, regionId: string) =>
+    http<NpcDraftResult>(`${w(worldId)}/regions/${enc(regionId)}/npc-drafts`, {
+      method: "POST",
+    }),
+  listPriors: (worldId: string) => http<WikiPrior[]>(`${w(worldId)}/priors`),
+  priorRefs: (worldId: string) => http<PriorRefsOut>(`${w(worldId)}/prior-refs`),
+  deletePrior: (worldId: string, priorId: string) =>
+    http(`${w(worldId)}/priors/${enc(priorId)}`, { method: "DELETE" }),
 
-  // augmentation runs (AugmentationRun; was "augment session")
-  startAugment: (worldId: string) =>
-    http<AugRun>(`/api/world/worlds/${enc(worldId)}/augmentation/runs`, { method: "POST" }),
-  submitAnswer: (runId: string, answer: AugAnswer) =>
-    http(`/api/world/augmentation/runs/${enc(runId)}/answer`, {
+  // augmentation runs — the screen keeps one run (B2)
+  startRun: (worldId: string) =>
+    http<AugRun>(`${w(worldId)}/augmentation/runs`, { method: "POST" }),
+  getRun: (runId: string) => http<AugRun>(`/api/world/augmentation/runs/${enc(runId)}`),
+  answer: (runId: string, answer: AugAnswer) =>
+    http<AnswerResult>(`/api/world/augmentation/runs/${enc(runId)}/answer`, {
       method: "POST",
       body: JSON.stringify(answer),
     }),
-  revertAugment: (runId: string, changeId: string) =>
-    http(`/api/world/augmentation/runs/${enc(runId)}/revert?change_id=${enc(changeId)}`, {
+  revert: (runId: string, changeId: string) =>
+    http<AugRun>(
+      `/api/world/augmentation/runs/${enc(runId)}/revert?change_id=${enc(changeId)}`,
+      { method: "POST" },
+    ),
+  unignore: (runId: string, issueKey: string) =>
+    http<AugRun>(`/api/world/augmentation/runs/${enc(runId)}/unignore`, {
       method: "POST",
+      body: JSON.stringify({ issue_key: issueKey }),
     }),
 };

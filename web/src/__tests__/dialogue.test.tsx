@@ -5,6 +5,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HttpError } from "../api/http";
 import type { Mock } from "vitest";
 import { gmApi } from "../api/gm";
 import { withLang } from "../api/http";
@@ -247,7 +248,7 @@ describe("DialoguePanel (US-4.1 / 4.3)", () => {
 
   it("a failed send takes the player's line back and keeps it in the input", async () => {
     (api.startDialogue as Mock).mockResolvedValue(conversation());
-    (api.say as Mock).mockRejectedValue(new Error("503 Service Unavailable: no llm"));
+    (api.say as Mock).mockRejectedValue(new HttpError(503, "Service Unavailable", "no llm"));
     renderPanel();
     await waitFor(() => expect(screen.getByTestId("dialogue-input")).toBeEnabled());
     typeAndSend("누구세요?");
@@ -269,7 +270,7 @@ describe("DialoguePanel (US-4.1 / 4.3)", () => {
   });
 
   it("a failed open shows the error and keeps the input locked", async () => {
-    (api.startDialogue as Mock).mockRejectedValue(new Error("400 Bad Request: npc not here"));
+    (api.startDialogue as Mock).mockRejectedValue(new HttpError(400, "Bad Request", "npc not here"));
     renderPanel();
     await waitFor(() => expect(screen.getByTestId("dialogue-error")).toHaveTextContent("400"));
     expect(screen.getByTestId("dialogue-input")).toBeDisabled();
@@ -290,7 +291,7 @@ describe("DialoguePanel (US-4.1 / 4.3)", () => {
     await waitFor(() => expect(screen.getByTestId("dialogue-input")).toBeEnabled());
     typeAndSend("Q1");
     expect(screen.getByTestId("dialogue-input")).toBeDisabled();
-    await act(async () => fail(new Error("503 Service Unavailable")));
+    await act(async () => fail(new HttpError(503, "Service Unavailable", "")));
     expect(screen.getByTestId("dialogue-input")).toBeEnabled();
     expect(screen.getByTestId("dialogue-input")).toHaveValue("Q1");
   });
@@ -306,7 +307,7 @@ describe("DialoguePanel (US-4.1 / 4.3)", () => {
   });
 
   it("a closed session with no talk yet shows an empty history, not an error", async () => {
-    (api.dialogueHistory as Mock).mockRejectedValue(new Error("404 Not Found: no conversation"));
+    (api.dialogueHistory as Mock).mockRejectedValue(new HttpError(404, "Not Found", "no conversation"));
     renderPanel({ readOnly: true });
     await waitFor(() => expect(screen.getByTestId("dialogue-messages")).toHaveTextContent(t("dialogue.empty")));
     expect(screen.queryByTestId("dialogue-error")).not.toBeInTheDocument();

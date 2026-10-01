@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../api";
+import { statusOf } from "../../api/http";
 import { lang, t } from "../../i18n";
 import type { Message, NPC } from "../../types";
 import { Button, Field, Panel } from "../../ui";
@@ -52,7 +53,7 @@ export function DialoguePanel({
     // "never talked" (404) simply means an empty history (BR-U5-4).
     const load = readOnly
       ? api.dialogueHistory(sessionId, npc.id).catch((e: unknown) => {
-          if (String(e).includes("404")) return { messages: [] as Message[] };
+          if (statusOf(e) === 404) return { messages: [] as Message[] };
           throw e;
         })
       : api.startDialogue(sessionId, npc.id);
@@ -98,9 +99,8 @@ export function DialoguePanel({
       if (!alive.current) return;
       setMessages((m) => m.filter((x) => x.id !== mine.id));
       setDraft(text);
-      const msg = String(e);
       // 503: the NPC's call failed (BR-U7-27) — a plain line; the words stay in the box
-      setError(msg.startsWith("Error: 503") || msg.startsWith("503") ? t("dialogue.failed") : msg);
+      setError(statusOf(e) === 503 ? t("dialogue.failed") : String(e));
     } finally {
       if (alive.current) setSending(false);
     }

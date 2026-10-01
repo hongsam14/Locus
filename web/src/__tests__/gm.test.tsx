@@ -5,6 +5,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { useState } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { HttpError } from "../api/http";
 import type { Mock } from "vitest";
 import { conflictKind } from "../api/http";
 import { MapOverlay } from "../MapOverlay";
@@ -133,7 +134,7 @@ describe("GM mode switch", () => {
   });
 
   it("a GM session without a player shows no strip and no way back", async () => {
-    (api.getPlayer as Mock).mockRejectedValue(new Error("404 Not Found"));
+    (api.getPlayer as Mock).mockRejectedValue(new HttpError(404, "Not Found", ""));
     (api.listTurnRuns as Mock).mockResolvedValue([]);
     strip();
     await waitFor(() => expect(api.getPlayer).toHaveBeenCalled());
@@ -263,6 +264,10 @@ describe("U6 review carry-overs", () => {
     expect(conflictKind(new Error("409 Conflict: session is closed: s1"))).toBe("closed");
     expect(conflictKind(new Error("409 Conflict: turn in progress"))).toBe("busy");
     expect(conflictKind(new Error("400 Bad Request: nope"))).toBeNull();
+    // U3 (C16): the typed error answers the same
+    expect(conflictKind(new HttpError(409, "Conflict", "session is closed: s1"))).toBe("closed");
+    expect(conflictKind(new HttpError(409, "Conflict", "turn in progress"))).toBe("busy");
+    expect(String(new HttpError(409, "Conflict", "x"))).toBe("Error: 409 Conflict: x");
   });
 
   it("#12: the declaration box is locked while its request is out", async () => {
@@ -415,7 +420,7 @@ describe("U7 review follow-ups", () => {
     (api.listEvents as Mock).mockResolvedValue([]);
     (api.listDistortions as Mock).mockResolvedValue([{ session_id: "s1", region_id: "a", distortion_degree: 0.3 }]);
     (api.listRumors as Mock).mockResolvedValue([]);
-    (api.advanceTurn as Mock).mockRejectedValue(new Error("409 Conflict: session is closed: s1"));
+    (api.advanceTurn as Mock).mockRejectedValue(new HttpError(409, "Conflict", "session is closed: s1"));
     const onChanged = vi.fn();
     render(<GmHub session={OPEN} regionId={null} onChanged={onChanged} />);
     await act(async () => fireEvent.click(await screen.findByTestId("advance-turn-btn")));
@@ -428,7 +433,7 @@ it("#11 (page): a void refused because the session closed re-reads the session",
   (api.getSession as Mock).mockResolvedValue(OPEN);
   (api.exportWorld as Mock).mockResolvedValue({ world_id: "w", regions: [], connections: [], entities: [], knowledge: [] });
   (api.listSessions as Mock).mockResolvedValue([OPEN]);
-  (api.getPlayer as Mock).mockRejectedValue(new Error("404"));
+  (api.getPlayer as Mock).mockRejectedValue(new HttpError(404, "Not Found", ""));
   (api.listTurnRuns as Mock).mockResolvedValue([]);
   (api.getTimeline as Mock).mockResolvedValue([]);
   (api.listEvents as Mock).mockResolvedValue([]);
@@ -440,7 +445,7 @@ it("#11 (page): a void refused because the session closed re-reads the session",
       appraisals: [], rumors: [], reached_region_ids: [], reached_region_names: [],
     },
   ]);
-  (api.voidDeed as Mock).mockRejectedValue(new Error("409 Conflict: session is closed: s1"));
+  (api.voidDeed as Mock).mockRejectedValue(new HttpError(409, "Conflict", "session is closed: s1"));
   render(
     <MemoryRouter initialEntries={["/gm/s1"]}>
       <Routes>

@@ -3,6 +3,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { HttpError } from "../api/http";
 import type { Mock } from "vitest";
 import { DeedPanel } from "../features/gm/DeedPanel";
 import { ActionBar } from "../features/play/ActionBar";
@@ -128,7 +129,7 @@ describe("PlayPage with declarations", () => {
     fireEvent.click(screen.getByTestId("declare-btn"));
     await waitFor(() => expect(screen.getByTestId("play-error")).toHaveTextContent("400"));
     expect(screen.getByTestId("declare-input")).toHaveValue("x");
-    (api.act as Mock).mockRejectedValueOnce(new Error("409 Conflict: turn in progress"));
+    (api.act as Mock).mockRejectedValueOnce(new HttpError(409, "Conflict", "turn in progress"));
     fireEvent.click(screen.getByTestId("declare-btn"));
     await waitFor(() =>
       expect(screen.getByTestId("notification-center")).toHaveTextContent(t("play.turnInProgress")),
@@ -208,7 +209,7 @@ describe("DeedPanel (US-5.6)", () => {
 
   it("a void during a turn shows a notice; a voided deed has no void button", async () => {
     (api.listDeeds as Mock).mockResolvedValue([deedView(), { ...deedView({ id: "d2", voided: true }) }]);
-    (api.voidDeed as Mock).mockRejectedValue(new Error("409 Conflict: turn in progress"));
+    (api.voidDeed as Mock).mockRejectedValue(new HttpError(409, "Conflict", "turn in progress"));
     render(<DeedPanel sessionId="s1" closed={false} />);
     expect(await screen.findByTestId("deed-voided-d2")).toBeInTheDocument();
     expect(screen.queryByTestId("void-d2")).not.toBeInTheDocument();

@@ -1,53 +1,64 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { AugmentPanel } from "../AugmentPanel";
-import { MapOverlay } from "../MapOverlay";
-import { RegionPanel } from "../RegionPanel";
-import { SessionBar } from "../SessionBar";
-import { Toolbar } from "../Toolbar";
+import { useParams } from "react-router-dom";
 import { api } from "../api";
+import { statusOf } from "../api/http";
+import { AugmentPanel } from "../features/editor/AugmentPanel";
+import { BuildPanel } from "../features/editor/BuildPanel";
+import { MapCanvas, type NewRegion } from "../features/editor/MapCanvas";
+import { RegionInspector } from "../features/editor/RegionInspector";
+import { UnscopedPanel } from "../features/editor/UnscopedPanel";
+import { WikiPanel } from "../features/editor/WikiPanel";
+import { WorldFileBar } from "../features/editor/WorldFileBar";
 import { t, useLang } from "../i18n";
-import type { GameSession, Region, SessionStartOut, WorldExport } from "../types";
-import { Modal } from "../ui";
+import type { ConnectionEdge, ConnectionKind, NameRef, WorldExport, WorldInfo } from "../types";
+import { Button, Toast } from "../ui";
 import { AppNav } from "./AppNav";
 
-export const DEFAULT_WORLD = "aldermoor";
+const PROV = { source: "input", generated_by: "designer" };
+type Tab = "region" | "unscoped" | "augment" | "wiki";
 
-// World editor screen (F1): build/load a world, move regions, inspect canonical
-// knowledge, run augmentation Q&A. Selecting a session hands off to /gm/:sessionId.
+/** `/editor/:worldId` — the world editor (US-2.x, frontend-components §1). The page only
+ * composes: the bar, the map with its tools, the inspector and the side tabs; each part
+ * reads and writes on its own and asks the page to re-read the world after a change. */
 export function EditorPage() {
-  useLang(); // labels follow the display language
-  const { worldId: paramWorldId = DEFAULT_WORLD } = useParams();
-  const navigate = useNavigate();
-  const [worldId, setWorldId] = useState(paramWorldId);
+  useLang();
+  const { worldId = "" } = useParams();
   const [data, setData] = useState<WorldExport | null>(null);
+  const [info, setInfo] = useState<WorldInfo | null>(null);
+  const [missing, setMissing] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
-  const [mapUrl, setMapUrl] = useState<string | null>(null);
+  const [conn, setConn] = useState<ConnectionEdge | null>(null);
+  const [tab, setTab] = useState<Tab>("region");
+  const [rev, setRev] = useState(0);
+  const [building, setBuilding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
-  // The URL names the world: seed the input and load it (deep link, refresh, Back
-  // from /gm). An unbuilt world shows the empty hint, not an error (review U1 #8).
+  async function reload() {
+    try {
+      setData(await api.exportWorld(worldId));
+      setMissing(false);
+    } catch (e) {
+      if (statusOf(e) === 404) setMissing(true);
+      else setError(String(e));
+    }
+    api.listWorlds().then((ws) => setInfo(ws.find((w) => w.id === worldId) ?? null)).catch(() => {});
+    setRev((r) => r + 1);
+  }
   useEffect(() => {
-    setWorldId(paramWorldId);
-    let active = true;
-    setBusy(true);
-    setError(null);
-    api
-      .exportWorld(paramWorldId)
-      .then((world) => active && world && setData(world))
-      .catch(() => active && setData(null))
-      .finally(() => active && setBusy(false));
-    return () => {
-      active = false;
-    };
-  }, [paramWorldId]);
+    setData(null);
+    setSelected(null);
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [worldId]);
 
-  async function run<T>(fn: () => Promise<T>) {
+  async function run(fn: () => Promise<unknown>) {
     setBusy(true);
     setError(null);
     try {
-      return await fn();
+      await fn();
+      await reload();
     } catch (e) {
       setError(String(e));
     } finally {
@@ -55,154 +66,85 @@ export function EditorPage() {
     }
   }
 
-  // Keep the URL in step with the world the editor is showing.
-  function syncUrl() {
-    if (worldId !== paramWorldId) {
-      navigate(`/editor/${encodeURIComponent(worldId)}`, { replace: true });
-    }
-  }
-
-  // An empty id would navigate to "/editor/" and fall through to the "*" redirect,
-  // silently dropping the loaded world (review U1 #12).
-  function requireWorldId(): boolean {
-    if (worldId.trim()) return true;
-    setError(t("editor.enterWorldId"));
-    return false;
-  }
-
-  const load = () => {
-    if (!requireWorldId()) return;
-    syncUrl();
-    return run(async () => setData(await api.exportWorld(worldId)));
-  };
-  // Load the packaged demo World File (LLM-free, US-1.3). Replacing a world that has
-  // open sessions answers 409 (BR-U2-25): ask before retrying with confirm=true.
-  const [confirmReplace, setConfirmReplace] = useState<{ open: number } | null>(null);
-  const loadDemo = (confirm: boolean) =>
-    run(async () => {
-      try {
-        await api.loadDemo(worldId, "aldermoor", { replace: true, confirm });
-      } catch (e) {
-        const msg = String(e);
-        const m = /"open_sessions":\s*(\d+)/.exec(msg);
-        if (!confirm && msg.startsWith("Error: 409") && m) {
-          setConfirmReplace({ open: Number(m[1]) });
-          return;
-        }
-        throw e;
-      }
-      setData(await api.exportWorld(worldId));
-    });
-  const buildDemo = () => {
-    if (!requireWorldId()) return;
-    syncUrl();
-    return loadDemo(false);
-  };
-
-  async function move(id: string, x: number, y: number) {
-    if (!data) return;
-    const region = data.regions.find((r) => r.id === id);
-    if (!region) return;
-    const updated: Region = { ...region, position: { x, y } };
+  function move(id: string, x: number, y: number) {
+    const region = data?.regions.find((r) => r.id === id);
+    if (!data || !region) return;
+    const updated = { ...region, position: { x, y } };
     setData({ ...data, regions: data.regions.map((r) => (r.id === id ? updated : r)) });
-    run(() => api.upsertRegion(worldId, updated));
+    run(() => api.updateRegion(worldId, updated));
   }
+  const createRegion = (r: NewRegion) =>
+    run(async () => {
+      const made = await api.createRegion(worldId, { ...r, world_id: worldId, provenance: PROV });
+      setSelected(made.id);
+      setTab("region");
+    });
+  const createConnection = (a: string, b: string, kind: ConnectionKind, weight: number) =>
+    run(() => api.saveConnection(worldId, { world_id: worldId, source_region_id: a,
+      target_region_id: b, kind, weight, provenance: PROV }));
 
-  // Picking (or starting) a session moves to the GameMaster screen.
-  function onSelectSession(s: GameSession | null) {
-    if (s) navigate(`/gm/${encodeURIComponent(s.id)}`);
-  }
-
-  // U4: a player-mode session goes straight to the player screen.
-  function onPlay(out: SessionStartOut) {
-    navigate(`/play/${encodeURIComponent(out.session.id)}`);
-  }
+  const regions = data?.regions ?? [];
+  const scoped = new Set((data?.scopes ?? []).map((s) => s.knowledge_id));
+  const unscoped = (data?.knowledge ?? []).filter((k) => !k.is_global && !scoped.has(k.id)).length;
+  const entities = (data?.entities ?? []) as NameRef[];
 
   return (
     <div className="min-h-full">
       <AppNav worldId={worldId} />
-      <Toolbar
-        worldId={worldId}
-        onWorldIdChange={setWorldId}
-        onLoad={load}
-        onBuildDemo={buildDemo}
-        onPickMap={setMapUrl}
-        busy={busy}
-      />
-      <SessionBar
-        worldId={worldId}
-        sessionId={null}
-        onSelect={onSelectSession}
-        variant="picker"
-        regions={data?.regions ?? []}
-        onPlay={onPlay}
-      />
-      {error && <div className="p-2 text-danger">{error}</div>}
-      {busy && (
-        <div className="p-2 text-ink-soft" data-testid="busy">
-          {t("editor.working")}
+      <WorldFileBar worldId={worldId} name={data?.world?.name ?? info?.name ?? worldId}
+        openSessions={info?.open_sessions ?? null} regions={regions} onLoaded={reload}
+        onBuild={() => setBuilding(true)} />
+      {error && <div className="p-2 text-danger" data-testid="editor-error">{error}</div>}
+      {toast && <Toast onClose={() => setToast(null)}>{toast}</Toast>}
+      {missing && (
+        <div className="p-3 flex items-center gap-2" data-testid="empty-hint">
+          <span className="text-ink-soft">{t("home.empty")}</span>
+          <Button size="sm" variant="primary" onClick={() => setBuilding(true)}>
+            {t("home.buildFromSources")}
+          </Button>
         </div>
       )}
-      {!busy && data && data.regions.length === 0 && (
-        <div data-testid="empty-hint" className="p-2 text-danger">
-          {t("editor.emptyWorld", { world: worldId })}{" "}
-          <code>locus world demo --name aldermoor --world {worldId}</code>
-        </div>
-      )}
-      {!busy && !data && (
-        <div data-testid="empty-hint" className="p-2 text-ink-soft">
-          {t("editor.noWorld", { loadDemo: t("toolbar.loadDemo"), load: t("toolbar.load") })}
-        </div>
-      )}
-      <Modal
-        open={confirmReplace != null}
-        title={t("editor.replaceTitle")}
-        confirmTone="danger"
-        confirmLabel={t("editor.replaceConfirm")}
-        cancelLabel={t("action.cancel")}
-        onConfirm={() => {
-          setConfirmReplace(null);
-          loadDemo(true);
-        }}
-        onCancel={() => setConfirmReplace(null)}
-      >
-        <span data-testid="replace-confirm">
-          {t("editor.replaceBody", { n: confirmReplace?.open ?? 0 })}
-        </span>
-      </Modal>
       {data && (
-        <div data-testid="graph-status" className="px-2 pb-2 text-xs text-ink-soft">
-          {t("editor.status", {
-            world: data.world_id,
-            regions: data.regions.length,
-            connections: data.connections.length,
-            entities: data.entities?.length ?? 0,
-            knowledge: data.knowledge.length,
-          })}
+        <div data-testid="graph-status" className="px-3 pt-2 text-xs text-ink-soft">
+          {t("editor.status", { world: data.world_id, regions: regions.length,
+            connections: data.connections.length, entities: data.entities?.length ?? 0,
+            knowledge: data.knowledge.length })}
         </div>
       )}
       <div className="flex flex-wrap gap-4 p-3">
-        <MapOverlay
-          regions={data?.regions ?? []}
-          connections={data?.connections ?? []}
-          selectedId={selected}
-          mapImageUrl={mapUrl}
-          onSelect={setSelected}
-          onMove={move}
-        />
-        <div className="flex min-w-72 flex-col gap-4">
-          {selected && (
-            <RegionPanel
-              key={selected}
-              worldId={worldId}
-              regionId={selected}
-              sessionId={null}
-              onDeleted={load}
-            />
+        <MapCanvas regions={regions} connections={data?.connections ?? []} selectedId={selected}
+          selectedConnection={conn} busy={busy}
+          onSelect={(id) => { setSelected(id); setConn(null); setTab("region"); }}
+          onSelectConnection={(c) => { setConn(c); setSelected(c.source_region_id); setTab("region"); }}
+          onMove={move} onCreateRegion={createRegion} onCreateConnection={createConnection} />
+        <div className="flex min-w-80 flex-col gap-2">
+          <div className="flex gap-1" role="tablist">
+            {(["region", "unscoped", "augment", "wiki"] as Tab[]).map((x) => (
+              <Button key={x} size="sm" role="tab" aria-selected={tab === x} data-testid={`editor-tab-${x}`}
+                variant={tab === x ? "primary" : "ghost"} onClick={() => setTab(x)}>
+                {t(`editor.tab.${x}`, { n: unscoped })}
+              </Button>
+            ))}
+          </div>
+          {tab === "region" &&
+            (selected ? (
+              <RegionInspector key={selected} worldId={worldId} regionId={selected} regions={regions}
+                onChanged={reload}
+                onDeleted={(message) => { setSelected(null); setToast(message); reload(); }} />
+            ) : (
+              <div className="text-ink-soft text-sm">{t("editor.pickRegion")}</div>
+            ))}
+          {tab === "unscoped" && (
+            <UnscopedPanel worldId={worldId} regions={regions} reloadKey={rev} onChanged={reload} />
           )}
-          <AugmentPanel worldId={worldId} />
+          {tab === "augment" && (
+            <AugmentPanel worldId={worldId} regions={regions} entities={entities} onChanged={reload} />
+          )}
+          {tab === "wiki" && <WikiPanel worldId={worldId} regions={regions} reloadKey={rev} />}
         </div>
       </div>
+      <BuildPanel open={building} worldId={worldId} exists={data != null}
+        onClose={() => setBuilding(false)} onBuilt={() => reload()} />
     </div>
   );
 }

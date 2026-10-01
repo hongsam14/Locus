@@ -3,29 +3,172 @@ export interface Coord {
   y: number;
 }
 
+export interface Provenance {
+  source: string;
+  generated_by?: string | null;
+  refs?: string[];
+  note?: string | null;
+}
+
 export interface Region {
   id: string;
+  world_id?: string;
   name: string;
   level: string;
   parent_id?: string | null;
+  description?: string | null;
   attributes?: Record<string, unknown>;
   position?: Coord | null;
+  provenance?: Provenance;
 }
 
+export type ConnectionKind = "adjacent" | "route" | "river" | "blocked";
+
 export interface ConnectionEdge {
+  world_id?: string;
   source_region_id: string;
   target_region_id: string;
   kind: string;
   weight: number;
+  rationale?: string | null;
+  wiki_prior_ref?: string | null;
+  provenance?: Provenance;
+}
+
+// --- U3 world editor (domain-entities §2·§3·§5) ------------------------------- //
+export interface Knowledge {
+  id: string;
+  world_id: string;
+  statement: string;
+  title: string;
+  topic?: string | null;
+  confidence: number;
+  is_global?: boolean;
+  about_entity_ids?: string[];
+  derived_from_prior_ids?: string[];
+  provenance: Provenance;
+  statement_ko?: string | null; // response-only (editor reads)
+  title_ko?: string | null;
+}
+
+export interface ScopeLink {
+  world_id: string;
+  knowledge_id: string;
+  region_id: string;
+  scope_type?: string;
+  confidence?: number;
+}
+
+export interface NameRef {
+  id: string;
+  name: string;
+}
+
+export interface ConnectionKey {
+  world_id: string;
+  a_region_id: string;
+  b_region_id: string;
+  kind: string;
+}
+
+export interface PriorRefView {
+  prior_id: string;
+  condition?: string | null;
+  effect?: string | null;
+  broken: boolean;
+}
+
+export interface ConnectionView {
+  key: ConnectionKey;
+  other_region_id: string;
+  other_region_name: string;
+  weight: number;
+  rationale?: string | null;
+  prior?: PriorRefView | null;
+}
+
+export interface ScopedKnowledge {
+  knowledge: Knowledge;
+  scope_region_ids: string[];
+}
+
+export interface EditorRegionView {
+  region: Region;
+  children: NameRef[];
+  connections: ConnectionView[];
+  knowledge: ScopedKnowledge[];
+  npcs: NPC[];
+}
+
+export interface RegionDeletePlan {
+  region_id: string;
+  region_name: string;
+  new_parent_id?: string | null;
+  children: NameRef[];
+  connections: ConnectionKey[];
+  npcs: NameRef[];
+  knowledge_to_unscope: NameRef[];
+  knowledge_scope_removed: NameRef[];
+  entities_unlocated: NameRef[];
+  blocked_by_sessions: string[];
+}
+
+export interface RegionDeleteReport extends RegionDeletePlan {
+  deleted_ids: string[];
+}
+
+export interface NpcDraft {
+  name: string;
+  role: string;
+  description: string;
+  traits: string[];
+}
+
+export interface NpcDraftResult {
+  region_id: string;
+  drafts: NpcDraft[];
+  llm_calls: number;
+  failed: boolean;
+}
+
+export interface WikiPrior {
+  id: string;
+  world_id: string;
+  prior_type: string;
+  condition: string;
+  effect: string;
+  domains: string[];
+  description?: string | null;
+  confidence: number;
+}
+
+export interface PriorUsage {
+  prior: WikiPrior;
+  connections: ConnectionKey[];
+  knowledge: NameRef[];
+}
+
+export interface BrokenRef {
+  ref_id: string;
+  connections: ConnectionKey[];
+  knowledge: NameRef[];
+}
+
+export interface PriorRefsOut {
+  usages: PriorUsage[];
+  broken: BrokenRef[];
 }
 
 export interface WorldExport {
   world_id: string;
+  world?: WorldFileMeta;
   regions: Region[];
   connections: ConnectionEdge[];
   entities: unknown[];
-  knowledge: unknown[];
-  scopes: unknown[];
+  knowledge: Knowledge[];
+  scopes: ScopeLink[];
+  npcs?: NPC[];
+  priors?: WikiPrior[];
 }
 
 // --- World File v1 (U2 FR-B8): the save format; a superset of WorldExport ---- //
@@ -120,6 +263,8 @@ export interface BuildReport {
   embedding_calls: number;
   replaced: boolean;
   closed_session_ids: string[];
+  backup_path?: string | null;
+  priors_created?: number;
   ok: boolean;
 }
 
@@ -187,31 +332,62 @@ export interface QueryResult {
   unique_ids: string[];
 }
 
+// --- Augmentation Q&A (U3 BLM §4, domain-entities §4 〔Step 1.3 정정〕) ------- //
+export type AugAction = "confirm" | "edit" | "remove" | "add" | "ignore";
+
+export interface QuestionTarget {
+  kind: "knowledge" | "entity" | "region" | "npc" | "connection";
+  id: string;
+  name: string;
+  region_id?: string | null;
+  region_name?: string | null;
+  field?: string | null;
+  broken_id?: string | null;
+}
+
 export interface AugQuestion {
   id: string;
   issue_id: string;
+  issue_key: string;
   text: string;
-  options: string[];
-  kind: string;
+  target?: QuestionTarget | null;
+  actions: AugAction[];
 }
 
-// AugmentationRun — one designer Q&A run over a world (legacy name: augment session).
+export interface ChangeSet {
+  id: string;
+  description: string;
+  added_ids: string[];
+  reverted: boolean;
+}
+
+// AugmentationRun — one designer Q&A run over a world, kept by the screen (B2).
 export interface AugRun {
   id: string;
   world_id: string;
-  round: number;
-  status: string;
+  status: "open" | "converged" | "stopped";
+  answers: number;
   open_questions: AugQuestion[];
-  history: { id: string; description: string }[];
+  ignored_keys: string[];
+  history: ChangeSet[];
+  llm_calls: number;
+  llm_budget_exhausted: boolean;
 }
 
 export interface AugAnswer {
   question_id: string;
-  action: string;
-  target_id?: string;
+  action: AugAction;
   statement?: string;
+  title?: string;
   confidence?: number;
   region_id?: string;
+  ref_id?: string;
+}
+
+export interface AnswerResult {
+  change: ChangeSet | null;
+  run: AugRun;
+  changed: QuestionTarget[];
 }
 
 // --- Session layer (S3) ---------------------------------------------------- //

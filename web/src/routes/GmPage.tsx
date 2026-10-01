@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { MapOverlay } from "../MapOverlay";
-import { RegionPanel } from "../RegionPanel";
+import { RegionKnowledgePanel } from "../features/gm/RegionKnowledgePanel";
 import { SessionBar } from "../SessionBar";
 import { DeedPanel } from "../features/gm/DeedPanel";
 import { GmHub } from "../features/gm/GmHub";
@@ -190,7 +190,7 @@ export function GmPage() {
           </div>
           <div className="flex min-w-72 flex-col gap-4">
             {selected && (
-              <RegionPanel
+              <RegionKnowledgePanel
                 key={`${selected}-${session.id}-${sessionRev}-${deedRev}`}
                 worldId={session.world_id}
                 regionId={selected}

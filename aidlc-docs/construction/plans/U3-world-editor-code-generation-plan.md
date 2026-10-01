@@ -606,40 +606,41 @@
 
 ### Step 9 — 프론트엔드: 에디터 (frontend-components.md)
 붉은 구간: 9.2의 타입 변경부터 9.8 끝까지 `tsc`·vitest가 붉을 수 있다. 옛 `RegionPanel`·루트 `AugmentPanel`·`EditorPage`가 옛 API와 타입을 쓰기 때문이다. Step 9는 9.10 끝에 GREEN이고, 커밋은 Step 9 끝에 한 번이다.
-- [ ] 9.1 `api/http.ts`: `HttpError(status, body)`, `statusOf(err)`(C16). `conflictKind`는 `HttpError`의 본문을 읽는다.
+- [x] 9.1 `api/http.ts`: `HttpError(status, body)`, `statusOf(err)`(C16). `conflictKind`는 `HttpError`의 본문을 읽는다.
   - 〔검토 02 처리 R-16〕 `HttpError.message`는 지금 형식 `${status} ${statusText}: ${body}`를 유지한다. 그래서 `String(e)`·`includes("404")`를 쓰는 곳은 바뀌지 않는다. 문자열만 쓰는 거절 fixture(`deeds.test.tsx:125`, `dialogue.test.tsx:250·293`, `play.test.tsx:169`)는 그대로 둔다.
   - 호출처와 fixture는 이월 표 C16에 있다.
   - 이 하위 단계는 단독으로 GREEN이다(타입 변경 없음).
-- [ ] 9.2 `api/world.ts`·`types.ts`
+- [x] 9.2 `api/world.ts`·`types.ts`
   - frontend §3의 API를 더한다. `revert`는 run을 받고 `unignore`를 더한다.
   - `deleteNode`, 옛 `startAugment`·`submitAnswer`·`revertAugment` 이름을 없앤다.
   - 새 타입, `WorldExport.npcs`, `BuildReport.backup_path`·`priors_created`, 보강 타입 갱신(`actions`, `target`, `answers`, `llm_budget_exhausted`)
-- [ ] 9.3 `features/editor/drag.ts`(순수: 4px 판정)와 `MapCanvas.tsx`
+- [x] 9.3 `features/editor/drag.ts`(순수: 4px 판정)와 `MapCanvas.tsx`
   - 도구 셋
   - `MapOverlay`에 `onSelectConnection`·`onBackground`를 더한다. 지금 `onMove` 저장 경로는 판정을 지난 뒤에만 부른다(EX-11).
-- [ ] 9.4 인스펙터와 삭제 확인
+- [x] 9.4 인스펙터와 삭제 확인
   - `RegionInspector.tsx`(조합), `RegionForm.tsx`(부모 후보에서 자기·자손 제외), `ConnectionList.tsx`(상세·prior/끊김), `KnowledgeList.tsx`(번역 + 원문 토글, 스코프), `NpcEditorList.tsx`(원문), `NpcDraftCards.tsx`
   - `ConfirmDelete.tsx`: 삭제 계획 대화. `blocked_by_sessions`면 확인을 끈다.
-- [ ] 9.5 `UnscopedPanel.tsx`, `AugmentPanel.tsx`, `WikiPanel.tsx`
+- [x] 9.5 `UnscopedPanel.tsx`, `AugmentPanel.tsx`, `WikiPanel.tsx`
   - AugmentPanel
     - run 유지, 서버 `actions`만 버튼
     - 가장 나중 변경에만 되돌리기, ignore한 이슈는 "다시 묻기"(unignore)
     - 409·404 안내, `llm_budget_exhausted` 안내
-- [ ] 9.6 `BuildPanel.tsx`·`BuildReportPanel.tsx`, `WorldFileBar.tsx`
+- [x] 9.6 `BuildPanel.tsx`·`BuildReportPanel.tsx`, `WorldFileBar.tsx`
   - 교체·세션 닫기 확인, 413·422 서버 문구 표시, 내려받기, "열린 세션 N개" 띠
-- [ ] 9.7 `routes/HomePage.tsx`와 `App.tsx`(BR-U3-34, C-7)
+- [x] 9.7 `routes/HomePage.tsx`와 `App.tsx`(BR-U3-34, C-7)
   - `/` 넘김을 없애고 `*`는 `/`로 보낸다.
   - [편집] → `/editor/:w`
   - [세션 시작]은 `exportWorld` → `NewSessionForm` → `startSession(w, body)` → `/play/:sid`다.
   - 빈 목록
     - [데모 불러오기]: `api.loadDemo("aldermoor", …)` → `/editor/aldermoor`
     - [자료로 만들기]: world id 입력 → `BuildPanel`(9.6) 모달 → 성공하면 `/editor/:w`
-- [ ] 9.8 `routes/EditorPage.tsx` 다시 쓰기(조합만)
+- [x] 9.8 `routes/EditorPage.tsx` 다시 쓰기(조합만)
   - `web/src/Toolbar.tsx`, 루트 `AugmentPanel.tsx`를 지운다.
   - `RegionPanel.tsx`는 `features/gm/RegionKnowledgePanel.tsx`가 되고 ✕와 `deleteNode`가 없어진다(BR-U3-33, C-8).
   - 호출처: `routes/GmPage.tsx:4`, `routes/EditorPage.tsx:3·5·7`, `__tests__/components.test.tsx:5·20-23`(`upsertRegion`·`startAugment`·`submitAnswer` mock)
-- [ ] 9.9 `i18n.ts`: frontend §4의 키(ko·en 같은 집합) + `augment.budget`·`augment.unignore`·`build.tooLarge`
-- [ ] 9.10 테스트
+- [x] 9.9 `i18n.ts`: frontend §4의 키(ko·en 같은 집합) + `augment.budget`·`augment.unignore`·`build.tooLarge`
+- [x] 9.10 테스트
+  - 〔실행 메모〕 jsdom에는 `PointerEvent`가 없어 좌표가 사라진다. 그래서 `setupTests.ts`에 MouseEvent 기반 shim을 더했다. World File 불러오기는 `File.text`가 없을 때 `FileReader`로 읽는다.
   - `editor.test.tsx`, `home.test.tsx`: frontend §6 표 전부, EX-11, 빈 목록의 데모·만들기
   - `components.test.tsx:85·104·376`: import 경로와 ✕ 없음(C-8)
 

@@ -1,13 +1,12 @@
 # 다음 주기 목록 — Purpose Restructure 주기 뒤 (2026-10-02)
 
 **원하시는 것**: 세계관 자료로 월드를 만들고, 그 안에서 소문과 사건이 지형을 따라 퍼지며 지역마다 NPC가 다르게 아는 것을 직접 겪는 솔로 TRPG.
-**지금 하는 것**: Purpose Restructure 주기(U1~U8)를 닫으며, 다음 주기로 넘긴 일을 한곳에 모았습니다. 상세 근거는 각 항목이 가리키는 기록에 있습니다.
+**지금 하는 것**: Purpose Restructure 주기(U1~U8)를 닫으며, 다음 주기로 넘긴 일을 한곳에 모았습니다. PR #4(`feat/purpose-restructure` → `main`)의 CI 첫 실행은 네 작업 모두 통과했습니다(2026-10-02). 상세 근거는 각 항목이 가리키는 기록에 있습니다.
 
 ## 사람이 정한 후속
 - **화면 고도화**: 첫 동작 화면은 확인했다(2026-10-02). 다듬기는 다음 주기에서 한다(사람의 지시).
 
 ## 사람이 확인할 것 (운영자)
-- **CI 첫 실행**: `feat/purpose-restructure`를 원격에 push하면 네 작업(backend, frontend, audit, images)이 돈다. README 배지를 확인한다.
 - **실제 PostgreSQL 동시성(U3 #10)**: GM 왜곡도 설정과 사건 해소를 겹쳐 보내, 해소된 사건이 되살아나지 않는지 본다. 오프라인 테스트는 `FOR UPDATE`를 돌리지 못한다.
 
 ## U8 리뷰 이월 (`construction/U8-demo-deploy-docs/code/reviews/code-review-01.md`)
@@ -36,6 +35,7 @@
 - wiki 순환 구조(쓰인 결과가 prior를 다듬지 않음)
 
 ## 기술 부채
+- CI 액션 버전: `actions/checkout@v4`·`setup-node@v4`·`setup-python@v5`가 Node 20 대상이라 경고가 난다(Node 24로 강제 실행 중). 새 주 버전으로 올린다. `ubuntu-latest`는 2026-10-19부터 Ubuntu 26으로 바뀐다(첫 실행 2026-10-02의 주석).
 - mypy 기준선 11건(`locus/shared/llm/openai_provider.py` 등)
 - dev 의존성 npm audit 4건(browserslist 등; `--omit=dev` 게이트 밖)
 - 라이브 시나리오 10a는 왜곡도만 단언한다(소문 수는 보고만). U8 리뷰 §3에 있다.

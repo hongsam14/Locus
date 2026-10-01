@@ -251,7 +251,10 @@ describe("DialoguePanel (US-4.1 / 4.3)", () => {
     renderPanel();
     await waitFor(() => expect(screen.getByTestId("dialogue-input")).toBeEnabled());
     typeAndSend("누구세요?");
-    await waitFor(() => expect(screen.getByTestId("dialogue-error")).toHaveTextContent("503"));
+    // U7 intended change: BR-U7-27 — a 503 reads as a plain line, not the HTTP error
+    await waitFor(() =>
+      expect(screen.getByTestId("dialogue-error")).toHaveTextContent(t("dialogue.failed")),
+    );
     expect(screen.queryByTestId("dialogue-msg-player")).not.toBeInTheDocument();
     expect(screen.getByTestId("dialogue-input")).toHaveValue("누구세요?");
   });

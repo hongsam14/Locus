@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
+import { conflictKind } from "../api/http";
 import { ActionBar } from "../features/play/ActionBar";
 import { DialoguePanel } from "../features/play/DialoguePanel";
 import { LlmBanner } from "../features/play/LlmBanner";
@@ -19,7 +20,7 @@ import type {
   TimelineEntry,
   TurnRun,
 } from "../types";
-import { NotificationCenter, Panel } from "../ui";
+import { Button, NotificationCenter, Panel } from "../ui";
 import type { Notif } from "../ui";
 import { AppNav } from "./AppNav";
 
@@ -33,6 +34,7 @@ let _notifSeq = 0;
  * the region (its translated fields depend on the language). */
 export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
   const { sessionId = "" } = useParams();
+  const navigate = useNavigate();
   const [session, setSession] = useState<GameSession | null>(null);
   const [view, setView] = useState<RegionView | null>(null);
   const [log, setLog] = useState<TimelineEntry[]>([]);
@@ -214,16 +216,22 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
       void poll(sid, started.id, genRef.current);
       return true;
     } catch (e) {
-      const msg = String(e);
-      if (msg.startsWith("Error: 409") || msg.startsWith("409")) {
+      const kind = conflictKind(e);
+      if (kind === "closed") {
+        // not a turn: the session ended (GM, CLI, world replace) — say so, re-read
+        // so the controls lock (U6 review #10)
+        addNotif({ region_id: "guard", title: t("play.sessionClosed"), body: "" });
+        await refresh();
+      } else if (kind === "busy") {
         addNotif({ region_id: "guard", title: t("play.turnInProgress"), body: "" });
       } else {
-        setError(msg);
+        setError(String(e));
       }
       return false;
     }
   }
 
+  const closed = session?.status === "closed";
   const busy = run != null || (view?.turn_running ?? false);
   // The panel follows the region: after a move the NPC is no longer here, so it closes.
   const activeNpc = view?.npcs.find((n) => n.id === activeNpcId) ?? null;
@@ -238,6 +246,17 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
       <AppNav sessionId={sessionId || null} worldId={session?.world_id} />
       <NotificationCenter items={notifications} onDismiss={dismissNotif} />
       <div className="p-3 flex flex-col gap-3" data-testid="play-page">
+        {sessionId && (
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              data-testid="play-gm-btn"
+              onClick={() => navigate(`/gm/${encodeURIComponent(sessionId)}`)}
+            >
+              {t("play.gmMode")}
+            </Button>
+          </div>
+        )}
         {!sessionId && (
           <Panel data-testid="play-empty" title={t("play.title")} className="max-w-xl">
             <p className="text-sm">{t("play.noSession")}</p>
@@ -267,7 +286,10 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
                 readOnly={session?.status === "closed"}
                 onClose={() => setActiveNpcId(null)}
                 onEndTalk={() => endTalk(activeNpc.id)}
-                onSpoke={() => loadNpcs(sessionId)}
+                // a line and its answer: two more messages, no list re-read (U5 C1)
+                onSpoke={() =>
+                  setNpcCounts((c) => ({ ...c, [activeNpc.id]: (c[activeNpc.id] ?? 0) + 2 }))
+                }
               />
             )}
             {lastChanges && (
@@ -283,14 +305,14 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
             <NarrationCard narration={declaration} />
             <ActionBar
               running={run}
-              disabled={busy}
+              disabled={busy || closed}
               onWait={() => act({ type: "wait" })}
               onDeclare={(text) => act({ type: "declare", text })}
               maxChars={view.declare_max_chars ?? 300}
             />
             <MovePanel
               moves={view.moves}
-              disabled={busy}
+              disabled={busy || closed}
               onMove={(rid) => act({ type: "move", to_region_id: rid })}
             />
             <PlayLog entries={log} />

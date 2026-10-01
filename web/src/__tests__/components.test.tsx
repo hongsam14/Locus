@@ -5,7 +5,7 @@ import { MapOverlay } from "../MapOverlay";
 import { RegionPanel } from "../RegionPanel";
 import { AugmentPanel } from "../AugmentPanel";
 import { SessionBar } from "../SessionBar";
-import { SessionPanel } from "../SessionPanel";
+import { GmHub } from "../features/gm/GmHub";
 import { App } from "../App";
 import { t } from "../i18n";
 import type { ConnectionEdge, GameSession, Region } from "../types";
@@ -162,7 +162,7 @@ describe("SessionBar", () => {
   });
 });
 
-describe("SessionPanel (GameMaster hub)", () => {
+describe("GmHub (GameMaster hub, was SessionPanel)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // safe defaults for the Phase 2 reads SessionPanel issues on refresh
@@ -182,7 +182,7 @@ describe("SessionPanel (GameMaster hub)", () => {
       },
     ]);
     (api.generateRumors as Mock).mockResolvedValue([]);
-    render(<SessionPanel session={OPEN_SESSION} regionId="r1" />);
+    render(<GmHub session={OPEN_SESSION} regionId="r1" />);
     await waitFor(() => expect(screen.getByTestId("rumor-ru1")).toBeInTheDocument());
     expect(screen.getByTestId("promoted-ru1")).toBeInTheDocument();
     expect(screen.getByText(/twisted tale/)).toBeInTheDocument();
@@ -196,7 +196,7 @@ describe("SessionPanel (GameMaster hub)", () => {
     (api.advanceTurn as Mock).mockResolvedValue({
       session_id: "s1", turn: 3, promoted_ids: [], demoted_ids: [],
     });
-    render(<SessionPanel session={OPEN_SESSION} regionId={null} />);
+    render(<GmHub session={OPEN_SESSION} regionId={null} />);
     expect(screen.getByTestId("gm-no-region")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("advance-turn-btn"));
     await waitFor(() => expect(api.advanceTurn).toHaveBeenCalledWith("s1"));
@@ -205,7 +205,7 @@ describe("SessionPanel (GameMaster hub)", () => {
   it("refresh loads independent reads in parallel (FR-H6)", async () => {
     (api.getTimeline as Mock).mockResolvedValue([]);
     (api.listRumors as Mock).mockResolvedValue([]);
-    render(<SessionPanel session={OPEN_SESSION} regionId="r1" />);
+    render(<GmHub session={OPEN_SESSION} regionId="r1" />);
     // all three region-independent reads + the region rumor read are issued
     await waitFor(() => expect(api.getTimeline).toHaveBeenCalledWith("s1"));
     expect(api.listEvents).toHaveBeenCalledWith("s1");
@@ -215,7 +215,7 @@ describe("SessionPanel (GameMaster hub)", () => {
 
   it("refresh skips the rumor read when no region is selected (FR-H6)", async () => {
     (api.getTimeline as Mock).mockResolvedValue([]);
-    render(<SessionPanel session={OPEN_SESSION} regionId={null} />);
+    render(<GmHub session={OPEN_SESSION} regionId={null} />);
     await waitFor(() => expect(api.getTimeline).toHaveBeenCalledWith("s1"));
     expect(api.listRumors).not.toHaveBeenCalled();
   });
@@ -224,7 +224,7 @@ describe("SessionPanel (GameMaster hub)", () => {
     (api.getTimeline as Mock).mockResolvedValue([]);
     (api.listRumors as Mock).mockResolvedValue([]);
     render(
-      <SessionPanel session={{ ...OPEN_SESSION, status: "closed" }} regionId="r1" />,
+      <GmHub session={{ ...OPEN_SESSION, status: "closed" }} regionId="r1" />,
     );
     await waitFor(() => expect(screen.getByTestId("generate-btn")).toBeDisabled());
     expect(screen.getByTestId("advance-turn-btn")).toBeDisabled();
@@ -236,7 +236,7 @@ describe("SessionPanel (GameMaster hub)", () => {
     (api.getTimeline as Mock).mockResolvedValue([]);
     (api.listRumors as Mock).mockResolvedValue([]);
     (api.createEvent as Mock).mockResolvedValue({});
-    render(<SessionPanel session={OPEN_SESSION} regionId="r1" />);
+    render(<GmHub session={OPEN_SESSION} regionId="r1" />);
     await waitFor(() => expect(screen.getByTestId("event-form")).toBeInTheDocument());
     fireEvent.click(screen.getByTestId("event-create-btn"));
     await waitFor(() =>
@@ -263,7 +263,7 @@ describe("SessionPanel (GameMaster hub)", () => {
     (api.suggestEvents as Mock).mockResolvedValue([]);
     (api.approveEvent as Mock).mockResolvedValue({});
     (api.resolveEvent as Mock).mockResolvedValue({});
-    render(<SessionPanel session={OPEN_SESSION} regionId={null} />);
+    render(<GmHub session={OPEN_SESSION} regionId={null} />);
     await waitFor(() => expect(screen.getByTestId("event-e1")).toBeInTheDocument());
     expect(screen.getByTestId("event-status-e1")).toHaveTextContent("suggested");
 
@@ -283,7 +283,7 @@ describe("SessionPanel (GameMaster hub)", () => {
     (api.listDistortions as Mock).mockResolvedValue([
       { session_id: "s1", region_id: "r1", distortion_degree: 0.75 },
     ]);
-    render(<SessionPanel session={OPEN_SESSION} regionId="r1" />);
+    render(<GmHub session={OPEN_SESSION} regionId="r1" />);
     await waitFor(() => expect(screen.getByText(new RegExp(`${t("gm.distortion")} 0\\.75`))).toBeInTheDocument());
   });
 
@@ -297,7 +297,7 @@ describe("SessionPanel (GameMaster hub)", () => {
       Promise.resolve(rid === "r2" ? [{ id: "x" }] : []),
     );
     (api.generateRumors as Mock).mockResolvedValue([]);
-    render(<SessionPanel session={OPEN_SESSION} regionId={null} />);
+    render(<GmHub session={OPEN_SESSION} regionId={null} />);
     fireEvent.click(await screen.findByTestId("generate-all-btn"));
     await waitFor(() => expect(api.generateRumors).toHaveBeenCalledWith("s1", "r1"));
     expect(api.generateRumors).not.toHaveBeenCalledWith("s1", "r2");
@@ -310,7 +310,7 @@ describe("SessionPanel (GameMaster hub)", () => {
       { session_id: "s1", region_id: "r1", distortion_degree: 0.3 },
     ]);
     (api.regenRumors as Mock).mockResolvedValue([]);
-    render(<SessionPanel session={OPEN_SESSION} regionId={null} />);
+    render(<GmHub session={OPEN_SESSION} regionId={null} />);
     fireEvent.click(await screen.findByTestId("regen-all-btn"));
     expect(api.regenRumors).not.toHaveBeenCalled(); // confirmation pending
     fireEvent.click(screen.getByText(t("action.confirm")));
@@ -337,7 +337,7 @@ describe("SessionPanel (GameMaster hub)", () => {
         },
       ],
     });
-    render(<SessionPanel session={OPEN_SESSION} regionId={null} />);
+    render(<GmHub session={OPEN_SESSION} regionId={null} />);
     fireEvent.click(await screen.findByTestId("advance-turn-btn"));
     await waitFor(() => expect(screen.getByTestId("notification-center")).toBeInTheDocument());
     expect(screen.getByText(t("notif.title", { region_id: "r1" }))).toBeInTheDocument(); // notif title
@@ -353,7 +353,7 @@ describe("SessionPanel (GameMaster hub)", () => {
         support: 0.5, confidence: 0.5, promoted: false, statement_ko: "뒤틀린 이야기",
       },
     ]);
-    render(<SessionPanel session={OPEN_SESSION} regionId="r1" />);
+    render(<GmHub session={OPEN_SESSION} regionId="r1" />);
     await waitFor(() => expect(screen.getByText("뒤틀린 이야기")).toBeInTheDocument());
     fireEvent.click(screen.getByTestId("rumor-text-ru1-toggle"));
     expect(screen.getByText("twisted tale")).toBeInTheDocument();
@@ -362,10 +362,14 @@ describe("SessionPanel (GameMaster hub)", () => {
   it("localizes timeline entries via kind+payload (X3 / F2a)", async () => {
     (api.listRumors as Mock).mockResolvedValue([]);
     (api.getTimeline as Mock).mockResolvedValue([
-      { id: "t1", session_id: "s1", turn: 2, kind: "promote", summary: "promoted ra", payload: { rumor_id: "ra" } },
+      { id: "t1", session_id: "s1", turn: 2, kind: "promote", summary: "promoted ra",
+        payload: { rumor_id: "ra", region_id: "r1", region_name: "Riverton" } },
     ]);
-    render(<SessionPanel session={OPEN_SESSION} regionId={null} />);
-    await waitFor(() => expect(screen.getByText(new RegExp(t("timeline.promote", { rumor_id: "ra" })))).toBeInTheDocument());
+    render(<GmHub session={OPEN_SESSION} regionId={null} />);
+    // U7 intended change: FR-D3 — the line names the region
+    await waitFor(() =>
+      expect(screen.getByText(new RegExp(t("timeline.promote", { region: "Riverton" })))).toBeInTheDocument(),
+    );
   });
 });
 

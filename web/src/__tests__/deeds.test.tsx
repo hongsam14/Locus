@@ -150,19 +150,20 @@ describe("deed badge and the player log (US-6.5, frontend §2.4/§2.5)", () => {
     expect(screen.queryByTestId("deed-badge-ru2")).not.toBeInTheDocument();
   });
 
-  it("the player log hides who judged a deed and where it spread", () => {
+  it("the player log shows what the server kept, in the player's words", () => {
+    // U7 intended change: BR-U7-12 — the server filters (where the player was), so the
+    // screen draws every line it gets; a deed rumor born here reads as talk about you
     const entry = (id: string, kind: string) => ({
       id, session_id: "s1", turn: 1, kind, summary: kind,
       payload: { region_name: "A", from_region_name: "A", npc_name: "Mara" },
     });
     render(
-      <PlayLog entries={[entry("1", "action_declared"), entry("2", "deed_appraised"),
-        entry("3", "deed_seeded"), entry("4", "rumor_spread")]} />,
+      <PlayLog entries={[entry("1", "action_declared"), entry("3", "deed_seeded"),
+        entry("4", "rumor_spread")]} />,
     );
     expect(screen.getByTestId("log-action_declared")).toBeInTheDocument();
-    for (const kind of ["deed_appraised", "deed_seeded", "rumor_spread"]) {
-      expect(screen.queryByTestId(`log-${kind}`)).not.toBeInTheDocument();
-    }
+    expect(screen.getByTestId("log-deed_seeded")).toHaveTextContent(t("log.deed_seeded", { region: "A" }));
+    expect(screen.getByTestId("log-rumor_spread")).toHaveTextContent(t("log.rumor_spread", { region: "A" }));
   });
 });
 

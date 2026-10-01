@@ -1,18 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { MapOverlay } from "../MapOverlay";
 import { RegionPanel } from "../RegionPanel";
 import { SessionBar } from "../SessionBar";
-import { SessionPanel } from "../SessionPanel";
 import { DeedPanel } from "../features/gm/DeedPanel";
+import { GmHub } from "../features/gm/GmHub";
+import { PlayerStrip } from "../features/gm/PlayerStrip";
+import { WorldStateOverlay, overlayOf, useWorldState } from "../features/gm/WorldStateOverlay";
 import { api } from "../api";
 import { t, useLang } from "../i18n";
-import type { GameSession, WorldExport } from "../types";
+import type { GameSession, Player, WorldExport } from "../types";
 import { Button } from "../ui";
 import { AppNav } from "./AppNav";
 
 // GameMaster screen (F1): one session, its world map, the session NPC view of the
 // selected region, and the GameMaster hub (rumors / distortion / turns / events).
+// U7 (Q1=B): reached from the play screen's "GM mode" and left with "back to play";
+// the player's place and turn stay in view, and the map can show the world state.
 export function GmPage() {
   useLang(); // labels follow the display language
   const { sessionId = "" } = useParams();
@@ -24,6 +28,14 @@ export function GmPage() {
   const [error, setError] = useState<string | null>(null);
   const [sessionRev, setSessionRev] = useState(0);
   const [deedRev, setDeedRev] = useState(0); // U6: a void changed rumors on this page
+  const [player, setPlayer] = useState<Player | null>(null);
+  const [stateOn, setStateOn] = useState(false);
+  const world = useWorldState(sessionId, stateOn, sessionRev + deedRev);
+  const overlay = useMemo(() => overlayOf(world.state), [world.state]);
+  const regionNames = useMemo(
+    () => Object.fromEntries((data?.regions ?? []).map((r) => [r.id, r.name])),
+    [data],
+  );
   // Current route session + loaded world, readable from async continuations so a
   // late response for a previous session never rebinds the screen (review U1 #3).
   const sessionIdRef = useRef(sessionId);
@@ -75,10 +87,10 @@ export function GmPage() {
     loadSession();
   }
 
-  // A deed void turned rumors off: re-read the GM hub and the region panel too.
+  // A deed void turned rumors off: re-read the GM hub and the region panel (the deed
+  // panel already re-read itself, so it is not keyed on this: U6 review C1).
   function onDeedChanged() {
     setDeedRev((n) => n + 1);
-    setSessionRev((n) => n + 1);
   }
 
   // Switching sessions in the bar changes the route (same-session events, e.g.
@@ -119,6 +131,15 @@ export function GmPage() {
         </div>
       )}
       {session && (
+        <PlayerStrip
+          sessionId={session.id}
+          turn={session.turn}
+          regionNames={regionNames}
+          rev={sessionRev}
+          onPlayer={setPlayer}
+        />
+      )}
+      {session && (
         <div className="flex flex-wrap items-center gap-3 px-3 py-1 text-xs text-ink-soft">
           <span data-testid="gm-world">
             {t("gm.world", { world: session.world_id })}
@@ -148,34 +169,46 @@ export function GmPage() {
       )}
       {session && (
         <div className="flex flex-wrap gap-4 p-3">
-          <MapOverlay
-            regions={data?.regions ?? []}
-            connections={data?.connections ?? []}
-            selectedId={selected}
-            mapImageUrl={mapUrl}
-            onSelect={setSelected}
-            onMove={() => {}}
-          />
+          <div className="flex flex-col gap-2">
+            <WorldStateOverlay
+              on={stateOn}
+              onToggle={() => setStateOn((v) => !v)}
+              error={world.error}
+            />
+            <MapOverlay
+              regions={data?.regions ?? []}
+              connections={data?.connections ?? []}
+              selectedId={selected}
+              mapImageUrl={mapUrl}
+              onSelect={setSelected}
+              onMove={() => {}}
+              markerId={player?.region_id ?? null}
+              regionFill={stateOn ? overlay.fill : undefined}
+              regionBadge={stateOn ? overlay.badge : undefined}
+            />
+          </div>
           <div className="flex min-w-72 flex-col gap-4">
             {selected && (
               <RegionPanel
-                key={`${selected}-${session.id}-${sessionRev}`}
+                key={`${selected}-${session.id}-${sessionRev}-${deedRev}`}
                 worldId={session.world_id}
                 regionId={selected}
                 sessionId={session.id}
               />
             )}
-            <SessionPanel
+            <GmHub
               session={session}
               regionId={selected}
+              regionNames={regionNames}
               onChanged={onSessionChanged}
               reloadKey={deedRev}
             />
             <DeedPanel
-              key={`deeds-${session.id}-${sessionRev}`}
+              key={`deeds-${session.id}`}
               sessionId={session.id}
               closed={session.status === "closed"}
               onChanged={onDeedChanged}
+              reloadKey={sessionRev}
             />
           </div>
         </div>

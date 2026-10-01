@@ -286,31 +286,31 @@
   - 기존 `test_play_api.py:88`, `test_play_gm_api.py:194`를 고친다(`# U7 intended change`).
 
 ### Step 8 — 프론트엔드 (frontend-components.md)
-- [ ] 8.1 `types.ts`·`api/gm.ts`·`api/http.ts`
+- [x] 8.1 `types.ts`·`api/gm.ts`·`api/http.ts`
   - `WorldState`·`RegionState`, `feedback_share`, 종류 셋
   - `getWorldState`
   - `conflictKind`(#10·#11)
-- [ ] 8.2 `GmHub`와 패널 여섯. `SessionPanel.tsx`를 지운다.
+- [x] 8.2 `GmHub`와 패널 여섯. `SessionPanel.tsx`를 지운다.
   - 기존 `data-testid`를 같은 요소에 둔다(BR-U7-25).
   - `components.test.tsx`의 import 경로를 고친다.
-- [ ] 8.3 GM 패널의 이월
+- [x] 8.3 GM 패널의 이월
   - #5: 전체 생성은 캐노니컬만 센다.
   - #13: 취소 busy
   - C1: `DeedPanel` key
   - `EventPanel`: SUGGESTED에는 해소 버튼이 없다.
   - `ManualTurnPanel`: `suggest-n`
   - `DistortionPanel`: 몫 표시
-- [ ] 8.4 `PlayerStrip`(`listTurnRuns(sid,"running")`, FD R-08), `WorldStateOverlay`
+- [x] 8.4 `PlayerStrip`(`listTurnRuns(sid,"running")`, FD R-08), `WorldStateOverlay`
   - `MapOverlay`에 `markerId`, `regionFill`, `regionBadge`를 더한다.
   - `GmPage`에 "플레이로 돌아가기"
-- [ ] 8.5 플레이 화면
+- [x] 8.5 플레이 화면
   - `PlayPage`: "GM 모드" 버튼, 닫힌 세션(#10), `say` 뒤 로컬 +2(U5 C1)
   - `ActionBar`: `sending`(#12), 코드 포인트 세기(#15)
   - `PlayLog`: `GM_ONLY_KINDS`를 없애고 `log.*` 템플릿을 쓴다.
   - `DialoguePanel`: 503 문구, 입력 유지
-- [ ] 8.6 `ui/CommitRange.tsx`를 두고, 왜곡도·지지도 슬라이더가 쓴다.
-- [ ] 8.7 `i18n.ts`: frontend-components §3 키, 템플릿의 `region_name ?? region_id`, `regenerate`는 `deactivated ?? deleted`
-- [ ] 8.8 테스트 `gm.test.tsx`(frontend-components §6)
+- [x] 8.6 `ui/CommitRange.tsx`를 두고, 왜곡도·지지도 슬라이더가 쓴다.
+- [x] 8.7 `i18n.ts`: frontend-components §3 키, 템플릿의 `region_name ?? region_id`, `regenerate`는 `deactivated ?? deleted`
+- [x] 8.8 테스트 `gm.test.tsx`(frontend-components §6)
   - 이월 #5·#10·#11·#12·#13·#15·C1 예제
   - `deeds.test.tsx`의 `GM_ONLY_KINDS` 테스트를 고친다(`// U7 intended change: BR-U7-12`).
 

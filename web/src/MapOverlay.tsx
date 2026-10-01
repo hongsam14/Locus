@@ -13,6 +13,11 @@ interface Props {
   mapImageUrl?: string | null;
   onSelect: (id: string) => void;
   onMove: (id: string, x: number, y: number) => void;
+  // U7 GM screen: the player's region is ringed (BR-U7-22); the world state overlay
+  // colors regions and puts a count badge on them (BR-U7-23)
+  markerId?: string | null;
+  regionFill?: Record<string, string>;
+  regionBadge?: Record<string, string>;
 }
 
 export function MapOverlay({
@@ -22,6 +27,9 @@ export function MapOverlay({
   mapImageUrl,
   onSelect,
   onMove,
+  markerId,
+  regionFill,
+  regionBadge,
 }: Props) {
   const pos = autoLayout(regions);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -100,11 +108,23 @@ export function MapOverlay({
               onPointerDown={() => setDrag({ id: r.id, x: c.x, y: c.y })}
               onClick={() => onSelect(r.id)}
             >
+              {markerId === r.id && (
+                <circle
+                  data-testid={`player-marker-${r.id}`}
+                  r={15}
+                  style={{ fill: "none", stroke: "var(--color-danger)" }}
+                  strokeWidth={3}
+                />
+              )}
               <circle
                 r={10}
+                data-testid={regionFill?.[r.id] ? `region-fill-${r.id}` : undefined}
                 // var() resolves in CSS (style), not in SVG presentation attributes
                 style={{
-                  fill: selectedId === r.id ? "var(--color-ink)" : "var(--color-paper-card)",
+                  fill:
+                    selectedId === r.id
+                      ? "var(--color-ink)"
+                      : (regionFill?.[r.id] ?? "var(--color-paper-card)"),
                   stroke: "var(--color-ink)",
                 }}
                 strokeWidth={2}
@@ -116,7 +136,19 @@ export function MapOverlay({
                 style={{ fill: "var(--color-ink)", fontFamily: "var(--font-display)" }}
               >
                 {r.name}
+                {markerId === r.id ? " ●" : ""}
               </text>
+              {regionBadge?.[r.id] && (
+                <text
+                  data-testid={`region-badge-${r.id}`}
+                  x={12}
+                  y={20}
+                  fontSize={11}
+                  style={{ fill: "var(--color-ink-soft)" }}
+                >
+                  {regionBadge[r.id]}
+                </text>
+              )}
             </g>
           );
         })}

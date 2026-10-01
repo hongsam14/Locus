@@ -9,3 +9,4 @@ export { Range } from "./Range";
 export { LocalizedText } from "./LocalizedText";
 export { NotificationCenter } from "./NotificationCenter";
 export type { Notif } from "./NotificationCenter";
+export { CommitRange } from "./CommitRange";

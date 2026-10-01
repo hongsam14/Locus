@@ -9,6 +9,7 @@ import type {
   TimelineEntry,
   TurnResult,
   VoidResult,
+  WorldState,
 } from "../types";
 import { enc, http, withLang } from "./http";
 
@@ -56,6 +57,9 @@ export const gmApi = {
     http<SessionEvent>(`${s(sid)}/events/${enc(eid)}/resolve`, { method: "POST" }),
   discardEvent: (sid: string, eid: string) =>
     http<void>(`${s(sid)}/events/${enc(eid)}`, { method: "DELETE" }),
+
+  // U7 world state overlay (US-5.5)
+  getWorldState: (sid: string) => http<WorldState>(`${s(sid)}/state`),
 
   // U6 deeds (US-5.6)
   listDeeds: (sid: string) => http<DeedViewOut[]>(withLang(`${s(sid)}/deeds`)),

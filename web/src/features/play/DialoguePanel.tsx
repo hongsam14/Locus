@@ -98,7 +98,9 @@ export function DialoguePanel({
       if (!alive.current) return;
       setMessages((m) => m.filter((x) => x.id !== mine.id));
       setDraft(text);
-      setError(String(e));
+      const msg = String(e);
+      // 503: the NPC's call failed (BR-U7-27) — a plain line; the words stay in the box
+      setError(msg.startsWith("Error: 503") || msg.startsWith("503") ? t("dialogue.failed") : msg);
     } finally {
       if (alive.current) setSending(false);
     }

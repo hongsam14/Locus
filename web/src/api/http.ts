@@ -15,6 +15,14 @@ export function withLang(path: string): string {
   return l ? `${path}${path.includes("?") ? "&" : "?"}lang=${enc(l)}` : path;
 }
 
+/** What a 409 means (U6 review #10/#11): the session is closed for good, or a turn (or
+ * another GM write) is running and a retry later will do. `null` for any other error. */
+export function conflictKind(err: unknown): "closed" | "busy" | null {
+  const text = String(err);
+  if (!text.startsWith("Error: 409") && !text.startsWith("409")) return null;
+  return /session is closed/i.test(text) ? "closed" : "busy";
+}
+
 export async function http<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(BASE + path, {
     headers: { "Content-Type": "application/json" },

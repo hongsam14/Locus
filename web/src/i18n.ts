@@ -124,6 +124,16 @@ const ko = {
   "play.wait": "기다리기 (1턴)",
   "play.running": "세계가 움직이는 중… ({n}턴)",
   "play.turnInProgress": "턴이 진행 중입니다",
+  "play.sessionClosed": "세션이 종료되었습니다",
+  "play.gmMode": "GM 모드",
+  "gm.backToPlay": "플레이로 돌아가기",
+  "gm.playerStatus": "{name} · {region} · {turn}턴",
+  "gm.running": "(진행 중)",
+  "gm.stateToggle": "세계 상태",
+  "gm.stateLegend": "왜곡도(색) · 활성/승격 소문(숫자)",
+  "gm.feedbackShare": "되먹임 몫 {share}",
+  "gm.suggestN": "개수",
+  "dialogue.failed": "지금은 대답을 듣지 못했어요. 다시 말해 보세요.",
   "play.turnDone": "턴 {n} 완료",
   "play.runFailed": "턴 처리에 실패했습니다",
   "play.budget": "LLM 예산이 다해 일부 소문을 건너뛰었습니다",
@@ -180,19 +190,25 @@ const ko = {
   "timeline.rumor_spread": "소문 전파: {from_region_name} → {region_name}",
   "timeline.deed_voided": "행적 취소",
   "timeline.turn_run_failed": "턴 처리 실패",
-  "timeline.generate": "소문 생성 · 지역 {region_id}",
-  "timeline.regenerate": "소문 재생성 · 지역 {region_id}",
-  "timeline.promote": "승격: {rumor_id}",
-  "timeline.demote": "강등: {rumor_id}",
-  "timeline.prune": "소멸: {rumor_id}",
-  "timeline.adjust_support": "공신력 조정: {rumor_id}",
+  "timeline.generate": "소문 생성 · {region}",
+  "timeline.regenerate": "소문 재생성 · {region}",
+  "timeline.promote": "소문 승격 · {region}",
+  "timeline.demote": "소문 강등 · {region}",
+  "timeline.prune": "소문 소멸 · {region}",
+  "timeline.adjust_support": "공신력 조정 · {region}",
   "timeline.advance_turn": "턴 {turn} 진행",
-  "timeline.set_distortion": "왜곡 설정 · 지역 {region_id}",
-  // NOTE: event_created is reused by the backend for create/suggest/approve with
-  // distinct summaries — no template here so those fall back to the summary and
-  // stay distinguishable (review #3). Single-action event kinds keep templates.
-  "timeline.event_applied": "이벤트 적용: {event_id}",
-  "timeline.event_resolved": "이벤트 해소: {event_id}",
+  "timeline.set_distortion": "왜곡 설정 · {region} → {degree}",
+  // U7 (BR-U7-8): event_created is a GM's own creation only; suggestions and approvals
+  // have their own kinds (older lines with suggested/approved flags map onto them).
+  "timeline.event_created": "{category} 이벤트 생성 · {region}",
+  "timeline.event_suggested": "{region}에 {category} 사건이 제안되었다",
+  "timeline.event_approved": "{region}의 {category} 사건을 승인했다",
+  "timeline.event_discarded": "{region}의 {category} 제안을 버렸다",
+  "timeline.event_applied": "이벤트 적용 · {region}",
+  "timeline.event_resolved": "이벤트 해소 · {region}",
+  "timeline.gm_session_started": "GM 세션 시작",
+  "log.deed_seeded": "{region}에 당신에 대한 이야기가 돌기 시작했다",
+  "log.rumor_spread": "당신에 대한 이야기가 {region}까지 왔다",
 
   // notification segments (per-region turn change)
   "notif.title": "지역 {region_id}",
@@ -311,6 +327,16 @@ const en: Record<Key, string> = {
   "play.wait": "Wait (1 turn)",
   "play.running": "The world is moving… ({n} turn(s))",
   "play.turnInProgress": "A turn is in progress",
+  "play.sessionClosed": "The session has ended",
+  "play.gmMode": "GM mode",
+  "gm.backToPlay": "Back to play",
+  "gm.playerStatus": "{name} · {region} · turn {turn}",
+  "gm.running": "(running)",
+  "gm.stateToggle": "World state",
+  "gm.stateLegend": "Distortion (color) · active/promoted rumors (number)",
+  "gm.feedbackShare": "Feedback share {share}",
+  "gm.suggestN": "Count",
+  "dialogue.failed": "No answer right now. Try again.",
   "play.turnDone": "Turn {n} done",
   "play.runFailed": "The turn failed",
   "play.budget": "The LLM budget ran out, so some rumors were skipped",
@@ -364,16 +390,23 @@ const en: Record<Key, string> = {
   "timeline.rumor_spread": "rumor spread: {from_region_name} → {region_name}",
   "timeline.deed_voided": "deed voided",
   "timeline.turn_run_failed": "turn failed",
-  "timeline.generate": "rumors generated · region {region_id}",
-  "timeline.regenerate": "rumors regenerated · region {region_id}",
-  "timeline.promote": "promoted: {rumor_id}",
-  "timeline.demote": "demoted: {rumor_id}",
-  "timeline.prune": "faded: {rumor_id}",
-  "timeline.adjust_support": "support adjusted: {rumor_id}",
+  "timeline.generate": "rumors generated · {region}",
+  "timeline.regenerate": "rumors regenerated · {region}",
+  "timeline.promote": "a rumor promoted · {region}",
+  "timeline.demote": "a rumor demoted · {region}",
+  "timeline.prune": "a rumor faded · {region}",
+  "timeline.adjust_support": "support adjusted · {region}",
   "timeline.advance_turn": "turn {turn} advanced",
-  "timeline.set_distortion": "distortion set · region {region_id}",
-  "timeline.event_applied": "event applied: {event_id}",
-  "timeline.event_resolved": "event resolved: {event_id}",
+  "timeline.set_distortion": "distortion set · {region} → {degree}",
+  "timeline.event_created": "{category} event created · {region}",
+  "timeline.event_suggested": "Suggested a {category} event in {region}",
+  "timeline.event_approved": "Approved the {category} event in {region}",
+  "timeline.event_discarded": "Discarded the {category} suggestion in {region}",
+  "timeline.event_applied": "event applied · {region}",
+  "timeline.event_resolved": "event resolved · {region}",
+  "timeline.gm_session_started": "GM session started",
+  "log.deed_seeded": "Talk about you has started in {region}",
+  "log.rumor_spread": "Talk about you has reached {region}",
 
   "notif.title": "region {region_id}",
   "notif.promoted": "{n} promoted",
@@ -511,7 +544,26 @@ export function timelineText(
   turn: number,
   summary?: string,
 ): string {
-  const key = `timeline.${kind}`;
+  let k = kind;
+  // older lines: one kind for create/suggest/approve, told apart by a flag (pre-U7)
+  if (k === "event_created" && payload.suggested) k = "event_suggested";
+  else if (k === "event_created" && payload.approved) k = "event_approved";
+  else if (k === "session_started" && payload.player_name == null) k = "gm_session_started";
+  const key = `timeline.${k}`;
   if (lookup(key) == null) return summary || kind;
-  return t(key, { ...payload, turn });
+  return t(key, { ...payload, turn, region: regionOf(payload) });
+}
+
+/** A line as the player reads it: its own wording when it has one (`log.*`), else the
+ * timeline's (U7, FR-C6). */
+export function logText(kind: string, payload: Params, turn: number, summary?: string): string {
+  const key = `log.${kind}`;
+  if (lookup(key) != null) return t(key, { ...payload, turn, region: regionOf(payload) });
+  return timelineText(kind, payload, turn, summary);
+}
+
+// FR-D3: the region by name; its id for a line written before names, "—" for none.
+function regionOf(payload: Params): string {
+  const name = payload.region_name ?? payload.region_id;
+  return name == null ? "—" : String(name);
 }

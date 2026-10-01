@@ -10,6 +10,7 @@ export function Modal({
   confirmLabel = t("action.confirm"),
   cancelLabel = t("action.cancel"),
   confirmTone = "primary",
+  busy = false,
   onConfirm,
   onCancel,
 }: {
@@ -19,6 +20,7 @@ export function Modal({
   confirmLabel?: string;
   cancelLabel?: string;
   confirmTone?: "primary" | "danger";
+  busy?: boolean; // the confirmed request is running: no second click (U6 review #13)
   onConfirm?: () => void;
   onCancel?: () => void;
 }) {
@@ -36,7 +38,7 @@ export function Modal({
           <Button size="sm" onClick={onCancel}>
             {cancelLabel}
           </Button>
-          <Button size="sm" variant={confirmTone} onClick={onConfirm}>
+          <Button size="sm" variant={confirmTone} onClick={onConfirm} disabled={busy}>
             {confirmLabel}
           </Button>
         </div>

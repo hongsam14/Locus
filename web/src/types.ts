@@ -248,6 +248,26 @@ export interface RegionDistortion {
   session_id: string;
   region_id: string;
   distortion_degree: number;
+  feedback_share?: number; // U7: the part feedback put there (capped, given back)
+}
+
+// U7 GM overlay (FR-D4): one row per world region, built on read
+export interface RegionState {
+  region_id: string;
+  region_name: string;
+  distortion: number;
+  feedback_share: number;
+  active_rumors: number;
+  promoted_rumors: number;
+  deed_rumors: number;
+  active_events: number;
+}
+
+export interface WorldState {
+  session_id: string;
+  turn: number;
+  player_region_id: string | null;
+  regions: RegionState[];
 }
 
 export interface TimelineEntry {

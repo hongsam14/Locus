@@ -2,19 +2,23 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../api";
 import { t, useRequestLang } from "../../i18n";
 import type { DeedViewOut } from "../../types";
+import { conflictKind } from "../../api/http";
 import { Badge, Button, Card, LocalizedText, Modal, Panel } from "../../ui";
 
 /** The GM's view of the player's deeds (US-5.6): what happened, which NPC judged it and
  * how, where its rumors reached — and a void that undoes the deed and every rumor it
- * produced. Lives in the GM screen until U7 splits that screen by feature. */
+ * produced. One of the GM hub's panels (U7). It re-reads when `reloadKey` changes (a
+ * turn or GM write elsewhere) and after its own void — once each (U6 review C1). */
 export function DeedPanel({
   sessionId,
   closed,
   onChanged,
+  reloadKey = 0,
 }: {
   sessionId: string;
   closed: boolean;
   onChanged?: () => void;
+  reloadKey?: number;
 }) {
   const requestLang = useRequestLang(); // translated text: re-read when the language changes
   const [deeds, setDeeds] = useState<DeedViewOut[]>([]);
@@ -34,14 +38,15 @@ export function DeedPanel({
     } catch (e) {
       if (mine === readSeq.current) setError(String(e));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- requestLang re-reads
-  }, [sessionId, requestLang]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- requestLang / reloadKey re-read
+  }, [sessionId, requestLang, reloadKey]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   async function voidDeed(view: DeedViewOut) {
+    if (busy) return; // one request per confirmation (U6 review #13)
     setBusy(true);
     setNotice(null);
     try {
@@ -49,11 +54,14 @@ export function DeedPanel({
       await load();
       onChanged?.();
     } catch (e) {
-      const msg = String(e);
-      if (msg.startsWith("Error: 409") || msg.startsWith("409")) {
+      const kind = conflictKind(e);
+      if (kind === "closed") {
+        setNotice(t("play.sessionClosed")); // not a turn: say so, and let the page re-read
+        onChanged?.();
+      } else if (kind === "busy") {
         setNotice(t("play.turnInProgress"));
       } else {
-        setError(msg);
+        setError(String(e));
       }
     } finally {
       setBusy(false);
@@ -147,6 +155,7 @@ export function DeedPanel({
         confirmTone="danger"
         confirmLabel={t("deed.voidConfirmBtn")}
         cancelLabel={t("action.cancel")}
+        busy={busy}
         onConfirm={() => {
           if (confirm) void voidDeed(confirm);
         }}

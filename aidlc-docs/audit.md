@@ -2865,3 +2865,13 @@ Carried to the U7 code plan: #5–#15, C1–C16, U5 newline forging, and the sce
 **Timestamp**: 2026-10-01T02:03:29Z
 **AI Response**: Dispatching aidlc-architecture-reviewer (class advisory, iteration 1) on `aidlc-docs/construction/U7-gm-mode-hardening/nfr/nfr-light.md`. Review record: `aidlc-docs/construction/U7-gm-mode-hardening/nfr/reviews/nfr-light-review-01.md`.
 **Context**: CONSTRUCTION / U7 — NFR (light), Plan Review.
+
+---
+
+## Plan Review Completed — NFR Requirements (light) — U7
+**Timestamp**: 2026-10-01T02:05:05Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 5 Minor; open 7. Record: `aidlc-docs/construction/U7-gm-mode-hardening/nfr/reviews/nfr-light-review-01.md`. Orchestrator factual notes for the gate:
+- R-02: the port method is already defined in the approved FD (domain-entities §6.3 `ConversationStore.message_counts(session_id) -> dict[str, int]`, one LEFT JOIN + GROUP BY); the NFR note did not repeat it.
+- R-06: mypy measured 11 at today's U6 fix gate (`Found 11 errors in 6 files`).
+**Context**: NFR Requirements (light) — U7 — next: approval gate (advisory verdict terminal; artifacts frozen).

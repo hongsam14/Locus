@@ -14,7 +14,7 @@
 - [x] 승인된 FD 산출물 분석(`construction/U7-gm-mode-hardening/functional-design/*`, 검토 01 R-01~R-09 Accepted risk)
 - [x] NFR-1~9와 U7의 접점 정리; 질문 필요 여부 판단
 - [x] `construction/U7-gm-mode-hardening/nfr/nfr-light.md` 작성
-- [ ] Plan Review(architecture-reviewer, **advisory** 1회) → `construction/U7-gm-mode-hardening/nfr/reviews/nfr-light-review-01.md`
+- [x] Plan Review(architecture-reviewer, **advisory** 1회) — READY, open 7 → `construction/U7-gm-mode-hardening/nfr/reviews/nfr-light-review-01.md`
 - [ ] 완료 메시지 + 승인 게이트 → 다음: U7 Code Generation Part 1(플랜)
 
 ## 질문

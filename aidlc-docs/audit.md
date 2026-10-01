@@ -3958,3 +3958,11 @@ The code summary is finalized: results, changed files, TP/EX → tests, where ea
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 16. Next: code gate (Step 17).
 
 ---
+
+## U8 Code Generation — Approval
+**Timestamp**: 2026-10-01T16:29:16Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U8 code (Steps 1–16, HEAD 7490b4b) approved. Next: a background `/code-review` over 589dc2b..7490b4b (review only, no code change), then Build and Test (operator checks: compose up with port overrides on this host, the live scenario, the CI first run).
+**Context**: CONSTRUCTION / U8 — Code Generation approval gate (Step 17).
+
+---

@@ -31,6 +31,7 @@ from locus.play.models import (
     WorldState,
 )
 from locus.shared.models import NPC, KnowledgeView, QueryResult
+from locus.world.editor.models import WorldSummary
 
 # --- requests ---------------------------------------------------------------- #
 
@@ -54,15 +55,10 @@ class EventCreate(BaseModel):
 # --- responses --------------------------------------------------------------- #
 
 
-class WorldInfo(BaseModel):
-    """One row of the world list (US-6.4 backend, BR-U2-24)."""
+class WorldInfo(WorldSummary):
+    """One row of the world list (US-6.4 backend, BR-U2-24): the catalog row plus the
+    open sessions (U3 review C13 — inherits instead of repeating the fields)."""
 
-    id: str
-    name: str
-    description: str | None = None
-    region_count: int = 0
-    updated_at: str | None = None
-    last_writer: str | None = None
     open_sessions: int | None = None  # None when the play boundary is not assembled
 
 
@@ -413,7 +409,9 @@ class ScopedKnowledgeOut(ScopedKnowledge):
 
 
 class EditorRegionViewOut(BaseModel):
-    """``EditorRegionView`` with translated knowledge (same fields)."""
+    """``EditorRegionView`` with translated knowledge (same fields). A standalone model,
+    not a subclass: overriding ``knowledge`` with the translated item type fails mypy's
+    field-override check (U3 review C13 kept for this reason; ``WorldInfo`` inherits)."""
 
     region: Region
     children: list[NameRef] = Field(default_factory=list)

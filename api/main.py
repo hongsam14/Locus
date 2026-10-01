@@ -39,6 +39,8 @@ def _finite(value):
         return {k: _finite(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
         return [_finite(v) for v in value]
+    if isinstance(value, bytes):  # an undecodable body is echoed as text (U3 review S27)
+        return value.decode("utf-8", errors="replace")
     return jsonable_encoder(value) if not isinstance(value, (str, int, float, bool)) else value
 
 

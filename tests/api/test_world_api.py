@@ -157,6 +157,9 @@ class _Sessions:
     def list_sessions(self, world_id):
         return self._sessions
 
+    def open_sessions(self, world_id):  # U8 intended change: U3 review C7, one filter
+        return [s for s in self._sessions if str(s.status) == "open"]
+
     def close_session(self, sid):
         self.closed.append(sid)
 

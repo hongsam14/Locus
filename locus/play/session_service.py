@@ -134,7 +134,12 @@ class SessionService:
         return self._repo.list_sessions(world_id)
 
     def open_sessions(self, world_id: str) -> list[GameSession]:
-        return [s for s in self._repo.list_sessions(world_id) if str(s.status) == "open"]
+        """The world's open sessions — the one filter every caller uses (U3 review C7)."""
+        return [
+            s
+            for s in self._repo.list_sessions(world_id)
+            if SessionStatus(s.status) is SessionStatus.OPEN
+        ]
 
     def open_player_regions(self, world_id: str) -> dict[str, list[str]]:
         """region id -> the open sessions whose player stands there (U3 Q2=A): the

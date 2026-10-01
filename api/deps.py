@@ -8,6 +8,7 @@ failed to assemble (or was not injected) yields 503 for its routes only
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TypeVar
 
 from fastapi import HTTPException, Request
 
@@ -28,6 +29,17 @@ class Containers:
     localization: LocalizationContainer | None = None
     # names of containers assemble_all created (and therefore closes); injected ones are not
     owned: set[str] = field(default_factory=set)
+
+
+T = TypeVar("T")
+
+
+def need_service(service: T | None, name: str) -> T:
+    """A boundary service that is None without a provider (NFR-4) answers 503 — the one
+    rule every router uses (U3 review C7)."""
+    if service is None:
+        raise HTTPException(status_code=503, detail=f"{name} unavailable")
+    return service
 
 
 def _containers(request: Request) -> Containers:

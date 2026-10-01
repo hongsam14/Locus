@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+from typing import Annotated
 
 from pydantic import BaseModel, Field
 
@@ -21,16 +22,29 @@ from locus.world.ingestion.mapping import (
 from locus.world.ingestion.structured_map_ingestor import StructuredMapIngestor
 from locus.world.ingestion.text_ingestor import TextIngestor
 
+# Input caps (U3 review S19): the multipart route's per-field limits (``api/uploads.py``
+# reads these) also bound the JSON body, so both paths cap a build's LLM calls alike.
+MEMOS_MAX, MEMO_CHARS = 20, 60_000
+MAPS_MAX = 5
+MAP_IMAGES_MAX, CONCEPT_ARTS_MAX = 4, 8
+IMAGE_B64_CHARS = 8 * 1024 * 1024 * 4 // 3 + 4  # an 8 MiB image as base64
+
 
 class WorldInputs(BaseModel):
     """Raw multimodal inputs for a world build."""
 
     model_config = {"arbitrary_types_allowed": True}
 
-    memos: list[str] = Field(default_factory=list)
-    map_images: list[str] = Field(default_factory=list)  # base64-encoded images (RE A7)
-    structured_maps: list[dict] = Field(default_factory=list)
-    concept_arts: list[str] = Field(default_factory=list)  # base64-encoded images
+    memos: list[Annotated[str, Field(max_length=MEMO_CHARS)]] = Field(
+        default_factory=list, max_length=MEMOS_MAX
+    )
+    map_images: list[Annotated[str, Field(max_length=IMAGE_B64_CHARS)]] = Field(
+        default_factory=list, max_length=MAP_IMAGES_MAX
+    )  # base64-encoded images (RE A7)
+    structured_maps: list[dict] = Field(default_factory=list, max_length=MAPS_MAX)
+    concept_arts: list[Annotated[str, Field(max_length=IMAGE_B64_CHARS)]] = Field(
+        default_factory=list, max_length=CONCEPT_ARTS_MAX
+    )  # base64-encoded images
     name: str | None = None  # WorldMeta (U2)
     description: str | None = None
 

@@ -267,3 +267,28 @@ def test_citation_maps_on_a_plain_snapshot() -> None:
     assert [b.ref_id for b in broken(snap, [prior])] == ["gone"]
     assert prior_ref_view("gone", {}).broken
     assert prior_ref_view(prior.id, {prior.id: prior}).effect == "e"
+
+
+def test_c9_refs_reads_one_snapshot_and_no_prior_nodes() -> None:
+    """U3 review C9: the wiki tab's two lists come from one snapshot read; the
+    snapshot's priors are the stored ones (no extra ``find_nodes`` on WikiPrior)."""
+    report, graph, search, _llm, _seen = _build()
+    cache = _SnapshotCache(graph)
+    admin = WikiAdmin(graph, search, cache=cache)
+    loads: list[str] = []
+    warm = cache.get("w")  # a warm cache, as in the app: the load is not what this counts
+    cache.get = lambda wid: (loads.append(wid), warm)[1]  # type: ignore[method-assign]
+    prior_reads: list[str] = []
+    real_find = graph.find_nodes
+
+    def find(world_id, label, filters=None):
+        if label == "WikiPrior":
+            prior_reads.append(world_id)
+        return real_find(world_id, label, filters)
+
+    usages, broken = admin.refs("w")
+    graph.find_nodes = find  # type: ignore[method-assign]
+    usages, broken = admin.refs("w")
+    assert len(loads) == 2 and prior_reads == []  # one snapshot per call, no prior scan
+    assert [u.prior.id for u in usages] == [u.prior.id for u in admin.prior_refs("w")]
+    assert broken == admin.broken_refs("w")

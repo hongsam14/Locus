@@ -12,13 +12,14 @@ import base64
 import json
 import logging
 import re
-from typing import Any, TypeVar
+from typing import Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Response, UploadFile
 
 from api import uploads
 from api.deps import get_localization, get_play_optional, get_shared, get_world
+from api.deps import need_service as _need
 from api.errors import http_error
 from api.routers import world_editor
 from api.schemas import DemoInfoOut, UnignoreIn, WorldInfo, purge_translations
@@ -48,15 +49,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/world", tags=["world"])
 
-T = TypeVar("T")
-
-
-def _need(service: T | None, name: str) -> T:
-    """LLM-dependent services are None without a provider (NFR-4): their routes 503."""
-    if service is None:
-        raise HTTPException(status_code=503, detail=f"{name} unavailable")
-    return service
-
 
 def _open_sessions(world_id: str, confirm: bool, play: PlayContainer | None) -> list[str]:
     """Open sessions block a replace unless confirmed (BR-U2-25). Returns the ids that
@@ -65,7 +57,7 @@ def _open_sessions(world_id: str, confirm: bool, play: PlayContainer | None) -> 
     Without a play boundary nothing is checked."""
     if play is None:
         return []
-    open_ids = [s.id for s in play.sessions.list_sessions(world_id) if str(s.status) == "open"]
+    open_ids = [s.id for s in play.sessions.open_sessions(world_id)]
     # Pre-flight the turn guard: a session mid-turn cannot be closed, so admitting it
     # here let the destructive replace run and then fail on the close, after the world
     # was already gone (code review U4-2 #3, re-framed root cause).
@@ -199,14 +191,19 @@ def build_world_upload(
         ("concept_arts", concept_arts, uploads.CONCEPT_ART),
     ):
         uploads.check_count(field, files, cap)
+    # sessions before reading and encoding every file (U3 review C15)
+    open_ids = _open_sessions(world_id, confirm, play) if replace else []
     structured: list[dict] = []
     for f in maps:
         try:
-            structured.append(json.loads(uploads.read_capped("maps", f, uploads.MAP)))
-        except (UnicodeDecodeError, ValueError) as exc:  # fixed text (U3, NFR R-08)
+            parsed = json.loads(uploads.read_capped("maps", f, uploads.MAP))
+        except (UnicodeDecodeError, ValueError, RecursionError) as exc:  # fixed text (S07)
             raise HTTPException(
                 status_code=422, detail=f"map {f.filename!r} is not valid JSON"
             ) from exc
+        if not isinstance(parsed, dict):  # a list, string or number is no map (U3 S07)
+            raise HTTPException(status_code=422, detail=f"map {f.filename!r} is not valid JSON")
+        structured.append(parsed)
 
     def b64(data: bytes) -> str:
         return base64.b64encode(data).decode("ascii")
@@ -221,7 +218,6 @@ def build_world_upload(
         name=name,
         description=description,
     )
-    open_ids = _open_sessions(world_id, confirm, play) if replace else []
     try:
         report = builder.build(world_id, inputs, replace=replace)
     except WorldExistsError as exc:
@@ -259,9 +255,7 @@ def list_worlds(
     for row in catalog.list_worlds():
         open_sessions = None
         if play is not None:
-            open_sessions = sum(
-                1 for s in play.sessions.list_sessions(row.id) if str(s.status) == "open"
-            )
+            open_sessions = len(play.sessions.open_sessions(row.id))
         out.append(WorldInfo(**row.model_dump(), open_sessions=open_sessions))
     return out
 
@@ -352,7 +346,7 @@ def import_world_file_upload(
     data = uploads.read_capped("file", file, uploads.WORLD_FILE)  # 20 MiB (nfr §1.1)
     try:
         raw = json.loads(data)
-    except (UnicodeDecodeError, ValueError) as exc:  # fixed text (NFR-6)
+    except (UnicodeDecodeError, ValueError, RecursionError) as exc:  # fixed text (NFR-6, S07)
         raise HTTPException(
             status_code=422, detail=f"{file.filename!r} is not a JSON World File"
         ) from exc

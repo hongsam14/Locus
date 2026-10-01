@@ -109,7 +109,7 @@ def _guard_open_sessions(shared: SharedContainer, world_id: str, *, force: bool)
     sessions = _session_service(shared)
     if sessions is None:
         return []
-    open_ids = [s.id for s in sessions.list_sessions(world_id) if str(s.status) == "open"]
+    open_ids = [s.id for s in sessions.open_sessions(world_id)]
     if open_ids and not force:
         raise SystemExit(
             f"world {world_id!r} has {len(open_ids)} open session(s): {', '.join(open_ids)}. "
@@ -256,15 +256,12 @@ def cmd_world_list(args: argparse.Namespace) -> int:
     shared = assemble_shared(settings, search=False, llm=False, sql=False)
     try:
         assert shared.graph is not None
-        from locus.shared.storage import graph_mapping as gm
+        from locus.world.editor import WorldCatalog
 
-        for wid in shared.graph.list_world_ids():
-            metas = shared.graph.find_nodes(wid, "WorldMeta")
-            meta = gm.node_to_worldmeta(metas[0]) if metas else None
-            regions = len(shared.graph.find_nodes(wid, "Region"))
-            name = meta.name if meta else wid
-            updated = meta.updated_at.isoformat() if meta else "-"
-            print(f"{wid}\t{name}\tregions={regions}\tupdated={updated}")
+        for row in WorldCatalog(shared.graph).list_worlds():  # the API's list (U3 C7)
+            print(
+                f"{row.id}\t{row.name}\tregions={row.region_count}\tupdated={row.updated_at or '-'}"
+            )
         return 0
     finally:
         shared.close()

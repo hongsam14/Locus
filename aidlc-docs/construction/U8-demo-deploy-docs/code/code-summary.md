@@ -143,3 +143,19 @@
   - 테스트 `tests/world/augmentation/test_u3_review_carry.py` 7(C2 둘, C10, S03, S09, S15, S10 API)
   - 변이(모두 잡음): S03 재개 빼기, S09 실패 캐시, S15 비우기 빼기, C10 월드 전체 읽기
   - pytest 901
+- **Step 9c** (U3 이월: 업로드·한도·API)
+  - C7: 열린 세션은 `SessionService.open_sessions()` 하나(`SessionStatus` 비교)
+    - 호출처는 셋이다: `world._open_sessions`, `world.list_worlds`, CLI `_guard_open_sessions`. 세션 가짜 둘(`test_world_api`, `test_cli`)에도 같은 메서드를 더했다(의도된 변경).
+    - CLI `world list`는 `WorldCatalog`를 쓴다.
+    - `_need`는 `api/deps.need_service`로 옮겼다. `world.py`는 이 함수를 `_need` 이름으로 가져온다(라우트 안의 호출 18곳은 그대로).
+  - C9: `WikiAdmin.refs`(스냅샷 한 번, 스냅샷의 prior). `GET prior-refs`가 이것을 쓴다.
+  - C13: `WorldInfo(WorldSummary)`. `EditorRegionViewOut`은 mypy 필드 재정의 검사 때문에 독립 모델로 두었고, 까닭을 docstring에 적었다.
+  - C15: `build/upload`가 개수 검사 바로 뒤, 파일을 읽기 전에 열린 세션을 확인한다.
+  - S07: 지도 JSON이 객체가 아니거나 너무 깊으면(`RecursionError`) 고정 문구 422다. World File 업로드도 `RecursionError`면 422다.
+  - S19: `WorldInputs`가 개수·길이 상한을 갖는다(메모 20개·60,000자, 지도 5개, 지도 그림 4개, 컨셉 아트 8개, 그림 base64 8 MiB 상당). `api/uploads.py`도 같은 상수를 읽는다.
+  - S20: 미들웨어가 `root_path`를 떼고 길을 비교한다. World File 길의 요청 한도는 20 MiB + 1 MiB(multipart 여유)라서, 꽉 찬 파일은 칸의 정확한 413을 받는다.
+  - S27: 422 처리기가 bytes 입력을 `errors="replace"`로 푼다(500이 아님).
+  - 의도된 변경: `test_uploads`의 World File 한도 둘(21 MiB)
+  - 테스트 7: S20 둘, S07, S19, S27, C15, C9
+  - 변이(모두 잡음): S20 root_path, S07 객체 검사, S27 bytes, C15 순서, C9 prior 재조회
+  - pytest 908

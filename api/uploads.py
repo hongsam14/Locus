@@ -22,12 +22,22 @@ from typing import Any
 from fastapi import HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 
+from locus.world.ingestion.service import (
+    CONCEPT_ARTS_MAX,
+    MAP_IMAGES_MAX,
+    MAPS_MAX,
+    MEMO_CHARS,
+    MEMOS_MAX,
+)
+
 MiB = 1024 * 1024
 REQUEST_MAX = 48 * MiB
 WORLD_FILE_MAX = 20 * MiB
 # (method, path pattern) -> byte limit; the first match wins, else REQUEST_MAX
+# A World File request may be the file plus multipart framing: the request limit leaves
+# 1 MiB over the field limit so a full 20 MiB file gets the field's precise 413 (S20).
 PATH_LIMITS: tuple[tuple[str, re.Pattern[str], int], ...] = (
-    ("POST", re.compile(r"^/api/world/worlds/[^/]+/file(/upload)?/?$"), WORLD_FILE_MAX),
+    ("POST", re.compile(r"^/api/world/worlds/[^/]+/file(/upload)?/?$"), WORLD_FILE_MAX + MiB),
 )
 
 
@@ -38,10 +48,11 @@ class FieldLimit:
     chars: int | None = None  # decoded text length (memos)
 
 
-MEMO = FieldLimit(count=20, file_bytes=256 * 1024, chars=60_000)
-MAP = FieldLimit(count=5, file_bytes=2 * MiB)
-MAP_IMAGE = FieldLimit(count=4, file_bytes=8 * MiB)
-CONCEPT_ART = FieldLimit(count=8, file_bytes=8 * MiB)
+# counts and lengths shared with the JSON build body (U3 review S19)
+MEMO = FieldLimit(count=MEMOS_MAX, file_bytes=256 * 1024, chars=MEMO_CHARS)
+MAP = FieldLimit(count=MAPS_MAX, file_bytes=2 * MiB)
+MAP_IMAGE = FieldLimit(count=MAP_IMAGES_MAX, file_bytes=8 * MiB)
+CONCEPT_ART = FieldLimit(count=CONCEPT_ARTS_MAX, file_bytes=8 * MiB)
 WORLD_FILE = FieldLimit(count=1, file_bytes=WORLD_FILE_MAX)
 
 _IMAGE_MAGIC = (
@@ -77,7 +88,11 @@ class BodyLimitMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        limit = limit_for(scope.get("method", ""), scope.get("path", ""))
+        path = scope.get("path", "")
+        root = scope.get("root_path", "")
+        if root and path.startswith(root):  # behind a prefix: match the app's own path (S20)
+            path = path[len(root) :]
+        limit = limit_for(scope.get("method", ""), path)
         length = dict(scope.get("headers") or []).get(b"content-length")
         if length is not None and length.isdigit() and int(length) > limit:
             response = JSONResponse(status_code=413, content={"detail": _too_large(limit)})

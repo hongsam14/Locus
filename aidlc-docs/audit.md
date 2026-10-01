@@ -3782,3 +3782,19 @@ Tests: 13 carry and 3 port contract; mutations caught after strengthening #13b t
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 9b.
 
 ---
+
+## U8 Code Generation Part 2 — Step 9c (U3 carry: uploads, limits, API)
+**Timestamp**: 2026-10-01T14:56:16Z
+**AI Response**: Closed:
+- C7: one open-session filter; the CLI uses WorldCatalog; need_service lives in deps.
+- C9: refs from one snapshot.
+- C13: WorldInfo inherits.
+- C15: sessions are checked before files are read.
+- S07: a non-object or too-deep map is 422.
+- S19: WorldInputs caps are shared with uploads.
+- S20: root_path is stripped and the World File limit gets a margin.
+- S27: bytes in a 422 body no longer cause a 500.
+7 tests and 2 intended changes; mutations caught. Gates: pytest 908, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 9c.
+
+---

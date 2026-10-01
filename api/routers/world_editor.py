@@ -311,7 +311,8 @@ def prior_refs(world_id: str, w: WorldContainer = Depends(get_world)) -> PriorRe
     """Each prior with what cites it, and cited ids the world lacks (BR-U3-31)."""
     admin = _wiki(w)
     try:
-        return PriorRefsOut(usages=admin.prior_refs(world_id), broken=admin.broken_refs(world_id))
+        found, missing = admin.refs(world_id)  # one snapshot read (U3 review C9)
+        return PriorRefsOut(usages=found, broken=missing)
     except _ERRORS as exc:
         raise http_error(exc) from exc
 

@@ -66,6 +66,13 @@ class WikiAdmin:
         nodes = self._graph.find_nodes(world_id, "WikiPrior")
         return sorted((gm.node_to_wikiprior(n) for n in nodes), key=lambda p: p.id)
 
+    def refs(self, world_id: str) -> tuple[list[PriorUsage], list[BrokenRef]]:
+        """Usages and broken references from one snapshot read (U3 review C9): the
+        snapshot's priors are the stored ones, so no second graph read is needed."""
+        snapshot = self._snapshot(world_id)
+        priors = sorted(snapshot.kg.priors, key=lambda p: p.id)
+        return usages(snapshot, priors), broken(snapshot, priors)
+
     def prior_refs(self, world_id: str) -> list[PriorUsage]:
         """Each stored prior with the connections and knowledge that cite it (BR-U3-31)."""
         return usages(self._snapshot(world_id), self.list_priors(world_id))

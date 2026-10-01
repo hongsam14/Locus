@@ -42,3 +42,10 @@ class PlayTuning:
     npc_max_rumors: int = 8
     npc_max_recent_messages: int = 10
     npc_max_message_chars: int = 500
+    # U6 deeds & spread (domain-entities §5)
+    spread_min_weight: float = 0.15  # reach weight below this: not a spread target
+    deed_seed_min_salience: float = 0.5  # a noteworthy appraisal below this seeds nothing
+    max_spread_per_region_turn: int = 1  # deed rumors a region may receive per turn
+    declare_max_chars: int = 300  # declaration length (400 above)
+    npc_max_deeds: int = 5  # deeds in one NPC's dialogue context
+    appraisal_max_deeds: int = 8  # deeds judged in one appraisal call (newest first)

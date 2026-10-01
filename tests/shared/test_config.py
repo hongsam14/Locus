@@ -108,3 +108,27 @@ def test_review_10_the_embedding_client_is_bounded_too(monkeypatch: pytest.Monke
 
     OpenAIEmbeddingProvider(api_key="k", model="m", dimension=8)
     assert seen[0]["max_retries"] == 0 and seen[0]["timeout"] == 30.0
+
+
+def test_u6_deed_knobs_default_and_load_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """U6 domain-entities §5: six knobs, env-overridable."""
+    t = _settings().play_tuning()
+    assert (t.spread_min_weight, t.deed_seed_min_salience) == (0.15, 0.5)
+    assert (t.max_spread_per_region_turn, t.declare_max_chars) == (1, 300)
+    assert (t.npc_max_deeds, t.appraisal_max_deeds) == (5, 8)
+    for name, value in (
+        ("SPREAD_MIN_WEIGHT", "0.3"),
+        ("DEED_SEED_MIN_SALIENCE", "0.7"),
+        ("MAX_SPREAD_PER_REGION_TURN", "2"),
+        ("DECLARE_MAX_CHARS", "120"),
+        ("NPC_MAX_DEEDS", "0"),
+        ("APPRAISAL_MAX_DEEDS", "3"),
+    ):
+        monkeypatch.setenv(name, value)
+    t = _settings().play_tuning()
+    assert (t.spread_min_weight, t.deed_seed_min_salience) == (0.3, 0.7)
+    assert (t.max_spread_per_region_turn, t.declare_max_chars) == (2, 120)
+    assert (t.npc_max_deeds, t.appraisal_max_deeds) == (0, 3)
+    monkeypatch.setenv("DECLARE_MAX_CHARS", "0")
+    with pytest.raises(ValidationError):
+        _settings()

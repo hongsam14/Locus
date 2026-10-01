@@ -79,6 +79,15 @@ class Settings(BaseSettings):
     npc_max_rumors: int = Field(default=8, ge=0, alias="NPC_MAX_RUMORS")
     npc_max_recent_messages: int = Field(default=10, ge=0, alias="NPC_MAX_RECENT_MESSAGES")
     npc_max_message_chars: int = Field(default=500, ge=1, alias="NPC_MAX_MESSAGE_CHARS")
+    # U6 deeds & spread
+    spread_min_weight: float = Field(default=0.15, ge=0.0, le=1.0, alias="SPREAD_MIN_WEIGHT")
+    deed_seed_min_salience: float = Field(
+        default=0.5, ge=0.0, le=1.0, alias="DEED_SEED_MIN_SALIENCE"
+    )
+    max_spread_per_region_turn: int = Field(default=1, ge=0, alias="MAX_SPREAD_PER_REGION_TURN")
+    declare_max_chars: int = Field(default=300, ge=1, alias="DECLARE_MAX_CHARS")
+    npc_max_deeds: int = Field(default=5, ge=0, alias="NPC_MAX_DEEDS")
+    appraisal_max_deeds: int = Field(default=8, ge=0, alias="APPRAISAL_MAX_DEEDS")
 
     # --- Localization (UX Improvement / X1) ---
     # Translate LLM-generated session content (rumors, events) and canonical
@@ -156,6 +165,12 @@ class Settings(BaseSettings):
             npc_max_rumors=self.npc_max_rumors,
             npc_max_recent_messages=self.npc_max_recent_messages,
             npc_max_message_chars=self.npc_max_message_chars,
+            spread_min_weight=self.spread_min_weight,
+            deed_seed_min_salience=self.deed_seed_min_salience,
+            max_spread_per_region_turn=self.max_spread_per_region_turn,
+            declare_max_chars=self.declare_max_chars,
+            npc_max_deeds=self.npc_max_deeds,
+            appraisal_max_deeds=self.appraisal_max_deeds,
         )
 
 

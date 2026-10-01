@@ -231,7 +231,87 @@ def test_u5_regenerate_result_rumors_is_kept_plus_fresh() -> None:
 
 
 def test_u5_npc_talked_is_appended_after_the_u4_kinds() -> None:
+    """Kinds are only ever appended. (U6 appends its own after `npc_talked`, so the old
+    "npc_talked is last" check now reads "U4 < U5 < U6" — NFR-1, intended change.)"""
     from locus.play.models import TimelineKind
 
     kinds = [k.value for k in TimelineKind]
-    assert kinds[-1] == "npc_talked" and kinds.index("turn_run_failed") < kinds.index("npc_talked")
+    assert kinds.index("turn_run_failed") < kinds.index("npc_talked")
+    u6 = [
+        "action_declared",
+        "deed_recorded",
+        "deed_appraised",
+        "deed_seeded",
+        "rumor_spread",
+        "deed_voided",
+    ]
+    assert kinds[-len(u6) :] == u6 and kinds.index("npc_talked") < kinds.index(u6[0])
+
+
+# --- U6 models (Step 2.3) ----------------------------------------------------------- #
+def test_u6_a_declaration_is_a_player_action_and_an_empty_one_passes_the_model() -> None:
+    """BR-U6-5: emptiness and length are the service's 400, never a model 422."""
+    from pydantic import TypeAdapter
+
+    from locus.play.models import DeclareAction, PlayerAction
+
+    action = TypeAdapter(PlayerAction).validate_python({"type": "declare", "text": ""})
+    assert isinstance(action, DeclareAction) and action.text == ""
+
+
+def test_u6_deed_models_round_trip() -> None:
+    from locus.play.models import (
+        Deed,
+        DeedAppraisal,
+        DeedKind,
+        DeedView,
+        SessionRumor,
+        SpreadTarget,
+        TurnRun,
+    )
+
+    deed = Deed(
+        session_id="s",
+        player_id="p",
+        region_id="a",
+        kind=DeedKind.DECLARED_ACTION,
+        text="Ari caught a thief.",
+        declaration="도둑을 잡았다",
+        witnessed_npc_ids=["n1"],
+        run_id="run1",
+    )
+    ap = DeedAppraisal(
+        session_id="s",
+        deed_id=deed.id,
+        npc_id="n1",
+        noteworthy=True,
+        salience=0.8,
+        slant="admiring",
+        retelling="The traveler caught a thief!",
+    )
+    rumor = SessionRumor(
+        session_id="s",
+        region_id="a",
+        distorted_from_id=deed.id,
+        distorted_from_kind="deed",
+        statement=ap.retelling,
+        origin_kind="deed",
+        origin_deed_id=deed.id,
+        origin_appraisal_id=ap.id,
+        provenance=Provenance(source=SourceKind.SIMULATION),
+    )
+    view = DeedView(deed=deed, appraisals=[ap], rumors=[rumor], reached_region_ids=["a"])
+    assert DeedView.model_validate_json(view.model_dump_json()) == view
+    assert (
+        SessionRumor(
+            session_id="s",
+            region_id="a",
+            distorted_from_id="k",
+            provenance=Provenance(source=SourceKind.SIMULATION),
+        ).origin_kind
+        == "canonical"
+    )
+    run = TurnRun(session_id="s", lang="en", turns_charged=1, from_region_id="a")
+    assert TurnRun.model_validate_json(run.model_dump_json()).lang == "en"
+    with pytest.raises(ValidationError):
+        SpreadTarget(region_id="b", from_region_id="a", weight=1.2, degree=0.4, support=0.3)

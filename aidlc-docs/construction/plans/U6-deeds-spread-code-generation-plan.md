@@ -104,7 +104,7 @@
   - 검토 기록은 옛 문구를 그대로 둔다.
 
 ### Step 2 — 모델·조정값·설정 (domain-entities §1~5)
-- [ ] 2.1 `locus/play/models.py`
+- [x] 2.1 `locus/play/models.py`
   - 행적 모델: `DeedKind`, `Deed`(`run_id` 포함), `DeedAppraisal`, `DeedView`
   - 행동·서술·전파 값: `DeclareAction`(`text: str`, min_length 없음), `Narration(text, record, lang, llm_calls)`, `SpreadTarget(region_id, from_region_id, weight, degree, support)`
   - 준비 단계 값: `DeedMemory(deed_id, text, slant)`, `SceneBrief(region_name, description, npcs, facts, rumors)`, `AppraisalDraftItem`·`AppraisalDraft`(구조화 출력), `AppraisalOutcome(summary, appraisals, messages_through, llm_calls, llm_failed)`, `NarrationDraft(narration, record)`
@@ -113,8 +113,8 @@
   - `TurnRun.lang`, `ActionResult.declaration`, `TurnResult.seeded_rumor_ids`·`spread_rumor_ids`, `RegionView.declare_max_chars`
   - `TimelineKind`에 `ACTION_DECLARED`·`DEED_RECORDED`·`DEED_APPRAISED`·`DEED_SEEDED`·`RUMOR_SPREAD`·`DEED_VOIDED`를 더한다.
   - `locus/play/errors.py`: `AppraisalExistsError(ValueError)`
-- [ ] 2.2 `locus/shared/config/tuning.py::PlayTuning`에 조정값 여섯을 더한다(domain-entities §5). `settings.py`에는 env alias 여섯과 `play_tuning()` 전달을 더한다.
-- [ ] 2.3 테스트
+- [x] 2.2 `locus/shared/config/tuning.py::PlayTuning`에 조정값 여섯을 더한다(domain-entities §5). `settings.py`에는 env alias 여섯과 `play_tuning()` 전달을 더한다.
+- [x] 2.3 테스트
   - `tests/play/test_models.py`: 새 모델 왕복, `PlayerAction` 판별(`declare`), 빈 `DeclareAction.text`가 모델에서 통과하는지(422가 아니라 서비스 400이 되게, BR-U6-5)
   - `tests/shared/test_config.py`: env 여섯 로딩
 

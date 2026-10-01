@@ -56,6 +56,13 @@ class TimelineKind(str, Enum):
     TURN_RUN_FAILED = "turn_run_failed"
     # U5 NPC dialogue (additive): an EndTalk action closes a conversation (FR-C4)
     NPC_TALKED = "npc_talked"
+    # U6 deeds & spread (additive). Payloads carry ``region_name`` (FR-D3).
+    ACTION_DECLARED = "action_declared"
+    DEED_RECORDED = "deed_recorded"
+    DEED_APPRAISED = "deed_appraised"
+    DEED_SEEDED = "deed_seeded"
+    RUMOR_SPREAD = "rumor_spread"
+    DEED_VOIDED = "deed_voided"
 
 
 class GameSession(LocusModel):
@@ -83,6 +90,13 @@ class SessionRumor(LocusModel):
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     promoted: bool = False  # promotion state (FR-R3.2/3.3); persisted in the session store
     active: bool = True  # soft-flag; prune sets False, row kept for history (BR-H1-5/6)
+    # U6: where the rumor came from. "canonical" = drafted from canonical knowledge or a
+    # canonical chain; "deed" = a player's deed, born from an NPC's retelling and spread
+    # along the connections (BR-U6-14/16). Only deed rumors spread; a void reaches them all.
+    origin_kind: Literal["canonical", "deed"] = "canonical"
+    origin_deed_id: str | None = None
+    origin_appraisal_id: str | None = None  # which NPC's version (FD-U6 Q1 hybrid)
+    spread_from_region_id: str | None = None  # None for a seed, the parent region otherwise
     provenance: Provenance
 
 
@@ -258,6 +272,8 @@ class TurnResult(LocusModel):
     llm_failed: bool = False  # circuit breaker tripped: remaining drafts abandoned (NFR R-02)
     rumors_skipped_regions: list[str] = Field(default_factory=list)  # budget exhausted
     rumors_capped_regions: list[str] = Field(default_factory=list)  # active cap reached
+    seeded_rumor_ids: list[str] = Field(default_factory=list)  # U6: deed rumors born
+    spread_rumor_ids: list[str] = Field(default_factory=list)  # U6: one hop this turn
 
 
 class Player(LocusModel):
@@ -295,7 +311,28 @@ class EndTalkAction(LocusModel):
 
 
 # Discriminated by ``type`` (FR-C3); an unknown type fails validation (422 at the API).
-PlayerAction = Annotated[Union[MoveAction, WaitAction, EndTalkAction], Field(discriminator="type")]
+class DeclareAction(LocusModel):
+    """Declare a free-text action (U6, FR-C9): the GM narrates, it becomes a deed, 1 turn.
+    No ``min_length``: an empty or too long text is the service's 400 (BR-U6-5), a model
+    constraint would be FastAPI's 422."""
+
+    type: Literal["declare"] = "declare"
+    text: str
+
+
+PlayerAction = Annotated[
+    Union[MoveAction, WaitAction, EndTalkAction, DeclareAction], Field(discriminator="type")
+]
+
+
+class Narration(LocusModel):
+    """A declaration's outcome (FD-U6 Q3=A): ``text`` for the player in the display
+    language, ``record`` as the English deed text. ``llm_calls`` is 0 on the fallback."""
+
+    text: str
+    record: str
+    lang: str
+    llm_calls: int = Field(default=1, ge=0)
 
 
 class MoveOption(LocusModel):
@@ -329,6 +366,7 @@ class ActionResult(LocusModel):
     budget_exhausted: bool = False
     llm_failed: bool = False
     llm_available: bool = True
+    declaration: Narration | None = None  # U6: a declare action's narration
 
 
 class TurnRun(LocusModel):
@@ -348,6 +386,7 @@ class TurnRun(LocusModel):
     finished_at: datetime | None = None
     result: ActionResult | None = None  # when done
     error: str | None = None  # one fixed line when failed (NFR-6)
+    lang: str | None = None  # U6: the display language a declaration is narrated in
 
 
 class RegionView(LocusModel):
@@ -368,6 +407,7 @@ class RegionView(LocusModel):
     moves: list[MoveOption] = Field(default_factory=list)
     turn_running: bool = False
     llm_available: bool = True
+    declare_max_chars: int = 300  # U6: the server's declaration limit for the input box
 
 
 # --------------------------------------------------------------------------- #
@@ -449,3 +489,124 @@ class RegenerateResult(LocusModel):
     def rumors(self) -> list[SessionRumor]:
         """What the region holds afterwards — the list the router has always returned."""
         return self.kept + self.fresh
+
+
+# --- U6 deeds, appraisals and spread (domain-entities §1–§2) ----------------------- #
+class DeedKind(str, Enum):
+    ARRIVAL = "arrival"  # session start region + every move's arrival (deterministic text)
+    STATEMENT = "statement"  # a finished talk's new player lines, summarised in English
+    DECLARED_ACTION = "declared_action"  # a declaration's English record (Q3=A)
+
+
+class Deed(LocusModel):
+    """What the player did in a region, as the session remembers it (FR-C8). Session-only:
+    it never changes the canonical world."""
+
+    id: str = Field(default_factory=new_id)
+    session_id: str
+    player_id: str
+    region_id: str  # where it happened = where its seeds are born
+    turn: int = Field(default=0, ge=0)
+    kind: DeedKind
+    text: str = Field(min_length=1)  # English, except the no-LLM declaration (BR-U6-24)
+    declaration: str | None = None  # DECLARED_ACTION: the player's own words (GM view)
+    messages_through: datetime | None = None  # STATEMENT: last player line it summarises
+    witnessed_npc_ids: list[str] = Field(default_factory=list)
+    voided: bool = False
+    voided_turn: int | None = None
+    run_id: str | None = None  # the TurnRun that recorded it (failed-run compensation)
+    created_at: datetime | None = None  # app-stamped; orders a stay
+
+
+class DeedAppraisal(LocusModel):
+    """One NPC's view of one deed (FR-C10): tell others or not, how eagerly, how."""
+
+    id: str = Field(default_factory=new_id)
+    session_id: str
+    deed_id: str
+    npc_id: str
+    noteworthy: bool
+    salience: float = Field(ge=0.0, le=1.0)
+    slant: str = ""
+    retelling: str = ""  # English; "" when not noteworthy
+    turn: int = Field(default=0, ge=0)
+    seeded_rumor_id: str | None = None  # at most one seed per appraisal (BR-U6-12)
+    created_at: datetime | None = None
+
+
+class DeedView(LocusModel):
+    """A deed for the GM: its appraisals, every rumor it produced and where they reached."""
+
+    deed: Deed
+    appraisals: list[DeedAppraisal] = Field(default_factory=list)
+    rumors: list[SessionRumor] = Field(default_factory=list)  # incl. inactive
+    reached_region_ids: list[str] = Field(default_factory=list)
+
+
+class VoidResult(LocusModel):
+    deed_id: str
+    deactivated_rumor_ids: list[str] = Field(default_factory=list)
+
+
+class DeedMemory(LocusModel):
+    """A deed as one NPC remembers it (its own retelling, or what it saw)."""
+
+    deed_id: str
+    text: str
+    slant: str = ""
+
+
+class SceneBrief(LocusModel):
+    """What the GM narrator may look at: this region only (BR-U6-26)."""
+
+    player_name: str
+    region_name: str
+    description: str = ""
+    npcs: list[NPC] = Field(default_factory=list)
+    facts: list[KnowledgeView] = Field(default_factory=list)
+    rumors: list[SessionRumor] = Field(default_factory=list)
+
+
+class NarrationDraft(LocusModel):
+    """Structured LLM output of one narration call (Q3=A)."""
+
+    narration: str = ""
+    record: str = ""
+
+
+class AppraisalDraftItem(LocusModel):
+    ref: str  # "d1".."dn" or "statement" — never an id
+    noteworthy: bool = False
+    salience: float = 0.0
+    slant: str = ""
+    retelling: str = ""
+
+
+class AppraisalDraft(LocusModel):
+    """Structured LLM output of one appraisal call: the talk's summary + the judgements."""
+
+    summary: str | None = None
+    appraisals: list[AppraisalDraftItem] = Field(default_factory=list)
+
+
+class AppraisalOutcome(LocusModel):
+    """What ``NpcDialogueService.appraise`` hands the deed service (no writes of its own)."""
+
+    npc_id: str
+    summary: str | None = None  # None: no statement deed (no new lines, or the call failed)
+    statement_text: str | None = None  # the statement deed's text when one is recorded
+    appraisals: list[DeedAppraisal] = Field(default_factory=list)  # deed ids already bound
+    statement_appraisal: DeedAppraisal | None = None  # bound to the new statement deed later
+    messages_through: datetime | None = None
+    llm_calls: int = Field(default=0, ge=0)
+    llm_failed: bool = False
+
+
+class SpreadTarget(LocusModel):
+    """One hop a deed rumor may take this turn (BR-U6-17/18)."""
+
+    region_id: str
+    from_region_id: str
+    weight: float = Field(ge=0.0, le=1.0)  # best_path_weights(origin)[X] × edge(X,Y)
+    degree: float = Field(ge=0.0, le=1.0)  # ≥ max(parent, 1 − weight)
+    support: float = Field(ge=0.0, le=1.0)  # parent × (0.5 + 0.5 × edge)

@@ -37,3 +37,8 @@ class ConversationExistsError(ValueError):
     A dedicated type so the concurrent-first-message recovery in ``say`` does not
     swallow unrelated ``ValueError`` s (U5 plan review R-03).
     """
+
+
+class AppraisalExistsError(ValueError):
+    """An NPC already judged this deed (``UNIQUE (deed_id, npc_id)``, BR-U6-10). Only a
+    write outside the turn guard (CLI, a second worker) can hit it."""

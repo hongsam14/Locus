@@ -2700,3 +2700,11 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **User Input**: (none — plan Step 1)
 **AI Response**: Baseline measured: pytest 557 / vitest 64 / mypy 11 (as expected; no NFR-1 correction needed). Skeleton files created (frontend files wait for Step 8 so an empty test file does not fail vitest). Step 1.3 corrections marked "〔Step 1.3 정정〕": domain-entities §7 rows 21–23 (DeedService names, reach weight = best_path_weights(origin)[X] × edge per BR-U6-17, SpreadTarget/DeedView/void shapes) and §4.3 fixed column table; BR-U6-10 (missing statement appraisal → false) and BR-U6-34 (column table, index, run_id via create_all); BLM §4 (c) rumor-level exemption and §0.1 wiring (region_knowledge, lang path, dialogue_llm, None behaviour, prep after the open check); nfr-light NFR-5 (prep failure trips the breaker, worst cases, budget 0/1), NFR-9 (interrupted-run deeds kept), NFR-3 (p95 conditions). Review records keep the old wording.
 **Context**: CONSTRUCTION / U6 — Code Generation Part 2, Step 1.
+
+---
+
+## U6 Code Generation Part 2 — complete
+**Timestamp**: 2026-10-01T00:34:23Z
+**User Input**: (none — plan Steps 1–10)
+**AI Response**: Steps 1–10 done and committed (39b9f91 … 3315e8b). Gates: pytest 630 (557 + 73, 0 regressions; one U5 test changed on purpose — timeline kinds now checked as append-only), vitest 74 (64 + 10), mypy 11 (= baseline), ruff/black/tsc/vite clean, boundaries 4, docker build OK (OpenAPI lists the two deed routes; act takes lang). Mutation checks: removing the prep-failure breaker, the canonical-only chain sources or the birth-turn exemption each fails a test. Code summary written with the complete deviation list and nine generation-time decisions for the gate. Presenting the code gate.
+**Context**: CONSTRUCTION / U6 — Code Generation Part 2 complete.

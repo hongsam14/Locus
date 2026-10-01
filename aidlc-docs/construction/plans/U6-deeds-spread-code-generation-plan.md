@@ -285,14 +285,14 @@
 - [x] 9.2 `env.example`에 env 여섯을 더한다. `CLAUDE.md`의 Status, `play/deeds/`·`gm/narrator.py`·`rumor/spread.py`, 테스트 수를 고친다.
 
 ### Step 10 — 검증·요약
-- [ ] 10.1 전체 게이트
+- [x] 10.1 전체 게이트
   - `pytest -q --no-cov`(기준 557 + 신규, 회귀 0), `npx vitest run`, `ruff check locus api tests`, `black --check locus api tests`
   - `mypy locus api`(≤ 11), `tsc --noEmit`, `vite build`, `docker build`(이미지 OpenAPI에 행적 라우트 둘)
-- [ ] 10.2 운영자 실행 명령을 code-summary에 적는다.
+- [x] 10.2 운영자 실행 명령을 code-summary에 적는다.
   - US-6.5 라이브: A에서 선언, NPC와 대화, 전할 만하다는 판단, 턴 둘셋, B NPC에게 묻기, 막힌 길 너머 C에는 없음
   - `GET deeds` p95: 행적 300 · 판단 600 · 소문 100 조건
   - PG의 열 추가 경로
-- [ ] 10.3 `construction/U6-deeds-spread/code/code-summary.md`
+- [x] 10.3 `construction/U6-deeds-spread/code/code-summary.md`
   - 기준선·결과, 파일 목록, 검증 번호별 테스트
   - 설계 이탈 완결 목록: FD §7의 20건, Step 1.3 정정, 생성 중 정한 것
   - 이월 결정별 구현 위치, 넘기는 것(U7·U8)

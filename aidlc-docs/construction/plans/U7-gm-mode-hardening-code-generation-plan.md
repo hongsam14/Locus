@@ -135,18 +135,18 @@
   - nfr-light NFR-5: 21,000자와 글자 상한 표(NFR R-01)
 
 ### Step 2 — 조정값·설정 (domain-entities §5)
-- [ ] 2.1 `locus/shared/config/tuning.py`
+- [x] 2.1 `locus/shared/config/tuning.py`
   - `KnowledgeTuning`: 그대로(필드 둘)
   - 새 `WorldTuning(base_weights, default_base, terrain_modifiers, dedup_threshold)`: frozen, `MappingProxyType`
   - `PlayTuning`
     - `high_support_threshold`를 0.45로 바꾼다.
     - 더하는 필드: `feedback_cap` 0.3, `feedback_restore` 0.05, `promotion_threshold` 0.6, `event_max_delta` 0.3, `event_propagate_min` 0.15, `event_support_reinforce` 0.1, `max_event_suggestions` 5, `suggest_max_regions` 30
-- [ ] 2.2 `locus/shared/config/settings.py`
+- [x] 2.2 `locus/shared/config/settings.py`
   - env alias 추가: `CONSENSUS_PROPAGATE_MIN`, `CONSENSUS_HEARSAY_MIN`, `TOPOLOGY_BASE_WEIGHTS`, `TOPOLOGY_DEFAULT_BASE`, `TOPOLOGY_TERRAIN_MODIFIERS`, `ONTOLOGY_DEDUP_THRESHOLD`, `RUMOR_FEEDBACK_CAP`, `RUMOR_FEEDBACK_RESTORE`, `RUMOR_PROMOTION_THRESHOLD`, `EVENT_MAX_DELTA`, `EVENT_PROPAGATE_MIN`, `EVENT_SUPPORT_REINFORCE`, `EVENT_SUGGEST_MAX`, `EVENT_SUGGEST_MAX_REGIONS`
   - `RUMOR_HIGH_SUPPORT_THRESHOLD` 기본값을 0.45로 바꾼다.
   - validator: 범위 [0,1], 연결 종류 키, `hearsay_min ≤ propagate_min`
   - `knowledge_tuning()`이 env를 쓰고, `world_tuning()`은 새로 둔다. `play_tuning()`은 새 필드를 넘긴다.
-- [ ] 2.3 테스트(`tests/shared/test_config.py`)
+- [x] 2.3 테스트(`tests/shared/test_config.py`)
   - TP-U7-8: 기본 Settings의 tuning이 dataclass 기본값과 같다. env 하나씩 덮어쓰면 tuning에 들어간다.
   - 깨진 JSON, 0.5보다 큰 hearsay, 1.2 가중치는 각각 `ValidationError`다.
   - `test_rumor_dynamics.py:39`(기본값)를 0.45로 바꾼다(`# U7 intended change: BR-U7-1`).

@@ -36,7 +36,8 @@ def _rumor(
 def test_default_params_values() -> None:
     p = DEFAULT_RUMOR_DYNAMICS
     assert (p.support_decay, p.prune_floor, p.min_source_support) == (0.05, 0.05, 0.3)
-    assert (p.feedback_weight, p.high_support_threshold, p.birth_support) == (0.1, 0.6, 0.2)
+    # U7 intended change: BR-U7-1 (Q4=A) — the strong bar sits below the promotion bar
+    assert (p.feedback_weight, p.high_support_threshold, p.birth_support) == (0.1, 0.45, 0.2)
 
 
 # --- decay_support ---------------------------------------------------------- #

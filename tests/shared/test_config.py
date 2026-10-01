@@ -132,3 +132,70 @@ def test_u6_deed_knobs_default_and_load_from_env(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setenv("DECLARE_MAX_CHARS", "0")
     with pytest.raises(ValidationError):
         _settings()
+
+
+# --- U7 tuning in one place (FR-A7 / US-8.5, TP-U7-8, BR-U7-19/20) --------------------- #
+def test_tp_u7_8_default_settings_build_the_dataclass_defaults() -> None:
+    from locus.shared.config.tuning import KnowledgeTuning, PlayTuning, WorldTuning
+
+    s = _settings()
+    assert s.knowledge_tuning() == KnowledgeTuning()
+    assert s.play_tuning() == PlayTuning()
+    world = s.world_tuning()
+    default = WorldTuning()
+    assert dict(world.base_weights) == dict(default.base_weights)
+    assert dict(world.terrain_modifiers) == dict(default.terrain_modifiers)
+    assert (world.default_base, world.dedup_threshold) == (0.5, 0.86)
+
+
+@pytest.mark.parametrize(
+    ("env", "value", "read"),
+    [
+        ("CONSENSUS_PROPAGATE_MIN", "0.6", lambda s: s.knowledge_tuning().propagate_min),
+        ("CONSENSUS_HEARSAY_MIN", "0.1", lambda s: s.knowledge_tuning().hearsay_min),
+        ("ONTOLOGY_DEDUP_THRESHOLD", "0.9", lambda s: s.world_tuning().dedup_threshold),
+        ("TOPOLOGY_DEFAULT_BASE", "0.4", lambda s: s.world_tuning().default_base),
+        ("RUMOR_HIGH_SUPPORT_THRESHOLD", "0.5", lambda s: s.play_tuning().high_support_threshold),
+        ("RUMOR_FEEDBACK_CAP", "0.2", lambda s: s.play_tuning().feedback_cap),
+        ("RUMOR_FEEDBACK_RESTORE", "0.1", lambda s: s.play_tuning().feedback_restore),
+        ("RUMOR_PROMOTION_THRESHOLD", "0.7", lambda s: s.play_tuning().promotion_threshold),
+        ("EVENT_MAX_DELTA", "0.1", lambda s: s.play_tuning().event_max_delta),
+        ("EVENT_PROPAGATE_MIN", "0.2", lambda s: s.play_tuning().event_propagate_min),
+        ("EVENT_SUPPORT_REINFORCE", "0.05", lambda s: s.play_tuning().event_support_reinforce),
+        ("EVENT_SUGGEST_MAX", "3", lambda s: s.play_tuning().max_event_suggestions),
+        ("EVENT_SUGGEST_MAX_REGIONS", "12", lambda s: s.play_tuning().suggest_max_regions),
+    ],
+)
+def test_tp_u7_8_each_knob_reaches_its_tuning(
+    monkeypatch: pytest.MonkeyPatch, env: str, value: str, read
+) -> None:
+    monkeypatch.setenv(env, value)
+    assert read(_settings()) == type(read(_settings()))(value)
+
+
+def test_tp_u7_8_table_env_overrides_only_the_named_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TOPOLOGY_BASE_WEIGHTS", '{"route": 0.7}')
+    monkeypatch.setenv("TOPOLOGY_TERRAIN_MODIFIERS", '{" Swamp ": 0.6}')
+    w = _settings().world_tuning()
+    assert (w.base_weights["route"], w.base_weights["adjacent"]) == (0.7, 0.8)
+    assert (w.terrain_modifiers["swamp"], w.terrain_modifiers["road"]) == (0.6, 1.2)
+
+
+@pytest.mark.parametrize(
+    ("env", "value"),
+    [
+        ("TOPOLOGY_BASE_WEIGHTS", "{broken"),  # not JSON
+        ("TOPOLOGY_BASE_WEIGHTS", '{"route": 1.2}'),  # out of range
+        ("TOPOLOGY_BASE_WEIGHTS", '{"teleport": 0.5}'),  # unknown connection kind
+        ("TOPOLOGY_TERRAIN_MODIFIERS", '{"road": -1}'),
+        ("CONSENSUS_HEARSAY_MIN", "0.6"),  # above propagate_min 0.5
+        ("EVENT_MAX_DELTA", "1.5"),
+        ("EVENT_SUGGEST_MAX", "0"),
+    ],
+)
+def test_br_u7_20_a_bad_knob_fails_startup(
+    monkeypatch: pytest.MonkeyPatch, env: str, value: str
+) -> None:
+    monkeypatch.setenv(env, value)
+    with pytest.raises(ValueError):  # ValidationError and SettingsError are ValueErrors
+        _settings()

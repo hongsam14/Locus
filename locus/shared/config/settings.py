@@ -4,12 +4,19 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from types import MappingProxyType
 from urllib.parse import quote_plus
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from locus.shared.config.tuning import KnowledgeTuning, PlayTuning
+from locus.shared.config.tuning import (
+    DEFAULT_BASE_WEIGHTS,
+    DEFAULT_TERRAIN_MODIFIERS,
+    KnowledgeTuning,
+    PlayTuning,
+    WorldTuning,
+)
 
 
 class Settings(BaseSettings):
@@ -63,7 +70,7 @@ class Settings(BaseSettings):
     )
     rumor_feedback_weight: float = Field(default=0.1, ge=0.0, alias="RUMOR_FEEDBACK_WEIGHT")
     rumor_high_support_threshold: float = Field(
-        default=0.6, ge=0.0, le=1.0, alias="RUMOR_HIGH_SUPPORT_THRESHOLD"
+        default=0.45, ge=0.0, le=1.0, alias="RUMOR_HIGH_SUPPORT_THRESHOLD"
     )
     rumor_birth_support: float = Field(default=0.2, ge=0.0, le=1.0, alias="RUMOR_BIRTH_SUPPORT")
     # U4 player mode (BR-U4-8/17/18, NFR R-05): five env knobs
@@ -88,6 +95,39 @@ class Settings(BaseSettings):
     declare_max_chars: int = Field(default=300, ge=1, alias="DECLARE_MAX_CHARS")
     npc_max_deeds: int = Field(default=5, ge=0, alias="NPC_MAX_DEEDS")
     appraisal_max_deeds: int = Field(default=8, ge=0, alias="APPRAISAL_MAX_DEEDS")
+    # U7 GM mode & hardening (FR-A7 / US-8.5). Every knob has a default, so the demo
+    # still starts from the two required .env values (NFR-4); a bad value fails startup.
+    consensus_propagate_min: float = Field(
+        default=0.5, ge=0.0, le=1.0, alias="CONSENSUS_PROPAGATE_MIN"
+    )
+    consensus_hearsay_min: float = Field(
+        default=0.15, ge=0.0, le=1.0, alias="CONSENSUS_HEARSAY_MIN"
+    )
+    # JSON objects; only the given keys override the defaults
+    topology_base_weights: dict[str, float] = Field(
+        default_factory=dict, alias="TOPOLOGY_BASE_WEIGHTS"
+    )
+    topology_default_base: float = Field(default=0.5, ge=0.0, le=1.0, alias="TOPOLOGY_DEFAULT_BASE")
+    topology_terrain_modifiers: dict[str, float] = Field(
+        default_factory=dict, alias="TOPOLOGY_TERRAIN_MODIFIERS"
+    )
+    ontology_dedup_threshold: float = Field(
+        default=0.86, ge=0.0, le=1.0, alias="ONTOLOGY_DEDUP_THRESHOLD"
+    )
+    rumor_feedback_cap: float = Field(default=0.3, ge=0.0, le=1.0, alias="RUMOR_FEEDBACK_CAP")
+    rumor_feedback_restore: float = Field(
+        default=0.05, ge=0.0, le=1.0, alias="RUMOR_FEEDBACK_RESTORE"
+    )
+    rumor_promotion_threshold: float = Field(
+        default=0.6, ge=0.0, le=1.0, alias="RUMOR_PROMOTION_THRESHOLD"
+    )
+    event_max_delta: float = Field(default=0.3, ge=0.0, le=1.0, alias="EVENT_MAX_DELTA")
+    event_propagate_min: float = Field(default=0.15, ge=0.0, le=1.0, alias="EVENT_PROPAGATE_MIN")
+    event_support_reinforce: float = Field(
+        default=0.1, ge=0.0, le=1.0, alias="EVENT_SUPPORT_REINFORCE"
+    )
+    event_suggest_max: int = Field(default=5, ge=1, alias="EVENT_SUGGEST_MAX")
+    event_suggest_max_regions: int = Field(default=30, ge=1, alias="EVENT_SUGGEST_MAX_REGIONS")
 
     # --- Localization (UX Improvement / X1) ---
     # Translate LLM-generated session content (rumors, events) and canonical
@@ -128,6 +168,25 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
+    def _tuning_is_consistent(self) -> "Settings":
+        """BR-U7-20: a bad knob fails startup instead of falling back silently."""
+        if self.consensus_hearsay_min > self.consensus_propagate_min:
+            raise ValueError(
+                f"CONSENSUS_HEARSAY_MIN={self.consensus_hearsay_min} is above "
+                f"CONSENSUS_PROPAGATE_MIN={self.consensus_propagate_min}"
+            )
+        unknown = sorted(set(self.topology_base_weights) - set(DEFAULT_BASE_WEIGHTS))
+        if unknown:
+            raise ValueError(f"TOPOLOGY_BASE_WEIGHTS has unknown connection kinds: {unknown}")
+        for kind, w in self.topology_base_weights.items():
+            if not 0.0 <= w <= 1.0:
+                raise ValueError(f"TOPOLOGY_BASE_WEIGHTS[{kind!r}]={w} is outside [0, 1]")
+        for terrain, m in self.topology_terrain_modifiers.items():
+            if m < 0.0:
+                raise ValueError(f"TOPOLOGY_TERRAIN_MODIFIERS[{terrain!r}]={m} is negative")
+        return self
+
+    @model_validator(mode="after")
     def _assemble_session_db_url(self) -> "Settings":
         """If SESSION_DB_URL is not given explicitly, build it from the parts
         (user[:password]@host:port/name). Password is URL-encoded."""
@@ -141,8 +200,25 @@ class Settings(BaseSettings):
         return self
 
     def knowledge_tuning(self) -> KnowledgeTuning:
-        """Consensus thresholds (FR-A7). Values are the long-standing defaults."""
-        return KnowledgeTuning()
+        """Consensus thresholds (FR-A7; env since U7)."""
+        return KnowledgeTuning(
+            propagate_min=self.consensus_propagate_min, hearsay_min=self.consensus_hearsay_min
+        )
+
+    def world_tuning(self) -> WorldTuning:
+        """The connection weight table and the dedup bar (U7, FR-A7). Table env vars
+        override only the keys they name."""
+        return WorldTuning(
+            base_weights=MappingProxyType({**DEFAULT_BASE_WEIGHTS, **self.topology_base_weights}),
+            default_base=self.topology_default_base,
+            terrain_modifiers=MappingProxyType(
+                {
+                    **DEFAULT_TERRAIN_MODIFIERS,
+                    **{k.strip().lower(): v for k, v in self.topology_terrain_modifiers.items()},
+                }
+            ),
+            dedup_threshold=self.ontology_dedup_threshold,
+        )
 
     def play_tuning(self) -> PlayTuning:
         """Assemble the deterministic rumor-dynamics knobs (FR-H4 / BR-H1-15).
@@ -171,6 +247,14 @@ class Settings(BaseSettings):
             declare_max_chars=self.declare_max_chars,
             npc_max_deeds=self.npc_max_deeds,
             appraisal_max_deeds=self.appraisal_max_deeds,
+            feedback_cap=self.rumor_feedback_cap,
+            feedback_restore=self.rumor_feedback_restore,
+            promotion_threshold=self.rumor_promotion_threshold,
+            event_max_delta=self.event_max_delta,
+            event_propagate_min=self.event_propagate_min,
+            event_support_reinforce=self.event_support_reinforce,
+            max_event_suggestions=self.event_suggest_max,
+            suggest_max_regions=self.event_suggest_max_regions,
         )
 
 

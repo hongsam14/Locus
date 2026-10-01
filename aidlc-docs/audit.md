@@ -3996,3 +3996,19 @@ The real API with a fake LLM now passes all 15 scenario steps in-process. 30/30 
 **Context**: CONSTRUCTION / U8 — post-approval review follow-up. Next: two deploy-facing design decisions (review memos 13 and 11), then Build and Test.
 
 ---
+
+## U8 — Deploy decisions before Build & Test
+**Timestamp**: 2026-10-01T18:42:02Z
+**User Input**: memo 13 "A. 빌드 경로만 늘린다 (Recommended)"; memo 11 "A. SPDX 문자열로 바꾼다 (Recommended)"
+**AI Response**:
+- nginx: a build-only location at 600 s (other /api routes stay at 130 s).
+- pyproject: `license = "MIT"`, `license-files = ["LICENSE"]`, `setuptools>=77`; the Dockerfile copies LICENSE.
+- Corrected Infra §3.2, BR-U8-29 and operations.md.
+
+Verified:
+- Rebuilt app image: License-Expression MIT, License-File LICENSE, `check_packaged()` [].
+- nginx `-t` passes, and both locations proxy to a stub app on a throwaway network (cleaned up).
+- test_packaging guards the SPDX form and the LICENSE copy.
+**Context**: CONSTRUCTION / U8 — post-review deploy decisions. Next: Build and Test.
+
+---

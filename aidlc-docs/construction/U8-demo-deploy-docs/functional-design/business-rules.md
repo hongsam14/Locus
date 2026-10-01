@@ -64,7 +64,7 @@
 | 규칙 | 내용 | 근거 |
 |---|---|---|
 | BR-U8-28 | README 첫 줄은 §0 문장이다. 절 순서는 business-logic-model §5를 따른다. README의 명령은 실제로 있는 프로필과 명령만 쓴다 | US-1.2, H1 |
-| BR-U8-29 | `LICENSE`(MIT)와 `pyproject.toml` `license = { text = "MIT" }`가 같다(setuptools 하한 61에서 유효한 표 형식, 〔검토 01 R-01〕). `pyproject.toml` 설명은 §0의 영어판이다 | Q6=A, US-7.5 |
+| BR-U8-29 | `LICENSE`(MIT)와 `pyproject.toml` `license = { text = "MIT" }`가 같다(setuptools 하한 61에서 유효한 표 형식, 〔검토 01 R-01〕). 〔U8 리뷰 01 정정, 설계 메모 11, 사람의 선택 A〕 표 형식은 setuptools에서 지원이 끝나므로(2027-02-18) SPDX 문자열 `license = "MIT"`와 `license-files = ["LICENSE"]`, 빌드 요구 `setuptools>=77`로 바꿨다. app 이미지는 `LICENSE`를 함께 복사한다. `pyproject.toml` 설명은 §0의 영어판이다 | Q6=A, US-7.5 |
 | BR-U8-30 | `requirements.txt`와 `pyproject.toml` `dependencies`는 같은 이름과 버전 조건을 갖는다 | US-7.5 |
 | BR-U8-31 | 진행 중 기능 넷은 README 표와 모듈 docstring `STATUS:`로 표시한다. 화면에 닿는 것(빌드 패널의 컨셉 아트 칸)에는 "진행 중" 표시가 있다 | US-7.3, A8-7 |
 | BR-U8-32 | 살아 있는 문서(README, `CLAUDE.md`, `operations.md`, `web/README.md`)의 데모 명령은 `emberleaf`를 쓴다. 지난 유닛의 code-summary는 고치지 않는다. operations.md에 옛 이름 대응 한 줄을 둔다 | A8-12 |

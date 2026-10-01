@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install the package (locus = core boundaries, api = FastAPI composition root)
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md LICENSE ./
 COPY locus ./locus
 COPY api ./api
 RUN pip install --no-cache-dir .

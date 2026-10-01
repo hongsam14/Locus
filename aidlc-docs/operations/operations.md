@@ -420,7 +420,7 @@ cd web && npm ci     # the lock as committed (no --legacy-peer-deps needed)
 npm run dev          # dev server :5173, proxies /api -> :8000 (run uvicorn separately)
 npm run build        # tsc + vite build -> web/dist
 ```
-- In compose the `web` service builds this with `npm ci` on `node:22-alpine` and serves `dist/` from nginx, which proxies `/api` to `app:8000` (`client_max_body_size 49m`, read timeout 130 s) — U8.
+- In compose the `web` service builds this with `npm ci` on `node:22-alpine` and serves `dist/` from nginx, which proxies `/api` to `app:8000` (`client_max_body_size 49m`, read timeout 130 s; the build routes 600 s, as a build is minutes of LLM work — a longer one keeps running on the app and a second [build] answers 409 "already running") — U8.
 - Screens: `/` (demo cards, world list), `/editor/:worldId`, `/gm/:sessionId`, `/play/:sessionId`. See `web/README.md`.
 
 ## Observability (current)

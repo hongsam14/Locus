@@ -51,7 +51,7 @@
 | 빌드 이미지 | `node:20-alpine` | `node:22-alpine`(Vite 8은 Node ≥ 20.19 또는 22.12) |
 | 설치 | `npm install` | `npm ci`(lock 그대로, US-7.5) |
 | nginx 요청 크기 | 없음(기본 1 MiB) | `client_max_body_size 49m;` 〔Step 1.2 정정〕(앱 요청 상한 48 MiB보다 조금 크게: 상한 판정과 JSON 413은 앱이 한다, Infra 검토 R-03) |
-| 프록시 시간 | `proxy_read/send_timeout 130s` | 그대로(LLM 한 줄 대기) |
+| 프록시 시간 | `proxy_read/send_timeout 130s` | 그대로(LLM 한 줄 대기). 〔U8 리뷰 01 정정, 설계 메모 13, 사람의 선택 A〕 빌드 경로(`/api/world/worlds/*/build`, `…/build/upload`, `…/demo/*/build`)만 따로 location을 두고 600초. 빌드는 LLM 호출 수십 번을 차례로 해 130초를 넘길 수 있다. 600초도 넘기면 504이지만 다시 눌러도 409("already running")다 |
 | healthcheck | 없음 | compose에 `wget -q --spider http://localhost/`(nginx:alpine의 busybox wget) |
 
 ## 4. 기동 순서와 의존

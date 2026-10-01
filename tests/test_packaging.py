@@ -36,7 +36,13 @@ def test_requirements_txt_matches_the_runtime_dependencies() -> None:
 
 
 def test_the_license_is_mit_in_both_places() -> None:
-    assert PROJECT["license"] == {"text": "MIT"}
+    # U8 intended change: U8 review memo 11 — an SPDX string, not the deprecated table
+    assert PROJECT["license"] == "MIT" and PROJECT["license-files"] == ["LICENSE"]
+    build = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["build-system"]
+    assert "setuptools>=77.0" in build["requires"]
+    # license-files needs the file in the image's build context
+    copies = [ln for ln in (ROOT / "Dockerfile").read_text().splitlines() if ln.startswith("COPY")]
+    assert any("LICENSE" in ln.split() for ln in copies)
     assert (ROOT / "LICENSE").read_text(encoding="utf-8").splitlines()[0] == "MIT License"
 
 

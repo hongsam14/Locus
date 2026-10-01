@@ -577,4 +577,12 @@
     - #14 PlayerStrip의 늦은 답
     - #15 일괄 생성의 503 문구
   - 그밖에 §3 상한 밖 22건, §2 정리 11건, 설계 메모 13건, #5 (a)(`turn_running`이 GM 보유를 포함할지)
+- **배포 결정 둘**(Build & Test 전, 사람의 선택 A·A)
+  - 설계 메모 13: nginx에 빌드 경로 전용 location을 두고 600초로 했다(나머지 `/api`는 130초).
+  - 설계 메모 11: `license = "MIT"`, `license-files = ["LICENSE"]`, 빌드 요구 `setuptools>=77`로 바꿨다. app 이미지가 `LICENSE`를 복사한다.
+  - 정정: Infra §3.2, BR-U8-29, operations.md
+  - 확인
+    - app 이미지: `License-Expression: MIT`, `License-File: LICENSE`(Metadata 2.4), `check_packaged()` [], `import api.main`
+    - nginx: `-t`가 통과한다. 버리는 네트워크에 둔 흉내 `app`으로 두 location이 모두 프록시함을 봤다. 확인용 컨테이너·네트워크·이미지는 지웠다.
+  - 테스트: `test_packaging`(SPDX·`setuptools>=77`, Dockerfile이 LICENSE를 복사함), 변이 잡음
 - **게이트**: pytest 948, vitest 202, ruff·black clean, tsc clean, mypy 11, `npm audit --omit=dev` 0

@@ -396,6 +396,7 @@
       - `:345` C-1, `:351` C-2 의도된 변경
     - `tests/api/test_augment_api.py:30-32` `WorldContainer(editor=None, …)` → `editors=None`
     - `tests/world/augmentation/test_augmentation.py:226` `AugmentationEngine(cache, editor, graph, llm=None)` → `editors`
+    - 〔검토 02 처리 R-14〕 `test_augmentation.py:107`의 `_Editor` 가짜를 인메모리 그래프 위의 실제 `Editors`로 바꾼다. 이것을 넘기는 `:137-157`의 `apply_answer`·`revert`, `:225-226`의 엔진 생성도 함께 바꾼다. 4.7은 `apply_answer`·`revert`의 인자 이름(`editor` → `editors`)만 바꾼다. 나머지 시그니처는 6.5·6.6에서 바꾼다.
 - [ ] 4.8 테스트
   - `tests/world/strategies.py`를 넓힌다: 계층 숲 + 연결 쌍 + 스코프 0~3 지식 + NPC + `located_in` 엔티티를 가진 월드, 편집 연산 열.
   - `test_editors.py`
@@ -484,6 +485,13 @@
   - 엔진은 `editors`와 `wiki_provider`를 받는다.
   - `assemble_world`는 보강을 LLM 없이도 조립한다(NFR-4). 이때 `CommonsenseWiki(search, llm=None, …)`(3.1)를 쓴다. LLM이 있으면 다듬기·판정을 켠다.
   - `augmentation/graph.py`(LangGraph 보기, 미배선)는 새 시그니처에 맞춘다.
+- [ ] 6.8a 〔검토 02 처리 R-15〕 보강 라우터(`api/routers/world.py:459-485`)를 6.9 전에 바꾼다.
+  - `POST runs`는 LLM 없이도 200이다.
+  - `answer`는 `response_model=AnswerResult`다.
+  - `revert`는 200 + `AugmentationRun`이다.
+  - `unignore` 경로를 더한다.
+  - 409 매핑(8.5의 보강 오류)도 여기서 한다.
+  - 8.4에는 wiki·초안 경로만 남는다.
 - [ ] 6.9 테스트
   - 의도된 변경(C-3), `tests/world/augmentation/test_augmentation.py`
     - `:101` 질문 `options`, `:155` `ChangeSet.removed/updated`, `:175` `_StubEngine`의 `options=["add"]`, `:193` `max_rounds=5` → `max_answers`
@@ -590,6 +598,7 @@
 ### Step 9 — 프론트엔드: 에디터 (frontend-components.md)
 붉은 구간: 9.2의 타입 변경부터 9.8 끝까지 `tsc`·vitest가 붉을 수 있다. 옛 `RegionPanel`·루트 `AugmentPanel`·`EditorPage`가 옛 API와 타입을 쓰기 때문이다. Step 9는 9.10 끝에 GREEN이고, 커밋은 Step 9 끝에 한 번이다.
 - [ ] 9.1 `api/http.ts`: `HttpError(status, body)`, `statusOf(err)`(C16). `conflictKind`는 `HttpError`의 본문을 읽는다.
+  - 〔검토 02 처리 R-16〕 `HttpError.message`는 지금 형식 `${status} ${statusText}: ${body}`를 유지한다. 그래서 `String(e)`·`includes("404")`를 쓰는 곳은 바뀌지 않는다. 문자열만 쓰는 거절 fixture(`deeds.test.tsx:125`, `dialogue.test.tsx:250·293`, `play.test.tsx:169`)는 그대로 둔다.
   - 호출처와 fixture는 이월 표 C16에 있다.
   - 이 하위 단계는 단독으로 GREEN이다(타입 변경 없음).
 - [ ] 9.2 `api/world.ts`·`types.ts`

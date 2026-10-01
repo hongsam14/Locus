@@ -3271,3 +3271,20 @@ R-08 → Accepted risk
 **Context**: Code Generation Part 1 — U3 — next: approval gate.
 
 ---
+
+## U3 Code Generation Part 1 — approval gate
+**Timestamp**: 2026-10-01T09:26:08Z
+**User Input**: "Approve & Continue (Recommended)"
+**AI Response**: U3 code generation plan approved. The open findings are accepted as risk and handled at their steps; the plan records them as "〔검토 02 처리〕":
+- R-14: 4.7 replaces the `_Editor` fake in `test_augmentation.py` (:107·137-157·226) with real `Editors`; apply/revert rename the argument only.
+- R-15: the augmentation router response model and status changes move just before 6.9; 8.4 keeps priors and npc-drafts.
+- R-16: `HttpError.message` keeps the current `${status} ${statusText}: ${body}` format; four fixtures stay unchanged.
+Next: Code Generation Part 2, starting at Step 1.
+**Context**: CONSTRUCTION / U3 — code plan approved.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — U3
+R-14 → Accepted risk
+R-15 → Accepted risk
+R-16 → Accepted risk

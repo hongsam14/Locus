@@ -83,3 +83,16 @@
     - CLI `--demo` 1
   - 변이(모두 잡음): 경로 탈출 검사 빼기, 지나갈 수 있는 시작 지역 검사 빼기 → EX-11 실패
   - pytest 875
+- **Step 7** (씨앗 시작)
+  - `EventService.create_event(…, provenance=, timeline_extra=)`. 기존 호출처는 바뀌지 않는다. 씨앗이면 타임라인 요약이 "started seed '…' in …"이고 payload에 `seed_id`·`seed_title`이 있다.
+  - `locus/play/event/seeds.py` `SeedService`
+    - `list_seeds`(제목 순, 지역 이름, `running_event_id`)
+    - `start`(열림 → 씨앗 → 지역 → 진행 중 → 생성)
+    - 진행 중 판정: 해소되지 않은 사건 중 `provenance.generated_by == "seed"`이고 `refs`에 씨앗 id가 있는 것
+  - `SeedView`(`play/models.py`), `SeedAlreadyRunningError`(`play/errors.py`) → `api/errors.py` 409(`PLAY_ERRORS`에 포함)
+  - `PlayContainer.seeds`. GM 라우트 `GET /sessions/{sid}/seeds`, `POST /sessions/{sid}/seeds/{seed_id}/start`(201 `EventOut`, GM 리스 `_idle`)
+  - 테스트 `tests/api/test_seeds_api.py` 2
+    - EX-4·TP-U8-5: 시작 → ACTIVE·타임라인 → 409 → 해소 → 201, LLM 0
+    - 404·턴 중 409·닫힘 409, 읽기는 닫혀도 됨
+  - 변이: 진행 중 검사 빼기 → EX-4 실패(잡음)
+  - pytest 877

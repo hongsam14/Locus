@@ -8,6 +8,7 @@ distortion lives in TurnAdvancer; this service is the CRUD/lifecycle boundary.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from locus.knowledge.cache import SnapshotSource
@@ -79,8 +80,13 @@ class EventService(SnapshotNames, SessionAppService):
         magnitude: float,
         description: str = "",
         lifecycle: EventLifecycle | None = None,
+        provenance: Provenance | None = None,
+        timeline_extra: Mapping[str, str] | None = None,
     ) -> SessionEvent:
-        """Manually create an ACTIVE event (FR-P2.1). Validates the region (BR-P1-2)."""
+        """Manually create an ACTIVE event (FR-P2.1). Validates the region (BR-P1-2).
+
+        ``provenance`` and ``timeline_extra`` let a started seed say where the event came
+        from (U8, BR-U8-17); a GM's own event keeps the defaults."""
         session = self._require_open(session_id)
         require_region(self._snapshots, session.world_id, region_id)
         cat = EventCategory(category)
@@ -93,20 +99,28 @@ class EventService(SnapshotNames, SessionAppService):
             lifecycle=lifecycle or default_lifecycle(cat),
             status=EventStatus.ACTIVE,
             created_turn=session.turn,
-            provenance=Provenance(source=SourceKind.SIMULATION, generated_by="gm:event"),
+            provenance=provenance
+            or Provenance(source=SourceKind.SIMULATION, generated_by="gm:event"),
         )
         saved = self._repo.create_event(event)
         name = self._region_name(session, region_id)
+        extra = dict(timeline_extra or {})
+        summary = (
+            f"started seed {extra['seed_title']!r} in {name}"
+            if "seed_title" in extra
+            else f"created {cat.value} event in {name}"
+        )
         self._timeline(
             session,
             TimelineKind.EVENT_CREATED,
-            f"created {cat.value} event in {name}",
+            summary,
             {
                 "event_id": saved.id,
                 "region_id": region_id,
                 "region_name": name,
                 "category": cat.value,
                 "magnitude": saved.magnitude,
+                **extra,
             },
         )
         return saved

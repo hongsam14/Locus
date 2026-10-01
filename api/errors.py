@@ -1,7 +1,7 @@
 """Service-error → HTTP mapping shared by all routers.
 
 LookupError → 404 · SessionClosedError / WorldExistsError / TurnInProgressError /
-AugmentationConflict (U3: run finished, revert refused) → 409 ·
+AugmentationConflict (U3: run finished, revert refused) / SeedAlreadyRunningError (U8) → 409 ·
 ExecutorShutdownError / LlmUnavailableError → 503 ·
 UnsupportedWorldFile → 422 · ValueError (incl. InvalidActionError) → 400. A missing
 boundary is reported by ``api.deps`` as 503. ``PLAY_ERRORS`` is the except-tuple the
@@ -17,6 +17,7 @@ from locus.play.errors import (
     ExecutorShutdownError,
     LlmCallFailedError,
     LlmUnavailableError,
+    SeedAlreadyRunningError,
     TurnInProgressError,
 )
 from locus.world.augmentation.types import AugmentationConflict
@@ -31,6 +32,7 @@ PLAY_ERRORS: tuple[type[Exception], ...] = (
     ExecutorShutdownError,
     LlmUnavailableError,
     LlmCallFailedError,
+    SeedAlreadyRunningError,
     ValueError,
 )
 
@@ -39,7 +41,14 @@ def http_error(exc: Exception) -> HTTPException:
     if isinstance(exc, (ExecutorShutdownError, LlmUnavailableError, LlmCallFailedError)):
         return HTTPException(status_code=503, detail=str(exc))
     if isinstance(
-        exc, (SessionClosedError, WorldExistsError, TurnInProgressError, AugmentationConflict)
+        exc,
+        (
+            SessionClosedError,
+            WorldExistsError,
+            TurnInProgressError,
+            AugmentationConflict,
+            SeedAlreadyRunningError,
+        ),
     ):
         return HTTPException(status_code=409, detail=str(exc))
     if isinstance(exc, LookupError):

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from locus.knowledge.wiring import KnowledgeContainer
 from locus.play.deeds.service import DeedService
 from locus.play.distortion_service import DistortionService
+from locus.play.event.seeds import SeedService
 from locus.play.event.service import EventService
 from locus.play.event.suggester import EventSuggester
 from locus.play.gm.narrator import GmNarrator
@@ -48,6 +49,7 @@ class PlayContainer:
     # without a provider and only the LLM-needing ones raise 503 (code review U4-2 #13).
     rumors: RumorService
     events: EventService
+    seeds: SeedService  # U8: world event seeds started by the GM (BR-U8-15)
     # U5 — always assembled; without a provider only `say` answers 503 (BR-U5-29)
     dialogue: NpcDialogueService
     # U6 — deeds, appraisals and the GM's view; no LLM needed
@@ -126,6 +128,7 @@ def assemble_play(
         region_knowledge=region_knowledge,
         default_lang=shared.settings.translation_target_lang,
     )
+    events = EventService(store, loader, suggester=suggester, deeds=deeds, tuning=tuning)
     container = PlayContainer(
         repo=store,
         sessions=SessionService(store, loader, guard, deeds=deeds),
@@ -145,7 +148,8 @@ def assemble_play(
         guard=guard,
         executor=executor,
         rumors=rumors,
-        events=EventService(store, loader, suggester=suggester, deeds=deeds, tuning=tuning),
+        events=events,
+        seeds=SeedService(store, loader, events),
         dialogue=dialogue,
         deeds=deeds,
     )

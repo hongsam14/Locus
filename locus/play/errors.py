@@ -47,3 +47,8 @@ class AppraisalExistsError(ValueError):
 class LlmCallFailedError(RuntimeError):
     """The provider failed a call a request needs right now (U7, BR-U7-27): 503 with a
     fixed message — the provider's own text never reaches the response."""
+
+
+class SeedAlreadyRunningError(RuntimeError):
+    """The seed's event is still running in this session (U8, BR-U8-16): 409. Once that
+    event is resolved the seed can start again."""

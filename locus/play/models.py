@@ -17,7 +17,7 @@ from typing import Annotated, Literal, Union
 from pydantic import Field, field_validator
 
 from locus.shared.config.tuning import PlayTuning
-from locus.shared.models import NPC, KnowledgeView, LocusModel, Provenance, new_id
+from locus.shared.models import NPC, EventSeed, KnowledgeView, LocusModel, Provenance, new_id
 from locus.shared.models.enums import (  # re-exported: moved to shared in U8 (event seeds)
     CATEGORY_DEFAULT_LIFECYCLE as CATEGORY_DEFAULT_LIFECYCLE,
 )
@@ -147,6 +147,15 @@ class EventStatus(str, Enum):
     SUGGESTED = "suggested"  # LLM proposal awaiting approval (P2)
     ACTIVE = "active"  # in effect (manual create = active directly)
     RESOLVED = "resolved"
+
+
+class SeedView(LocusModel):
+    """A world's event seed as one session sees it (U8, FD domain-entities §3). Not
+    stored: ``running_event_id`` is read from the session's events (BR-U8-18)."""
+
+    seed: EventSeed
+    region_name: str
+    running_event_id: str | None = None
 
 
 class SessionEvent(LocusModel):

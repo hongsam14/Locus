@@ -3750,3 +3750,10 @@ Orchestrator evidence for R-06 (read-only): `npm audit` says both advisories (GH
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Steps 5–6.
 
 ---
+
+## U8 Code Generation Part 2 — Step 7 (seed start)
+**Timestamp**: 2026-10-01T14:32:42Z
+**AI Response**: create_event takes provenance and timeline_extra. Added SeedService (list, start, running-from-provenance), SeedView, SeedAlreadyRunningError (409), PlayContainer.seeds, and GM routes GET seeds and POST start (201 EventOut, GM lease). Tests: EX-4/TP-U8-5 and refusals; mutation caught. Gates: pytest 877, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 7.
+
+---

@@ -26,6 +26,7 @@ from locus.localization.wiring import LocalizationContainer
 from locus.play.errors import TurnInProgressError
 from locus.play.models import (
     RegionDistortion,
+    SeedView,
     SessionEvent,
     SessionRumor,
     TimelineEntry,
@@ -262,6 +263,36 @@ def create_event(
             magnitude=body.magnitude,
             lifecycle=body.lifecycle,
         )
+    except PLAY_ERRORS as exc:
+        raise http_error(exc) from exc
+    return _events_out(loc, session_id, [event], enrich=False)[0]
+
+
+# --- U8 event seeds (BLM §3, BR-U8-15..18) ---------------------------------------- #
+@router.get("/sessions/{session_id}/seeds", response_model=list[SeedView])
+def list_seeds(session_id: str, p: PlayContainer = Depends(get_play)) -> list[SeedView]:
+    """The session world's event seeds, each with its running event (no LLM)."""
+    try:
+        return p.seeds.list_seeds(session_id)
+    except PLAY_ERRORS as exc:
+        raise http_error(exc) from exc
+
+
+@router.post(
+    "/sessions/{session_id}/seeds/{seed_id}/start",
+    response_model=EventOut,
+    status_code=201,
+    dependencies=[Depends(_idle)],
+)
+def start_seed(
+    session_id: str,
+    seed_id: str,
+    p: PlayContainer = Depends(get_play),
+    loc: LocalizationContainer | None = Depends(get_localization),
+) -> EventOut:
+    """Start a seed as an ACTIVE event under the GM lease (409 closed / turn / running)."""
+    try:
+        event = p.seeds.start(session_id, seed_id)
     except PLAY_ERRORS as exc:
         raise http_error(exc) from exc
     return _events_out(loc, session_id, [event], enrich=False)[0]

@@ -171,11 +171,11 @@
 - [x] 6.4 테스트(`tests/world/test_demo.py`): TP-U8-4(개수·계층·마을당 NPC 1~3·지방/섬 0·연결 쌍·종류 섞임·시작 지역에서 도달·막힌 쌍의 우회·씨앗 2~3), 최대 곱 무게표(domain-entities §5.2, 셋째 자리), 합의 결과(EX-9: 강 마을 셋 상호 DIRECT 그대로, Ironcrag의 전해 들음 = 표에서 0.15 이상 0.5 미만 마을 모두, FD R-13), 전파 계획(EX-10: Ambermeadow 행적 → 1턴 Saltwake·Sylvarch, Ironcrag는 3턴 전 없음), 금지어(BR-U8-10), 불러오기 LLM 0회.
 
 ### Step 7 — 씨앗 시작 (BLM §3, BR-U8-15~18, TP-U8-5, EX-4)
-- [ ] 7.1 `EventService.create_event`에 키워드 `provenance: Provenance | None = None`, `timeline_extra: Mapping[str, str] | None = None`.
-- [ ] 7.2 `locus/play/event/seeds.py` `SeedService`: `list_seeds(session_id) -> list[SeedView]`, `start(session_id, seed_id) -> SessionEvent`. `SeedAlreadyRunningError`(`play/errors.py`) → `api/errors.py` 409. `SeedView` 모델.
-- [ ] 7.3 `play/wiring.py` `PlayContainer.seeds`. GM 라우트 `GET /sessions/{sid}/seeds`, `POST /sessions/{sid}/seeds/{seed_id}/start`(GM 리스 `_idle` 의존, 201 `EventOut`). 스키마 `SeedViewOut`.
-- [ ] 7.4 타임라인 `event_created` payload에 `seed_id`·`seed_title`.
-- [ ] 7.5 테스트: TP-U8-5, EX-4(시작 → ACTIVE·타임라인 → 409 → 해소 → 201), 닫힌 세션 409, 턴 중 409, 없는 씨앗 404, LLM 0회.
+- [x] 7.1 `EventService.create_event`에 키워드 `provenance: Provenance | None = None`, `timeline_extra: Mapping[str, str] | None = None`.
+- [x] 7.2 `locus/play/event/seeds.py` `SeedService`: `list_seeds(session_id) -> list[SeedView]`, `start(session_id, seed_id) -> SessionEvent`. `SeedAlreadyRunningError`(`play/errors.py`) → `api/errors.py` 409. `SeedView` 모델.
+- [x] 7.3 `play/wiring.py` `PlayContainer.seeds`. GM 라우트 `GET /sessions/{sid}/seeds`, `POST /sessions/{sid}/seeds/{seed_id}/start`(GM 리스 `_idle` 의존, 201 `EventOut`). 스키마 `SeedViewOut`.
+- [x] 7.4 타임라인 `event_created` payload에 `seed_id`·`seed_title`.
+- [x] 7.5 테스트: TP-U8-5, EX-4(시작 → ACTIVE·타임라인 → 409 → 해소 → 201), 닫힌 세션 409, 턴 중 409, 없는 씨앗 404, LLM 0회.
 
 ### Step 8 — LLM 유무와 503 (BLM §4.1, BR-U8-23·24, TP-U8-8)
 - [ ] 8.1 `GET /api/capabilities` → `{llm, vlm, embedding}`(`api/main.py`, 조립된 shared 공급자).

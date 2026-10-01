@@ -95,7 +95,7 @@ src/ui/InProgressBadge.tsx (새)     "진행 중" 작은 표지(title에 한 줄
 | `api.loadDemo(worldId, name, options)` | `name` 기본값(`"aldermoor"`)을 지운다. 이제 필수다 |
 | `api.buildWorldDemo` | 지운다(쓰는 곳 없음, 이름이 박혀 있음) |
 | `api.listSeeds(sid)` | 새로. `GET /api/gm/sessions/{sid}/seeds` → `SeedView[]` |
-| `api.startSeed(sid, seedId)` | 새로. `POST /api/gm/sessions/{sid}/seeds/{seedId}/start` → `SessionEvent` |
+| `api.startSeed(sid, seedId)` | 새로. `POST /api/gm/sessions/{sid}/seeds/{seedId}/start` → 사건(웹의 기존 사건 타입, 서버 `EventOut`과 같은 모양) 〔Step 1.2 정정〕 (FD 검토 02 R-12) |
 | `types.ts` | `Capabilities`, `SeedView`, `EventSeed`, `DemoInfo` 확장, `RegionDeletePlan.seed_ids`, `RegionDeleteReport.seeds_deleted` |
 
 ## 4. i18n (ko·en 같은 집합)

@@ -3709,3 +3709,10 @@ Orchestrator evidence for R-06 (read-only): `npm audit` says both advisories (GH
 - R-06 → Accepted risk (the human's decision: react-router-dom 7.18.x)
 
 ---
+
+## U8 Code Generation Part 2 — Step 1 (baseline and corrections)
+**Timestamp**: 2026-10-01T14:15:02Z
+**AI Response**: Baseline: pytest 857, vitest 129, mypy 11, ruff/black/tsc clean; a clean `npm ci` works; npm audit moderate 2. Applied the 〔Step 1.2 정정〕 corrections to the approved FD and Infra artifacts (R-05, R-12, R-13, the react-router decision, Infra R-02/R-03/R-04a, code plan R-02). Started the code summary.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 1.
+
+---

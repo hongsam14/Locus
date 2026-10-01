@@ -135,9 +135,9 @@
 ## Steps
 
 ### Step 1 — 기준선·정정
-- [ ] 1.1 기준선을 다시 잰다(위 표). `npm ci`(깨끗한 설치)가 lock 그대로 되는지 본다(Infra R-05).
-- [ ] 1.2 승인 산출물 정정(〔Step 1.2 정정〕): FD BLM §7(R-05 WaitAction 단계), FD frontend-components §3(R-12), FD domain-entities §5.2·BR-U8-11·EX-9(R-13 문장), Infra §3.1(R-04 package-data는 바뀜), Infra §1 web healthcheck 주소(R-02), §3.2 nginx 49m(R-03).
-- [ ] 1.3 code-summary 초안(`construction/U8-demo-deploy-docs/code/code-summary.md`)에 기준선을 적는다.
+- [x] 1.1 기준선을 다시 잰다(위 표). `npm ci`(깨끗한 설치)가 lock 그대로 되는지 본다(Infra R-05).
+- [x] 1.2 승인 산출물 정정(〔Step 1.2 정정〕): FD BLM §7(R-05 WaitAction 단계), FD frontend-components §3(R-12), FD domain-entities §5.2·BR-U8-11·EX-9(R-13 문장), Infra §3.1(R-04 package-data는 바뀜), Infra §1 web healthcheck 주소(R-02), §3.2 nginx 49m(R-03).
+- [x] 1.3 code-summary 초안(`construction/U8-demo-deploy-docs/code/code-summary.md`)에 기준선을 적는다.
 
 ### Step 2 — shared: 씨앗 모델과 저장 (domain-entities §2·§3)
 - [ ] 2.1 `locus/shared/models/enums.py`에 `EventCategory`·`EventLifecycle`·`CATEGORY_DEFAULT_LIFECYCLE`(+ `default_lifecycle`)를 옮긴다. docstring에 FR-A2 예외 한 줄. `locus/play/models.py`는 같은 이름을 다시 내보낸다(호출처 무변경).

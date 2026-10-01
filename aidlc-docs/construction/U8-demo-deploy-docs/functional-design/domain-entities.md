@@ -156,7 +156,7 @@
   | Ashen Dig | 0.163 | 0.163 | 0.163 | 0.272 | 0.131 | 0.2 | 0.8 | — |
   | Ironcrag | 0.204 | 0.204 | 0.204 | 0.34 | 0.163 | 0.17 | — | 0.8 |
 
-  - 그래서 강 마을 셋(Sylvarch, Ambermeadow, Saltwake)은 서로의 마을 지식을 그대로 압니다. Ironcrag는 Saltwake·Gutterlight·Hollowdeep·Sunstrand의 마을 지식을 전해 들음으로만 압니다.
+  - 그래서 강 마을 셋(Sylvarch, Ambermeadow, Saltwake)은 서로의 마을 지식을 그대로 압니다. Ironcrag는 Saltwake·Gutterlight·Hollowdeep·Sunstrand의 마을 지식을 전해 들음으로만 압니다. 〔Step 1.2 정정〕 정확히는 표의 Ironcrag 줄에서 0.15 이상 0.5 미만인 마을 모두(Sylvarch·Ambermeadow·Saltwake 0.204, Gutterlight 0.34, Sunstrand 0.163, Hollowdeep 0.17)이고, Ashen Dig(0.8)는 그대로 압니다. 테스트는 표 값에서 계산한다(FD 검토 02 R-13).
   - 지나갈 수 있는 연결만 쓰면 Ambermeadow 출발 무게는 위 첫 줄과 같습니다(막힌 연결이 최대 경로에 쓰이지 않음). 행적 소문은 Ambermeadow에서 1턴에 Saltwake·Sylvarch, 2턴에 Gutterlight·Sunstrand·Hollowdeep, 3턴에야 Ironcrag(0.204)에 닿을 수 있습니다. 3턴째 도달은 support에 달려 있으므로(business-logic-model §7) 단언은 "3턴 전에는 없다"입니다.
 - 1·2·9번 연결의 `wiki_prior_ref`는 아래 prior를 가리킵니다.
 

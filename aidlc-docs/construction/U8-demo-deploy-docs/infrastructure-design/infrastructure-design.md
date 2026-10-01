@@ -18,7 +18,7 @@
 | opensearch | `opensearchproject/opensearch:2.13.0` | 기본 | `127.0.0.1:${OPENSEARCH_PORT:-9200}` → 9200 | `_cluster/health` | 주소·포트 변수 |
 | postgres | `postgres:16-alpine` | 기본 | `127.0.0.1:${SESSION_DB_PORT:-5432}` → 5432 | `pg_isready` | 주소·포트 변수 |
 | app | `build: .` | `service` | `${API_PORT:-8000}` → 8000 | `curl /health` | 없음 |
-| web | `build: ./web` | `service` | `${WEB_PORT:-3000}` → 80 | **새로** `wget --spider http://localhost/` | 이미지(§3), healthcheck |
+| web | `build: ./web` | `service` | `${WEB_PORT:-3000}` → 80 | **새로** `wget -q --spider http://127.0.0.1/` 〔Step 1.2 정정〕(localhost는 ::1로 풀릴 수 있다, Infra 검토 R-02) | 이미지(§3), healthcheck |
 | dashboard | `opensearch-dashboards:2.13.0` | **`tools`**(Q2=A) | `127.0.0.1:${DASHBOARD_PORT:-5601}` → 5601 | 없음 | 프로필, 주소·포트 변수 |
 
 - `docker compose --profile service up -d --build`는 다섯 서비스를 띄웁니다(US-1.1). Dashboards는 `docker compose --profile tools up -d dashboard`로만 뜹니다.
@@ -40,7 +40,7 @@
 
 ## 3. 이미지
 ### 3.1 app (`Dockerfile`)
-- 지금 그대로입니다. `python:3.11-slim`, curl, `COPY pyproject.toml README.md locus api`, `pip install .`(비편집), `CMD init-schema`.
+- 지금 그대로입니다. `python:3.11-slim`, curl, `COPY pyproject.toml README.md locus api`, `pip install .`(비편집), `CMD init-schema`. 〔Step 1.2 정정〕 단, `pyproject.toml`의 package-data 글롭은 코드 생성에서 바뀐다(Infra 검토 R-04a).
 - 데모 소스는 FD의 package-data 글롭(`world/demo/worlds/*.json`, `world/demo/worlds/*/*`)으로 설치본에 들어갑니다. 이 사실은 CI 이미지 작업(§5)이 확인합니다.
 - `.dockerignore`에 `web`과 `scripts`를 더합니다. root 이미지가 쓰지 않는 것을 빌드 문맥에서 빼서 문맥을 줄입니다. `examples/`는 FD에서 사라집니다.
 - compose의 app 명령(`init-schema && uvicorn --workers 1`)은 그대로입니다. 기동마다 `init-schema`(world·play·localization)가 돌아 새 `EventSeed` 제약도 만듭니다. 그래서 compose 사용자는 따로 할 일이 없습니다. 호스트에서 돌리는 사람은 `locus init-schema --world`를 한 번 다시 돌립니다(FD R-07, operations.md).
@@ -50,7 +50,7 @@
 |---|---|---|
 | 빌드 이미지 | `node:20-alpine` | `node:22-alpine`(Vite 8은 Node ≥ 20.19 또는 22.12) |
 | 설치 | `npm install` | `npm ci`(lock 그대로, US-7.5) |
-| nginx 요청 크기 | 없음(기본 1 MiB) | `client_max_body_size 48m;`(앱 요청 상한과 같음, 설계 메모 9). 이보다 큰 요청은 nginx가 413을 주고, 그 이하는 앱 미들웨어가 길별 상한(World File 20 MiB)을 다룬다 |
+| nginx 요청 크기 | 없음(기본 1 MiB) | `client_max_body_size 49m;` 〔Step 1.2 정정〕(앱 요청 상한 48 MiB보다 조금 크게: 상한 판정과 JSON 413은 앱이 한다, Infra 검토 R-03) |
 | 프록시 시간 | `proxy_read/send_timeout 130s` | 그대로(LLM 한 줄 대기) |
 | healthcheck | 없음 | compose에 `wget -q --spider http://localhost/`(nginx:alpine의 busybox wget) |
 
@@ -76,7 +76,7 @@ docker compose --profile service up -d --build
 - 트리거: 모든 브랜치 push와 main 대상 PR. 같은 ref의 앞선 실행은 취소합니다(`concurrency`).
 - 비밀값을 쓰지 않습니다. 테스트는 오프라인이고, 외부 서비스(Neo4j 등)를 띄우지 않습니다.
 - **seed 기록**(BR-U8-34): `SEED=$(python -c "import secrets; print(secrets.randbelow(2**32))")`, `echo "hypothesis seed: $SEED"`, `pytest … --hypothesis-seed=$SEED`. 실패를 재현하려면 로그의 seed를 같은 옵션으로 넘깁니다. 실패한 예제의 blob은 지금 프로필(`print_blob=True`)이 찍습니다.
-- **이미지의 데모 확인**: 설치된 `locus.world.demo`에서 매니페스트를 읽어(`DemoWorlds`, 서비스 없이) 항목이 하나 이상인지, 모든 항목이 검사를 통과했는지, `sources`가 있는 항목의 소스 파일이 설치본 안에 있는지 봅니다. app 이미지에 `api/`가 있는지는 `python -c "import api.main"`으로 봅니다(US-1.1).
+- **이미지의 데모 확인**: 설치된 `locus.world.demo`에서 매니페스트를 읽어(`DemoWorlds`, 서비스 없이) 항목이 하나 이상인지, 모든 항목이 검사를 통과했는지, `sources`가 있는 항목의 소스 파일이 설치본 안에 있는지 봅니다. app 이미지에 `api/`가 있는지는 `python -c "import api.main"`으로 봅니다(US-1.1). 〔Step 1.2 정정〕 데모 확인은 소스 트리가 가리지 않도록 설치본에서 돕니다(`docker run --rm -w /tmp locus-app python -I -c …`, `locus.__file__`이 site-packages 아래인지 단언). `api`는 설치되지 않으므로 `import api.main`은 `/app`에서 따로 봅니다(코드 플랜 검토 01 R-02).
 - `npm ci`가 lock 그대로 성공하는 것이 frontend·images 작업의 전제입니다(US-7.5). peer 충돌이 생기면 이 두 작업이 먼저 깨집니다.
 - README 배지: `https://github.com/hongsam14/Locus/actions/workflows/ci.yml/badge.svg`.
 - mypy는 넣지 않습니다(기준선 11건, FD BR-U8-33).

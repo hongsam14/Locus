@@ -30,7 +30,7 @@
 | BR-U8-8 | 마을마다 DIRECT 지식이 2개 이상이다. 그 마을만 아는 소문거리가 있는 마을이 3곳 이상이다. 전역 지식은 1~2개다 | US-1.3, A8-3 |
 | BR-U8-9 | 씨앗은 2~3개이고, 지역과 분류가 서로 다르며, 모두 마을 지역에 있다 | US-1.3 |
 | BR-U8-10 | 이름과 글은 창작이다. 원작의 고유명사를 쓰지 않는다. 매니페스트 `credits`에 영감 출처 한 줄과 무관 표시를 둔다 | Q1-2=A |
-| BR-U8-11 | "지형을 따라 퍼진다"가 수치로 보인다. 〔검토 01 R-04〕 합의와 사건 번짐은 모든 연결, 행적 확산은 지나갈 수 있는 연결만 쓴다. 최대 곱 무게는 domain-entities §5.2 표와 같다. 강 무게는 1.0(1턴)이다. 강 마을 셋은 서로의 마을 지식을 그대로 안다. Ironcrag는 Saltwake·Gutterlight·Hollowdeep·Sunstrand의 마을 지식을 전해 들음으로만 안다. Ambermeadow에서 생긴 행적 소문은 1턴 뒤 Saltwake·Sylvarch에 있고, Ironcrag에는 3턴 전에 없다. 유물 사건은 Sunstrand에 닿지 않는다 | Q1-1=A, domain-entities §5.2 |
+| BR-U8-11 | "지형을 따라 퍼진다"가 수치로 보인다. 〔검토 01 R-04〕 합의와 사건 번짐은 모든 연결, 행적 확산은 지나갈 수 있는 연결만 쓴다. 최대 곱 무게는 domain-entities §5.2 표와 같다. 강 무게는 1.0(1턴)이다. 강 마을 셋은 서로의 마을 지식을 그대로 안다. Ironcrag는 Saltwake·Gutterlight·Hollowdeep·Sunstrand의 마을 지식을 전해 들음으로만 안다(〔Step 1.2 정정〕 정확히는 domain-entities §5.2 표에서 0.15 이상 0.5 미만인 마을 모두). Ambermeadow에서 생긴 행적 소문은 1턴 뒤 Saltwake·Sylvarch에 있고, Ironcrag에는 3턴 전에 없다. 유물 사건은 Sunstrand에 닿지 않는다 | Q1-1=A, domain-entities §5.2 |
 
 ## 3. 사건 씨앗
 | 규칙 | 내용 | 근거 |
@@ -74,7 +74,7 @@
 |---|---|---|
 | BR-U8-33 | 워크플로는 push와 PR에서 돈다. 백엔드는 `ruff check`, `black --check`, `pytest`를 돌린다. 프런트엔드는 `npm ci`, `tsc --noEmit`, `vitest run`을 돌린다. `npm audit --omit=dev --audit-level=moderate`는 따로 된 audit 작업이다(막는다, 〔검토 01 R-11〕). `npm ci` 성공이 전제다. mypy는 넣지 않는다 | Q5=A, US-7.6 |
 | BR-U8-34 | hypothesis seed는 실행마다 로그에 찍고 `--hypothesis-seed`로 넘긴다. 실패하면 재현 blob이 찍힌다 | PBT-08 |
-| BR-U8-35 | `npm audit --omit=dev`는 0건이다. react-router를 고친 판으로 올린다 | Q5=A |
+| BR-U8-35 | `npm audit --omit=dev`는 0건이다. react-router를 고친 판으로 올린다. 〔Step 1.2 정정〕 6.x에는 고친 판이 없어 react-router-dom 7.18.x로 올린다(사람의 결정, 코드 플랜 검토 01 R-06) | Q5=A |
 
 ## 8. 라이브 시나리오
 | 규칙 | 내용 | 근거 |

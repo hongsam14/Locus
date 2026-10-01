@@ -176,6 +176,7 @@ GitHub Actions 워크플로 하나가 push와 PR에서 돕니다. 배치(러너,
 | 7 씨앗 | US-1.3 | Ambermeadow | GM이 `seed-mushroom-blight` 시작 → ACTIVE (턴 소모 없음) | — |
 | 8 이동 | US-3.3, US-3.4 | Saltwake (T3) | 강 연결 1턴. 이 턴에 마름병 번짐과 행적 확산 1칸이 일어난다 | — |
 | 9 행적 1칸 | US-6.5 | Saltwake | GM 소문 목록(`listRumors`): Saltwake·Sylvarch에 그 행적 소문이 있다. Ironcrag·Gutterlight에는 없다 | 선언에 필요 |
+| 9a 기다리기 〔Step 1.2 정정〕 | US-3.4 | Saltwake (T4) | `WaitAction` 1턴(T3→T4). 대화는 턴을 쓰지 않으므로 10·11의 T4는 이 단계가 만든다(FD 검토 02 R-05) | — |
 | 10 다르게 듣기 | US-6.1 | Saltwake (T4) | Saltwake NPC에게 마름병을 묻는다(대화). Ironcrag의 마름병 관련 소문·왜곡도는 GM 읽기로 본다. 두 지역의 왜곡도와 소문 수가 다르다(Saltwake 무게 1.0, Ironcrag 0.204) | 대화에 필요 |
 | 11 행적 3칸 전 | US-6.5 | Saltwake (T4) | T4(기준 T2 + 2턴)까지 Ironcrag에 그 행적 소문이 없다 | 선언에 필요 |
 | 12 세계 상태 | US-5.5 | — | `GET …/state`의 지역별 사건·소문 수 | — |

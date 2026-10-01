@@ -2847,3 +2847,21 @@ Gates: pytest 636, vitest 74, ruff/black/tsc clean, mypy baseline 11.
 Docs updated: U6 domain-entities §4.3, BR-U6-36 (marked 〔리뷰 후속 정정〕), operations.md schema, U6 code-summary §8, review record §8, CLAUDE.md test count.
 Carried to the U7 code plan: #5–#15, C1–C16, U5 newline forging, and the scene-shadowing decision.
 **Context**: CONSTRUCTION / U6 — post-approval review fixes done. Next: U7 NFR Requirements (light).
+
+---
+
+## U7 NFR Requirements (light) — plan and note written
+**Timestamp**: 2026-10-01T02:03:29Z
+**AI Response**: Wrote `construction/plans/U7-gm-mode-hardening-nfr-requirements-plan.md` with no questions (values were fixed in the FD) and assumptions N7-1..6. Also wrote `construction/U7-gm-mode-hardening/nfr/nfr-light.md`:
+- NFR-1..9 application;
+- reliability and scale;
+- tech decisions (none new);
+- intended behaviour changes C-1..C-8 with the known affected tests;
+- code-plan hand-offs.
+
+---
+
+## Plan Review Requested — NFR Requirements (light) — U7
+**Timestamp**: 2026-10-01T02:03:29Z
+**AI Response**: Dispatching aidlc-architecture-reviewer (class advisory, iteration 1) on `aidlc-docs/construction/U7-gm-mode-hardening/nfr/nfr-light.md`. Review record: `aidlc-docs/construction/U7-gm-mode-hardening/nfr/reviews/nfr-light-review-01.md`.
+**Context**: CONSTRUCTION / U7 — NFR (light), Plan Review.

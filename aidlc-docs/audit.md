@@ -2875,3 +2875,29 @@ Carried to the U7 code plan: #5–#15, C1–C16, U5 newline forging, and the sce
 - R-02: the port method is already defined in the approved FD (domain-entities §6.3 `ConversationStore.message_counts(session_id) -> dict[str, int]`, one LEFT JOIN + GROUP BY); the NFR note did not repeat it.
 - R-06: mypy measured 11 at today's U6 fix gate (`Found 11 errors in 6 files`).
 **Context**: NFR Requirements (light) — U7 — next: approval gate (advisory verdict terminal; artifacts frozen).
+
+---
+
+## U7 NFR Requirements (light) — approval gate
+**Timestamp**: 2026-10-01T02:09:51Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: NFR (light) approved. Next: U7 Code Generation Part 1 (plan). The open findings are carried to the code plan:
+- R-01: char caps on name, path and knowledge, with the prompt total shown by computation.
+- R-02: `message_counts` port per FD §6.3, both adapters plus a contract test.
+- R-03: all Unicode line separators and control characters.
+- R-04: every new env has a default; bad JSON or out-of-range values fail startup.
+- R-05: measurement conditions; `/log` makes one repository read.
+- R-06: measure mypy first; new `features/gm/` paths.
+- R-07: TP-U7-8 is in scope; npm audit applies or not.
+**Context**: CONSTRUCTION / U7 — NFR approved.
+
+---
+
+## Plan Review Dispositions — NFR Requirements (light) — U7
+R-01 → Accepted risk
+R-02 → Accepted risk
+R-03 → Accepted risk
+R-04 → Accepted risk
+R-05 → Accepted risk
+R-06 → Accepted risk
+R-07 → Accepted risk

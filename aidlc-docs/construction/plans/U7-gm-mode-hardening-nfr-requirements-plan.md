@@ -15,7 +15,7 @@
 - [x] NFR-1~9와 U7의 접점 정리; 질문 필요 여부 판단
 - [x] `construction/U7-gm-mode-hardening/nfr/nfr-light.md` 작성
 - [x] Plan Review(architecture-reviewer, **advisory** 1회) — READY, open 7 → `construction/U7-gm-mode-hardening/nfr/reviews/nfr-light-review-01.md`
-- [ ] 완료 메시지 + 승인 게이트 → 다음: U7 Code Generation Part 1(플랜)
+- [x] 완료 메시지 + 승인 게이트 → 승인(Continue to Next Stage) → 다음: U7 Code Generation Part 1(플랜)
 
 ## 질문
 없다. U7에 걸리는 값은 FD에서 정해졌다.

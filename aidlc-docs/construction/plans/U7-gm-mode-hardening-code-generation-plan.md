@@ -327,15 +327,15 @@
   - X3 FD의 BR-X3-5에 "빈 = 캐노니컬 소문 없음"(#5)을 〔U7 정정〕으로 적는다.
 
 ### Step 10 — 검증·요약
-- [ ] 10.1 전체 게이트
+- [x] 10.1 전체 게이트
   - `pytest`, `vitest`, `ruff`, `black --check`, `tsc --noEmit`, `mypy`(≤ 11)
   - `npm audit --omit=dev`(기록만)
   - 가장 큰 GM 컴포넌트 줄 수(≤ 250)
-- [ ] 10.2 운영자 실행 명령을 code-summary에 적는다.
+- [x] 10.2 운영자 실행 명령을 code-summary에 적는다.
   - compose 기동 후 GM 왕복
   - 3턴 뒤 오버레이
   - p95 측정 조건(NFR R-05)
-- [ ] 10.3 `construction/U7-gm-mode-hardening/code/code-summary.md`
+- [x] 10.3 `construction/U7-gm-mode-hardening/code/code-summary.md`
   - 기준선과 결과
   - 바뀐 파일
   - 검증 번호와 테스트

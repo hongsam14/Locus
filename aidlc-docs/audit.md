@@ -2955,3 +2955,22 @@ R-04 → Accepted risk
 R-05 → Accepted risk
 R-06 → Accepted risk
 R-07 → Accepted risk
+
+---
+
+## U7 Code Generation Part 2 — steps 1–10 done
+**Timestamp**: 2026-10-01T03:23:00Z
+**AI Response**: Generated U7 per the approved plan (commits 202424c..ca7f329 plus the step 10 summary).
+- Gates:
+  - pytest 730 (+94), vitest 90 (+16)
+  - ruff/black/tsc clean; mypy 11 (baseline, no U7 file)
+  - largest GM component 239 lines
+  - npm audit: moderate 2 (react-router, pre-existing; record only, NFR R-07)
+- Mutation checks:
+  - step 4: 9/9
+  - step 5: 8/8
+  - step 6: 17/17 (two after tightening tests)
+  - step 8: 13/14 (the void re-entry guard is behind the modal's busy, so removing it is not observable)
+- Plan deviations are listed in code-summary §5: R-01 call-site moves, the GM-set share reset pulled into step 5, the say 503 mapping and the NPC route pulled into step 6, `one_line` folding tabs, `npcs_here` returning counts, and C2 as `seed_candidates` plus a wider `list_deeds`.
+Summary: `construction/U7-gm-mode-hardening/code/code-summary.md`.
+**Context**: CONSTRUCTION / U7 — Code Generation Part 2, step 11 (code gate) next.

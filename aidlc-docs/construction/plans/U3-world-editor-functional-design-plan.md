@@ -39,11 +39,11 @@
 
 ## 플랜
 - [x] 상위 산출물·현재 코드 분석(위 표)
-- [x] 질문(아래 FD-U3 Q1~Q5) 답 수집·분석 — Q1=A, Q2=A, Q3=A, Q4=A, Q5=A
-- [ ] `construction/U3-world-editor/functional-design/domain-entities.md`
-- [ ] `.../business-logic-model.md`
-- [ ] `.../business-rules.md`(BR-U3-*, TP-U3-*, EX-*)
-- [ ] `.../frontend-components.md`(`features/editor/`, `/` 목록, 지도 편집 모드, 패널들)
+- [x] 질문(아래 FD-U3 Q1~Q5) 답 수집·분석 — Q1=A, Q2=A, Q3=A, Q4=A, Q5=A, Q6=A(추가)
+- [x] `construction/U3-world-editor/functional-design/domain-entities.md`
+- [x] `.../business-logic-model.md`
+- [x] `.../business-rules.md`(BR-U3-*, TP-U3-*, EX-*)
+- [x] `.../frontend-components.md`(`features/editor/`, `/` 목록, 지도 편집 모드, 패널들)
 - [ ] Plan Review(architecture-reviewer, adversarial ≤ 2) → `construction/U3-world-editor/functional-design/reviews/functional-design-review-NN.md`
 - [ ] 완료 메시지 + 승인 게이트 → 다음: U3 NFR(light)
 
@@ -160,6 +160,30 @@
 
 [Answer]: A. 도구 모드 버튼
 
+### FD-U3 Q6 GM이 왜곡도를 정하면 진행 중인 사건의 몫도 지우는가 (U7 code-review-01 설계 메모 1) — 추가
+배경
+- U7 Q2·BR-U7-5에 따라 GM이 정한 왜곡도는 "새 기준"이고, 되먹임 몫은 0이 된다. 그런데 이미 ACTIVE인 사건이 그 지역에 쌓은 기여는 남는다.
+- 그 사건이 해소되면 쌓인 기여 전부가 빠져서, 왜곡도가 GM이 정한 값 아래로 내려간다. 예: 0.3 → 전쟁 한 턴 0.6 → GM 0.5 → 해소 0.2. 지속 사건이면 그 차이가 더 벌어진다.
+- Phase 2부터 같은 동작이다(U7 회귀 아님).
+- 이 답이 정하는 것: GM 설정 연산과 사건 해소의 규칙. U3 코드 계획의 U7 이월 단계에서 고친다.
+
+선택지
+- A. GM 설정이 그 지역의 사건 기여도 지운다 — **권장**. "GM이 정한 값이 새 기준"이 사건에도 똑같이 적용된다.
+  - 결과: 같은 UoW에서 ACTIVE 사건들의 그 지역 기여를 0으로 하고, 지운 양을 `set_distortion` 줄에 남긴다(`event_contributions_cleared`). 사건이 해소되어도 GM 값 아래로 내려가지 않는다. 사건은 다음 턴부터 다시 쌓는다.
+  - 비용: Phase 2 규칙(BR-P2-5 대칭 복원)에 예외가 하나 생긴다.
+- B. 지금 동작을 규칙으로 적고 화면에 보인다
+  - 결과: 왜곡도 패널에 "진행 중 사건 몫 0.3"을 보이고, 해소하면 그만큼 내려간다고 적는다.
+  - 비용: GM이 정한 값이 나중에 조용히 바뀐다.
+- X. Other (please specify)
+
+[Answer]: A. GM 설정이 사건 몫도 지운다
+
+## 넘겨받은 것 (U7 code-review-01 §8, 사람의 선택 A)
+- §1 #6~#10·#12~#15, §2 정리 19건, §3 12건은 U7 코드의 작은 결함이다. U3 **코드 계획**에 "U7 이월" 단계를 두고 받는다. U3 FD 규칙에는 들이지 않는다.
+- 설계 메모 1은 위 Q6으로 정한다.
+- 설계 메모 2(지역 id가 없는 지난 줄)는 가정 A3-14로 둔다.
+- `TOPOLOGY_DEFAULT_BASE`(§3)는 가정 A3-15로 둔다.
+
 ## 가정 (질문하지 않는 것 — 게이트에서 바꿀 수 있다)
 | # | 가정 | 근거 |
 |---|---|---|
@@ -176,3 +200,5 @@
 | A3-11 | 에디터 삭제가 지역을 지우면, 세션의 왜곡도 행은 DB에 남고 목록에서 빠진다(U7 BR-U7-18 그대로). 행적이 가리키는 지역·NPC가 사라지면 GM 행적 보기는 id를 보인다(U6 그대로) | U6·U7 이월 |
 | A3-12 | `WorldTuning`(가중치 표·dedup)은 에디터에 보이지 않는다(FR-A7 "UI 노출 안 함") | U7 이월 |
 | A3-13 | 편집 API는 경로의 world_id·id와 본문이 다르면 400이다 | 조사 결과 |
+| A3-14 | U7 이전의 지역 줄(승격·강등·가지치기·지지도·해소)에 지역 id가 없으면, 화면은 템플릿 대신 그 줄의 `summary`를 보인다("—"를 보이지 않는다) | U7 리뷰 설계 메모 2, BR-U7-17 |
+| A3-15 | `TOPOLOGY_DEFAULT_BASE`는 없앤다. 연결 종류는 enum 넷이라 쓰일 일이 없다(env·필드·문서) | U7 리뷰 §3 |

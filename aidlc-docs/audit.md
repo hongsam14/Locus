@@ -3062,3 +3062,39 @@ Gates: pytest 735, vitest 94, ruff/black/tsc clean, mypy 11.
 Docs: BR-U7-24 annotated, operations.md, code-summary §9, review record §8, CLAUDE.md (829).
 Carried to U3: #6–#10, #12–#15, §3 (12), cleanup (19), and two design memos.
 **Context**: U7 post-approval fixes done; back to U3 FD Part 2.
+
+---
+
+## U3 Functional Design — answer Q6 (U7 design memo 1)
+**Timestamp**: 2026-10-01T06:54:25Z
+**User Input**: FD-U3 Q6 = "A. GM 설정이 사건 몫도 지운다 (Recommended)"
+**AI Response**: Recorded Q6. A GM distortion set also zeroes the ACTIVE events' contributions for that region, in the same UoW, and records `event_contributions_cleared`. This is implemented in the U3 code plan's U7-carry step. Proceeding to FD Part 2 (artifacts).
+**Context**: CONSTRUCTION / U3 — Functional Design Part 2.
+
+---
+
+## U3 Functional Design Part 2 — artifacts written
+**Timestamp**: 2026-10-01T06:59:49Z
+**AI Response**: Wrote `construction/U3-world-editor/functional-design/{domain-entities,business-logic-model,business-rules,frontend-components}.md`.
+- Ports: `replace_nodes` (property replace), `delete_edges` (EdgeKey), `SearchRepository.delete`.
+- WorldEditor:
+  - typed ops for region (parent rewire, cycle check), connection pair, knowledge + scopes, unscoped list, NPC, entity, list_worlds;
+  - region delete plan/report with the Q1=A cascade order;
+  - the Q2=A 409 via `SessionService.open_player_regions`.
+- NpcDraftService: one call, 0–3 drafts, unsaved.
+- Augmentation:
+  - six detectors (dangling = broken id properties, plus unscoped);
+  - question targets and fixed actions;
+  - server-side target, `AnswerResult` with a kept run, full revert with `reverted`.
+- Wiki: the build stores LLM-fallback priors and keeps refs; `list_priors`/`prior_usage`/broken refs.
+- Build upload with concept arts; HomePage world list.
+- `features/editor/`: MapCanvas tool modes, RegionInspector, UnscopedPanel, AugmentPanel, WikiPanel, BuildPanel, WorldFileBar, ConfirmDelete.
+- U7 carry: Q6=A, A3-14, A3-15.
+- Deviations: domain-entities §8 (6 items: generic delete route removed, answer response shape, build prior handling, BR-U7-5 extension, TOPOLOGY_DEFAULT_BASE removal).
+
+---
+
+## Plan Review Requested — Functional Design — U3
+**Timestamp**: 2026-10-01T06:59:49Z
+**AI Response**: Dispatching aidlc-architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/U3-world-editor/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/U3-world-editor/functional-design/reviews/functional-design-review-01.md`.
+**Context**: CONSTRUCTION / U3 — Functional Design, Plan Review.

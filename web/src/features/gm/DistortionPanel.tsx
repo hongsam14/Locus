@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { t } from "../../i18n";
 import { CommitRange } from "../../ui";
 
@@ -16,13 +17,18 @@ export function DistortionPanel({
   closed: boolean;
   onCommit: (v: number) => Promise<boolean> | boolean | void;
 }) {
+  // the label follows the thumb while it moves, not only the saved value (U7 review #8)
+  const [shown, setShown] = useState(value);
+  useEffect(() => setShown(value), [value]);
   return (
     <>
       <div className="text-xs text-ink-soft">
         {t("gm.region")} {regionName}
       </div>
       <label className="text-xs flex items-center gap-2">
-        {t("gm.distortion")} {value.toFixed(2)}
+        <span data-testid="distortion-label">
+          {t("gm.distortion")} {shown.toFixed(2)}
+        </span>
         <CommitRange
           data-testid="distortion-slider"
           min={0}
@@ -31,6 +37,7 @@ export function DistortionPanel({
           value={value}
           disabled={closed}
           onCommit={onCommit}
+          onDraft={setShown}
         />
       </label>
       {share > 0 && (

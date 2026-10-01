@@ -193,3 +193,22 @@
   - 줄 수: `features/editor/*`·`EditorPage`·`HomePage` 모두 250 이하이고, 가장 큰 것은 `MapCanvas` 212줄이다.
   - `dangerouslySetInnerHTML` 0곳
   - vitest 111
+- **Step 10** (U7 이월, 프론트엔드)
+  - 10.1
+    - `GmHub`: #6 `refreshRef`, #15 서버 상한 `maxSuggest`(`getWorldState` 한 번), C1 "전체 생성"이 `getWorldState` 한 번, C8 `mapLimit`
+    - `CommitRange`: C15 `onMouseUp` 삭제, C19 호출자 핸들러 먼저, #8 `onDraft`
+    - `DistortionPanel`: 이름표가 초안을 따른다.
+    - `PlayerStrip`: 404만 "플레이어 없음"
+  - 10.2
+    - `ActionBar`: #7 `closed` 분리(입력은 턴 중에도 됨), `EDGE_SPACE` 선형, `maxLength`
+    - `DialoguePanel`: #12 닫힌 세션 문구 + `onClosed`
+    - `PlayPage`: §3 `act`의 gen 확인, C6 `getLog(sid, 30)`, C7 마운트 한 번 읽기
+  - 10.3: `timelineText`
+    - #10 옛 표시 줄은 category가 있을 때만 새 템플릿을 쓴다.
+    - A3-14 지역 없는 지역 줄은 summary를 보인다.
+    - 못 채운 `{param}`이 남으면 summary를 보인다.
+  - 테스트
+    - gm 7, play 4, dialogue 1
+    - 의도된 변경: `gm.test`·`components.test`의 전체 생성 둘(C1), `play.test`의 폴링 순서(C7)
+  - 변이(모두 잡음): #6 낡은 `refresh`, `EDGE_SPACE`의 옛 정규식
+  - vitest 123

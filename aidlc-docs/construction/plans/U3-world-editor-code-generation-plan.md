@@ -645,10 +645,10 @@
   - `components.test.tsx:85·104·376`: import 경로와 ✕ 없음(C-8)
 
 ### Step 10 — 프론트엔드: U7 이월
-- [ ] 10.1 GM: #6 `refreshRef`, #8 `onDraft`, #15 `maxSuggest`, C1 `getWorldState`, C8 `mapLimit`, C15 `onMouseUp` 삭제, C19 핸들러 합치기, §3 `PlayerStrip` 404(`statusOf`)
-- [ ] 10.2 플레이: #7 prop 나누기, #12 `DialoguePanel` `conflictKind`·`onClosed`, §3 `act` gen, §3 `EDGE_SPACE` 선형, C6 `limit=30`, C7 마운트 읽기
-- [ ] 10.3 타임라인: #10 지난 `event_created` 줄, A3-14 지역 id 없는 지난 줄은 `summary`
-- [ ] 10.4 테스트(`gm.test.tsx`, `play.test.tsx`, `dialogue.test.tsx`): 각 항목 하나 이상, 지난 줄 fixture는 실제 모양
+- [x] 10.1 GM: #6 `refreshRef`, #8 `onDraft`, #15 `maxSuggest`, C1 `getWorldState`, C8 `mapLimit`, C15 `onMouseUp` 삭제, C19 핸들러 합치기, §3 `PlayerStrip` 404(`statusOf`)
+- [x] 10.2 플레이: #7 prop 나누기, #12 `DialoguePanel` `conflictKind`·`onClosed`, §3 `act` gen, §3 `EDGE_SPACE` 선형, C6 `limit=30`, C7 마운트 읽기
+- [x] 10.3 타임라인: #10 지난 `event_created` 줄, A3-14 지역 id 없는 지난 줄은 `summary`
+- [x] 10.4 테스트(`gm.test.tsx`, `play.test.tsx`, `dialogue.test.tsx`): 각 항목 하나 이상, 지난 줄 fixture는 실제 모양
 
 ### Step 11 — 문서
 - [ ] 11.1 `aidlc-docs/operations/operations.md`

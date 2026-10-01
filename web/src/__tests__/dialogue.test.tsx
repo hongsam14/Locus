@@ -323,6 +323,20 @@ describe("DialoguePanel (US-4.1 / 4.3)", () => {
   });
 });
 
+describe("DialoguePanel when the session closes elsewhere (U3, U7 review #12)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("a 409 'closed' on start or say says so and tells the page", async () => {
+    (api.startDialogue as Mock).mockRejectedValueOnce(
+      new HttpError(409, "Conflict", '{"detail":"session is closed: s1"}'),
+    );
+    const onClosed = vi.fn();
+    renderPanel({ onClosed });
+    await waitFor(() => expect(screen.getByText(t("play.sessionClosed"))).toBeInTheDocument());
+    expect(onClosed).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("PlayPage with dialogue and the language toggle", () => {
   function renderPlay() {
     return render(

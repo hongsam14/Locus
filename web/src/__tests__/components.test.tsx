@@ -53,6 +53,7 @@ vi.mock("../api", () => ({
     resolveEvent: vi.fn(),
     discardEvent: vi.fn(),
     listDistortions: vi.fn(),
+    getWorldState: vi.fn(),
     listDeeds: vi.fn(),
     voidDeed: vi.fn(),
   },
@@ -302,9 +303,9 @@ describe("GmHub (GameMaster hub, was SessionPanel)", () => {
       { session_id: "s1", region_id: "r1", distortion_degree: 0.3 },
       { session_id: "s1", region_id: "r2", distortion_degree: 0.3 },
     ]);
-    (api.listRumors as Mock).mockImplementation((_sid: string, rid: string) =>
-      Promise.resolve(rid === "r2" ? [{ id: "x" }] : []),
-    );
+    // U3 intended change (U7 review C1): one state read gives the counts
+    (api.getWorldState as Mock).mockResolvedValue({ session_id: "s1", turn: 0, player_region_id: null,
+      regions: [{ region_id: "r1", region_name: "r1", distortion: 0.3, feedback_share: 0, active_rumors: 0, promoted_rumors: 0, deed_rumors: 0, active_events: 0 }, { region_id: "r2", region_name: "r2", distortion: 0.3, feedback_share: 0, active_rumors: 1, promoted_rumors: 0, deed_rumors: 0, active_events: 0 }] });
     (api.generateRumors as Mock).mockResolvedValue([]);
     render(<GmHub session={OPEN_SESSION} regionId={null} />);
     fireEvent.click(await screen.findByTestId("generate-all-btn"));

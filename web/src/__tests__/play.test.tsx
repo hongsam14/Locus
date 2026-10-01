@@ -167,9 +167,9 @@ describe("PlayPage", () => {
     };
     (api.act as Mock).mockResolvedValue(running);
     (api.getTurnRun as Mock).mockRejectedValue(new Error("502 Bad Gateway"));
-    // two refreshes on mount, then the one right after the 202 sees the guard held
+    // one refresh on mount (U3 intended change, U7 review C7: no second read when no
+    // turn runs), then the one right after the 202 sees the guard held
     (api.getRegion as Mock)
-      .mockResolvedValueOnce(view())
       .mockResolvedValueOnce(view())
       .mockResolvedValueOnce(view({ turn_running: true }))
       .mockResolvedValue(view({ turn_running: false }));
@@ -180,6 +180,36 @@ describe("PlayPage", () => {
     // the poll's failure path refreshes, so turn_running clears and the button returns
     await waitFor(() => expect(screen.getByTestId("wait-btn")).toBeEnabled());
     expect(screen.getByTestId("move-b-btn")).toBeEnabled();
+  });
+
+  it("U3 (U7 review C6/C7): one read on mount with the newest 30 log lines", async () => {
+    renderPlay();
+    await waitFor(() => expect(screen.getByTestId("region-scene")).toBeInTheDocument());
+    expect(api.getLog).toHaveBeenCalledWith("s1", 30);
+    expect(api.listTurnRuns).toHaveBeenCalledTimes(1);
+    expect(api.getRegion).toHaveBeenCalledTimes(1); // nothing runs: no second read
+  });
+
+  it("U3 (U7 review #7): the declaration box takes text while a turn runs", async () => {
+    (api.getRegion as Mock).mockResolvedValue(view({ turn_running: true }));
+    renderPlay();
+    await waitFor(() => expect(screen.getByTestId("region-scene")).toBeInTheDocument());
+    expect(screen.getByTestId("wait-btn")).toBeDisabled();
+    expect(screen.getByTestId("declare-input")).toBeEnabled();
+    fireEvent.change(screen.getByTestId("declare-input"), { target: { value: "I sing" } });
+    expect(screen.getByTestId("declare-btn")).toBeDisabled(); // sent only when free
+  });
+
+  it("U3 (U7 review §3): leaving before the action answers starts no poller", async () => {
+    let answer: (r: TurnRun) => void = () => {};
+    (api.act as Mock).mockReturnValue(new Promise<TurnRun>((r) => (answer = r)));
+    const { unmount } = renderPlay();
+    await waitFor(() => expect(screen.getByTestId("wait-btn")).toBeEnabled());
+    fireEvent.click(screen.getByTestId("wait-btn"));
+    unmount();
+    answer({ id: "r1", session_id: "s1", action: { type: "wait" }, cost_turns: 1, status: "running", started_turn: 0 });
+    await new Promise((r) => setTimeout(r, 30));
+    expect(api.getTurnRun).not.toHaveBeenCalled();
   });
 
   it("resumes polling a run that is still in flight after a reload", async () => {
@@ -232,5 +262,18 @@ describe("SessionBar player start (US-3.1)", () => {
   it("hides the play button when no onPlay handler is given (GM screen)", () => {
     render(<SessionBar worldId="w" sessionId={null} onSelect={vi.fn()} />);
     expect(screen.queryByTestId("session-play-btn")).not.toBeInTheDocument();
+  });
+});
+
+describe("declaredLength / edge spaces (U7 review §3 EDGE_SPACE)", () => {
+  it("strips like the server and stays linear on long inner spaces", async () => {
+    const { ActionBar } = await import("../features/play/ActionBar");
+    render(<ActionBar running={null} disabled={false} onWait={() => {}} onDeclare={async () => true} maxChars={300} />);
+    const box = screen.getByTestId("declare-input");
+    const inner = "a" + " ".repeat(40_000) + "b";
+    const started = performance.now();
+    fireEvent.change(box, { target: { value: `  \u0085${inner}\u2028 ` } });
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(screen.getByTestId("declare-count")).toHaveTextContent(String(inner.length));
   });
 });

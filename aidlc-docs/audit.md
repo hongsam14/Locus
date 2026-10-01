@@ -3397,3 +3397,15 @@ R-16 → Accepted risk
 **Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 9.
 
 ---
+
+## U3 Code Generation Part 2 — Step 10 (U7 carry, frontend)
+**Timestamp**: 2026-10-01T10:41:41Z
+**AI Response**: Closed the frontend carry items:
+- GM: #6, #8, #15, C1, C8, C15, C19 and §3 PlayerStrip.
+- Play: #7, #12, §3 act/EDGE_SPACE, C6, C7.
+- Timeline: #10 and A3-14.
+- Tests: 12 new, plus intended changes. Mutations caught.
+- Gates: vitest 123, tsc clean.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 10.
+
+---

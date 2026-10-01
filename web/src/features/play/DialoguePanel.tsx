@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../api";
-import { statusOf } from "../../api/http";
+import { conflictKind, statusOf } from "../../api/http";
 import { lang, t } from "../../i18n";
 import type { Message, NPC } from "../../types";
 import { Button, Field, Panel } from "../../ui";
@@ -23,6 +23,7 @@ export function DialoguePanel({
   onClose,
   onEndTalk,
   onSpoke,
+  onClosed,
 }: {
   sessionId: string;
   npc: NPC;
@@ -33,6 +34,8 @@ export function DialoguePanel({
   onClose: () => void;
   onEndTalk: () => void;
   onSpoke?: () => void;
+  /** The session closed elsewhere (GM tab, CLI, world replace): the page re-reads. */
+  onClosed?: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,7 +67,11 @@ export function DialoguePanel({
         setReady(!readOnly);
       })
       .catch((e) => {
-        if (active) setError(String(e));
+        if (!active) return;
+        if (conflictKind(e) === "closed") {
+          setError(t("play.sessionClosed")); // U7 review #12
+          onClosed?.();
+        } else setError(String(e));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -99,8 +106,12 @@ export function DialoguePanel({
       if (!alive.current) return;
       setMessages((m) => m.filter((x) => x.id !== mine.id));
       setDraft(text);
-      // 503: the NPC's call failed (BR-U7-27) — a plain line; the words stay in the box
-      setError(statusOf(e) === 503 ? t("dialogue.failed") : String(e));
+      // 503: the NPC's call failed (BR-U7-27) — a plain line; the words stay in the box.
+      // 409 closed: the session ended elsewhere — say so and let the page lock (#12).
+      if (conflictKind(e) === "closed") {
+        setError(t("play.sessionClosed"));
+        onClosed?.();
+      } else setError(statusOf(e) === 503 ? t("dialogue.failed") : String(e));
     } finally {
       if (alive.current) setSending(false);
     }

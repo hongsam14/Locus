@@ -79,6 +79,20 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
   useEffect(() => {
     refresh();
   }, [refresh]);
+  // A write awaits the *current* refresh: the one captured when the button was pressed
+  // is bound to the region selected then, and painted that region's rumors under a new
+  // region's heading (U7 review #6).
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
+
+  // The server's cap on suggestions (EVENT_SUGGEST_MAX), not a fixed 1..5 (U7 review #15).
+  const [maxSuggest, setMaxSuggest] = useState(5);
+  useEffect(() => {
+    Promise.resolve()
+      .then(() => api.getWorldState(session.id))
+      .then((s) => s?.max_event_suggestions && setMaxSuggest(s.max_event_suggestions))
+      .catch(() => {});
+  }, [session.id]);
 
   /** A GM write, then a re-read; true when it was saved. A 409 for a closed session
    * tells the page, which re-reads the session and locks the controls (U7 review #11). */
@@ -86,7 +100,7 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
     setError(null);
     try {
       await fn();
-      await refresh();
+      await refreshRef.current();
       onChanged?.();
       return true;
     } catch (e) {
@@ -105,7 +119,7 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
         const body = changeSummary(rc);
         if (body) addNotif({ region_id: rc.region_id, title: changeTitle(rc), body });
       }
-      await refresh();
+      await refreshRef.current();
       onChanged?.();
     } catch (e) {
       setError(String(e));
@@ -119,21 +133,17 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
     let done = 0;
     let failed = 0;
     setProgress({ done, total: ids.length, failed });
-    for (let i = 0; i < ids.length; i += BULK_LIMIT) {
-      const chunk = ids.slice(i, i + BULK_LIMIT);
-      await Promise.all(
-        chunk.map((rid) =>
-          op(rid)
-            .catch(() => {
-              failed += 1;
-            })
-            .finally(() => {
-              done += 1;
-              setProgress({ done, total: ids.length, failed });
-            }),
-        ),
-      );
-    }
+    // a worker pool: one slow region does not hold back the next ones (U7 review C8)
+    await mapLimit(ids, BULK_LIMIT, (rid) =>
+      op(rid)
+        .catch(() => {
+          failed += 1;
+        })
+        .finally(() => {
+          done += 1;
+          setProgress({ done, total: ids.length, failed });
+        }),
+    );
     setProgress(null);
     const ok = ids.length - failed;
     addNotif({
@@ -141,24 +151,21 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
       title: label,
       body: `${t("progress.done", { done: ok, total: ids.length })}${failed ? ` · ${t("progress.failed", { failed })}` : ""}`,
     });
-    await refresh();
+    await refreshRef.current();
     onChanged?.();
   }
 
   // "Generate all" — regions with no canonical rumor (Q5=C / Q6=B). A deed rumor does not
-  // make a region "full" of the world's rumors (U6 review #5).
+  // make a region "full" of the world's rumors (U6 review #5). One state read gives the
+  // counts — no per-region rumor read, so no translation warm per region (U7 review C1).
   async function generateAll() {
     if (progress != null) return; // in-flight guard (review #2)
     setProgress({ done: 0, total: 0, failed: 0 }); // gate the button during the pre-scan
     try {
-      const ids = Object.keys(distortions);
-      const counts = await mapLimit(ids, BULK_LIMIT, (rid) =>
-        api
-          .listRumors(session.id, rid)
-          .then((rs) => [rid, rs.filter((r) => (r.origin_kind ?? "canonical") === "canonical").length] as const)
-          .catch(() => [rid, 1] as const),
-      );
-      const empty = counts.filter(([, n]) => n === 0).map(([rid]) => rid);
+      const state = await api.getWorldState(session.id);
+      const empty = state.regions
+        .filter((r) => r.active_rumors - r.deed_rumors === 0)
+        .map((r) => r.region_id);
       if (empty.length === 0) {
         setProgress(null);
         addNotif({ region_id: "bulk", title: t("gm.generateAll"), body: t("notif.noTargets") });
@@ -180,10 +187,11 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
       <ManualTurnPanel
         closed={closed}
         progress={progress}
-        suggestN={suggestN}
+        suggestN={Math.min(suggestN, maxSuggest)}
+        maxSuggest={maxSuggest}
         onSuggestN={setSuggestN}
         onAdvance={advance}
-        onSuggest={() => run(() => api.suggestEvents(session.id, suggestN))}
+        onSuggest={() => run(() => api.suggestEvents(session.id, Math.min(suggestN, maxSuggest)))}
         onGenerateAll={generateAll}
         onRegenAll={() =>
           ask(t("confirm.regenAll"), () =>

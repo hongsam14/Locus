@@ -833,13 +833,23 @@ export function timelineText(
   summary?: string,
 ): string {
   let k = kind;
-  // older lines: one kind for create/suggest/approve, told apart by a flag (pre-U7)
-  if (k === "event_created" && payload.suggested) k = "event_suggested";
-  else if (k === "event_created" && payload.approved) k = "event_approved";
+  // older lines: one kind for create/suggest/approve, told apart by a flag (pre-U7) —
+  // only when the line has what the newer wording needs (U7 review #10)
+  if (k === "event_created" && payload.suggested && payload.category != null) k = "event_suggested";
+  else if (k === "event_created" && payload.approved && payload.category != null) k = "event_approved";
+  else if (k === "event_created" && (payload.suggested || payload.approved)) return summary || kind;
   else if (k === "session_started" && payload.player_name == null) k = "gm_session_started";
   const key = `timeline.${k}`;
-  if (lookup(key) == null) return summary || kind;
-  return t(key, { ...payload, turn, region: regionOf(payload) });
+  const template = lookup(key);
+  if (template == null) return summary || kind;
+  // a region line written before regions were recorded on it: its summary, not "—"
+  // (U3 A3-14, BR-U3-39)
+  if (template.includes("{region}") && payload.region_name == null && payload.region_id == null) {
+    return summary || t(key, { ...payload, turn, region: "—" });
+  }
+  const text = t(key, { ...payload, turn, region: regionOf(payload) });
+  // a field the line does not carry would show as "{name}": the summary reads better
+  return /\{[a-z_]+\}/.test(text) && summary ? summary : text;
 }
 
 /** A line as the player reads it: its own wording when it has one (`log.*`), else the

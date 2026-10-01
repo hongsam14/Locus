@@ -444,6 +444,7 @@ export interface WorldState {
   turn: number;
   player_region_id: string | null;
   regions: RegionState[];
+  max_event_suggestions?: number; // the server's suggestion cap (U3, U7 review #15)
 }
 
 export interface TimelineEntry {

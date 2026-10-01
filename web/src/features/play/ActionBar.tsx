@@ -4,7 +4,9 @@ import type { TurnRun } from "../../types";
 import { Button } from "../../ui";
 
 // What the server strips (Python `str.strip`): JS `trim` misses NEL and the separators.
-const EDGE_SPACE = /^[\s\x1c-\x1f\x85]+|[\s\x1c-\x1f\x85]+$/g;
+// The trailing branch only starts after a non-space, so a long run of spaces inside the
+// text is not re-scanned at every position (linear; U7 review §3 EDGE_SPACE).
+const EDGE_SPACE = /^[\s\x1c-\x1f\x85]+|(?<![\s\x1c-\x1f\x85])[\s\x1c-\x1f\x85]+$/g;
 
 /** Characters as the server counts them: code points, not UTF-16 units (U6 review #15). */
 export function declaredLength(text: string): number {
@@ -18,12 +20,14 @@ export function declaredLength(text: string): number {
 export function ActionBar({
   running,
   disabled,
+  closed = false,
   onWait,
   onDeclare,
   maxChars = 300,
 }: {
   running: TurnRun | null;
-  disabled: boolean;
+  disabled: boolean; // a turn is running or the session closed: no new action
+  closed?: boolean; // the session closed: the box locks too (U7 review #7)
   onWait: () => void;
   onDeclare?: (text: string) => Promise<boolean>;
   maxChars?: number;
@@ -72,7 +76,9 @@ export function ActionBar({
             value={draft}
             rows={2}
             placeholder={t("play.declarePlaceholder")}
-            disabled={disabled || sending}
+            // typing goes on during a turn; only the request and a closed session lock it
+            disabled={closed || sending}
+            maxLength={maxChars * 2}
             onChange={(e) => setDraft(e.target.value)}
             className="sketch-border bg-paper-card px-2 py-1 text-sm text-ink outline-none focus:bg-highlight"
           />

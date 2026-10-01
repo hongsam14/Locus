@@ -45,7 +45,9 @@ export const playApi = {
   getTurnRun: (sid: string, runId: string) => http<TurnRun>(`${s(sid)}/turn-runs/${enc(runId)}`),
   listTurnRuns: (sid: string, status?: string) =>
     http<TurnRun[]>(`${s(sid)}/turn-runs${status ? `?status=${enc(status)}` : ""}`),
-  getLog: (sid: string) => http<TimelineEntry[]>(`${s(sid)}/log`),
+  // `limit` keeps the newest lines (the screen shows 30, U7 review C6)
+  getLog: (sid: string, limit?: number) =>
+    http<TimelineEntry[]>(`${s(sid)}/log${limit ? `?limit=${limit}` : ""}`),
   // U5 NPC dialogue: only `say` calls the LLM (one call) and takes the language
   listNpcs: (sid: string) => http<NpcSummary[]>(`${s(sid)}/npcs`),
   startDialogue: (sid: string, npcId: string) =>

@@ -22,6 +22,8 @@ import type {
 } from "../types";
 import { Button, NotificationCenter, Panel } from "../ui";
 import type { Notif } from "../ui";
+
+const LOG_LINES = 30; // the log shows the newest 30 lines (U7 review C6)
 import { AppNav } from "./AppNav";
 
 let _notifSeq = 0;
@@ -80,24 +82,26 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
   // Only the latest read may paint: a slow answer in the previous language must not
   // overwrite a newer one (review U5 #11).
   const readSeq = useRef(0);
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<RegionView | null> => {
     const sid = sessionId;
-    if (!sid) return;
+    if (!sid) return null;
     const mine = ++readSeq.current;
     void loadNpcs(sid);
     try {
       const [s, v, entries] = await Promise.all([
         api.getSession(sid),
         api.getRegion(sid),
-        api.getLog(sid),
+        api.getLog(sid, LOG_LINES),
       ]);
-      if (sessionIdRef.current !== sid || mine !== readSeq.current) return;
+      if (sessionIdRef.current !== sid || mine !== readSeq.current) return null;
       setSession(s);
       setView(v);
       setLog(entries);
       setError(null);
+      return v;
     } catch (e) {
       if (sessionIdRef.current === sid && mine === readSeq.current) setError(String(e));
+      return null;
     }
   }, [sessionId, loadNpcs]);
 
@@ -181,20 +185,18 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
     setError(null);
     if (!sessionId) return;
     (async () => {
-      await refresh();
-      if (genRef.current !== gen) return;
-      // resume polling a run left in flight (e.g. after a reload)
-      try {
-        const running = await api.listTurnRuns(sessionId, "running");
-        if (genRef.current !== gen || sessionIdRef.current !== sessionId) return;
-        if (running.length > 0) {
-          setRun(running[0]);
-          void poll(sessionId, running[0].id, gen);
-        } else {
-          await refresh(); // nothing is running: make sure turn_running is not stale
-        }
-      } catch {
-        /* the region view already reported any error */
+      // the first read and the run check go together; a second read only when the view
+      // says a turn runs but none does (a stale flag) — U7 review C7
+      const [first, running] = await Promise.all([
+        refresh(),
+        api.listTurnRuns(sessionId, "running").catch(() => null),
+      ]);
+      if (genRef.current !== gen || sessionIdRef.current !== sessionId) return;
+      if (running && running.length > 0) {
+        setRun(running[0]); // resume polling a run left in flight (e.g. after a reload)
+        void poll(sessionId, running[0].id, gen);
+      } else if (running && first?.turn_running) {
+        await refresh();
       }
     })();
     return () => {
@@ -206,14 +208,19 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
    * restores its text on false (400 shown as an error, 409 as a notice). */
   async function act(action: PlayerAction): Promise<boolean> {
     const sid = sessionId;
+    // the screen this action belongs to: leaving it (GM mode, another session) before
+    // the answer must not start a poller on the unmounted page (U7 review §3)
+    const gen = genRef.current;
+    const here = () => sessionIdRef.current === sid && genRef.current === gen;
     setError(null);
     setDeclaration(null);
     try {
       const started = await api.act(sid, action);
-      if (sessionIdRef.current !== sid) return false;
+      if (!here()) return false;
       setRun(started);
       await refresh(); // the player has already arrived (BR-U4-10)
-      void poll(sid, started.id, genRef.current);
+      if (!here()) return false;
+      void poll(sid, started.id, gen);
       return true;
     } catch (e) {
       const kind = conflictKind(e);
@@ -290,6 +297,7 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
                 onSpoke={() =>
                   setNpcCounts((c) => ({ ...c, [activeNpc.id]: (c[activeNpc.id] ?? 0) + 2 }))
                 }
+                onClosed={() => void refresh()}
               />
             )}
             {lastChanges && (
@@ -306,6 +314,7 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
             <ActionBar
               running={run}
               disabled={busy || closed}
+              closed={closed}
               onWait={() => act({ type: "wait" })}
               onDeclare={(text) => act({ type: "declare", text })}
               maxChars={view.declare_max_chars ?? 300}

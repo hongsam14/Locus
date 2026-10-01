@@ -249,9 +249,9 @@ describe("U6 review carry-overs", () => {
       { session_id: "s1", region_id: "a", distortion_degree: 0.3 },
       { session_id: "s1", region_id: "b", distortion_degree: 0.3 },
     ]);
-    (api.listRumors as Mock).mockImplementation(async (_s: string, rid: string) =>
-      rid === "a" ? [{ id: "d1", origin_kind: "deed" }] : [{ id: "c1", origin_kind: "canonical" }],
-    );
+    // U3 intended change (U7 review C1): one state read gives the counts
+    (api.getWorldState as Mock).mockResolvedValue({ session_id: "s1", turn: 0, player_region_id: null,
+      regions: [{ region_id: "a", region_name: "a", distortion: 0.3, feedback_share: 0, active_rumors: 1, promoted_rumors: 0, deed_rumors: 1, active_events: 0 }, { region_id: "b", region_name: "b", distortion: 0.3, feedback_share: 0, active_rumors: 1, promoted_rumors: 0, deed_rumors: 0, active_events: 0 }] });
     (api.generateRumors as Mock).mockResolvedValue([]);
     render(<GmHub session={OPEN} regionId={null} />);
     await waitFor(() => expect(api.listDistortions).toHaveBeenCalled());
@@ -460,4 +460,104 @@ it("#11 (page): a void refused because the session closed re-reads the session",
   );
   await waitFor(() => expect((api.getSession as Mock).mock.calls.length).toBeGreaterThan(before));
   expect(screen.getByTestId("deed-notice")).toHaveTextContent(t("play.sessionClosed"));
+});
+
+// --- U3: the rest of U7 code review (#6 #8 #10 #12 #15, C15 C19, §3 PlayerStrip, A3-14) -- //
+describe("U7 review carry in U3", () => {
+  function gmReads() {
+    (api.getTimeline as Mock).mockResolvedValue([]);
+    (api.listEvents as Mock).mockResolvedValue([]);
+    (api.listDistortions as Mock).mockResolvedValue([
+      { session_id: "s1", region_id: "a", distortion_degree: 0.3, feedback_share: 0 },
+      { session_id: "s1", region_id: "b", distortion_degree: 0.3, feedback_share: 0 },
+    ]);
+  }
+
+  it("#6: a write that ends after the region changed paints the new region's rumors", async () => {
+    gmReads();
+    (api.listRumors as Mock).mockImplementation(async (_s: string, rid: string) => [
+      { id: `r-${rid}`, session_id: "s1", region_id: rid, distorted_from_id: "k", statement: `rumor of ${rid}`,
+        distortion_degree: 0.3, support: 0.5, confidence: 0.5, promoted: false },
+    ]);
+    let finish: () => void = () => {};
+    (api.setDistortion as Mock).mockReturnValue(new Promise<void>((r) => (finish = r)));
+    function Two() {
+      const [rid, setRid] = useState("a");
+      return (
+        <>
+          <button data-testid="pick-b" onClick={() => setRid("b")}>b</button>
+          <GmHub session={OPEN} regionId={rid} />
+        </>
+      );
+    }
+    render(<Two />);
+    await waitFor(() => expect(screen.getByText("rumor of a")).toBeInTheDocument());
+    const slider = screen.getByTestId("distortion-slider");
+    fireEvent.change(slider, { target: { value: "0.5" } });
+    fireEvent.pointerUp(slider);
+    fireEvent.click(screen.getByTestId("pick-b"));
+    await waitFor(() => expect(screen.getByText("rumor of b")).toBeInTheDocument());
+    await act(async () => finish());
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByText("rumor of a")).not.toBeInTheDocument();
+  });
+
+  it("#8: the distortion label follows the thumb before the save", async () => {
+    gmReads();
+    (api.listRumors as Mock).mockResolvedValue([]);
+    render(<GmHub session={OPEN} regionId="a" />);
+    await waitFor(() => screen.getByTestId("distortion-slider"));
+    fireEvent.change(screen.getByTestId("distortion-slider"), { target: { value: "0.7" } });
+    expect(screen.getByTestId("distortion-label")).toHaveTextContent("0.70");
+  });
+
+  it("#15: the suggestion count goes up to the server's cap", async () => {
+    gmReads();
+    (api.getWorldState as Mock).mockResolvedValue({ session_id: "s1", turn: 3, player_region_id: null,
+      regions: [], max_event_suggestions: 8 });
+    render(<GmHub session={OPEN} regionId={null} />);
+    await waitFor(() => expect(screen.getByRole("option", { name: "8" })).toBeInTheDocument());
+  });
+
+  it("C15/C19: a mouse release alone does not save; a caller's handler still runs", async () => {
+    const onCommit = vi.fn().mockResolvedValue(true);
+    const onBlur = vi.fn();
+    render(<CommitRange data-testid="r" min={0} max={1} step={0.1} value={0.2} onCommit={onCommit} onBlur={onBlur} />);
+    const r = screen.getByTestId("r");
+    fireEvent.change(r, { target: { value: "0.6" } });
+    fireEvent.mouseUp(r);
+    expect(onCommit).not.toHaveBeenCalled();
+    fireEvent.blur(r);
+    expect(onBlur).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onCommit).toHaveBeenCalledWith(0.6));
+  });
+
+  it("§3: only a 404 means no player; another failure keeps the player and says so", async () => {
+    (api.getPlayer as Mock)
+      .mockResolvedValueOnce({ id: "p1", session_id: "s1", name: "Ari", region_id: "a", turns_spent: 0 })
+      .mockRejectedValueOnce(new HttpError(500, "Internal Server Error", "boom"));
+    (api.listTurnRuns as Mock).mockResolvedValue([]);
+    const { rerender } = render(
+      <MemoryRouter><PlayerStrip sessionId="s1" turn={3} regionNames={{ a: "Riverton" }} rev={0} /></MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId("gm-player-status")).toHaveTextContent("Ari"));
+    rerender(<MemoryRouter><PlayerStrip sessionId="s1" turn={3} regionNames={{ a: "Riverton" }} rev={1} /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByTestId("gm-player-error")).toBeInTheDocument());
+    expect(screen.getByTestId("gm-player-status")).toHaveTextContent("Ari");
+  });
+
+  it("#10: an old flagged event line without a category reads its summary", () => {
+    // the shapes written before U7: no category, and approval without a region
+    expect(timelineText("event_created", { event_id: "e1", region_id: "r1", suggested: true }, 2,
+      "suggested war event in r1")).toBe("suggested war event in r1");
+    expect(timelineText("event_created", { event_id: "e1", approved: true }, 2, "approved event e1"))
+      .toBe("approved event e1");
+    expect(timelineText("event_created", { event_id: "e1", region_id: "r1", category: "war", suggested: true }, 2, "x"))
+      .not.toBe("x"); // with a category the newer wording is used
+  });
+
+  it("A3-14: a region line written before regions were recorded reads its summary", () => {
+    expect(timelineText("promote", { rumor_id: "rm1" }, 4, "promoted rm1")).toBe("promoted rm1");
+    expect(timelineText("promote", { rumor_id: "rm1", region_name: "Riverton" }, 4, "x")).toContain("Riverton");
+  });
 });

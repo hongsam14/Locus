@@ -167,6 +167,8 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
     setProgress({ done: 0, total: 0, failed: 0 }); // gate the button during the pre-scan
     try {
       const state = await api.getWorldState(session.id);
+      // the cap read on mount may have failed: this read corrects it (U3 review S13)
+      if (state.max_event_suggestions) setMaxSuggest(state.max_event_suggestions);
       const empty = state.regions
         .filter((r) => r.active_rumors - r.deed_rumors === 0)
         .map((r) => r.region_id);

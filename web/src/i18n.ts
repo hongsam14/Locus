@@ -865,9 +865,11 @@ export function timelineText(
   if (template.includes("{region}") && payload.region_name == null && payload.region_id == null) {
     return summary || t(key, { ...payload, turn, region: "—" });
   }
-  const text = t(key, { ...payload, turn, region: regionOf(payload) });
-  // a field the line does not carry would show as "{name}": the summary reads better
-  return /\{[a-z_]+\}/.test(text) && summary ? summary : text;
+  const params: Params = { ...payload, turn, region: regionOf(payload) };
+  // a field the line does not carry would show as "{name}": the summary reads better —
+  // judged on the template's own fields, so a name with braces in it stays (U3 S08)
+  const missing = [...template.matchAll(/\{(\w+)\}/g)].some(([, k]) => params[k] == null);
+  return missing && summary ? summary : t(key, params);
 }
 
 /** A line as the player reads it: its own wording when it has one (`log.*`), else the

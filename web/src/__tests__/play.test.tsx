@@ -192,6 +192,35 @@ describe("PlayPage", () => {
     expect(api.getRegion).toHaveBeenCalledTimes(1); // nothing runs: no second read
   });
 
+  it("U3 review S02: a session held with no turn running is read again until it lets go", async () => {
+    (api.getRegion as Mock)
+      .mockResolvedValueOnce(view({ turn_running: true }))
+      .mockResolvedValueOnce(view({ turn_running: true }))
+      .mockResolvedValueOnce(view({ turn_running: true }))
+      .mockResolvedValue(view({ turn_running: false }));
+    render(
+      <MemoryRouter initialEntries={["/play/s1"]}>
+        <Routes><Route path="/play/:sessionId?" element={<PlayPage pollMs={5} heldRetryMs={5} />} /></Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId("wait-btn")).toBeEnabled());
+    expect(api.getRegion).toHaveBeenCalledTimes(4); // mount, the stale-flag read, two waits
+  });
+
+  it("U3 review S02: it stops after five more reads while the hold lasts", async () => {
+    // a fresh object per read, as a parsed response is
+    (api.getRegion as Mock).mockImplementation(async () => view({ turn_running: true }));
+    render(
+      <MemoryRouter initialEntries={["/play/s1"]}>
+        <Routes><Route path="/play/:sessionId?" element={<PlayPage pollMs={5} heldRetryMs={5} />} /></Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(api.getRegion).toHaveBeenCalledTimes(7));
+    await new Promise((r) => setTimeout(r, 60));
+    expect(api.getRegion).toHaveBeenCalledTimes(7); // mount + stale-flag read + 5
+    expect(screen.getByTestId("wait-btn")).toBeDisabled();
+  });
+
   it("U3 (U7 review #7): the declaration box takes text while a turn runs", async () => {
     (api.getRegion as Mock).mockResolvedValue(view({ turn_running: true }));
     renderPlay();

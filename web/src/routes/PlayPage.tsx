@@ -23,6 +23,7 @@ import { Button, LlmNotice, NotificationCenter, Panel } from "../ui";
 import type { Notif } from "../ui";
 
 const LOG_LINES = 30; // the log shows the newest 30 lines (U7 review C6)
+const HELD_RETRIES = 5; // re-reads while the session is held but no turn runs (U3 S02)
 import { AppNav } from "./AppNav";
 
 let _notifSeq = 0;
@@ -33,7 +34,7 @@ let _notifSeq = 0;
  * done, then shows one notification per changed region + the narration.
  * U5: "talk" on an NPC opens `DialoguePanel`; a display-language switch re-reads
  * the region (its translated fields depend on the language). */
-export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
+export function PlayPage({ pollMs = 700, heldRetryMs = 1000 }: { pollMs?: number; heldRetryMs?: number }) {
   const { sessionId = "" } = useParams();
   const navigate = useNavigate();
   const [session, setSession] = useState<GameSession | null>(null);
@@ -202,6 +203,23 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
       genRef.current++; // stop any loop still awaiting a poll
     };
   }, [sessionId, refresh, poll]);
+
+  // `turn_running` with no run in flight: a GM write (generate, suggest) or an editor
+  // lease holds the session, and no poll will clear the flag. Read again every second,
+  // at most five times, so the buttons come back when it lets go (U3 review S02).
+  const heldTries = useRef(0);
+  useEffect(() => {
+    if (!view?.turn_running || run) {
+      heldTries.current = 0;
+      return;
+    }
+    if (heldTries.current >= HELD_RETRIES) return;
+    const timer = setTimeout(() => {
+      heldTries.current += 1;
+      void refresh();
+    }, heldRetryMs);
+    return () => clearTimeout(timer);
+  }, [view, run, refresh, heldRetryMs]);
 
   /** Start an action; true when the server accepted it (202). U6: the declaration box
    * restores its text on false (400 shown as an error, 409 as a notice). */

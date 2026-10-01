@@ -196,10 +196,10 @@
 - [x] 10.6 테스트: `home.test`(EX-1·2·3·12·13·14, 카드 둘, 인자 순서), `gm.test`(SeedPanel, 끄기), `editor.test`(끄기, 배지, 삭제 계획 씨앗 수), `components.test`(AppNav, 의도된 변경), `capabilities.test`.
 
 ### Step 11 — U3 이월: 프런트엔드
-- [ ] 11.1 정확성: #12(패널), #14, #15
-- [ ] 11.2 상한 밖: S02, S04, S05, S06, S08, S13, S14, S21(화면), S23, S24, S25, S28, S31
-- [ ] 11.3 정리: C1, C2(웹), C8(BuildPanel·WorldFileBar), C12, C17(웹)
-- [ ] 11.4 테스트: 항목마다 하나 이상(jsdom이 재현하지 못하는 S23·S24는 핸들러 단위로).
+- [x] 11.1 정확성: #12(패널), #14, #15
+- [x] 11.2 상한 밖: S02, S04, S05, S06, S08, S13, S14, S21(화면), S23, S24, S25, S28, S31
+- [x] 11.3 정리: C1, C2(웹), C8(BuildPanel·WorldFileBar), C12, C17(웹)
+- [x] 11.4 테스트: 항목마다 하나 이상(jsdom이 재현하지 못하는 S23·S24는 핸들러 단위로).
 
 ### Step 12 — 배치 (Infra-light)
 - [ ] 12.1 로컬 기준선: ruff, black --check, tsc, `npm ci`(Infra R-05).

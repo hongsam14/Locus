@@ -3,7 +3,7 @@
 // and the U6 review items carried into U7 (#5, #10-#13, #15, C1).
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "../api/http";
 import type { Mock } from "vitest";
@@ -655,5 +655,65 @@ describe("U8 seeds and LLM-off buttons", () => {
     await waitFor(() => expect(screen.getByTestId("generate-btn")).toBeEnabled());
     await act(async () => fireEvent.click(screen.getByTestId("generate-btn")));
     await waitFor(() => expect(screen.getByTestId("gm-hub-error")).toHaveTextContent(t("llm.required")));
+  });
+});
+
+
+// --------------------------------------------------------------------------- //
+// U3 code-review-01, GM screen (U8 Step 11c): S13 S14
+// --------------------------------------------------------------------------- //
+describe("U3 review carry: the GM screen", () => {
+  beforeEach(() => {
+    resetCapabilities();
+    (api.capabilities as Mock).mockResolvedValue({ llm: true, vlm: true, embedding: true });
+    (api.listSeeds as Mock).mockResolvedValue([]);
+    (api.getTimeline as Mock).mockResolvedValue([]);
+    (api.listEvents as Mock).mockResolvedValue([]);
+    (api.listDistortions as Mock).mockResolvedValue([{ session_id: "s1", region_id: "a", distortion_degree: 0.3 }]);
+    (api.listRumors as Mock).mockResolvedValue([]);
+  });
+  afterEach(() => resetCapabilities());
+
+  it("S13: a failed cap read on mount is corrected by the next state read", async () => {
+    (api.getWorldState as Mock)
+      .mockRejectedValueOnce(new Error("state down"))
+      .mockResolvedValue({ session_id: "s1", turn: 3, player_region_id: null, max_event_suggestions: 8,
+        regions: [{ region_id: "a", region_name: "a", distortion: 0.3, feedback_share: 0, active_rumors: 1,
+          promoted_rumors: 0, deed_rumors: 0, active_events: 0 }] });
+    render(<GmHub session={OPEN} regionId={null} />);
+    await waitFor(() => expect(api.getWorldState).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("option", { name: "8" })).not.toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getByTestId("generate-all-btn")));
+    await waitFor(() => expect(screen.getByRole("option", { name: "8" })).toBeInTheDocument());
+  });
+
+  it("S14: another session never shows the last session's player", async () => {
+    (api.getSession as Mock).mockImplementation(async (sid: string) => ({ ...OPEN, id: sid }));
+    (api.exportWorld as Mock).mockResolvedValue({ world_id: "w", regions: [{ id: "a", name: "Riverton", level: "town" }],
+      connections: [], entities: [], knowledge: [], scopes: [] });
+    (api.listSessions as Mock).mockResolvedValue([]);
+    (api.listDeeds as Mock).mockResolvedValue([]);
+    (api.listTurnRuns as Mock).mockResolvedValue([]);
+    (api.getWorldState as Mock).mockResolvedValue({ session_id: "s1", turn: 3, player_region_id: null, regions: [] });
+    (api.getPlayer as Mock).mockImplementation(async (sid: string) => {
+      if (sid === "s1") return { id: "p1", session_id: "s1", name: "Ari", region_id: "a", turns_spent: 0 };
+      throw new HttpError(500, "Server Error", "player read failed");
+    });
+    function Go() {
+      const navigate = useNavigate();
+      return <button data-testid="go-s2" onClick={() => navigate("/gm/s2")}>s2</button>;
+    }
+    render(
+      <MemoryRouter initialEntries={["/gm/s1"]}>
+        <Go />
+        <Routes><Route path="/gm/:sessionId" element={<GmPage />} /></Routes>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByTestId("gm-player-status")).toHaveTextContent("Ari");
+    expect(await screen.findByTestId("player-marker-a")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("go-s2"));
+    await waitFor(() => expect(api.getPlayer).toHaveBeenCalledWith("s2"));
+    await waitFor(() => expect(screen.queryByTestId("gm-player-status")).not.toBeInTheDocument());
+    expect(screen.queryByTestId("player-marker-a")).not.toBeInTheDocument();
   });
 });

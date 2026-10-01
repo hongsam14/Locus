@@ -3864,3 +3864,16 @@ Intended test changes: home demo button, `llm-banner`, the dialogue 503 body. 17
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 11b.
 
 ---
+
+## U8 Code Generation Part 2 — Step 11c (U3 carry: play and GM screens)
+**Timestamp**: 2026-10-01T15:43:38Z
+**AI Response**: Closed:
+- S02: a held session is read again, up to 5 times.
+- S04: the closed line survives the read-only re-read.
+- S08: placeholders are checked on the template.
+- S13: the suggestion cap is corrected by the next state read.
+- S14: the player strip is keyed per session, and the marker resets.
+6 tests; 7/7 mutations caught. Gates: vitest 197, tsc clean. Step 11 complete.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 11c.
+
+---

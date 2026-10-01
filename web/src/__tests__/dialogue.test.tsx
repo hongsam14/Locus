@@ -141,6 +141,16 @@ describe("i18n dictionaries (FD-U5 frontend §2.2)", () => {
   });
 });
 
+describe("timelineText placeholders (U3 review S08)", () => {
+  it("a name with braces in it is kept; a field the line lacks still falls back", () => {
+    setLang("en");
+    const moved = { from_region_name: "Old {keep}", to_region_name: "{ford}", cost_turns: 1 };
+    expect(timelineText("player_moved", moved, 2, "the summary")).toBe("moved: Old {keep} → {ford} (1 turn(s))");
+    expect(timelineText("player_moved", { from_region_name: "A", cost_turns: 1 }, 2, "the summary")).toBe("the summary");
+    setLang("ko");
+  });
+});
+
 describe("?lang= on translated reads (FD-U5 Q1=A)", () => {
   function stubFetch() {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => [] });
@@ -272,6 +282,23 @@ describe("DialoguePanel (US-4.1 / 4.3)", () => {
     typeAndSend("누구세요?");
     await waitFor(() => expect(screen.getByTestId("dialogue-error")).toHaveTextContent(t("llm.required")));
     expect(screen.getByTestId("dialogue-input")).toHaveValue("누구세요?");
+  });
+
+  it("U3 review S04: the 'session closed' line stays when the panel turns read-only", async () => {
+    (api.startDialogue as Mock).mockResolvedValue(conversation());
+    (api.say as Mock).mockRejectedValue(new HttpError(409, "Conflict", '{"detail":"session is closed: s1"}'));
+    (api.dialogueHistory as Mock).mockResolvedValue(conversation());
+    const props = { sessionId: "s1", npc: MARA, llmAvailable: true, busy: false,
+      onClose: vi.fn(), onEndTalk: vi.fn(), onClosed: vi.fn() };
+    const { rerender } = render(<DialoguePanel {...props} />);
+    await waitFor(() => expect(screen.getByTestId("dialogue-input")).toBeEnabled());
+    typeAndSend("누구세요?");
+    await waitFor(() => expect(screen.getByTestId("dialogue-error")).toHaveTextContent(t("play.sessionClosed")));
+    expect(props.onClosed).toHaveBeenCalled();
+    rerender(<DialoguePanel {...props} readOnly />); // the page re-read: the session is closed
+    await waitFor(() => expect(api.dialogueHistory).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.getByTestId("dialogue-error")).toHaveTextContent(t("play.sessionClosed"));
   });
 
   it("without an LLM the history still opens but the input is locked", async () => {

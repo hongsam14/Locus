@@ -44,6 +44,7 @@ export function DialoguePanel({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const alive = useRef(true);
+  const shownFor = useRef(""); // the session and NPC the error line belongs to
 
   useEffect(() => {
     // `active` is per run (StrictMode runs effects twice); `alive` is for `send`.
@@ -51,7 +52,13 @@ export function DialoguePanel({
     alive.current = true;
     setLoading(true);
     setReady(false);
-    setError(null);
+    // a session that just closed re-runs this read (readOnly); its "session closed"
+    // line must stay — only another session or NPC starts a clean line (U3 review S04)
+    const shown = `${sessionId}|${npc.id}`;
+    if (shownFor.current !== shown) {
+      shownFor.current = shown;
+      setError(null);
+    }
     // `start` needs an open session; a closed one is read through `history`, where
     // "never talked" (404) simply means an empty history (BR-U5-4).
     const load = readOnly

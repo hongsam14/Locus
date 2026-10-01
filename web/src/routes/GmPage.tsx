@@ -60,6 +60,7 @@ export function GmPage() {
   useEffect(() => {
     let active = true;
     setError(null);
+    setPlayer(null); // the map marker is the new session's or none (U3 review S14)
     (async () => {
       const s = await loadSession();
       if (!s || !active) return;
@@ -133,6 +134,7 @@ export function GmPage() {
       )}
       {session && (
         <PlayerStrip
+          key={session.id} // another session starts with no player of the last (U3 S14)
           sessionId={session.id}
           turn={session.turn}
           regionNames={regionNames}

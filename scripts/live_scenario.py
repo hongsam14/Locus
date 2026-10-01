@@ -2,8 +2,9 @@
 """Live scenario against a running Locus stack (U8 BLM §7, BR-U8-36).
 
 Walks the Emberleaf demo in the order the player can: load the demo, start a session at the
-harbor, move to the meadow, talk, declare a deed, start the blight seed, walk back to the
-harbor, wait, and read what each region heard. Far regions are read through the GM routes.
+harbor, move to the meadow, talk, declare a deed, end the talk (the witness judges the deeds
+then — BR-U6-7), start the blight seed, walk back to the harbor, wait, and read what each
+region heard. Far regions are read through the GM routes.
 Every step prints PASS, FAIL or SKIP; without an LLM key the LLM steps are SKIP with the
 reason. Any FAIL makes the exit code 1.
 
@@ -36,6 +37,7 @@ HARBOR, MEADOW, GROVE, CRAG, LANES = (
     "Gutterlight",
 )
 SEED_REGION = MEADOW  # the mushroom-blight seed
+SEED_MIN_SALIENCE = 0.5  # DEED_SEED_MIN_SALIENCE's default: a noteworthy judgement seeds
 DECLARATION = (
     "In the middle of the market I set the old mushroom granary on fire and shout that the "
     "blight is a curse sent from Sylvarch."
@@ -100,7 +102,7 @@ class Scenario:
         self.ids: dict[str, str] = {}
         self.sid = ""
         self.deed_id: str | None = None
-        self.deed_turn: int | None = None
+        self.deed_turn: int | None = None  # the turn the deeds were judged (and seeded)
         self.seeded = False
 
     # -- plumbing ----------------------------------------------------------- #
@@ -135,7 +137,10 @@ class Scenario:
         return self._ok("GET", f"/api/gm/sessions/{self.sid}/regions/{rid}/rumors")
 
     def _deed_rumors(self, name: str) -> list[dict]:
-        return [r for r in self._rumors(name) if r.get("origin_deed_id") == self.deed_id]
+        """The region's rumors born of the player's deeds. Any deed counts: the arrival in
+        the meadow is judged with the declaration and may take the meadow's one hop of a
+        turn first (U8 review #3); either way a deed rumor travels one hop per turn."""
+        return [r for r in self._rumors(name) if r.get("origin_kind") == "deed"]
 
     def _state(self) -> dict[str, dict]:
         state = self._ok("GET", f"/api/gm/sessions/{self.sid}/state")
@@ -218,10 +223,34 @@ class Scenario:
         declared = [d["deed"] for d in deeds if d["deed"].get("kind") == "declared_action"]
         if not declared:
             raise StepFailed("no declared deed was recorded")
-        self.deed_id, self.deed_turn = declared[-1]["id"], self._turn()
+        self.deed_id = declared[-1]["id"]
+        return f"deed {self.deed_id} at T{self._turn()} (judged when the talk ends)"
+
+    def s6a_end_talk(self) -> str:
+        """The witness judges the deeds it saw when the talk ends (BR-U6-7): a noteworthy
+        judgement seeds a deed rumor in the meadow at that turn (U8 review #3)."""
+        self._need_llm("the witness's appraisal")
+        if self.deed_id is None:
+            raise StepSkipped("no deed was declared (step 6 did not run)")
+        npc = (self._region_here().get("npcs") or [None])[0]
+        if npc is None:
+            raise StepFailed("no NPC in the player's region")
+        self._ok("POST", f"/api/play/sessions/{self.sid}/npcs/{npc['id']}/start")
+        line = {"text": "Did you see what I just did at the granary?"}
+        self._ok("POST", f"/api/play/sessions/{self.sid}/npcs/{npc['id']}/say", line)
+        self._act({"type": "end_talk", "npc_id": npc["id"]})
+        self.deed_turn = self._turn()
+        deeds = self._ok("GET", f"/api/gm/sessions/{self.sid}/deeds")
+        judged = [a for d in deeds for a in d.get("appraisals") or []]
+        worthy = [
+            a for a in judged if a.get("noteworthy") and a.get("salience", 0) >= SEED_MIN_SALIENCE
+        ]
         self.seeded = bool(self._deed_rumors(MEADOW))
-        seeded = "seeded as a rumor" if self.seeded else "not seeded (the witnesses shrugged)"
-        return f"deed {self.deed_id} at T{self.deed_turn}, {seeded}"
+        if worthy and not self.seeded:
+            raise StepFailed(f"{len(worthy)} noteworthy judgement(s) but no deed rumor in {MEADOW}")
+        if not self.seeded:
+            return f"T{self.deed_turn}: {len(judged)} judgement(s), none worth telling — nothing to spread"
+        return f"T{self.deed_turn}: {len(worthy)} noteworthy judgement(s), seeded in {MEADOW}"
 
     def s7_seed(self) -> str:
         before = self._turn()
@@ -270,8 +299,11 @@ class Scenario:
     def s11_not_yet_far(self) -> str:
         self._need_deed()
         turn = self._turn()
+        # the claim is about T+2 (one hop a turn: Ironcrag is three away); first be there
+        if self.deed_turn is not None and turn != self.deed_turn + 2:
+            raise StepFailed(f"checked at T{turn}, not at T{self.deed_turn + 2}")
         if self._deed_rumors(CRAG):
-            raise StepFailed(f"the deed rumor reached {CRAG} by T{turn}")
+            raise StepFailed(f"a deed rumor reached {CRAG} by T{turn}")
         return f"not in {CRAG} at T{turn} (deed at T{self.deed_turn})"
 
     def s12_world_state(self) -> str:
@@ -285,7 +317,7 @@ class Scenario:
         if self.deed_id is None:
             raise StepSkipped("no deed was declared (step 6 did not run)")
         if not self.seeded:
-            raise StepSkipped("the deed was not seeded as a rumor at its turn (LLM appraisal)")
+            raise StepSkipped("no deed was judged worth telling (LLM appraisal), so none spreads")
 
     STEPS: tuple[tuple[str, str, str], ...] = (
         ("1", "기동", "s1_up"),
@@ -294,6 +326,7 @@ class Scenario:
         ("4", "이동", "s4_move"),
         ("5", "대화", "s5_talk"),
         ("6", "선언", "s6_declare"),
+        ("6a", "대화 마침(판단)", "s6a_end_talk"),
         ("7", "씨앗", "s7_seed"),
         ("8", "이동", "s8_move_back"),
         ("9", "행적 1칸", "s9_one_hop"),

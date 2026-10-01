@@ -2929,3 +2929,29 @@ R-07 → Accepted risk
 **User Input**: (none)
 **AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 1 Major / 6 Minor; open 7. Record: `aidlc-docs/construction/plans/reviews/U7-gm-mode-hardening-code-generation-plan-review-01.md`.
 **Context**: Code Generation Part 1 — U7 — next: approval gate (adversarial READY is terminal; plan frozen).
+
+---
+
+## U7 Code Generation Part 1 — approval prompt
+**Timestamp**: 2026-10-01T02:16:43Z
+**AI Response**: Asking approval of `aidlc-docs/construction/plans/U7-gm-mode-hardening-code-generation-plan.md` (11 steps) with the Review brief (R-01..R-07 open). Options: Request Changes / Approve & Continue.
+**Context**: CONSTRUCTION / U7 — Code Generation Part 1, approval gate.
+
+---
+
+## U7 Code Generation Part 1 — approval
+**Timestamp**: 2026-10-01T02:35:15Z
+**User Input**: "Approve & Continue (Recommended)"
+**AI Response**: Code generation plan approved. R-01 is handled by the plan's own principle: caller fixes move into the same sub-step, recorded as plan deviations in code-summary. R-02..R-07 close at their steps. Starting Part 2 at Step 1.
+**Context**: CONSTRUCTION / U7 — Code Generation Part 2.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — U7
+R-01 → Accepted risk
+R-02 → Accepted risk
+R-03 → Accepted risk
+R-04 → Accepted risk
+R-05 → Accepted risk
+R-06 → Accepted risk
+R-07 → Accepted risk

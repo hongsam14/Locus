@@ -74,16 +74,15 @@ ADVANCE_TURN payload += feedback_restored_regions
 - **턴 안 사건 반영** (`events.distortions` 쓰기)
   - `feedback_share=None`이므로 몫을 그대로 둔다. 사건 반영 다음에 되먹임 단계가 같은 UoW에서 돈다.
 
-### 1.5 한 지역이 어떻게 움직이는가 (예)
-기본값: 기준 0.3, `feedback_weight` 0.1, `cap` 0.3, `restore` 0.05.
-- 1~3턴: 사건이 지역 X를 0.6으로 올린다. 소문들이 0.5대로 오른다.
-- 4턴: 사건이 해소되어 X는 0.3이 된다(사건 몫만 빠진다). 비승격 소문 4개 중 3개가 0.45 이상이다.
-  - 되먹임: `d = 0.1 × 3/4 = 0.075`, 왜곡도 0.375, 몫 0.075
+### 1.5 한 지역이 어떻게 움직이는가 (예) 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-10-01의 이월 결정 반영〕
+`step_feedback`에 넣는 입력 수열이다. 기본값은 `feedback_weight` 0.1, `cap` 0.3, `restore` 0.05이고, 시작 상태는 왜곡도 0.3, 몫 0이다(되먹임이 아직 쌓이지 않은 지역).
+- 턴 1: 비승격 소문 4개 중 3개가 0.45 이상이다. `d = 0.1 × 3/4 = 0.075`, 왜곡도 0.375, 몫 0.075
   - 사건 영향이 없으므로 이 소문들은 감쇠한다(−0.05/턴).
-- 5턴: 0.45 이상이 1개 남는다. `d = 0.025`, 왜곡도 0.4, 몫 0.1
-- 6턴: 0.45 이상이 없다. 복원 0.05, 왜곡도 0.35, 몫 0.05
-- 7턴: 복원 0.05, 왜곡도 0.3, 몫 0
-- 결과: 왜곡도가 기준으로 돌아온다(US-8.2 둘째). 0.45~0.6 사이 소문은 감쇠하고, 기준 아래는 가지치기된다(US-8.2 첫째).
+- 턴 2: 0.45 이상이 1개 남는다. `d = 0.025`, 왜곡도 0.4, 몫 0.1
+- 턴 3: 0.45 이상이 없다. 복원 0.05, 왜곡도 0.35, 몫 0.05
+- 턴 4: 복원 0.05, 왜곡도 0.3, 몫 0
+- 결과: 왜곡도가 시작값으로 돌아온다(US-8.2 둘째). 0.45~0.6 사이 소문은 감쇠하고, 기준 아래는 가지치기된다(US-8.2 첫째).
+- 사건이 함께 도는 동안 쌓인 몫도 같은 방식으로 상한(+0.3) 안에서 쌓이고, 사건 해소(사건 몫만 빠짐) 뒤 강한 소문이 사라지면 턴마다 0.05씩 돌아온다.
 
 ## 2. 사건 상태와 제안 (FR-E4, FR-D2)
 
@@ -154,6 +153,10 @@ GM create ──► ACTIVE  (event_created)
 - 닫힌 세션도 읽을 수 있다.
 - 조립: `PlayContainer.world_state`
 
+### 4.4 GM 세션 시작 기록 (BR-U7-11) 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-10-01의 이월 결정 반영〕
+- `SessionService.start_session(world_id)`(플레이어 없는 GM 세션)은 세션 생성·왜곡도 기본 행과 같은 UoW에서 `session_started` 줄을 쓴다.
+- 페이로드는 `{"player": null}`이고 `region_id`는 없다. 플레이어 로그의 `here`는 `None`으로 남는다.
+
 ## 5. 플레이어 로그 (FR-C6, Q3=A)
 `PlayService.log(session_id)` = `player_log(repo.list_timeline(session_id))`
 
@@ -176,8 +179,10 @@ for e in entries:
 - GM 타임라인(`GET /api/gm/.../timeline`)은 그대로 전부 보인다.
 
 ## 6. 지역 이름 (FR-D3)
-- 타임라인을 쓰는 서비스는 이미 스냅샷을 읽는다. 이름표는 `{r.id: r.name for r in snapshot.topo.regions}` 하나로 만든다.
-  - 쓰는 곳: `RumorService`, `EventService`, `DistortionService`, `TurnAdvancer`
+- 이름표는 `{r.id: r.name for r in snapshot.topo.regions}` 하나로 만든다. 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-10-01의 이월 결정 반영〕
+  - `RumorService`, `EventService`, `TurnAdvancer`는 이미 스냅샷 소스를 갖는다.
+  - `DistortionService`는 지금 `repo`만 갖는다. 생성자를 `DistortionService(repo, snapshots)`로 바꾸고 `wiring.py`가 `loader`를 넘긴다.
+  - `WorldStateService(repo, snapshots)`를 새로 두고 `assemble_play`가 `PlayContainer.world_state`에 조립한다.
 - 지역이 사라졌으면 id를 이름 자리에 쓴다(U6 규칙 그대로).
 - `summary` 문장도 이름으로 쓴다(예: `promoted rumor in Riverton`).
 - 턴의 `promote`·`demote`·`prune` 줄은 소문의 `region_id`로 이름을 찾는다.
@@ -220,7 +225,7 @@ for e in entries:
 
 ## 10. 동시성과 LLM 없을 때
 - 되먹임·복원은 턴 UoW 안에서만 쓴다. GM 왜곡도 설정은 `_idle` 리스 아래에서 쓴다(그대로). 그래서 몫을 두 쪽이 동시에 쓰지 않는다.
-- `/state`·`/distortions`·`/log`는 읽기만 하고 가드를 잡지 않는다. 턴 도중 읽으면 지난 커밋 상태를 본다.
+- `/state`·`/distortions`·`/log`는 읽기만 하고 가드를 잡지 않는다. `/state`의 다섯 읽기는 묶지 않으므로, 그 사이에 턴이 커밋되면 한 번은 섞인 값(예: 새 왜곡도와 옛 소문 수)이 보일 수 있다. 표시용이라 받아들이고 다음 읽기가 고친다(NFR N7-2). 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-10-01의 이월 결정 반영〕
 - LLM이 없어도 새 결정적 흐름은 모두 돈다. 대상은 되먹임 복원, 상태, 로그, 이름, 사건 전이다. 제안만 503이다.
 
 ## 11. 화면 (요약, 자세한 것은 frontend-components.md)

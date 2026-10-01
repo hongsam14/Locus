@@ -13,15 +13,18 @@ from collections.abc import Callable
 
 from pydantic import BaseModel
 
-from locus.shared.models import WorldSnapshot
+from locus.shared.models import ConnectionKind, WorldSnapshot
 from locus.shared.text import MATERIAL, one_line
 from locus.world.augmentation.types import (
     AnswerAction,
     AugmentationQuestion,
+    Input,
     Issue,
     IssueType,
     QuestionTarget,
+    RefKind,
 )
+from locus.world.refs import ConnectionKey
 
 POLISH_MAX = 5  # new questions rewritten per detection
 A = AnswerAction
@@ -32,6 +35,22 @@ ACTIONS: dict[str, list[AnswerAction]] = {
     IssueType.ORPHAN: [A.EDIT, A.REMOVE, A.IGNORE],
     IssueType.DANGLING: [A.EDIT, A.REMOVE, A.IGNORE],
     IssueType.UNSCOPED: [A.EDIT, A.REMOVE, A.IGNORE],
+}
+# inputs each action takes (U3 review C2, S06: an edit may also set title and confidence)
+NEEDS: dict[str, dict[str, list[Input]]] = {
+    IssueType.GAP: {A.ADD: ["statement", "title"]},
+    IssueType.LOW_CONFIDENCE: {A.EDIT: ["statement", "title", "confidence"]},
+    IssueType.WIKI_CONFLICT: {A.EDIT: ["statement", "title", "confidence"]},
+    IssueType.ORPHAN: {A.EDIT: ["region"]},
+    IssueType.DANGLING: {A.EDIT: ["ref"]},
+    IssueType.UNSCOPED: {A.EDIT: ["region"]},
+}
+REF_KIND: dict[str, RefKind] = {  # dangling field -> its new reference's kind
+    "parent_id": "region",
+    "located_in": "region",
+    "about_entity_ids": "entity",
+    "wiki_prior_ref": "prior",
+    "derived_from_prior_ids": "prior",
 }
 _TEMPLATES: dict[str, str] = {
     IssueType.GAP: "Nothing is known in {name} yet. What would a local know about it?",
@@ -56,6 +75,7 @@ def target_of(issue: Issue, snapshot: WorldSnapshot) -> QuestionTarget:
     """The issue's target as the designer reads it (B1)."""
     tid = issue.target_ids[0] if issue.target_ids else ""
     names = {r.id: r.name for r in snapshot.topo.regions}
+    connection = None
     if issue.target_kind == "knowledge":
         k = next((k for k in snapshot.kg.knowledge if k.id == tid), None)
         name = k.title if k else tid
@@ -65,6 +85,9 @@ def target_of(issue: Issue, snapshot: WorldSnapshot) -> QuestionTarget:
     elif issue.target_kind == "connection":
         a, b, kind = (tid.split("|") + ["", "", ""])[:3]
         name = f"{names.get(a, a)} – {names.get(b, b)} ({kind})"
+        connection = ConnectionKey(
+            world_id=snapshot.world_id, a_region_id=a, b_region_id=b, kind=ConnectionKind(kind)
+        )
     else:
         name = names.get(tid, tid)
     return QuestionTarget(
@@ -75,6 +98,7 @@ def target_of(issue: Issue, snapshot: WorldSnapshot) -> QuestionTarget:
         region_name=names.get(issue.region_id) if issue.region_id else None,
         field=issue.field,
         broken_id=issue.broken_id,
+        connection=connection,
     )
 
 
@@ -113,9 +137,16 @@ class QuestionGenerator:
                 AugmentationQuestion(
                     issue_id=issue.id,
                     issue_key=issue.key,
+                    type=issue.type,
                     text=text,
                     target=target,
                     actions=list(ACTIONS[issue.type]),
+                    needs={str(a): list(i) for a, i in NEEDS[issue.type].items()},
+                    ref_kind=(
+                        REF_KIND.get(issue.field or "")
+                        if issue.type == IssueType.DANGLING
+                        else None
+                    ),
                 )
             )
         return out

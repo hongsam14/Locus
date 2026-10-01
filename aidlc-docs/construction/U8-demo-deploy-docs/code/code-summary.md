@@ -130,3 +130,16 @@
   - 변이(모두 잡음): #13a 옛 집을 속성에서 읽기, #13b 지운 뒤 쓰기, S12 다른 라벨 문서 지우기, C11 이전 문서 무시, S29 스코프 갱신 빼기, S30 부모 그대로
   - 호출처: `upsert_npc`·`update_entity`·`upsert_knowledge`의 서명은 그대로다(새 인자 없음). `EditorWrites.index`의 새 키워드는 선택이다.
   - pytest 894
+- **Step 9b** (U3 이월: 보강 Q&A)
+  - C2: 질문에 `type`, 동작별 입력 `needs`(gap/add: 진술·제목, 확인 계열 edit: 진술·제목·신뢰도(S06), orphan·unscoped edit: 지역, dangling edit: ref), dangling의 `ref_kind`(region·entity·prior)
+    - 연결 대상은 `QuestionTarget.connection: ConnectionKey`를 갖는다.
+    - 더한 지식의 이름은 저장된 제목(서버 fallback 포함)이다.
+    - `TargetKind`에서 쓰이지 않던 `"npc"`를 뺐다(C4).
+  - C10: 변경 기록과 되돌리기 검사의 엣지 읽기가 `edges_touching`(대상 주위만)이다. 인메모리 가짜의 `edges_touching`도 월드 전체 `get_edges`를 거치지 않는다.
+  - S03: 검사를 통과한 되돌리기는 `ChangeSet.revert_started`를 세운다. 다시 보낼 때 그래프가 이미 되돌아가 있으면(`is_undone`) 검색 쪽만 마친다(`finish_revert`). 그래서 409 "edited after"가 나지 않는다.
+  - S09: wiki 검색 예외는 캐시하지 않는다(다음 탐지에서 다시).
+  - S10: 답 라우트(REMOVE로 지운 지식)와 되돌리기 라우트(gap/add로 더했던 지식)가 `purge_translations`를 부른다.
+  - S15: 쓰기 뒤 다시 탐지가 실패하면 질문과 이슈를 비운다(같은 답을 두 번 적용하지 못함 → 404, 화면은 run을 다시 읽음).
+  - 테스트 `tests/world/augmentation/test_u3_review_carry.py` 7(C2 둘, C10, S03, S09, S15, S10 API)
+  - 변이(모두 잡음): S03 재개 빼기, S09 실패 캐시, S15 비우기 빼기, C10 월드 전체 읽기
+  - pytest 901

@@ -3775,3 +3775,10 @@ Tests: 13 carry and 3 port contract; mutations caught after strengthening #13b t
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 9a.
 
 ---
+
+## U8 Code Generation Part 2 — Step 9b (U3 carry: augmentation)
+**Timestamp**: 2026-10-01T14:48:06Z
+**AI Response**: Closed C2 (question type/needs/ref_kind, ConnectionKey target, stored titles), C10 (edges_touching), S03 (resumable undo), S09, S10 (purge on answer/undo routes), S15, S06 server inputs. 7 tests; mutations caught. Gates: pytest 901, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 9b.
+
+---

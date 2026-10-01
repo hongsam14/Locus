@@ -468,24 +468,43 @@ def get_augmentation(run_id: str, w: WorldContainer = Depends(get_world)) -> Aug
 
 @router.post("/augmentation/runs/{run_id}/answer", response_model=AnswerResult)
 def answer_augmentation(
-    run_id: str, answer: AugmentationAnswer, w: WorldContainer = Depends(get_world)
+    run_id: str,
+    answer: AugmentationAnswer,
+    w: WorldContainer = Depends(get_world),
+    loc: LocalizationContainer | None = Depends(get_localization),
 ) -> AnswerResult:
     try:
-        return _need(w.augmentation, "augmentation").answer(run_id, answer)
+        result = _need(w.augmentation, "augmentation").answer(run_id, answer)
     except _AUG_ERRORS as exc:
         raise http_error(exc) from exc
+    if result.change is not None:  # a REMOVE answer deletes knowledge (U3 review S10)
+        kept = {n.id for n in result.change.nodes_after}
+        gone = [
+            n.id for n in result.change.nodes_before if n.label == "Knowledge" and n.id not in kept
+        ]
+        if gone:
+            purge_translations(loc, kind="knowledge", ids=gone)
+    return result
 
 
 @router.post("/augmentation/runs/{run_id}/revert", response_model=AugmentationRun)
 def revert_augmentation(
-    run_id: str, change_id: str, w: WorldContainer = Depends(get_world)
+    run_id: str,
+    change_id: str,
+    w: WorldContainer = Depends(get_world),
+    loc: LocalizationContainer | None = Depends(get_localization),
 ) -> AugmentationRun:
     """200 + the run detected again; 409 when already undone, not the latest, or the
-    target was edited outside the run."""
+    target was edited outside the run. Undoing an added fact purges its translations
+    (U3 review S10)."""
     try:
-        return _need(w.augmentation, "augmentation").revert(run_id, change_id)
+        run = _need(w.augmentation, "augmentation").revert(run_id, change_id)
     except _AUG_ERRORS as exc:
         raise http_error(exc) from exc
+    change = next((c for c in run.history if c.id == change_id), None)
+    if change is not None and change.added_ids:
+        purge_translations(loc, kind="knowledge", ids=list(change.added_ids))
+    return run
 
 
 @router.post("/augmentation/runs/{run_id}/unignore", response_model=AugmentationRun)

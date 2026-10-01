@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from locus.shared.models import new_id
 from locus.shared.models.enums import StrEnum
+from locus.world.refs import ConnectionKey
 
 
 class IssueType(StrEnum):
@@ -39,7 +40,9 @@ class RunStatus(StrEnum):
     STOPPED = "stopped"
 
 
-TargetKind = Literal["knowledge", "entity", "region", "npc", "connection"]
+TargetKind = Literal["knowledge", "entity", "region", "connection"]  # no NPC issue (U3 C4)
+Input = Literal["statement", "title", "confidence", "region", "ref"]  # what an answer carries
+RefKind = Literal["region", "entity", "prior"]
 
 
 class _Aug(BaseModel):
@@ -79,15 +82,23 @@ class QuestionTarget(_Aug):
     region_name: str | None = None
     field: str | None = None
     broken_id: str | None = None
+    connection: ConnectionKey | None = None  # a connection target as a key (U3 review C2)
 
 
 class AugmentationQuestion(_Aug):
+    """U3 review C2: the question carries its issue ``type``, which inputs each action
+    needs and, for a dangling reference, what kind of node the new reference is — the
+    screen reads them instead of re-deriving the server's rules."""
+
     id: str = Field(default_factory=new_id)
     issue_id: str
     issue_key: str
+    type: IssueType | None = None
     text: str
     target: QuestionTarget | None = None
     actions: list[AnswerAction] = Field(default_factory=list)  # fixed per issue type
+    needs: dict[str, list[Input]] = Field(default_factory=dict)  # action -> inputs
+    ref_kind: RefKind | None = None
 
 
 class AugmentationAnswer(_Aug):
@@ -123,6 +134,7 @@ class ChangeSet(_Aug):
     edges_added: list[EdgeSnapshot] = Field(default_factory=list)
     edges_removed: list[EdgeSnapshot] = Field(default_factory=list)
     reverted: bool = False
+    revert_started: bool = False  # set once a revert passed its checks (U3 review S03)
 
 
 class AugmentationRun(_Aug):

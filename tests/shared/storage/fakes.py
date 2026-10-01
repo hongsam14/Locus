@@ -71,9 +71,14 @@ class InMemoryGraphRepository:
         self, world_id: str, node_ids: list[str], types: list[str] | None = None
     ) -> list[Edge]:
         ids = set(node_ids)
-        return [
-            e for e in self.get_edges(world_id, types) if e.source_id in ids or e.target_id in ids
+        out = [  # read the store directly: not a whole-world get_edges (U3 review C10)
+            e.model_copy()
+            for e in self._edges.values()
+            if e.world_id == world_id
+            and (types is None or e.type in types)
+            and (e.source_id in ids or e.target_id in ids)
         ]
+        return self._ordered(out)
 
     def replace_nodes(self, nodes: list[Node]) -> None:
         """U3: properties replaced whole (a property left out is removed)."""

@@ -71,11 +71,14 @@ class AugmentationService:
             if change is not None:
                 run.history.append(change)
                 changed = [question.target] if question.target else []
+                titles = {  # the stored title, the server's fallback included (U3 review C2)
+                    n.id: str(n.properties.get("title") or n.id) for n in change.nodes_after
+                }
                 changed += [
-                    QuestionTarget(kind="knowledge", id=nid, name=answer.title or nid)
+                    QuestionTarget(kind="knowledge", id=nid, name=titles.get(nid, nid))
                     for nid in change.added_ids
                 ]
-            self._refresh(state)
+            self._refresh_or_clear(state)
             return AnswerResult(change=change, run=run, changed=changed)
 
     def revert(self, run_id: str, change_id: str) -> AugmentationRun:
@@ -94,7 +97,7 @@ class AugmentationService:
                 raise RevertOrderError("revert the later changes first")
             self._engine.revert(run.world_id, change)
             change.reverted = True
-            self._refresh(state)
+            self._refresh_or_clear(state)
             return run
 
     def unignore(self, run_id: str, issue_key: str) -> AugmentationRun:
@@ -115,6 +118,16 @@ class AugmentationService:
         if state is None:
             raise LookupError(f"augmentation run not found: {run_id}")
         return state
+
+    def _refresh_or_clear(self, state: RunState) -> None:
+        """Detect again after a write; when that fails, drop the questions so the same
+        answer cannot be applied twice — the screen reads the run again (U3 review S15)."""
+        try:
+            self._refresh(state)
+        except Exception:
+            state.run.open_questions = []
+            state.run.issues = []
+            raise
 
     def _refresh(self, state: RunState) -> None:
         """Detect again and set the questions and the status (BLM §4.3)."""

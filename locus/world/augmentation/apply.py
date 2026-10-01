@@ -191,6 +191,7 @@ def revert(change: ChangeSet, *, world_id: str, editors: Editors) -> None:
     edited = _edges_edited_since(graph, world_id, change)
     if edited:
         raise RevertConflictError(f"{edited} was edited after this change")
+    change.revert_started = True  # past the checks: a retry may resume (U3 review S03)
     with editors.writes.writing(world_id):
         graph.delete_edges(world_id, [_key(e) for e in change.edges_added])
         for nid in change.added_ids:
@@ -247,7 +248,7 @@ def _nodes(editors: Editors, world_id: str, ids: list[str]) -> dict[str, NodeSna
 
 
 def _edges(graph, world_id: str, ids: list[str]) -> dict[tuple, EdgeSnapshot]:
-    watch = set(ids)
+    """The edges touching ``ids``, read with one filtered query (U3 review C10)."""
     return {
         (
             e.type,
@@ -257,9 +258,50 @@ def _edges(graph, world_id: str, ids: list[str]) -> dict[tuple, EdgeSnapshot]:
         ): EdgeSnapshot(
             type=e.type, source_id=e.source_id, target_id=e.target_id, properties=dict(e.properties)
         )
-        for e in graph.get_edges(world_id)
-        if e.source_id in watch or e.target_id in watch
+        for e in graph.edges_touching(world_id, list(dict.fromkeys(ids)))
     }
+
+
+def is_undone(change: ChangeSet, *, world_id: str, editors: Editors) -> bool:
+    """The graph is back where ``change`` found it: its nodes as before, the nodes it made
+    gone, and the edges it touched as before (U3 review S03)."""
+    graph = editors.writes.graph
+    for snap in change.nodes_before:
+        now = graph.get_node(world_id, snap.id)
+        if now is None or _props(now.properties) != _props(snap.properties):
+            return False
+    if any(graph.get_node(world_id, nid) is not None for nid in change.added_ids):
+        return False
+    idents = {_ident(e) for e in [*change.edges_added, *change.edges_removed]}
+    expected = {_full(e) for e in change.edges_removed}
+    return _current(graph, world_id, idents) == expected
+
+
+def finish_revert(change: ChangeSet, *, world_id: str, editors: Editors) -> None:
+    """The search side of a revert whose graph writes already happened (idempotent)."""
+    with editors.writes.writing(world_id):
+        editors.writes.unindex(world_id, change.added_ids)
+        restored = [
+            Node(id=s.id, label=s.label, world_id=world_id, properties=s.properties)
+            for s in change.nodes_before
+        ]
+        editors.writes.index([d for d in (_doc(n) for n in restored) if d is not None])
+
+
+def _current(graph, world_id: str, idents: set[tuple]) -> set[tuple]:
+    """The stored edges with one of ``idents``, read around their ends (U3 review C10)."""
+    ends = sorted({i[1] for i in idents} | {i[2] for i in idents})
+    now: set[tuple] = set()
+    for edge in graph.edges_touching(world_id, ends):
+        snap = EdgeSnapshot(
+            type=edge.type,
+            source_id=edge.source_id,
+            target_id=edge.target_id,
+            properties=dict(edge.properties),
+        )
+        if _ident(snap) in idents:
+            now.add(_full(snap))
+    return now
 
 
 def _edges_edited_since(graph, world_id: str, change: ChangeSet) -> str | None:
@@ -272,16 +314,7 @@ def _edges_edited_since(graph, world_id: str, change: ChangeSet) -> str | None:
     if not idents:
         return None
     expected = {_full(e) for e in change.edges_added}
-    now: set[tuple] = set()
-    for edge in graph.get_edges(world_id):
-        snap = EdgeSnapshot(
-            type=edge.type,
-            source_id=edge.source_id,
-            target_id=edge.target_id,
-            properties=dict(edge.properties),
-        )
-        if _ident(snap) in idents:
-            now.add(_full(snap))
+    now = _current(graph, world_id, idents)
     diff = sorted(now ^ expected)
     return f"{diff[0][0]} {diff[0][1]}->{diff[0][2]}" if diff else None
 

@@ -15,7 +15,7 @@ from pydantic import BaseModel
 
 from locus.shared.models import Knowledge, Region, WorldSnapshot
 from locus.shared.text import MATERIAL, one_line
-from locus.world.augmentation.apply import apply_answer
+from locus.world.augmentation.apply import apply_answer, finish_revert, is_undone
 from locus.world.augmentation.apply import revert as _revert
 from locus.world.augmentation.detectors import conflict_pairs, detect_structural
 from locus.world.augmentation.questions import QuestionGenerator
@@ -75,6 +75,12 @@ class AugmentationEngine:
         return apply_answer(issue, question, answer, world_id=world_id, editors=self._editors)
 
     def revert(self, world_id: str, change: ChangeSet) -> None:
+        """Undo ``change``. A revert cut after its checks (``revert_started``) whose
+        graph is already back finishes the search side instead of reporting the run's
+        own writes as an outside edit (U3 review S03)."""
+        if change.revert_started and is_undone(change, world_id=world_id, editors=self._editors):
+            finish_revert(change, world_id=world_id, editors=self._editors)
+            return
         _revert(change, world_id=world_id, editors=self._editors)
 
     # -- wiki conflicts (BR-U3-22/41, NFR R-03) ---------------------------- #
@@ -122,8 +128,8 @@ class AugmentationEngine:
                 state.lookups[key] = wiki.lookup_similar(
                     f"{terrain} {region.name}", k=2, fallback=False
                 )
-            except Exception:
-                state.lookups[key] = []
+            except Exception:  # a failed search is tried again next detection (U3 S09)
+                return []
         return state.lookups[key]
 
     def _judge(self, k: Knowledge, terrain: str, region: Region, priors: list):

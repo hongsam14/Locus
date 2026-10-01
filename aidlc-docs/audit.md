@@ -2999,3 +2999,41 @@ Summary: `construction/U7-gm-mode-hardening/code/code-summary.md`.
 - B7/B8 live; no `features/editor/`.
 Wrote `construction/plans/U3-world-editor-functional-design-plan.md`: a current-state table, five questions (Q1 delete cascade, Q2 editing with open sessions, Q3 what "dangling" means, Q4 wiki refs depth, Q5 map drawing interaction) and assumptions A3-1..13. Asking Q1·Q2 first.
 **Context**: CONSTRUCTION / U3 — Functional Design Part 1.
+
+---
+
+## U3 Functional Design — answers Q1·Q2
+**Timestamp**: 2026-10-01T05:08:13Z
+**User Input**: FD-U3 Q1 = "A. 정리해서 지운다 (Recommended)"; FD-U3 Q2 = "A. 편집 자유, 플레이어 지역 삭제만 막음 (Recommended)"
+**AI Response**: Recorded both answers.
+- Q1 (region delete): connections and NPCs are deleted; children are re-parented to the grandparent; knowledge scoped only there becomes unscoped; entity located_in is cleared. Counts appear in the confirm dialog and in the delete report.
+- Q2 (open sessions): editing is free; deleting a region where an open session's player stands answers 409 with the session list.
+Asking Q3·Q4 next.
+**Context**: CONSTRUCTION / U3 — Functional Design Part 1.
+
+---
+
+## U3 Functional Design — answers Q3·Q4
+**Timestamp**: 2026-10-01T06:05:54Z
+**User Input**: FD-U3 Q3 = "A. 끊긴 id 참조 + 스코프 없는 지식 (Recommended)"; FD-U3 Q4 = "A. 빌드가 근거를 저장하게 고치고 보인다 (Recommended)"
+**AI Response**: Recorded both answers.
+- Q3: DANGLING means id-carrying properties that point at missing nodes (parent_id, located_in, home_region_id, wiki_prior_ref, derived_from_prior_ids); add an UNSCOPED detector.
+- Q4: the build stores LLM-fallback priors and keeps connection/knowledge refs; the wiki tab shows priors and the items referencing them, with broken refs marked.
+Q5 is pending.
+**Context**: CONSTRUCTION / U3 — Functional Design Part 1.
+
+---
+
+## U7 code review (/code-review max) — result
+**Timestamp**: 2026-10-01T06:06:13Z
+**User Input**: (none — background review launched after the U7 code gate)
+**AI Response**: Record `aidlc-docs/construction/U7-gm-mode-hardening/code/reviews/code-review-01.md` (scope `git diff 5eb3760..83022bf`). 15 correctness findings, all CONFIRMED by reproduction; plus 12 above-cap correctness, 19 cleanup and 6 dismissed.
+- Top findings:
+  - #1 (medium): CommitRange compares the browser's step-snapped value with the raw server value, so a blur or click commits a value the GM never chose (and clears the feedback share). Reproduced in Chrome.
+  - #2 (medium): bulk generate/regenerate sends 5 concurrent GM writes, but each holds the exclusive per-session lease, so 4 of 5 get 409.
+  - #3: the CLI build ignores WorldTuning.
+  - #4: a refused slider save is never resent.
+  - #5: player_log is not repositioned after a failed move.
+- Orchestrator spot-check: #1 and #2 verified in code (`CommitRange.tsx:23-27`, `gm.py:42-55` + routes 122/140 with `_idle`).
+- The code is approved, so asking the human how to handle the fixes (A mix / B all to U3 / C accept), together with U3 Q5.
+**Context**: CONSTRUCTION / U7 post-approval review; U3 FD Part 1 in progress.

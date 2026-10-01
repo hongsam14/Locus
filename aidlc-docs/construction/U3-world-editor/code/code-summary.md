@@ -1,17 +1,20 @@
-# U3 월드 에디터 — Code Summary (작성 중)
+# U3 월드 에디터 — Code Summary
 
 **원하시는 것**: 세계관 자료로 월드를 만들고, 그 안에서 소문과 사건이 지형을 따라 퍼지며 지역마다 NPC가 다르게 아는 것을 직접 겪는 솔로 TRPG.
-**지금 하는 것**: U3 코드 생성 중입니다. 이 문서는 단계마다 바뀐 것과 그 검증을 모읍니다(Step 12.3에서 마무리).
+**지금 하는 것**: U3 코드 생성을 마쳤습니다(Step 12). 월드를 만들고 고치는 화면이 생겨, 세계관 자료로 만든 월드를 사람이 다듬어 플레이에 넘길 수 있습니다. 이 문서는 바뀐 것과 그 검증을 모읍니다.
 
 플랜: `construction/plans/U3-world-editor-code-generation-plan.md` (13단계, 승인 2026-10-01).
 
 ## 1. 기준선과 결과
 | 항목 | 기준선 (Step 1.1, HEAD `9228861`) | 결과 (Step 12.1) |
 |---|---|---|
-| pytest (`-q --no-cov`) | 735 | |
-| vitest | 94 | |
-| mypy (`locus api`) | 11 (6 파일) | |
-| ruff · black · tsc | clean | |
+| pytest (`-q --no-cov`) | 735 | **850** (+115) |
+| vitest | 94 | **124** (+30) |
+| mypy (`locus api`) | 11 (6 파일) | 11 (같은 6 파일, U3 코드에는 0) |
+| ruff · black · tsc | clean | clean |
+| `npm audit --omit=dev` | moderate 2 (react-router) | 같음(의존성 변경 없음). 기록만, CI 강제는 U8 |
+| 줄 수 ≤ 250 | — | 가장 큰 것: `locus/world/editor/regions.py` 233, `features/editor/MapCanvas.tsx` 212 |
+| `dangerouslySetInnerHTML` | 0 | 0 |
 
 ## 2. 단계별 기록
 - **Step 1**
@@ -219,3 +222,119 @@
   - 11.4 `CLAUDE.md`(Status, 레이아웃, 테스트 974), `web/README.md`(화면, 에디터 도구)
   - **바로잡음(계획 밖)**: Step 9.8에서 `Toolbar`를 지울 때 이 브라우저에서만 쓰는 배경 지도 고르기도 빠졌다. FD는 이것을 없애기로 정하지 않았다. README를 맞추다 찾았고, `EditorPage`에 GM 화면과 같은 고르기를 되살렸다. 테스트 1(`components.test`), 변이(`mapImageUrl` 빼기) 잡음.
   - vitest 124
+
+## 3. 바뀐 파일
+- **새로 만든 것**
+  - 백엔드: `locus/world/refs.py`, `locus/world/editor/`(10개 모듈, 옛 `editor.py` 대신), `locus/world/npc_drafts.py`, `api/uploads.py`, `api/routers/world_editor.py`
+  - 웹: `features/editor/`(14개 + `drag.ts`), `routes/HomePage.tsx`, `features/gm/RegionKnowledgePanel.tsx`(옛 `RegionPanel`에서 옮김)
+  - 테스트: `tests/shared/storage/test_port_contract.py`, `tests/world/wiki/test_wiki_evidence.py`, `tests/world/editor/`, `tests/world/test_npc_drafts.py`, `tests/play/test_u3_carry.py`, `tests/api/{test_world_editor_api,test_uploads,test_u3_carry_api}.py`, `web/src/__tests__/{editor,home}.test.tsx`
+- **고친 것**
+  - shared: 저장 포트·어댑터(`base`·`neo4j_repo`·`opensearch_repo`), `text.py`(`MATERIAL`), `models/reports.py`, `config/{settings,tuning}.py`
+  - world: `wiki/`, `build.py`, `augmentation/`(전부), `wiring.py`, `topology/weights.py`
+  - play(U7 이월): `distortion_service`, `rumor/`, `event/`, `world_state`, `models`, `base`, `turn/advancer`, `deeds/service`, `region_knowledge`, `player/service`, `npc/`, `gm/narrator`, `storage/`, `session_service`, `wiring`
+  - api: `main.py`(미들웨어, 422 처리기), `errors.py`, `schemas.py`, `routers/{world,play}.py`
+  - 웹: `api/{http,world,play}.ts`, `types.ts`, `i18n.ts`, `App.tsx`, `MapOverlay.tsx`, `routes/{EditorPage,GmPage,PlayPage}.tsx`, `features/gm/*`, `features/play/{ActionBar,DialoguePanel}.tsx`, `ui/CommitRange.tsx`, `setupTests.ts`
+- **지운 것**: `locus/world/editor.py`, `web/src/Toolbar.tsx`, `web/src/AugmentPanel.tsx`(루트), `web/src/RegionPanel.tsx`, `DELETE /worlds/{w}/nodes/{n}`, `TOPOLOGY_DEFAULT_BASE`
+- **문서**: `operations.md`, `env.example`, `CLAUDE.md`, `web/README.md`, 〔U3 정정〕 다섯 곳(Step 11)
+
+## 4. 검증 번호와 테스트
+| 번호 | 테스트 |
+|---|---|
+| TP-U3-1 (연결 쌍) | `tests/world/editor/test_editors.py` (생성기 `tests/world/strategies.py`) |
+| TP-U3-2 (지역 삭제 뒤 끊긴 id 0) | `tests/world/editor/test_region_delete.py` |
+| TP-U3-2a (n번째 쓰기에서 끊고 재시도) | `tests/world/editor/test_region_delete.py` (끊는 가짜 `helpers.py`) |
+| TP-U3-3 (교체 왕복) | `tests/shared/storage/test_port_contract.py`, `test_editors.py` |
+| TP-U3-4 (답 k개 → 모두 되돌림) | `tests/world/augmentation/test_augmentation.py::test_tp_u3_4_answers_then_undo_restore_the_world` |
+| TP-U3-5 (dangling 신탁) | `test_augmentation.py::test_tp_u3_5_dangling_matches_a_direct_count` |
+| TP-U3-6 (편집 뒤 World File 왕복) | `test_editors.py` |
+| EX-1·4·5 | `test_editors.py` |
+| EX-2·3 | `test_region_delete.py`, API 409는 `tests/api/test_world_editor_api.py` |
+| EX-6 | `tests/world/test_npc_drafts.py` |
+| EX-7·8·9 | `test_augmentation.py` (`test_ex7_…`, `test_ex8_…`, `test_ex9_…`) |
+| EX-10 | `tests/world/wiki/test_wiki_evidence.py` |
+| EX-11 | `web/src/__tests__/editor.test.tsx` (MapCanvas) |
+| EX-12 | `tests/play/test_u3_carry.py` |
+| BR-U3 화면 규칙(9·14·24·30·31·33~36) | `editor.test.tsx`, `home.test.tsx`, `components.test.tsx` |
+
+## 5. 이월 결정의 구현 위치
+| 출처 | 위치 |
+|---|---|
+| FD R-08·R-08a (ignore, unignore, 되돌리기 검사 순서) | `locus/world/augmentation/service.py`, `types.py`(`AugmentationConflict` 계열), `api/errors.py`, `POST …/runs/{id}/unignore` |
+| FD R-11 (목록 id마다 이슈, 연결 대상, 부모 편집 순환 검사) | `augmentation/detectors.py`, `apply.py` → `ConnectionEditor.set_prior_ref`, `RegionEditor.upsert_region` |
+| NFR R-01 (선별 기준 쓰기를 마지막에) | `locus/world/editor/regions.py` `delete_region` |
+| NFR R-02 (구조 단언) | `tests/world/editor/test_region_delete.py`, `tests/api/test_world_editor_api.py` |
+| NFR R-03 (보강 LLM: 검색 전용, 쌍 20, 다듬기 5, 예산 60) | `wiki/base.py` `lookup_similar(fallback=)`, `augmentation/{engine,questions,service}.py` |
+| NFR R-04·R-05 (업로드 상한, 순수 ASGI) | `api/uploads.py`, `api/main.py` |
+| NFR R-06 (UNWIND 일괄) | `shared/storage/neo4j_repo.py` `replace_nodes`·`delete_edges`, `opensearch_repo.py` `delete` |
+| NFR R-07 (`MATERIAL`, 다듬기 입력) | `shared/text.py`, `augmentation/questions.py` |
+| NFR R-08 (지도 JSON 422, 목록 응답 그대로) | `api/routers/world.py`, `editor/catalog.py` |
+| U7 #6·#8·#15·C1·C8·C15·C19·§3 PlayerStrip | `features/gm/{GmHub,DistortionPanel,PlayerStrip}.tsx`, `ui/CommitRange.tsx` |
+| U7 #7·#12·§3 act·EDGE_SPACE·C6·C7 | `features/play/{ActionBar,DialoguePanel}.tsx`, `routes/PlayPage.tsx` |
+| U7 #9 | `play/rumor/dynamics.py` `settle` |
+| U7 #10·A3-14 | `i18n.ts` `timelineText` |
+| U7 #13·#14·§3 제안 | `play/world_state.py`, `event/{service,suggester,suggest_context}.py` |
+| U7 §3 NaN·A3-15·C10 | `shared/config/{settings,tuning}.py`, `world/topology/weights.py`, `api/schemas.py`(`allow_inf_nan=False`) |
+| C2~C5·C9·C12 | `region_knowledge.py`, `rumor/spread.py`, `play/base.py`, `turn/advancer.py`, `distortion_service.py` |
+| C11·C13·C14 | `event/suggester.py`, `gm/narrator.py`, `event/suggest_context.py` |
+| C16 | `web/src/api/http.ts` `HttpError`·`statusOf` |
+| C17·C18 | `play/models.py`(검증기), `storage/{memory_repo,postgres_repo,schema}.py` |
+| Q6=A (BR-U3-38, EX-12) | `play/distortion_service.py`, 타임라인 `event_contributions_cleared` |
+| U7 §5 문서 | Step 11.3의 〔U3 정정〕 다섯 곳 |
+
+## 6. 설계 이탈과 알려진 한계
+- **이탈**(모두 플랜의 〔실행 메모〕에 적었다)
+  1. `ConnectionKey`·`NameRef`가 `locus/world/refs.py`에 있다. wiki(Step 3)가 편집 패키지(Step 4)보다 먼저 이것을 쓴다.
+  2. 편집 경로가 새 모듈 `api/routers/world_editor.py`에 있다. `world.py`가 include하므로 URL은 그대로다.
+  3. `delete_region(…, protected)`의 `protected`는 `Mapping[region_id, session_ids]`다. 409 본문에 세션 id를 싣는다.
+  4. `apply_answer(issue, question, answer, …)`가 이슈를 함께 받는다. 질문에는 이슈 종류·속성이 없다.
+  5. `api/main.py`에 422 처리기를 더했다. NaN·Infinity가 든 422 본문이 JSON으로 쓰이지 못해 500이 되었다.
+  6. `setupTests.ts`에 `PointerEvent` shim, `WorldFileBar`에 `FileReader` 폴백을 두었다(jsdom 한계).
+  7. 표에 없는 연결 종류는 그 표의 `adjacent` 값이다(노브 없음, A3-15).
+  8. 계획 밖: Step 9.8에서 함께 빠진 배경 지도 고르기를 Step 11에서 되살렸다.
+- **알려진 한계**
+  - 지역 삭제의 GM 리스는 시작 시점에 열린 세션에만 걸린다. 그 사이 새로 시작한 세션이나 GM 쓰기는 막지 못한다. 결과는 사라진 지역을 가리키는 세션 행이고, 화면은 이름 폴백과 404로 다룬다(제작자 한 명 전제 A-4).
+  - 보강 run은 프로세스 메모리에 있다(월드마다 20). 재시작하면 사라지고 화면이 새 탐색을 권한다.
+  - 업로드 상한은 상수다(env 아님).
+  - `upsert_edges`는 엣지마다 왕복한다(데모 규모에서 받아들임, NFR R-06).
+
+## 7. 변이 확인 (모두 잡음)
+| 단계 | 변이 | 실패한 테스트 |
+|---|---|---|
+| 2 | 가짜 `replace_nodes`를 병합으로 | TP-U3-3 |
+| 3 | 빌드 참조 필터에서 생성 prior 빼기 / 질의 중복 제거 끄기 | EX-10 / 정규화 테스트 |
+| 4 | ① 옛 순서 / ④ 노드 먼저 / 교체를 병합으로 / `set_prior_ref`가 옛 쌍을 남김 | TP-U3-2a / TP-U3-2a / TP-U3-3 / 연결 테스트 |
+| 6 | 되돌리기에서 엣지 복원 빼기 / 충돌 검사 빼기 / 순서 검사 빼기 | TP-U3-4 / 바깥 편집 / TP-U3-4 |
+| 7 | #13 문자열 비교 / #14 옛 자르기 / C17 검증기 제거 / C18 변환 제거 / #9 반올림(PBT가 먼저 찾음) | 각 이월 테스트 |
+| 8 | 청크 세기 끄기 | 청크 업로드 테스트 |
+| 9 | `MapOverlay`가 매번 `onMove` | EX-11 |
+| 10 | #6 낡은 `refresh` / `EDGE_SPACE` 옛 정규식 | gm·play 테스트 |
+| 11 | `EditorPage`에서 `mapImageUrl` 빼기 | 배경 지도 테스트 |
+
+## 8. 운영자 실행 (실제 Neo4j·OpenSearch, 이 호스트에서는 돌리지 않음)
+이 호스트에서는 다른 컨테이너 `sigraph-neo4j-1`이 7474/7687을 쥐고 있어 compose 확인을 운영자가 한다(그 컨테이너는 멈추지 않는다).
+```bash
+docker compose up -d neo4j opensearch postgres
+locus init-schema --world --play
+locus world demo --name aldermoor --world aldermoor
+uvicorn api.main:app --port 8000
+W=http://localhost:8000/api/world/worlds/aldermoor
+# 연결 종류 바꾸기: Riverton–Highcrag blocked → route (무게·근거·prior 유지, 엣지는 여전히 2개)
+curl -s -X PUT $W/connections -H 'content-type: application/json' -d '{"world_id":"aldermoor","source_region_id":"region-riverton","target_region_id":"region-highcrag","kind":"route","weight":0.6,"previous_kind":"blocked","provenance":{"source":"input","generated_by":"designer"}}'
+# 지역 삭제: 계획을 본 뒤 Frostreach(자식 Highcrag, NPC Sorrel)와 Highcrag(NPC 둘, 연결 한 쌍)
+curl -s $W/regions/region-frostreach/delete-plan
+curl -s -X DELETE $W/regions/region-frostreach
+curl -s -X DELETE $W/regions/region-highcrag
+curl -s $W/prior-refs        # broken이 비어 있어야 한다
+# 보강 한 바퀴: run 열기 → 질문 하나 답 → 되돌리기
+curl -s -X POST $W/augmentation/runs
+# 업로드 빌드(LLM 필요): 메모 하나와 지도 이미지 하나
+curl -s -X POST $W/build/upload -F memos=@notes.md -F images=@map.png
+```
+- Cypher 확인: Neo4j 쿼리 로그(`db.logs.query.enabled=INFO`)에서 `replace_nodes`가 라벨마다 `UNWIND … MERGE … SET n = row.props` 하나, `delete_edges`가 엣지 종류·키 모양마다 UNWIND 하나인지 본다.
+- 편집 p95(N3-1): 데모 월드, 캐시가 따뜻한 상태에서 지역 `PUT` 100회의 응답 시간을 잰다. 기준은 p95 ≤ 150ms다(nfr-light NFR-3, N3-1).
+
+## 9. 넘기는 것 (U8)
+- `npm audit`의 react-router moderate 2건을 CI에서 다룬다(NFR R-07).
+- 위 §8 운영자 실행 결과를 U8 배포 문서에 싣는다.
+- `operations.md`의 "Web UI (U10)" 절 한 줄(검토/편집/보강 UI)은 U8 문서 정리에서 화면 넷(`/`, 에디터, GM, 플레이어)으로 고친다.
+- 지역 삭제 리스 경합(§6)은 여러 제작자를 받을 때 다시 본다.

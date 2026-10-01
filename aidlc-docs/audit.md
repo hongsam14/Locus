@@ -3422,3 +3422,12 @@ R-16 → Accepted risk
 **Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 11.
 
 ---
+
+## U3 Code Generation Part 2 — Step 12 (verification and summary)
+**Timestamp**: 2026-10-01T10:50:02Z
+**AI Response**:
+- Gates: pytest 850 (baseline 735), vitest 124 (baseline 94), ruff/black/tsc clean, mypy 11 (baseline, none in U3 code), npm audit moderate 2 (react-router, unchanged; record only), largest files 233/212 lines, dangerouslySetInnerHTML 0.
+- code-summary finalized: results, files, verification-ID → test map, carry locations, deviations and known limits, mutation results, operator commands, hand-offs to U8.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 12.
+
+---

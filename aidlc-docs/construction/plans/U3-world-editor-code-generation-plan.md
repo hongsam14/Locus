@@ -666,16 +666,16 @@
 - [x] 11.4 `CLAUDE.md`(Status, 레이아웃: `locus/world/editor/`, `npc_drafts.py`, `features/editor/`, `routes/HomePage.tsx`, 테스트 수)와 `web/README.md`(`/`, 에디터 도구)
 
 ### Step 12 — 검증·요약
-- [ ] 12.1 전체 게이트
+- [x] 12.1 전체 게이트
   - `pytest`, `vitest`, `ruff`, `black --check`, `tsc --noEmit`, `mypy`(≤ 11)
   - `npm audit --omit=dev`(기록만)
   - 줄 수: `features/editor/*`·`routes/EditorPage.tsx`·`routes/HomePage.tsx`·`locus/world/editor/*` 각각 ≤ 250
   - `web/src`에 `dangerouslySetInnerHTML` 0곳
-- [ ] 12.2 운영자 실행 명령을 code-summary에 적는다.
+- [x] 12.2 운영자 실행 명령을 code-summary에 적는다.
   - compose 기동 후 데모 월드에서 다음을 실제 Neo4j·OpenSearch로 돌린다: 지역 삭제(자식·NPC·연결), 연결 종류 바꾸기, 보강 한 바퀴, 업로드 빌드
   - `replace_nodes`·`delete_edges`의 실제 Cypher 확인
   - 편집 p95 측정 조건(N3-1)
-- [ ] 12.3 `construction/U3-world-editor/code/code-summary.md`
+- [x] 12.3 `construction/U3-world-editor/code/code-summary.md`
   - 기준선과 결과, 바뀐 파일
   - 검증 번호와 테스트, 이월 결정의 구현 위치
   - 설계 이탈(알려진 한계 포함), 변이 확인 결과

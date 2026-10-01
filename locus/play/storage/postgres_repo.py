@@ -326,24 +326,43 @@ class _PgStores:
         self._conn.execute(session_events.insert().values(**_event_to_values(event)))
         return event.model_copy(deep=True)
 
-    def get_event(self, session_id: str, event_id: str) -> SessionEvent | None:
-        row = (
-            self._conn.execute(
-                select(session_events).where(
-                    session_events.c.session_id == session_id,
-                    session_events.c.id == event_id,
-                )
-            )
-            .mappings()
-            .one_or_none()
+    def get_event(
+        self, session_id: str, event_id: str, *, for_update: bool = False
+    ) -> SessionEvent | None:
+        stmt = select(session_events).where(
+            session_events.c.session_id == session_id,
+            session_events.c.id == event_id,
         )
+        if for_update:  # held until the unit of work ends (U3 review #10)
+            stmt = stmt.with_for_update()
+        row = self._conn.execute(stmt).mappings().one_or_none()
         return _row_to_event(row) if row else None
 
-    def list_events(self, session_id: str, status: str | None = None) -> list[SessionEvent]:
+    def update_event_contributions(
+        self, session_id: str, event_id: str, contributions: dict[str, float], *, status: str
+    ) -> bool:
+        """``UPDATE … SET contributions WHERE status = :status`` — never the whole row, so
+        a GM set can neither revive a resolved event nor undo another write (#10)."""
+        res = self._conn.execute(
+            update(session_events)
+            .where(
+                session_events.c.id == event_id,
+                session_events.c.session_id == session_id,
+                session_events.c.status == status,
+            )
+            .values(contributions=dict(contributions))
+        )
+        return bool(res.rowcount)
+
+    def list_events(
+        self, session_id: str, status: str | None = None, *, for_update: bool = False
+    ) -> list[SessionEvent]:
         stmt = select(session_events).where(session_events.c.session_id == session_id)
         if status is not None:
             stmt = stmt.where(session_events.c.status == status)
         stmt = stmt.order_by(session_events.c.created_turn, session_events.c.id)
+        if for_update:
+            stmt = stmt.with_for_update()
         rows = self._conn.execute(stmt).mappings().all()
         return [_row_to_event(r) for r in rows]
 
@@ -911,11 +930,24 @@ class PostgresPlayRepository:
     def create_event(self, event: SessionEvent) -> SessionEvent:
         return self._tx(lambda s: s.create_event(event))
 
-    def get_event(self, session_id: str, event_id: str) -> SessionEvent | None:
-        return self._tx(lambda s: s.get_event(session_id, event_id))
+    def get_event(
+        self, session_id: str, event_id: str, *, for_update: bool = False
+    ) -> SessionEvent | None:
+        return self._tx(lambda s: s.get_event(session_id, event_id))  # own short transaction
 
-    def list_events(self, session_id: str, status: str | None = None) -> list[SessionEvent]:
+    def list_events(
+        self, session_id: str, status: str | None = None, *, for_update: bool = False
+    ) -> list[SessionEvent]:
         return self._tx(lambda s: s.list_events(session_id, status))
+
+    def update_event_contributions(
+        self, session_id: str, event_id: str, contributions: dict[str, float], *, status: str
+    ) -> bool:
+        return self._tx(
+            lambda s: s.update_event_contributions(
+                session_id, event_id, contributions, status=status
+            )
+        )
 
     def update_event(self, event: SessionEvent) -> SessionEvent:
         return self._tx(lambda s: s.update_event(event))

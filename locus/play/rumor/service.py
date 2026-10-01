@@ -276,7 +276,7 @@ class RumorService(SnapshotNames, SessionAppService):
             distorted_from_kind="deed",
             statement=appraisal.retelling,
             distortion_degree=degree,
-            support=clamp01(self._birth_support * (1.0 + appraisal.salience)),
+            support=rumor_dynamics.settle(self._birth_support * (1.0 + appraisal.salience)),
             confidence=clamp01(1.0 - degree),
             origin_kind="deed",
             origin_deed_id=deed.id,

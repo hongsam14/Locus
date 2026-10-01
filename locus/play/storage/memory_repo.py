@@ -280,12 +280,27 @@ class InMemoryPlayRepository:
         return deepcopy(event)
 
     @_synchronized
-    def get_event(self, session_id: str, event_id: str) -> SessionEvent | None:
+    def get_event(
+        self, session_id: str, event_id: str, *, for_update: bool = False
+    ) -> SessionEvent | None:
         e = self._events.get(session_id, {}).get(event_id)
         return deepcopy(e) if e else None
 
     @_synchronized
-    def list_events(self, session_id: str, status: str | None = None) -> list[SessionEvent]:
+    def update_event_contributions(
+        self, session_id: str, event_id: str, contributions: dict[str, float], *, status: str
+    ) -> bool:
+        """Contributions only, only while the event still has ``status`` (U3 review #10)."""
+        e = self._events.get(session_id, {}).get(event_id)
+        if e is None or e.status != status:
+            return False
+        e.contributions = dict(contributions)
+        return True
+
+    @_synchronized
+    def list_events(
+        self, session_id: str, status: str | None = None, *, for_update: bool = False
+    ) -> list[SessionEvent]:
         events = self._events.get(session_id, {}).values()
         out = [deepcopy(e) for e in events if status is None or e.status == status]
         out.sort(key=lambda e: (e.created_turn, e.id))

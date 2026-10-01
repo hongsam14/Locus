@@ -72,8 +72,24 @@ class GmNarrator:
 
     def narrate(self, *, declaration: str, scene: SceneBrief, lang: str) -> Narration:
         """One LLM call. Raises when the call fails; empty parts fall back per part."""
-        prompt, system = user_prompt(scene, declaration), system_prompt(lang)
-        draft = self._llm.structured(prompt, NarrationDraft, system=system)
+        prompt, system = self.prompts(declaration=declaration, scene=scene, lang=lang)
+        return self.finish(
+            self.call(prompt, system), declaration=declaration, scene=scene, lang=lang
+        )
+
+    # The three parts, so a caller can guard only the provider call (U3 review S17): a
+    # prompt bug must not pass for an LLM failure and trip the turn's breaker.
+    @staticmethod
+    def prompts(*, declaration: str, scene: SceneBrief, lang: str) -> tuple[str, str]:
+        return user_prompt(scene, declaration), system_prompt(lang)
+
+    def call(self, prompt: str, system: str) -> NarrationDraft:
+        return self._llm.structured(prompt, NarrationDraft, system=system)
+
+    @staticmethod
+    def finish(
+        draft: NarrationDraft, *, declaration: str, scene: SceneBrief, lang: str
+    ) -> Narration:
         fb = fallback(declaration=declaration, player_name=scene.player_name, lang=lang)
         text = cap(draft.narration, NARRATION_MAX) or fb.text  # empty parts: U6 review C14
         record = one_line(draft.record, LINE_MAX) or fb.record  # one line: one cut (C14)

@@ -159,3 +159,20 @@
   - 테스트 7: S20 둘, S07, S19, S27, C15, C9
   - 변이(모두 잡음): S20 root_path, S07 객체 검사, S27 bytes, C15 순서, C9 prior 재조회
   - pytest 908
+- **Step 9d** (U3 이월: 플레이)
+  - #10: 포트 `EventStore.update_event_contributions(…, status=)`(contributions만, 그 상태일 때만)와 `get_event`·`list_events(…, for_update=)`(PostgreSQL `FOR UPDATE`, 인메모리는 이미 잠금)
+    - 구현: PG 저장소(`_PgStores`·저장소 래퍼), 인메모리
+    - GM 설정은 UoW 안에서 ACTIVE 사건을 잠가 읽고, 조건부로 contributions만 쓴다. 지운 몫은 실제로 지운 것만 기록한다.
+    - 해소는 UoW 안에서 사건을 잠가 다시 읽고 그 contributions로 복원한다.
+  - C16: 사건 생성은 `require_region`이 돌려준 이름을 쓴다. 해소는 트랜잭션 전에 이름을 한 번 구한다.
+  - S17: `GmNarrator.prompts`·`call`·`finish`로 나눴다. 턴 엔진은 프롬프트를 try 밖에서 만들고 공급자 호출만 감싼다.
+  - S18: 전파 한 칸·행적 씨앗·LLM 생성 소문의 지지도를 `settle`해서 저장한다.
+  - 테스트 `tests/play/test_u3_review_carry.py` 6
+    - #10 둘: 해소 전에 읽은 낡은 ACTIVE 사본으로도 되살리지 못함, 저장소 둘(인메모리·SQLite)의 조건부 쓰기
+    - C16, S17, S18
+  - 변이(모두 잡음): #10 통째 쓰기로 되돌림, S17 프롬프트를 try 안으로, S18 `clamp01`, C16 이름 두 번
+  - 〔알려진 한계〕 오프라인 테스트는 PostgreSQL의 행 잠금을 돌리지 못한다(SQLite는 `FOR UPDATE`를 무시). 실제 동시 실행 확인은 운영자 몫이다.
+- **Step 9e** (U3 이월: NPC 초안)
+  - S22: 프롬프트의 REGION·KNOWN HERE·EXISTING NPCS가 하나의 `MATERIAL` 머리말 아래에 있고, 시스템 문장이 셋을 다 가리킨다.
+  - 테스트 1, 변이 잡음
+  - pytest 915

@@ -15,6 +15,7 @@ from collections.abc import Collection, Mapping, Sequence
 from locus.knowledge.propagation import best_path_weights
 from locus.play.models import SessionRumor, SpreadTarget
 from locus.play.player.movement import is_passable
+from locus.play.rumor.dynamics import settle
 from locus.shared.config.tuning import PlayTuning
 from locus.shared.models import ConnectionEdge, WorldSnapshot
 from locus.shared.models.util import clamp01
@@ -88,7 +89,7 @@ def plan_spread(
         weight = w_here * edge_w
         if weight < tuning.spread_min_weight:
             continue
-        support = clamp01(rumor.support * (0.5 + 0.5 * edge_w))
+        support = settle(rumor.support * (0.5 + 0.5 * edge_w))  # as stored (U3 review S18)
         if support < floor:
             continue
         out.append(

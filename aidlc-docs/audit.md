@@ -3798,3 +3798,16 @@ Tests: 13 carry and 3 port contract; mutations caught after strengthening #13b t
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 9c.
 
 ---
+
+## U8 Code Generation Part 2 — Steps 9d and 9e (U3 carry: play, drafts)
+**Timestamp**: 2026-10-01T15:02:06Z
+**AI Response**: Closed:
+- #10: conditional contributions update; event reads inside the UoW with FOR UPDATE.
+- C16: region names read once.
+- S17: narrator split into prompts/call/finish; only the provider call is guarded.
+- S18: settled supports.
+- S22: one material heading.
+Known limit recorded: offline tests cannot exercise PostgreSQL row locks. 7 tests; mutations caught. Gates: pytest 915, ruff/black clean, mypy 11. Step 9 complete.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Steps 9d–9e.
+
+---

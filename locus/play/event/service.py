@@ -88,7 +88,7 @@ class EventService(SnapshotNames, SessionAppService):
         ``provenance`` and ``timeline_extra`` let a started seed say where the event came
         from (U8, BR-U8-17); a GM's own event keeps the defaults."""
         session = self._require_open(session_id)
-        require_region(self._snapshots, session.world_id, region_id)
+        name = require_region(self._snapshots, session.world_id, region_id).name  # C16
         cat = EventCategory(category)
         event = SessionEvent(
             session_id=session_id,
@@ -103,7 +103,6 @@ class EventService(SnapshotNames, SessionAppService):
             or Provenance(source=SourceKind.SIMULATION, generated_by="gm:event"),
         )
         saved = self._repo.create_event(event)
-        name = self._region_name(session, region_id)
         extra = dict(timeline_extra or {})
         summary = (
             f"started seed {extra['seed_title']!r} in {name}"
@@ -133,12 +132,21 @@ class EventService(SnapshotNames, SessionAppService):
             return event
         if event.is_suggested():  # approve first (BR-U7-7, RE C5)
             raise InvalidActionError(f"a suggested event must be approved first: {event_id}")
+        name = self._region_name(session, event.region_id)  # before the transaction (C16)
         # Restore, status and timeline in ONE transaction: a failure part-way used to
         # leave some regions restored while the event stayed ACTIVE, so the next turn
         # accumulated a second contribution and the symmetric restore was permanently
         # broken (code review U4 #4). Deterministic body, no LLM — BR-U4-14 allows it.
-        restored = dict(event.contributions)
         with self._repo.uow() as u:
+            # the event as it is now, row locked: a GM set may have cleared a region's
+            # contribution since the read above (U3 review #10)
+            fresh = u.events.get_event(session_id, event_id, for_update=True)
+            if fresh is None:
+                raise LookupError(f"event not found: {event_id}")
+            if fresh.is_resolved():
+                return fresh
+            event = fresh
+            restored = dict(event.contributions)
             if restored:  # symmetric restore (target + propagated neighbours)
                 cur = {
                     rd.region_id: rd.distortion_degree
@@ -153,13 +161,12 @@ class EventService(SnapshotNames, SessionAppService):
                 self._entry(
                     session,
                     TimelineKind.EVENT_RESOLVED,
-                    f"resolved {event.category} event in "
-                    f"{self._region_name(session, event.region_id)}",
+                    f"resolved {event.category} event in {name}",
                     {
                         "event_id": event_id,
                         "restored": restored,
                         "region_id": event.region_id,
-                        "region_name": self._region_name(session, event.region_id),
+                        "region_name": name,
                     },
                 )
             )

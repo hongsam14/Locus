@@ -60,17 +60,23 @@ class DistortionService(SessionAppService):
             ),
             0.0,
         )
-        events = [
-            ev
-            for ev in self._repo.list_events(session_id, status=EventStatus.ACTIVE.value)
-            if region_id in ev.contributions
-        ]
-        events_cleared = round(sum(ev.contributions[region_id] for ev in events), 6)
+        active = EventStatus.ACTIVE.value
         with self._repo.uow() as u:
+            # Read the events inside the transaction (rows locked on PostgreSQL) and write
+            # their contributions only, only while still ACTIVE: a resolve running at the
+            # same time is neither revived nor undone (U3 review #10).
+            events = [
+                ev
+                for ev in u.events.list_events(session_id, status=active, for_update=True)
+                if region_id in ev.contributions
+            ]
+            events_cleared = 0.0
             u.distortions.set_region_distortion(session_id, region_id, degree, feedback_share=0.0)
             for ev in events:
-                ev.contributions = {k: v for k, v in ev.contributions.items() if k != region_id}
-                u.events.update_event(ev)
+                rest = {k: v for k, v in ev.contributions.items() if k != region_id}
+                if u.events.update_event_contributions(session_id, ev.id, rest, status=active):
+                    events_cleared += ev.contributions[region_id]
+            events_cleared = round(events_cleared, 6)
             u.timeline.append_timeline(
                 self._entry(
                     session,

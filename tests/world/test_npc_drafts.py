@@ -169,3 +169,15 @@ def test_long_answers_are_clipped() -> None:
     assert len(draft.name) == 60 and len(draft.role) == 60 and len(draft.description) <= 500
     assert "\n" not in draft.description
     assert len(draft.traits) == 5 and all(len(t) == 30 for t in draft.traits)
+
+
+def test_s22_every_section_sits_under_one_material_heading() -> None:
+    """U3 review S22: KNOWN HERE and EXISTING NPCS were outside the material heading."""
+    from locus.world.npc_drafts import _SYSTEM, draft_prompt
+
+    snap, town = _world()
+    lines = draft_prompt(snap, town.id).splitlines()
+    head = next(i for i, line in enumerate(lines) if line.startswith("MATERIAL ("))
+    for section in ("REGION:", "KNOWN HERE:", "EXISTING NPCS:"):
+        assert lines.index(section) > head
+    assert "REGION, KNOWN HERE and EXISTING NPCS" in _SYSTEM

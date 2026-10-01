@@ -182,10 +182,10 @@
 - [x] 8.2 TP-U8-8: 공급자 없이 조립한 앱에서 BLM §4.1 표 경로가 503, 키 없이 쓰는 대표 경로(데모 불러오기, 세션 시작, 이동 턴, 씨앗 시작, 보강 시작, `POST priors`)가 2xx. 표 밖에서 500이 나오면 같은 규칙으로 막고 표에 더한다.
 
 ### Step 9 — U3 이월: 백엔드
-- [~] 9.1 정확성: #10, #12(서버), #13 — 9a: #12(서버)·#13 끝
-- [ ] 9.2 상한 밖: S03, S07, S09, S10, S12, S15, S17~S22, S26, S27, S29, S30, S32
-- [ ] 9.3 정리: C2(서버), C3, C4, C5, C6, C7, C9, C10, C11, C13, C15, C16, C17(서버)
-- [ ] 9.4 테스트: 항목마다 하나 이상(재현 조건 그대로). #10은 SQLite 위 `PostgresPlayRepository`로 해소 ∥ 설정 순서를 강제한 결정적 테스트. #13은 끊기 테스트. S26은 가짜 라벨 키 테스트. 의도된 변경 주석.
+- [x] 9.1 정확성: #10, #12(서버), #13
+- [x] 9.2 상한 밖: S03, S07, S09, S10, S12, S15, S17~S22, S26, S27, S29, S30, S32
+- [x] 9.3 정리: C2(서버), C3, C4, C5, C6, C7, C9, C10, C11, C13, C15, C16, C17(서버)
+- [x] 9.4 테스트: 항목마다 하나 이상(재현 조건 그대로). #10은 SQLite 위 `PostgresPlayRepository`로 해소 ∥ 설정 순서를 강제한 결정적 테스트. #13은 끊기 테스트. S26은 가짜 라벨 키 테스트. 의도된 변경 주석.
 
 ### Step 10 — 프런트엔드: U8 기능 (frontend-components)
 - [ ] 10.1 `api/*`·`types.ts`: `capabilities()`, `DemoInfo` 확장, `loadDemo(worldId, name, options)`(기본값 없음), `buildWorldDemo` 삭제, `listSeeds`, `startSeed`(사건 타입, R-12), `RegionDeletePlan.seed_ids`·`RegionDeleteReport.seeds_deleted`, `unscoped_knowledge_ids`(C5). `http.ts` `openSessionsOf(err)`(세 모양, 설계 메모 10)와 `useReplaceConfirm`(C8).

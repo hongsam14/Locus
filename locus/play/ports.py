@@ -76,11 +76,19 @@ class TimelineStore(Protocol):
 @runtime_checkable
 class EventStore(Protocol):
     def create_event(self, event: SessionEvent) -> SessionEvent: ...
-    def get_event(self, session_id: str, event_id: str) -> SessionEvent | None: ...
+
+    # ``for_update`` (U8, U3 review #10): inside a unit of work, lock the rows read until
+    # it ends (PostgreSQL ``FOR UPDATE``; the in-memory store already holds its lock)
+    def get_event(
+        self, session_id: str, event_id: str, *, for_update: bool = False
+    ) -> SessionEvent | None: ...
     def list_events(
-        self, session_id: str, status: str | None = None
+        self, session_id: str, status: str | None = None, *, for_update: bool = False
     ) -> list[SessionEvent]: ...  # created_turn, then id
     def update_event(self, event: SessionEvent) -> SessionEvent: ...
+    def update_event_contributions(
+        self, session_id: str, event_id: str, contributions: dict[str, float], *, status: str
+    ) -> bool: ...  # U8: writes contributions only, only while the event has ``status``
     def delete_event(self, session_id: str, event_id: str) -> None: ...
 
 

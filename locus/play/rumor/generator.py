@@ -10,6 +10,7 @@ fails the chain stops there and the successful prefix is returned (NFR-R4).
 from __future__ import annotations
 
 from locus.play.models import SessionRumor
+from locus.play.rumor.dynamics import settle
 from locus.shared.llm.base import LLMProvider
 from locus.shared.models import LocusModel, Provenance, SourceKind
 from locus.shared.models.util import clamp01
@@ -74,7 +75,7 @@ class RumorGenerator:
                 distorted_from_kind=prev_kind,
                 statement=draft.statement,
                 distortion_degree=degree,
-                support=clamp01(birth_support),
+                support=settle(birth_support),  # as stored (U3 review S18)
                 confidence=clamp01(source_confidence * (1.0 - degree)),
                 promoted=False,
                 provenance=Provenance(source=SourceKind.SIMULATION, generated_by="llm:rumor"),

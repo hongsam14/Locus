@@ -445,15 +445,23 @@ class TurnAdvancer(SessionAppService):
             # Read before the call is booked and outside its `try`: a storage error here
             # is the run's failure, not the LLM's (U6 review #9).
             scene = self._scene(session, player, region, snapshot)
+            # The prompt is built outside the `try` too: only the provider call is an LLM
+            # failure (U3 review S17); a prompt bug is the run's failure.
+            prompt, system = self._narrator.prompts(declaration=declared, scene=scene, lang=lang)
             budget.take(1)
             try:
-                narration = self._narrator.narrate(declaration=declared, scene=scene, lang=lang)
+                draft = self._narrator.call(prompt, system)
             except Exception:
                 logger.exception("narration failed for run %s", run.id)
-                narration = gm_narrator.fallback(
+                draft = None
+                failed = True
+            narration = (
+                self._narrator.finish(draft, declaration=declared, scene=scene, lang=lang)
+                if draft is not None
+                else gm_narrator.fallback(
                     declaration=declared, player_name=player.name, lang=lang, llm_calls=1
                 )
-                failed = True
+            )
         if self._deeds is not None:
             self._deeds.record_declaration(
                 run,

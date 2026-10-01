@@ -40,6 +40,8 @@ const ko = {
   "augment.title": "지식 보강",
   "augment.revert": "되돌리기",
   "augment.status": "상태: {status} · 답 {answers}/30",
+  "augment.titleLabel": "제목(비우면 진술에서)",
+  "augment.confidence": "신뢰도(0~1, 비우면 그대로)",
 
   // session bar
   "session.title": "세션",
@@ -398,6 +400,8 @@ const en: Record<Key, string> = {
   "augment.title": "Knowledge augmentation",
   "augment.revert": "Revert",
   "augment.status": "status: {status} · {answers}/30 answers",
+  "augment.titleLabel": "Title (empty: from the statement)",
+  "augment.confidence": "Confidence (0–1, empty: unchanged)",
 
   "session.title": "Session",
   "session.new": "New session",

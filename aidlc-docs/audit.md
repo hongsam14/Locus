@@ -3852,3 +3852,15 @@ Intended test changes: home demo button, `llm-banner`, the dialogue 503 body. 17
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 11a.
 
 ---
+
+## U8 Code Generation Part 2 — Step 11b (U3 carry: augmentation screen)
+**Timestamp**: 2026-10-01T15:39:11Z
+**AI Response**: Closed:
+- #12 panel: a 404 checks the run; if it still exists, the server's reason is shown.
+- C2 web: inputs and references follow the server's `needs` and `ref_kind`.
+- S06: title and confidence inputs.
+- S28: inputs are keyed by `issue_key`.
+6 tests and 1 intended change (the lost-run test mocks getRun itself). 8/8 mutations caught; one test was tightened after its mutation survived. Gates: vitest 191, tsc clean.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 11b.
+
+---

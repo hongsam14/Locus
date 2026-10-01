@@ -251,3 +251,21 @@
     - 의도된 변경: UnscopedPanel 테스트(C12, 페이지처럼 `reloadKey`를 올리는 하네스. 읽기 2번 단언)
   - 변이 20건 모두 잡음: C1 셋, #14, #15 둘, S21, S01, S05, S25, S31 둘, C12, C17, S23 셋, S24, C8 WorldFileBar
   - 게이트: vitest 185, tsc clean
+- **Step 11b** (U3 이월: 보강 화면)
+  - #12(패널)
+    - 답·되돌리기·다시 묻기가 404이면 `GET runs/{id}`로 run이 남아 있는지 본다.
+    - 남아 있으면 run을 다시 그리고 서버 문장을 오류로 보인다(`detailOf`: JSON `detail` 글). run도 404일 때만 "잃음"이다.
+  - C2(웹)
+    - 카드 입력은 질문의 `needs`(행동별 입력)로 그린다. 답은 그 행동이 받는 입력만 보낸다.
+    - 참조 선택지는 `ref_kind`(region·entity·prior)로 고른다. `issue_key` 쪼개기와 필드→라벨 표를 지웠다.
+    - 타입: `AugQuestion.type`·`needs`·`ref_kind`, `QuestionTarget.connection`, `AugInput`
+  - S06: 고치기·추가 카드에 제목과 신뢰도(0~1, 범위 밖이나 빈칸이면 보내지 않음) 입력이 생겼다(서버 `needs`가 부를 때).
+  - S28: 카드 입력을 `issue_key`로 잡는다. 다시 탐지가 질문 id를 바꿔도 다른 카드의 입력이 남는다.
+  - 테스트
+    - `editor.test` 5: #12, C2/S06 둘, C2 참조 종류, S28
+    - `capabilities.test` 1: `detailOf`
+    - 의도된 변경: "잃은 run" 테스트가 `getRun` 404를 직접 둔다. 앞 테스트의 mock에 기대던 순서 의존도 함께 없앴다.
+  - 변이 8건
+    - 7건은 처음부터 잡았다: 404→잃음, `needs` 대신 합집합, 신뢰도 범위, entity 선택지, 입력 키 둘, 제목
+    - `detailOf` 변이는 처음에 살아남았다(부분 문자열 단언). 단언을 정확한 문장으로 바꾼 뒤 잡았다.
+  - 게이트: vitest 191, tsc clean

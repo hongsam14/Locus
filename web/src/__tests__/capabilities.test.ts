@@ -3,7 +3,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../api";
-import { HttpError, needsLlm, openSessionsOf, useReplaceConfirm } from "../api/http";
+import { HttpError, detailOf, needsLlm, openSessionsOf, useReplaceConfirm } from "../api/http";
 import { llmOff, resetCapabilities, useCapabilities } from "../capabilities";
 import { dicts, setLang, t, timelineText } from "../i18n";
 
@@ -72,6 +72,15 @@ describe("the 409 and 503 helpers", () => {
     expect(needsLlm(failed)).toBe(false);
     expect(needsLlm(new HttpError(503, "Service Unavailable", '{"detail":"world editor unavailable"}'))).toBe(false);
     expect(needsLlm(new HttpError(400, "Bad Request", "llm"))).toBe(false);
+  });
+});
+
+describe("detailOf (U3 review #12)", () => {
+  it("is the JSON detail when it is text, else the message", () => {
+    expect(detailOf(new HttpError(404, "Not Found", '{"detail":"region not found: gone"}'))).toBe("region not found: gone");
+    expect(detailOf(new HttpError(404, "Not Found", "plain words"))).toBe("plain words");
+    expect(detailOf(new HttpError(409, "Conflict", '{"detail":{"open_sessions":1}}'))).toContain("409");
+    expect(detailOf(new Error("boom"))).toBe("Error: boom");
   });
 });
 

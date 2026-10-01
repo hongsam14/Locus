@@ -64,6 +64,20 @@ export function openSessionsOf(
   }
 }
 
+/** The server's own sentence for a failed request: the JSON ``detail`` when it is text,
+ * else the whole message (U3 review #12: the reason, not "lost"). */
+export function detailOf(err: unknown): string {
+  if (err instanceof HttpError) {
+    try {
+      const detail = (JSON.parse(err.body) as { detail?: unknown }).detail;
+      if (typeof detail === "string") return detail;
+    } catch {
+      return err.body || String(err);
+    }
+  }
+  return String(err);
+}
+
 /** The question a replace is waiting on: "replace?" first, then "close N sessions?". */
 export type ReplaceAsk = "replace" | { sessions: number } | null;
 

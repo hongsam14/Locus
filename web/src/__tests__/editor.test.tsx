@@ -19,7 +19,15 @@ import { RegionInspector } from "../features/editor/RegionInspector";
 import { UnscopedPanel } from "../features/editor/UnscopedPanel";
 import { WikiPanel } from "../features/editor/WikiPanel";
 import { t } from "../i18n";
-import type { AugRun, ConnectionEdge, EditorRegionView, Region, RegionDeletePlan, WorldExport } from "../types";
+import type {
+  AugQuestion,
+  AugRun,
+  ConnectionEdge,
+  EditorRegionView,
+  Region,
+  RegionDeletePlan,
+  WorldExport,
+} from "../types";
 
 vi.mock("../api", () => ({
   api: {
@@ -320,6 +328,8 @@ describe("AugmentPanel (BR-U3-24..28)", () => {
   it("a lost run (404 after a restart) offers a new search", async () => {
     (api.startRun as Mock).mockResolvedValue(runOf());
     (api.answer as Mock).mockRejectedValue(new HttpError(404, "Not Found", "run not found"));
+    // U8 intended change: U3 review #12 — a 404 is "lost" only when the run is gone too
+    (api.getRun as Mock).mockRejectedValue(new HttpError(404, "Not Found", "run not found"));
     render(<AugmentPanel worldId="w" regions={regions} entities={[]} onChanged={() => {}} />);
     fireEvent.click(screen.getByTestId("augment-find"));
     await waitFor(() => screen.getByTestId("augment-action-ignore"));
@@ -712,5 +722,85 @@ describe("U3 review carry: the editor screen", () => {
     await waitFor(() => expect(onLoaded).toHaveBeenCalled());
     expect((api.importWorldFile as Mock).mock.calls.map((c) => c[2])).toEqual([
       { replace: true, confirm: false }, { replace: true, confirm: true }]);
+  });
+});
+
+
+// --------------------------------------------------------------------------- //
+// U3 code-review-01, augmentation screen (U8 Step 11b): #12 S06 S28 C2
+// --------------------------------------------------------------------------- //
+describe("U3 review carry: the augmentation screen", () => {
+  const low = (over: Partial<AugQuestion> = {}): AugQuestion => ({
+    id: "q1", issue_id: "i1", issue_key: "low_confidence:knowledge:k1::", type: "low_confidence",
+    text: "Is this right?", actions: ["confirm", "edit", "remove", "ignore"],
+    needs: { edit: ["statement", "title", "confidence"] },
+    target: { kind: "knowledge", id: "k1", name: "mill" }, ...over,
+  });
+  const gap = (id: string): AugQuestion => ({
+    id, issue_id: "i2", issue_key: "gap:region:r2::", type: "gap", text: "What is known in Hollow?",
+    actions: ["add", "ignore"], needs: { add: ["statement", "title"] },
+    target: { kind: "region", id: "r2", name: "Hollow" },
+  });
+  const answered = (run: AugRun) => ({ change: null, changed: [], run });
+  async function open(run: AugRun) {
+    (api.startRun as Mock).mockResolvedValue(run);
+    render(<AugmentPanel worldId="w" regions={regions} entities={[{ id: "e1", name: "Old Bell" }]} onChanged={() => {}} />);
+    fireEvent.click(screen.getByTestId("augment-find"));
+    await waitFor(() => screen.getAllByTestId("augment-question"));
+  }
+
+  it("#12: a 404 for a target gone meanwhile keeps the run and shows the server's reason", async () => {
+    (api.answer as Mock).mockRejectedValue(new HttpError(404, "Not Found", '{"detail":"region not found: gone"}'));
+    (api.getRun as Mock).mockResolvedValue(runOf({ open_questions: [low()] }));
+    await open(runOf({ open_questions: [low()] }));
+    await act(async () => fireEvent.click(screen.getByTestId("augment-action-confirm")));
+    await waitFor(() => expect(screen.getByTestId("augment-error").textContent).toBe("region not found: gone"));
+    expect(api.getRun).toHaveBeenCalledWith("run1");
+    expect(screen.queryByTestId("augment-lost")).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("augment-question")).toHaveLength(1);
+  });
+
+  it("C2/S06: the inputs are the server's — statement, title and confidence go with edit only", async () => {
+    (api.answer as Mock).mockResolvedValue(answered(runOf({ open_questions: [] })));
+    await open(runOf({ open_questions: [low()] }));
+    expect(screen.queryByTestId("augment-region")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("augment-statement"), { target: { value: "The mill burned" } });
+    fireEvent.change(screen.getByTestId("augment-title"), { target: { value: "Burned mill" } });
+    fireEvent.change(screen.getByTestId("augment-confidence"), { target: { value: "0.9" } });
+    await act(async () => fireEvent.click(screen.getByTestId("augment-action-edit")));
+    expect((api.answer as Mock).mock.calls[0][1]).toEqual({ question_id: "q1", action: "edit",
+      statement: "The mill burned", title: "Burned mill", confidence: 0.9,
+      region_id: undefined, ref_id: undefined });
+  });
+
+  it("S06: a confirm carries none of the typed inputs; a confidence out of range is not sent", async () => {
+    (api.answer as Mock).mockResolvedValue(answered(runOf({ open_questions: [low()] })));
+    await open(runOf({ open_questions: [low()] }));
+    fireEvent.change(screen.getByTestId("augment-statement"), { target: { value: "typed" } });
+    fireEvent.change(screen.getByTestId("augment-confidence"), { target: { value: "1.5" } });
+    await act(async () => fireEvent.click(screen.getByTestId("augment-action-confirm")));
+    expect((api.answer as Mock).mock.calls[0][1]).toMatchObject({ action: "confirm", statement: undefined, confidence: undefined });
+    await act(async () => fireEvent.click(screen.getByTestId("augment-action-edit")));
+    expect((api.answer as Mock).mock.calls[1][1]).toMatchObject({ action: "edit", statement: "typed", confidence: undefined });
+  });
+
+  it("C2: a dangling reference lists the kind the server names", async () => {
+    const dangling = low({ id: "q3", issue_key: "dangling:knowledge:k1:about_entity_ids:gone", type: "dangling",
+      actions: ["edit", "remove", "ignore"], needs: { edit: ["ref"] }, ref_kind: "entity",
+      target: { kind: "knowledge", id: "k1", name: "mill", field: "about_entity_ids" } });
+    await open(runOf({ open_questions: [dangling] }));
+    expect(screen.getByTestId("augment-ref")).toHaveTextContent("Old Bell");
+    expect(screen.queryByTestId("augment-statement")).not.toBeInTheDocument();
+    expect(api.listPriors).not.toHaveBeenCalled();
+  });
+
+  it("S28: what is typed on one card survives an answer on another (new question ids)", async () => {
+    (api.answer as Mock).mockResolvedValue(answered(runOf({ open_questions: [low({ id: "q9" }), gap("q8")] })));
+    await open(runOf({ open_questions: [low(), gap("q2")] }));
+    const statements = screen.getAllByTestId("augment-statement");
+    fireEvent.change(statements[1], { target: { value: "Wells run dry" } });
+    await act(async () => fireEvent.click(screen.getAllByTestId("augment-action-confirm")[0]));
+    await waitFor(() => expect(api.answer).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getAllByTestId("augment-statement")[1]).toHaveValue("Wells run dry"));
   });
 });

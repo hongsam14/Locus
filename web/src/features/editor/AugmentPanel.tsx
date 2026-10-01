@@ -1,14 +1,36 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
-import { statusOf } from "../../api/http";
+import { detailOf, statusOf } from "../../api/http";
 import { t } from "../../i18n";
-import type { AugAction, AugQuestion, AugRun, NameRef, QuestionTarget, Region, WikiPrior } from "../../types";
+import type {
+  AugAction,
+  AugInput,
+  AugQuestion,
+  AugRun,
+  NameRef,
+  QuestionTarget,
+  Region,
+  WikiPrior,
+} from "../../types";
 import { Badge, Button, Card, Field, Panel } from "../../ui";
 
-const kindOf = (q: AugQuestion) => q.issue_key.split(":")[0];
+type Inputs = { statement?: string; title?: string; confidence?: string; region?: string; ref?: string };
+
+/** Every input any of the question's actions takes — the server says which (U3 C2). */
+const inputsOf = (q: AugQuestion): Set<AugInput> =>
+  new Set(Object.values(q.needs ?? {}).flat() as AugInput[]);
+
+/** A confidence box's value when it is a number in [0, 1]; otherwise nothing is sent. */
+function confidenceOf(text?: string): number | undefined {
+  if (text == null || text.trim() === "") return undefined;
+  const v = Number(text);
+  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : undefined;
+}
 
 /** The augmentation Q&A (US-2.6, BR-U3-24..28): one run kept by the screen; each
- * question names its target and offers only the server's actions; an answer returns
+ * question names its target, offers only the server's actions and shows the inputs the
+ * server says they take (statement, title, confidence, region, reference — U3 review
+ * C2/S06); an answer returns
  * the run with its next questions; changes undo latest first; an ignored question can
  * be asked again. A restart loses runs (BR-U3-42): the panel then offers a new search.
  * The page keeps the run id (``runId``/``onRunId``) so leaving the tab — a click on the
@@ -35,7 +57,9 @@ export function AugmentPanel({
   const [error, setError] = useState<string | null>(null);
   const [changed, setChanged] = useState<Record<string, QuestionTarget[]>>({});
   const [priors, setPriors] = useState<WikiPrior[] | null>(null);
-  const [input, setInput] = useState<Record<string, { statement?: string; region?: string; ref?: string }>>({});
+  // keyed by the issue, not the question: a re-detection gives every question a new id
+  // and must not wipe what was typed on the other cards (U3 review S28)
+  const [input, setInput] = useState<Record<string, Inputs>>({});
 
   useEffect(() => {
     setRun(null);
@@ -56,9 +80,7 @@ export function AugmentPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run?.id]);
 
-  const needsPriors = run?.open_questions.some((q) =>
-    ["wiki_prior_ref", "derived_from_prior_ids"].includes(q.target?.field ?? ""),
-  );
+  const needsPriors = run?.open_questions.some((q) => q.ref_kind === "prior");
   useEffect(() => {
     if (needsPriors && priors == null) api.listPriors(worldId).then(setPriors).catch(() => setPriors([]));
   }, [needsPriors, priors, worldId]);
@@ -70,11 +92,24 @@ export function AugmentPanel({
       const next = await fn();
       if (next) setRun(next);
     } catch (e) {
-      if (statusOf(e) === 404 && run) setLost(true);
+      if (statusOf(e) === 404 && run) await checkRun(run.id, e);
       else if (statusOf(e) === 409) setError(t("augment.conflict", { reason: String(e) }));
       else setError(String(e));
     } finally {
       setBusy(false);
+    }
+  }
+
+  /** A 404 is a lost run only when the run itself is gone (a restart): a target removed
+   * meanwhile also answers 404, and then the run stays with the server's reason shown
+   * (U3 review #12). */
+  async function checkRun(id: string, err: unknown) {
+    try {
+      setRun(await api.getRun(id));
+      setError(detailOf(err));
+    } catch (again) {
+      if (statusOf(again) === 404) setLost(true);
+      else setError(String(again));
     }
   }
 
@@ -87,13 +122,16 @@ export function AugmentPanel({
 
   const answer = (q: AugQuestion, action: AugAction) =>
     call(async () => {
-      const i = input[q.id] ?? {};
+      const i = input[q.issue_key] ?? {};
+      const takes = new Set(q.needs?.[action] ?? []); // only what this action takes
       const res = await api.answer(run!.id, {
         question_id: q.id,
         action,
-        statement: i.statement?.trim() || undefined,
-        region_id: i.region || undefined,
-        ref_id: i.ref || undefined,
+        statement: takes.has("statement") ? i.statement?.trim() || undefined : undefined,
+        title: takes.has("title") ? i.title?.trim() || undefined : undefined,
+        confidence: takes.has("confidence") ? confidenceOf(i.confidence) : undefined,
+        region_id: takes.has("region") ? i.region || undefined : undefined,
+        ref_id: takes.has("ref") ? i.ref || undefined : undefined,
       });
       if (res.change) setChanged((c) => ({ ...c, [res.change!.id]: res.changed }));
       if (action !== "ignore") onChanged();
@@ -102,9 +140,8 @@ export function AugmentPanel({
 
   const latest = run ? [...run.history].reverse().find((c) => !c.reverted) : undefined;
   const refOptions = (q: AugQuestion): NameRef[] => {
-    const field = q.target?.field ?? "";
-    if (field === "parent_id" || field === "located_in") return regions;
-    if (field === "about_entity_ids") return entities;
+    if (q.ref_kind === "region") return regions;
+    if (q.ref_kind === "entity") return entities;
     return (priors ?? []).map((p) => ({ id: p.id, name: p.effect }));
   };
   const set = (id: string, patch: object) => setInput((s) => ({ ...s, [id]: { ...s[id], ...patch } }));
@@ -135,17 +172,28 @@ export function AugmentPanel({
                 </div>
               )}
               <div>{q.text}</div>
-              {(q.actions.includes("add") || (q.actions.includes("edit") && ["low_confidence", "wiki_conflict"].includes(kindOf(q)))) && (
+              {inputsOf(q).has("statement") && (
                 <Field label={t("augment.statement")} data-testid="augment-statement"
-                  value={input[q.id]?.statement ?? ""} onChange={(e) => set(q.id, { statement: e.target.value })} />
+                  value={input[q.issue_key]?.statement ?? ""}
+                  onChange={(e) => set(q.issue_key, { statement: e.target.value })} />
               )}
-              {["orphan", "unscoped"].includes(kindOf(q)) && (
-                <Select testId="augment-region" label={t("augment.region")} value={input[q.id]?.region}
-                  options={regions} onChange={(v) => set(q.id, { region: v })} />
+              {inputsOf(q).has("title") && (
+                <Field label={t("augment.titleLabel")} data-testid="augment-title"
+                  value={input[q.issue_key]?.title ?? ""}
+                  onChange={(e) => set(q.issue_key, { title: e.target.value })} />
               )}
-              {kindOf(q) === "dangling" && (
-                <Select testId="augment-ref" label={t("augment.ref")} value={input[q.id]?.ref}
-                  options={refOptions(q)} onChange={(v) => set(q.id, { ref: v })} />
+              {inputsOf(q).has("confidence") && (
+                <Field label={t("augment.confidence")} data-testid="augment-confidence" type="number"
+                  min={0} max={1} step={0.05} value={input[q.issue_key]?.confidence ?? ""}
+                  onChange={(e) => set(q.issue_key, { confidence: e.target.value })} />
+              )}
+              {inputsOf(q).has("region") && (
+                <Select testId="augment-region" label={t("augment.region")} value={input[q.issue_key]?.region}
+                  options={regions} onChange={(v) => set(q.issue_key, { region: v })} />
+              )}
+              {inputsOf(q).has("ref") && (
+                <Select testId="augment-ref" label={t("augment.ref")} value={input[q.issue_key]?.ref}
+                  options={refOptions(q)} onChange={(v) => set(q.issue_key, { ref: v })} />
               )}
               <div className="flex flex-wrap gap-1">
                 {q.actions.map((a) => (

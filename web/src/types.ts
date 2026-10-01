@@ -375,15 +375,22 @@ export interface QuestionTarget {
   region_name?: string | null;
   field?: string | null;
   broken_id?: string | null;
+  connection?: ConnectionKey | null; // a connection target as a key (U3 review C2)
 }
+
+/** What an answer carries (U3 review C2: the server says which, per action). */
+export type AugInput = "statement" | "title" | "confidence" | "region" | "ref";
 
 export interface AugQuestion {
   id: string;
   issue_id: string;
   issue_key: string;
+  type?: string | null;
   text: string;
   target?: QuestionTarget | null;
   actions: AugAction[];
+  needs?: Partial<Record<AugAction, AugInput[]>>; // action -> the inputs it takes
+  ref_kind?: "region" | "entity" | "prior" | null; // a dangling reference's new kind
 }
 
 export interface ChangeSet {

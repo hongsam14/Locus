@@ -3154,3 +3154,36 @@ Next: U3 NFR Requirements (light).
 ## Plan Review Dispositions — Functional Design — U3
 R-08 → Accepted risk
 R-11 → Accepted risk
+
+---
+
+## U3 NFR Requirements (light) — plan and note written
+**Timestamp**: 2026-10-01T08:31:36Z
+**User Input**: (continuing after FD approval "Continue to Next Stage (Recommended)")
+**AI Response**: Wrote `construction/plans/U3-world-editor-nfr-requirements-plan.md` with no questions (values were fixed in the FD) and assumptions N3-1..8. Also wrote `construction/U3-world-editor/nfr/nfr-light.md`:
+- NFR-1..9 table with structural assertions (region delete ≤ 9 + NPC port calls; connection save = 1 delete + 1 upsert; world list without snapshot loads).
+- Upload limits (48 MiB request, per-field counts/sizes, memo 60,000 chars, PNG/JPEG/WebP).
+- Augmentation LLM run budget 60, search-only wiki lookup.
+- Prompt caps computed from per-field character limits (NPC drafts ≤ 6,000).
+- Region-delete atomicity by order + idempotent retry (TP-U3-2a).
+- Per-run lock; intended changes C-1..C-10; hand-offs for FD R-08/R-11, U7 carry and port contracts.
+Baselines measured at HEAD aedf72d: pytest 735, vitest 94, mypy 11.
+**Context**: CONSTRUCTION / U3 — NFR Requirements (light).
+
+---
+
+## U3 NFR Requirements (light) — Plan Review dispatched
+**Timestamp**: 2026-10-01T08:31:36Z
+**AI Response**: Dispatching aidlc-architecture-reviewer (class advisory, iteration 1) on `aidlc-docs/construction/U3-world-editor/nfr/nfr-light.md`. Review record: `aidlc-docs/construction/U3-world-editor/nfr/reviews/nfr-light-review-01.md`.
+**Context**: CONSTRUCTION / U3 — NFR Plan Review.
+
+## Plan Review Completed — NFR Requirements (light) — U3
+**Timestamp**: 2026-10-01T08:36:04Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY** (advisory, terminal). Findings: 0 Critical / 3 Major / 5 Minor; open 8. Record: `aidlc-docs/construction/U3-world-editor/nfr/reviews/nfr-light-review-01.md`. Orchestrator factual checks:
+- R-02 confirmed: `locus/knowledge/cache.py:39` defaults `check_version=True`. `loader.version()` (`loader.py:34-37`) reads `find_nodes(WorldMeta)` on every hit.
+- R-06 confirmed: `neo4j_repo.py:101` runs one query per edge.
+- R-01 is a logic finding on FD BLM §1.3 step ① order (approved FD). Fixing it changes that step's write order (requires upstream change: business-logic-model.md §1.3).
+**Context**: NFR Requirements (light) — U3 — next: approval gate (advisory verdict terminal; artifacts frozen).
+
+---

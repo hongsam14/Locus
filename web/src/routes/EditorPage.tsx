@@ -34,6 +34,7 @@ export function EditorPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [mapUrl, setMapUrl] = useState<string | null>(null);
 
   async function reload() {
     try {
@@ -109,11 +110,19 @@ export function EditorPage() {
           {t("editor.status", { world: data.world_id, regions: regions.length,
             connections: data.connections.length, entities: data.entities?.length ?? 0,
             knowledge: data.knowledge.length })}
+          <label className="ml-3 inline-flex items-center gap-1">
+            {t("toolbar.pickMap")}
+            <input data-testid="map-file-input" type="file" accept="image/*"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) setMapUrl(URL.createObjectURL(f)); // this browser only, as on the GM page
+              }} />
+          </label>
         </div>
       )}
       <div className="flex flex-wrap gap-4 p-3">
         <MapCanvas regions={regions} connections={data?.connections ?? []} selectedId={selected}
-          selectedConnection={conn} busy={busy}
+          selectedConnection={conn} busy={busy} mapImageUrl={mapUrl}
           onSelect={(id) => { setSelected(id); setConn(null); setTab("region"); }}
           onSelectConnection={(c) => { setConn(c); setSelected(c.source_region_id); setTab("region"); }}
           onMove={move} onCreateRegion={createRegion} onCreateConnection={createConnection} />

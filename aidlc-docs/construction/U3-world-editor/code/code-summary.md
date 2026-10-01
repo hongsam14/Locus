@@ -212,3 +212,10 @@
     - 의도된 변경: `gm.test`·`components.test`의 전체 생성 둘(C1), `play.test`의 폴링 순서(C7)
   - 변이(모두 잡음): #6 낡은 `refresh`, `EDGE_SPACE`의 옛 정규식
   - vitest 123
+- **Step 11** (문서)
+  - 11.1 `operations.md`: "World editor" 절(NFR-8 항목, 업로드 상한, 지역 삭제 순서와 재시도, 알려진 한계). U7 절의 `TOPOLOGY_DEFAULT_BASE`·제안 맥락 줄에 〔U3 정정〕
+  - 11.2 `env.example`: `TOPOLOGY_DEFAULT_BASE` 삭제, 업로드 상한은 상수라는 한 줄
+  - 11.3 〔U3 정정〕: `deeds/service.py` docstring, `play/wiring.py` 주석, U7 frontend-components(재생성 개수, "1~서버 상한" 둘), X3 BR-X3-5(C1), U7 code-summary §4(#11)·§5(8.7). `tuning.py:50` 주석은 필드와 함께 Step 3에서 사라졌다.
+  - 11.4 `CLAUDE.md`(Status, 레이아웃, 테스트 974), `web/README.md`(화면, 에디터 도구)
+  - **바로잡음(계획 밖)**: Step 9.8에서 `Toolbar`를 지울 때 이 브라우저에서만 쓰는 배경 지도 고르기도 빠졌다. FD는 이것을 없애기로 정하지 않았다. README를 맞추다 찾았고, `EditorPage`에 GM 화면과 같은 고르기를 되살렸다. 테스트 1(`components.test`), 변이(`mapImageUrl` 빼기) 잡음.
+  - vitest 124

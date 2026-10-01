@@ -3409,3 +3409,16 @@ R-16 → Accepted risk
 **Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 10.
 
 ---
+
+## U3 Code Generation Part 2 — Step 11 (docs)
+**Timestamp**: 2026-10-01T10:46:38Z
+**AI Response**:
+- operations.md: new World editor section; U7 lines corrected.
+- env.example: TOPOLOGY_DEFAULT_BASE removed; upload-cap note.
+- Doc accuracy fixes (U7 §5), each marked 〔U3 정정〕.
+- CLAUDE.md status/layout/test count; web/README.md screens and editor tools.
+- Out-of-plan fix: the editor's local background-map picker, dropped with the Toolbar in Step 9.8 (no FD decision to remove it), restored on EditorPage like the GM page; 1 test, mutation caught.
+- Gates: pytest 850, vitest 124, tsc clean.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 11.
+
+---

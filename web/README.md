@@ -1,6 +1,7 @@
-# Locus Web UI (U10)
+# Locus Web UI
 
-React + Vite + TypeScript review/edit UI: map-overlay topology, region knowledge, in-UI augmentation Q&A. Consumes the Locus serving + authoring API.
+React + Vite + TypeScript UI for the Locus API: the world list, the world editor, the GM hub and
+the player screen.
 
 ## Run
 ```bash
@@ -16,9 +17,22 @@ npm test           # vitest (jsdom) — pure layout/viz + component tests (api m
 npm run build      # tsc type-check + vite production build -> dist/
 ```
 
-## Map overlay
-- Region markers are placed by `region.position` (normalized 0..1), derived from the map
-  input (GeoJSON centroid / Locus Map x,y / VLM estimate) or auto-laid-out on a circle.
-- Drag a marker to reposition → persisted via `PUT /api/world/worlds/{world_id}/regions/{id}`.
-- Pick a background map image (top toolbar) to overlay the graph on your world map.
+## Screens
+- `/` — the world list (`routes/HomePage.tsx`): each world's regions and open sessions, edit,
+  start a player session; with no world, load the demo or build from sources.
+- `/editor/:worldId` — the world editor (`features/editor/`), below.
+- `/gm/:sessionId` — the GameMaster hub (`features/gm/`).
+- `/play/:sessionId` — the player screen (`features/play/`).
+
+## World editor
+- **Map** (`MapCanvas`): select tool picks a region or a connection; drag a marker more than
+  4px to move it (`PUT …/regions/{id}`); the region tool adds a region where you click; the
+  connection tool joins two regions with a kind and weight. A background image overlays the map.
+- **Inspector** (`RegionInspector`): the region's fields, its connections, its knowledge and
+  scopes, NPCs (with LLM drafts) and entities. Deleting a region asks first; the server
+  refuses (409) while an open session's player stands there and names those sessions.
+- **Side tabs**: unscoped knowledge, augmentation Q&A (answer, ignore, undo latest-first),
+  the wiki priors used as evidence.
+- **Bar** (`WorldFileBar`): save the World File, load one (replaces the world after a yes;
+  closing open sessions needs a second yes), build from sources, and the open-sessions band.
 - Connection lines: width/opacity by weight; `blocked` = red dashed (e.g. mountain barrier).

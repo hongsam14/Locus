@@ -1,6 +1,8 @@
 """DeedService — what the player did and what the NPCs made of it (U6 P16; BLM §1, §5).
 
-The one place deeds and appraisals are written (FD deviation 13). Reads that other
+Records deeds and appraisals (FD deviation 13); the turn engine also marks an appraisal
+seeded and undoes a failed run's deeds, through this service's store (U3, U7 review §5:
+"the one place" was too strong). Reads that other
 services need — the current stay, the deeds an NPC has yet to judge, the appraisals
 ready to seed a rumor, an NPC's memories, the recent deeds for event suggestion and the
 GM's view — live here too, so the stay rule (BR-U6-4) has one definition.

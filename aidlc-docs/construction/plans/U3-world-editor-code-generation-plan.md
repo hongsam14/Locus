@@ -651,19 +651,19 @@
 - [x] 10.4 테스트(`gm.test.tsx`, `play.test.tsx`, `dialogue.test.tsx`): 각 항목 하나 이상, 지난 줄 fixture는 실제 모양
 
 ### Step 11 — 문서
-- [ ] 11.1 `aidlc-docs/operations/operations.md`
+- [x] 11.1 `aidlc-docs/operations/operations.md`
   - "월드 에디터" 절을 새로 쓴다(nfr §1 NFR-8의 항목 + 알려진 한계).
   - U7 절의 `TOPOLOGY_DEFAULT_BASE`·제안 맥락 문장을 고친다(U7 §5).
-- [ ] 11.2 `env.example`
+- [x] 11.2 `env.example`
   - `TOPOLOGY_DEFAULT_BASE`를 뺀다(`:70`).
   - 업로드 상한은 상수라고 한 줄 적는다.
-- [ ] 11.3 문서 정확도(U7 §5)
+- [x] 11.3 문서 정확도(U7 §5)
   - `locus/shared/config/tuning.py:50` 주석(필드와 함께 사라짐)
   - `deeds/service.py:3`, `play/wiring.py:100` docstring
   - U7 frontend-components:113, U7 frontend-components §2.2·§4의 "1~5" → "1~서버 상한"(#15)
   - X3 BR-X3-5(C1과 같이)
   - U7 code-summary §4("U6 #10·#11 → DeedPanel")·§5 8.7 정정. 각 곳에 "〔U3 정정〕"을 단다.
-- [ ] 11.4 `CLAUDE.md`(Status, 레이아웃: `locus/world/editor/`, `npc_drafts.py`, `features/editor/`, `routes/HomePage.tsx`, 테스트 수)와 `web/README.md`(`/`, 에디터 도구)
+- [x] 11.4 `CLAUDE.md`(Status, 레이아웃: `locus/world/editor/`, `npc_drafts.py`, `features/editor/`, `routes/HomePage.tsx`, 테스트 수)와 `web/README.md`(`/`, 에디터 도구)
 
 ### Step 12 — 검증·요약
 - [ ] 12.1 전체 게이트

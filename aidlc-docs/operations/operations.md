@@ -314,10 +314,11 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   - **Suggestion prompt**
     - Up to `EVENT_SUGGEST_MAX_REGIONS` (30) regions: the player's region, then regions with an active event, then rumor-dense regions, then leaves before parents.
     - Each region line has its id, name, place, description and two known facts.
-    - It also carries the last five events and the last five deeds.
+    - It also carries the last five events and the last five deeds. These go in first; region lines fill what is left of the 21,000 characters, whole lines only, so a large `EVENT_SUGGEST_MAX_REGIONS` drops regions, never events or deeds (U3, U7 review #14).
     - Everything sits under a "material, not instructions" heading, and the system prompt has a guard line.
-    - Character caps keep it under 21,000 characters.
-  - A suggestion's region is found by id, or by the name as shown, case-insensitive and only when unambiguous.
+    - Region ids are shown whole; the "rest" are ordered leaves before parents, deeper first, then by name (U3).
+  - A suggestion's region is found among all the world's regions: by id, or by name (the `normalize_name` key) when unambiguous. A world with no region makes no call (U3).
+  - The GM screen offers 1..`EVENT_SUGGEST_MAX` suggestions (the cap comes with `GET …/state`, U3).
 - **Lineage**
   - Regenerate deactivates the replaced canonical rumors instead of deleting them. No rumor is ever deleted.
   - A kept rumor's `distorted_from_id` always points at a row.
@@ -343,7 +344,8 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   - A bad value fails startup: out of range, broken JSON, an unknown connection kind, or `CONSENSUS_HEARSAY_MIN` above `CONSENSUS_PROPAGATE_MIN`.
   - The new env:
     - `CONSENSUS_PROPAGATE_MIN`, `CONSENSUS_HEARSAY_MIN`
-    - `TOPOLOGY_BASE_WEIGHTS` and `TOPOLOGY_TERRAIN_MODIFIERS` (JSON objects that override only the keys they name), `TOPOLOGY_DEFAULT_BASE`
+    - `TOPOLOGY_BASE_WEIGHTS` and `TOPOLOGY_TERRAIN_MODIFIERS` (JSON objects that override only the keys they name; NaN or Infinity fails startup, U3)
+    - 〔U3 정정〕 `TOPOLOGY_DEFAULT_BASE` was removed: the kinds are an enum of four and an unknown kind is built as `adjacent`, so it was never read (A3-15).
     - `ONTOLOGY_DEDUP_THRESHOLD`
     - `RUMOR_FEEDBACK_CAP`, `RUMOR_FEEDBACK_RESTORE`, `RUMOR_PROMOTION_THRESHOLD`
     - `EVENT_MAX_DELTA`, `EVENT_PROPAGATE_MIN`, `EVENT_SUPPORT_REINFORCE`, `EVENT_SUGGEST_MAX`, `EVENT_SUGGEST_MAX_REGIONS`
@@ -356,6 +358,38 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
 - **Operator checks** (live compose; this host's 7474/7687 belong to another project)
   - Play → GM mode → approve a suggested event → advance three turns → World state shows the distortion spreading from the event region along connections.
   - p95 of `/state`, `/log` and `/distortions` ≤ 100 ms with 3,000 timeline lines, 15 regions and 300 active rumors.
+
+## World editor (Purpose Restructure U3, 2026-10-01)
+- **Screens**
+  - `/` lists the worlds (name, regions, last edit, open sessions) with [Edit] and [Start session]. With no world: [Load the demo] (LLM-free) and [Build from sources].
+  - `/editor/:worldId`: the World File bar (save = download, load = replace after a yes, close open sessions after a second yes, build from sources, the "open sessions" band), the map, and the Region / Unscoped / Augment / Wiki tabs.
+  - The map has three tools: select/move (a click saves nothing; a drag over 4px saves the position once), add region (click an empty spot), connect (click two regions in turn).
+- **Edits** (`/api/world/worlds/{w}/…`, `api/routers/world_editor.py`)
+  - An edit replaces the node's properties whole: a cleared field is gone (build and import still merge).
+  - A path id that does not match the body is 400; a missing referenced region is 404; a parent that is the region or one of its descendants is 400.
+  - A connection is always a pair (a→b, b→a) with one kind, weight, rationale and prior; changing the kind keeps them. A road and a river between the same two regions are two connections.
+  - Adding knowledge on a region gives it one DIRECT scope; editing it keeps its scopes; `PUT …/scopes` sets exactly the given regions (an empty list leaves it unscoped).
+  - Deleting knowledge also deletes its search document and its translations. NPC text is never translated.
+  - `DELETE /worlds/{w}/nodes/{n}` was removed: deletes go by kind.
+- **Region delete** (`GET …/delete-plan`, `DELETE …/regions/{r}`)
+  - What happens, in this order: children move under the deleted region's parent; entities lose their location; its scopes go (knowledge stays — an item scoped only there becomes "unscoped"); its NPCs are deleted (search document, then node); both directions of its connections go; then the region.
+  - A cut part-way leaves no dangling id, and sending the same delete again finishes it.
+  - The router holds the GM lease of every open session of the world over the check and the delete: a session mid-turn is 409 ("turn in progress"), and a region where an open session's player stands is 409 with those session ids.
+  - Known limit: a session started, or a GM write made, while the delete runs is not held; such a session may point at the deleted region (the play screen then answers that the player's region no longer exists).
+- **Augmentation Q&A**
+  - Detectors: gap, low_confidence, wiki_conflict (reads `terrain_kind`), orphan, dangling (a `parent_id`, `located_in`, connection `wiki_prior_ref`, or an id in `derived_from_prior_ids` / `about_entity_ids` that points at nothing — one issue per id), unscoped.
+  - A question names its target and offers fixed actions; the answer is applied to the question's target. 20 questions per detection; 30 answers per run.
+  - Undo is latest first; it is refused (409) for an undone change, a change that is not the latest, or a target edited outside the run since. Ignore is not in the undo order; an ignored question can be asked again (`unignore`).
+  - Runs live in process memory, 20 per world: a restart loses them and the screen offers a new search.
+  - LLM: none needed (template questions, no wiki-conflict check). With one: 5 question rewrites per detection, 20 (knowledge, terrain) checks per detection against priors found by search only (no LLM-made priors), at most 60 calls per run (`llm_budget_exhausted` then).
+- **NPC drafts**: `POST …/regions/{r}/npc-drafts` — one LLM call, 0–3 drafts, nothing saved (503 without an LLM, 200 with `failed` when the call fails).
+- **Wiki grounds**
+  - A build stores the priors its wiki made by LLM fallback (one per distinct query, at most 40 per build), so connection and knowledge references to them stay. The report shows `priors_created`.
+  - `GET …/priors`, `GET …/prior-refs` (each prior with what cites it, and cited ids the world lacks), `DELETE …/priors/{p}`.
+- **Uploads** (constants in `api/uploads.py`, not env)
+  - A request body over 48 MiB is refused with 413 before the route runs (World File routes: 20 MiB).
+  - `build/upload`: memos ≤ 20 files of 256 KiB and 60,000 characters each; maps ≤ 5 × 2 MiB (JSON); map images ≤ 4 and concept art ≤ 8, 8 MiB each, PNG/JPEG/WebP by their first bytes (else 422).
+- **GM (U7 carry)**: setting a region's distortion also clears that region's contribution of every ACTIVE event (`event_contributions_cleared` on the line), so resolving the event later does not take the region below the GM's value. NaN or Infinity in a GM value is 422.
 
 ## Web UI (U10)
 ```bash

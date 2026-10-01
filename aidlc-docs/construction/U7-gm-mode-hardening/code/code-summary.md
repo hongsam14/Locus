@@ -86,7 +86,7 @@
 | NFR R-03 | `shared/text.one_line` + 모든 프롬프트 삽입 |
 | NFR R-04 | `Settings._tuning_is_consistent`, 표 env는 `dict[str, float]` |
 | NFR R-05·R-06·R-07 | 구조 단언(§3), 기준선(§1), npm audit(§1) |
-| U6 #5·#7·#8·#9·#10~#15 | `GmHub.generateAll`, 제안 프롬프트·`_SYSTEM`, `_start`, `_narrate`, `PlayPage`·`conflictKind`, `DeedPanel`, `ActionBar`, `Modal.busy`, `movement.validate_action` |
+| U6 #5·#7·#8·#9·#10~#15 | `GmHub.generateAll`, 제안 프롬프트·`_SYSTEM`, `_start`, `_narrate`, `PlayPage`·`conflictKind`, `DeedPanel`, `ActionBar`, `Modal.busy`, `movement.validate_action` 〔U3 정정〕 #11은 절반만 닫혔다(`GmPage.onDeedChanged`가 세션을 다시 읽지 않았다). U7 리뷰 후속 `ad96aee`에서 닫았고, `DialoguePanel`은 U3 Step 10에서 닫았다. |
 | U6 #1 남은 결정 | `advancer._scene`: `shadowed_sources` + `pick_facts(hidden=)` |
 | U6 C1~C16 | C1 `DeedPanel` key/`reloadKey` · C2 `seed_candidates`, `list_deeds` 확장 · C3·C4 `_draft_spread`, `neighbour_map` · C5 `appraise(objects)` · C6 `AppraisalOutcome` · C7 청구 한 곳 · C8 `SCENE_*` = narrator 한도 · C9 씨앗 왜곡도 · C10 `current_stay` · C11 `_is_unique_violation` · C12 `localize_deed_views` · C13 (#1) · C14 `narrate` 폴백 · C15 `StaticSnapshots` · C16 `UtcDateTime` |
 | U5 C1·C4·대화 500·줄바꿈 위조 | `message_counts` + 웹 +2, `base._require_player`·`PlayService(params)` 제거, `LlmCallFailedError` 503, `one_line` |
@@ -115,7 +115,7 @@
 - **8.2 `bulk.ts`**: `mapLimit`·`BULK_LIMIT`을 `features/gm/bulk.ts`로 뺐다(가장 큰 GM 컴포넌트 ≤ 250줄, NFR-7).
 - **8.4 지도 표시**: `MapOverlay`에 `markerId`(붉은 고리 + "●"), `regionFill`, `regionBadge` 선택 prop을 더했다. 오버레이는 훅 `useWorldState` + 순수 `overlayOf` + 토글·범례 `WorldStateOverlay`로 나눴다.
 - **8.5 닫힌 세션**: `conflictKind`가 409를 "closed"/"busy"로 가른다. 닫힌 세션이면 행동·이동·선언이 잠긴다.
-- **8.7 지난 기록**: `event_created` + `suggested/approved` 플래그 줄(U7 이전)은 각각 제안·승인 문구로, 플레이어 없는 `session_started`는 "GM 세션 시작"으로 읽는다.
+- **8.7 지난 기록**: `event_created` + `suggested/approved` 플래그 줄(U7 이전)은 각각 제안·승인 문구로, 플레이어 없는 `session_started`는 "GM 세션 시작"으로 읽는다. 〔U3 정정〕 실제 지난 줄에는 category가 없어 "{category}"가 남았다. U3부터 category가 있을 때만 새 문구이고, 아니면 요약을 보인다(U7 코드 리뷰 #10).
 - **변이 하나는 겉으로 같다**: `voidDeed`의 재진입 가드를 지워도 모달의 `busy`가 두 번째 클릭을 막는다(이중 방어). 모달 쪽 변이는 테스트가 잡는다.
 
 

@@ -527,4 +527,24 @@ describe("EditorPage demo load (BR-U2-25)", () => {
       expect(api.importWorldFile).toHaveBeenLastCalledWith("aldermoor", { format_version: 1 }, { replace: true, confirm: true }),
     );
   });
+
+  it("lays a background map picked in this browser under the editor's map", async () => {
+    // U3 Step 11: the picker the old Toolbar had, kept when the Toolbar went (Step 9.8)
+    const made = vi.fn(() => "blob:map");
+    Object.assign(URL, { createObjectURL: made });
+    (api.exportWorld as Mock).mockResolvedValue({
+      world_id: "aldermoor", regions: [{ id: "r1", name: "Riverton", level: "town" }],
+      connections: [], entities: [], knowledge: [], scopes: [],
+    });
+    render(
+      <MemoryRouter initialEntries={["/editor/aldermoor"]}>
+        <App />
+      </MemoryRouter>,
+    );
+    await waitFor(() => screen.getByTestId("map-file-input"));
+    const image = new File(["png"], "map.png", { type: "image/png" });
+    fireEvent.change(screen.getByTestId("map-file-input"), { target: { files: [image] } });
+    expect(made).toHaveBeenCalledWith(image);
+    expect(screen.getByAltText("world map")).toHaveAttribute("src", "blob:map");
+  });
 });

@@ -97,7 +97,7 @@ def assemble_play(
         store, generator, loader, knowledge.params, birth_support=tuning.birth_support
     )
     feedback = RumorFeedbackService(store, tuning)
-    deeds = DeedService(store, loader, tuning=tuning)  # U6: the one writer of deeds
+    deeds = DeedService(store, loader, tuning=tuning)  # U6: records deeds and appraisals
     region_knowledge = SessionKnowledgeService(store, loader, knowledge.params)
     # One LLM speaks for the NPCs and the GM: dialogue, deed appraisal and narration
     # (U6 code-plan review R-02 — `dialogue_llm` is the single injection point).

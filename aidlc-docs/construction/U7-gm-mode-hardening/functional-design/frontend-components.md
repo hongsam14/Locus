@@ -52,7 +52,7 @@ ui/CommitRange.tsx (새)     Range + 저장 시점 규칙
   - SUGGESTED 사건에는 `[승인]`·`[폐기]`만 그린다. `[해소]`는 ACTIVE에만 그린다.
   - 서버도 막는다(BR-U7-7). 화면은 같은 규칙을 보일 뿐이다.
 - **`ManualTurnPanel`**
-  - `[사건 제안]` 옆에 개수 선택(1~5, 기본 1, `suggest-n`)을 둔다. 서버 상한과 같다.
+  - `[사건 제안]` 옆에 개수 선택(1~5, 기본 1, `suggest-n`)을 둔다. 서버 상한과 같다. 〔U3 정정〕 1~서버 상한(`EVENT_SUGGEST_MAX`)이고, 상한은 `GET …/state`의 `max_event_suggestions`로 온다(U7 코드 리뷰 #15).
 - **`DistortionPanel`**
   - 슬라이더 아래에 "되먹임 몫 {share}"를 작게 보인다(`distortion-feedback`). 몫이 0이면 숨긴다.
 - **이름**: 사건·소문 줄의 지역은 이름으로 보인다. 이름표는 `GmPage`가 이미 읽은 월드 내보내기의 `regions`에서 만든다.
@@ -110,13 +110,13 @@ interface Props extends Omit<InputHTMLAttributes<HTMLInputElement>, "onChange" |
 | `log.rumor_spread` | 당신에 대한 이야기가 {region}까지 왔다 | Talk about you has reached {region} |
 
 - 기존 타임라인 템플릿은 `{region}` 자리에 `payload.region_name ?? payload.region_id`를 넣는다(D3). 대상은 생성·재생성·지지도·왜곡도·사건·승격·강등·가지치기다.
-- `regenerate`는 `deactivated ?? deleted` 개수를 쓴다.
+- `regenerate`는 `deactivated ?? deleted` 개수를 쓴다. 〔U3 정정〕 재생성 줄의 템플릿은 U7 전후 모두 개수를 보이지 않는다(U7 코드 리뷰 §5).
 - 플레이어 로그는 `log.*` 키가 있으면 그것을, 없으면 `timeline.*`을 쓴다.
 
 ## 4. API·타입
 - `api/gm.ts`
   - `getWorldState(sid): Promise<WorldState>` 새로 둔다.
-  - `suggestEvents(sid, n)`은 그대로다(값 범위만 1~5).
+  - `suggestEvents(sid, n)`은 그대로다(값 범위만 1~5). 〔U3 정정〕 1~서버 상한.
 - `types.ts`
   - `WorldState`, `RegionState`를 더한다.
   - `RegionDistortion.feedback_share`를 더한다.

@@ -207,6 +207,86 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   removed by an edit: `history` still reads, `say` answers 404) and `messages` (app-stamped
   `created_at`, read in `(created_at, id)` order). No retention policy.
 
+## Deeds & spread (Purpose Restructure U6, 2026-10-01)
+
+- **What it does**: the player's arrivals, the things said to an NPC and declared actions become
+  *deeds* (session-only, never canonical). When a talk ends, the NPC judges the deeds it saw in this
+  stay (one LLM call). A deed it would pass on becomes a rumor in that region, and each turn
+  deed rumors move **one hop** along passable connections, more distorted each time.
+  The GM sees every deed and can **void** it.
+- **Routes**
+  - `POST /api/play/sessions/{s}/act?lang=` with `{type: "declare", text}` answers 202.
+    The narration arrives with the run result (`result.declaration`).
+  - An empty or over-limit declaration is **400**.
+  - `GET /api/gm/sessions/{s}/deeds?lang=` lists deeds with names, appraisals, rumors and
+    reached regions.
+  - `POST /api/gm/sessions/{s}/deeds/{d}/void` holds the GM write lease (409 during a turn),
+    is idempotent, and turns off every rumor of the deed, promoted ones included.
+- **Who judges**
+  - A statement is judged by the NPC who heard it.
+  - Arrivals and declarations are judged by every witness the player talked to. Each
+    noteworthy judgement seeds its own version.
+  - An `end_talk` with no new player line since the last talk judges nothing (0 calls).
+  - Leaving a region without talking means its deeds never become rumors.
+- **Turn budget order** (`LLM_MAX_CALLS_PER_TURN`, default 8)
+  1. The action's own call: narration or appraisal, reserved first.
+  2. Spread hops, one call each.
+  3. Canonical rumor drafts with what is left.
+  - Seeds need no call: the NPC's retelling is the rumor.
+  - A failed prep call or a failed hop trips that turn's breaker, so the rest of its LLM
+    work is skipped.
+  - A budget of 0 gives the fallback narration (a fixed line, the player's words as the record).
+- **Worst case per action**: B is the per-call bound, 106s.
+
+  | Action | LLM outage | Slow but successful calls |
+  |---|---|---|
+  | Declaration or end of talk | ≈ B (prep fails, breaker) | ≤ 8 × B = 848s |
+  | Move of k turns | ≤ k × B | ≤ k × 8 × B |
+
+  The background executor is a single FIFO worker, so other sessions wait meanwhile (U4,
+  accepted).
+- **Spread rules**
+  - Reach weight is the best path from the deed's region over passable connections read both
+    ways, times the hop. A hop needs reach ≥ `SPREAD_MIN_WEIGHT`.
+  - Degree is at least `max(parent, 1 − reach)`.
+  - Support is `parent × (0.5 + 0.5 × edge)`. Hops that would be pruned by the next turn are not
+    tried.
+  - One version reaches a region once. A region takes at most `MAX_SPREAD_PER_REGION_TURN` hops
+    per turn.
+  - Seeds, hops and canonical drafts share the per-region active cap.
+  - Newborn deed rumors skip that turn's decay. Seed support is `birth_support × (1 + salience)`.
+- **Never mixed**: canonical rumor chains never extend a deed rumor, so a void reaches
+  everything a deed produced. A region regenerate keeps deed rumors.
+- **Schema** (idempotent `init-schema --play` / startup)
+  - New tables `deeds` and `deed_appraisals` (unique `(deed_id, npc_id)`).
+  - Existing tables gain columns, added with the inspector on PostgreSQL and SQLite (old rows
+    are kept and read as `canonical`):
+    - `session_rumors`: `origin_kind` (default `canonical`), `origin_deed_id` (indexed),
+      `origin_appraisal_id`, `spread_from_region_id`
+    - `turn_runs`: `lang`, `turns_charged` (default 0), `from_region_id`
+  - **U4 fix**: the PostgreSQL adapter used to drop `turns_charged` and `from_region_id`, so a
+    failed run's turn refund and position restore never happened on PostgreSQL. They are stored
+    now.
+- **Failed and interrupted runs**
+  - A run that fails before any turn advanced deletes its deeds: an undone move's arrival, a
+    declaration, a statement, and their appraisals. Their timeline lines stay as an audit trail.
+  - A run marked `interrupted` at restart keeps the deeds its prep step committed (accepted).
+- **Env** (`env.example`): `SPREAD_MIN_WEIGHT` (0.15), `DEED_SEED_MIN_SALIENCE` (0.5),
+  `MAX_SPREAD_PER_REGION_TURN` (1), `DECLARE_MAX_CHARS` (300), `NPC_MAX_DEEDS` (5),
+  `APPRAISAL_MAX_DEEDS` (8).
+- **Without an LLM**: a declaration is accepted with the fallback narration and recorded, and an
+  ended talk judges nothing. Nothing spreads. The GM deed view and void still work.
+- **Accepted risks**
+  - Player words reach the narration prompt (declaration) and, through the appraisal's summary
+    and retelling, other NPCs' prompts and spread prompts.
+  - The guards are the material-not-instructions framing and length caps: narration 1,000
+    characters, record, summary and retelling 300, slant 40.
+  - A crafted line can still steer what an NPC retells. The GM void undoes it.
+  - The player log hides appraisal, seed and spread lines on screen only. `GET /log` returns
+    everything; its server-side filter is U7.
+  - The latency target (`GET deeds` p95 ≤ 100ms with 300 deeds, 600 appraisals and 100 deed
+    rumors) is operator-run.
+
 ## Web UI (U10)
 ```bash
 cd web && npm install

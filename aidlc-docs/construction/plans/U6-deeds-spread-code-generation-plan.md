@@ -274,7 +274,7 @@
   - 기존 테스트는 라벨 단언만 필요하면 갱신한다.
 
 ### Step 9 — 문서
-- [ ] 9.1 `aidlc-docs/operations/operations.md`에 "Deeds & spread (Purpose Restructure U6)" 절을 새로 쓴다.
+- [x] 9.1 `aidlc-docs/operations/operations.md`에 "Deeds & spread (Purpose Restructure U6)" 절을 새로 쓴다.
   - 흐름, 턴 예산 순서
   - 행동별 최악 시간(R-01의 값)과 준비 실패 → 차단
   - 취소
@@ -282,7 +282,7 @@
   - 중단 실행의 행적(R-03 감수)
   - env 여섯, LLM 없을 때
   - 주입 감수(N6-5)
-- [ ] 9.2 `env.example`에 env 여섯을 더한다. `CLAUDE.md`의 Status, `play/deeds/`·`gm/narrator.py`·`rumor/spread.py`, 테스트 수를 고친다.
+- [x] 9.2 `env.example`에 env 여섯을 더한다. `CLAUDE.md`의 Status, `play/deeds/`·`gm/narrator.py`·`rumor/spread.py`, 테스트 수를 고친다.
 
 ### Step 10 — 검증·요약
 - [ ] 10.1 전체 게이트

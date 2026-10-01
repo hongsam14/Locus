@@ -1,0 +1,472 @@
+// U5 NPC dialogue + display language (Step 7.3): DialoguePanel open / send / failed
+// send rolls back / no LLM / end talk; NpcList; ko and en have the same keys; the
+// toggle switches labels, sends ?lang=en on translated reads (not the timeline) and
+// re-reads the region.
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HttpError } from "../api/http";
+import type { Mock } from "vitest";
+import { gmApi } from "../api/gm";
+import { withLang } from "../api/http";
+import { knowledgeApi } from "../api/knowledge";
+import { playApi } from "../api/play";
+import { DialoguePanel } from "../features/play/DialoguePanel";
+import { NpcList } from "../features/play/NpcList";
+import { availableLangs, configureLangs, dicts, lang, setLang, t, timelineText } from "../i18n";
+import { PlayPage } from "../routes/PlayPage";
+import type { Conversation, Message, NPC, RegionView } from "../types";
+
+// Components import the merged `api` (index); the per-boundary modules above stay
+// real so their URLs can be checked against a stubbed fetch.
+vi.mock("../api", () => ({
+  api: {
+    getSession: vi.fn(),
+    getRegion: vi.fn(),
+    getLog: vi.fn(),
+    act: vi.fn(),
+    getTurnRun: vi.fn(),
+    listTurnRuns: vi.fn(),
+    listNpcs: vi.fn(),
+    startDialogue: vi.fn(),
+    say: vi.fn(),
+    dialogueHistory: vi.fn(),
+  },
+}));
+
+import { api } from "../api";
+
+const MARA: NPC = {
+  id: "n1",
+  world_id: "w",
+  name: "Mara",
+  role: "innkeeper",
+  description: "Keeps the river inn.",
+  home_region_id: "a",
+  traits: [],
+  provenance: { source: "input" },
+};
+
+function msg(role: "player" | "npc", text: string, id = `${role}-${text}`): Message {
+  return { id, conversation_id: "c1", role, text, lang: "ko", turn: 0 };
+}
+
+function conversation(messages: Message[] = []): Conversation {
+  return { id: "c1", session_id: "s1", npc_id: "n1", started_turn: 0, messages };
+}
+
+function view(over: Partial<RegionView> = {}): RegionView {
+  return {
+    session_id: "s1",
+    turn: 0,
+    player: { id: "p1", session_id: "s1", name: "Ari", region_id: "a", turns_spent: 0 },
+    region_id: "a",
+    region_name: "Riverton",
+    level: "town",
+    description: "",
+    level_path: ["Aldermoor", "Riverton"],
+    npcs: [MARA],
+    facts: [],
+    hearsay: [
+      { knowledge_id: "k9", statement: "Wolves in the pass.", scope_type: "hearsay", is_hearsay: true, confidence: 0.4, path_decay: 0.6 },
+    ],
+    rumors: [],
+    moves: [],
+    turn_running: false,
+    llm_available: true,
+    ...over,
+  };
+}
+
+function renderPanel(over: Partial<Parameters<typeof DialoguePanel>[0]> = {}) {
+  const props = {
+    sessionId: "s1",
+    npc: MARA,
+    llmAvailable: true,
+    busy: false,
+    onClose: vi.fn(),
+    onEndTalk: vi.fn(),
+    onSpoke: vi.fn(),
+    ...over,
+  };
+  render(<DialoguePanel {...props} />);
+  return props;
+}
+
+function typeAndSend(text: string) {
+  fireEvent.change(screen.getByTestId("dialogue-input"), { target: { value: text } });
+  fireEvent.click(screen.getByTestId("dialogue-send-btn"));
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  // The server's languages as GET /api/langs reports them by default (review U5 #2).
+  act(() => configureLangs("ko", ["ko", "en"]));
+});
+
+afterEach(() => {
+  act(() => configureLangs("ko", ["ko", "en"]));
+  act(() => setLang("ko"));
+  localStorage.clear();
+  vi.unstubAllGlobals();
+});
+
+describe("i18n dictionaries (FD-U5 frontend §2.2)", () => {
+  it("ko and en carry the same key set", () => {
+    expect(Object.keys(dicts.en).sort()).toEqual(Object.keys(dicts.ko).sort());
+    for (const v of Object.values(dicts.en)) expect(v.trim()).not.toBe("");
+  });
+
+  it("t() falls back to Korean, then to the key", () => {
+    setLang("en");
+    expect(t("play.npcs")).toBe("People here");
+    expect(t("no.such.key")).toBe("no.such.key");
+    const saved = dicts.en["play.facts"];
+    delete dicts.en["play.facts"];
+    try {
+      expect(t("play.facts")).toBe(dicts.ko["play.facts"]);
+    } finally {
+      dicts.en["play.facts"] = saved;
+    }
+  });
+
+  it("setLang remembers the language and the npc_talked timeline has both languages", () => {
+    const payload = { npc_name: "Mara", region_name: "Riverton" };
+    expect(timelineText("npc_talked", payload, 3)).toBe("대화: Mara · Riverton");
+    setLang("en");
+    expect(lang()).toBe("en");
+    expect(localStorage.getItem("locus.lang")).toBe("en");
+    expect(document.documentElement.lang).toBe("en");
+    expect(timelineText("npc_talked", payload, 3)).toBe("spoke with Mara · Riverton");
+  });
+});
+
+describe("timelineText placeholders (U3 review S08)", () => {
+  it("a name with braces in it is kept; a field the line lacks still falls back", () => {
+    setLang("en");
+    const moved = { from_region_name: "Old {keep}", to_region_name: "{ford}", cost_turns: 1 };
+    expect(timelineText("player_moved", moved, 2, "the summary")).toBe("moved: Old {keep} → {ford} (1 turn(s))");
+    expect(timelineText("player_moved", { from_region_name: "A", cost_turns: 1 }, 2, "the summary")).toBe("the summary");
+    setLang("ko");
+  });
+});
+
+describe("?lang= on translated reads (FD-U5 Q1=A)", () => {
+  function stubFetch() {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => [] });
+    vi.stubGlobal("fetch", fetchMock);
+    return () => fetchMock.mock.calls.map((c) => String(c[0]));
+  }
+
+  it("withLang appends with ? or &", () => {
+    setLang("en");
+    expect(withLang("/x")).toBe("/x?lang=en");
+    expect(withLang("/x?a=1")).toBe("/x?a=1&lang=en");
+  });
+
+  it("the server default is not sent: the server applies it (review U5 #2)", () => {
+    setLang("ko");
+    expect(withLang("/x")).toBe("/x");
+  });
+
+  it("before the server's languages are known nothing is sent (review U5 #2)", async () => {
+    vi.resetModules();
+    const fresh = await import("../api/http");
+    const freshI18n = await import("../i18n");
+    freshI18n.setLang("en");
+    expect(fresh.withLang("/x")).toBe("/x");
+    freshI18n.configureLangs("ko", ["ko", "en"]);
+    expect(fresh.withLang("/x")).toBe("/x?lang=en");
+  });
+
+  it("an English-only server never gets ?lang=ko and the toggle hides (review U5 #2)", () => {
+    setLang("ko");
+    configureLangs("en", ["en"]);
+    expect(lang()).toBe("en"); // falls back to the server default for this page
+    expect(withLang("/x")).toBe("/x");
+    expect(availableLangs()).toEqual(["en"]);
+    configureLangs("ko", ["ko"]);
+    setLang("en"); // a language the server does not take is never sent
+    expect(withLang("/x")).toBe("/x");
+  });
+
+  it("the five reads and say carry the language; the timeline and writes do not", async () => {
+    const urls = stubFetch();
+    setLang("en");
+    await playApi.getRegion("s1");
+    await playApi.sessionKnowledge("s1", "r1");
+    await knowledgeApi.regionKnowledge("w", "r1");
+    await gmApi.listRumors("s1", "r1");
+    await gmApi.listEvents("s1", "active");
+    await playApi.say("s1", "n1", "hello");
+    await gmApi.getTimeline("s1");
+    await playApi.getLog("s1");
+    await playApi.startDialogue("s1", "n1");
+    await playApi.listNpcs("s1");
+    const [region, knowledge, canon, rumors, events, say, timeline, log, start, npcs] = urls();
+    for (const u of [region, knowledge, canon, rumors, events, say]) expect(u).toContain("lang=en");
+    expect(events).toContain("?status=active&lang=en");
+    for (const u of [timeline, log, start, npcs]) expect(u).not.toContain("lang=");
+  });
+});
+
+describe("NpcList (US-4.1)", () => {
+  it("shows a card and a talk button per NPC, and marks the ones talked to", () => {
+    const onTalk = vi.fn();
+    render(<NpcList npcs={[MARA]} counts={{ n1: 4 }} onTalk={onTalk} />);
+    expect(screen.getByTestId("npc-n1")).toHaveTextContent("Mara");
+    expect(screen.getByTestId("npc-n1-talked")).toHaveTextContent(t("dialogue.has", { n: 4 }));
+    fireEvent.click(screen.getByTestId("npc-n1-talk-btn"));
+    expect(onTalk).toHaveBeenCalledWith("n1");
+  });
+
+  it("has no talked mark before the first conversation", () => {
+    render(<NpcList npcs={[MARA]} onTalk={vi.fn()} />);
+    expect(screen.queryByTestId("npc-n1-talked")).not.toBeInTheDocument();
+  });
+});
+
+describe("DialoguePanel (US-4.1 / 4.3)", () => {
+  it("opening loads the history without an LLM call", async () => {
+    (api.startDialogue as Mock).mockResolvedValue(
+      conversation([msg("player", "안녕하세요"), msg("npc", "어서 오게")]),
+    );
+    renderPanel();
+    await waitFor(() => expect(screen.getAllByTestId("dialogue-msg-npc")).toHaveLength(1));
+    expect(api.startDialogue).toHaveBeenCalledWith("s1", "n1");
+    expect(api.say).not.toHaveBeenCalled();
+    expect(screen.getByTestId("dialogue-panel")).toHaveTextContent(t("dialogue.title", { name: "Mara" }));
+  });
+
+  it("sending shows the player's line, then appends the NPC's answer", async () => {
+    (api.startDialogue as Mock).mockResolvedValue(conversation());
+    let answer!: (v: unknown) => void;
+    (api.say as Mock).mockReturnValue(new Promise((r) => (answer = r)));
+    const props = renderPanel();
+    await waitFor(() => expect(screen.getByTestId("dialogue-input")).toBeEnabled());
+    typeAndSend("  방앗간은 어떻게 됐나요?  ");
+    expect(api.say).toHaveBeenCalledWith("s1", "n1", "방앗간은 어떻게 됐나요?");
+    expect(screen.getByTestId("dialogue-msg-player")).toHaveTextContent("방앗간은 어떻게 됐나요?");
+    expect(screen.getByTestId("dialogue-sending")).toBeInTheDocument();
+    await act(async () =>
+      answer({ message: msg("npc", "불에 탔다네"), lang: "ko", llm_calls: 1, context_ids: [] }),
+    );
+    expect(screen.getByTestId("dialogue-msg-npc")).toHaveTextContent("불에 탔다네");
+    expect(screen.queryByTestId("dialogue-sending")).not.toBeInTheDocument();
+    expect(props.onSpoke).toHaveBeenCalledTimes(1);
+  });
+
+  it("a failed send takes the player's line back and keeps it in the input", async () => {
+    (api.startDialogue as Mock).mockResolvedValue(conversation());
+    // U8 intended change: BR-U8-27 — a 503 naming the provider now reads "LLM key
+    // required", so this failed call carries the server's own failed-call words
+    (api.say as Mock).mockRejectedValue(new HttpError(503, "Service Unavailable",
+      '{"detail":"the NPC could not answer right now; try again"}'));
+    renderPanel();
+    await waitFor(() => expect(screen.getByTestId("dialogue-input")).toBeEnabled());
+    typeAndSend("누구세요?");
+    // U7 intended change: BR-U7-27 — a 503 reads as a plain line, not the HTTP error
+    await waitFor(() =>
+      expect(screen.getByTestId("dialogue-error")).toHaveTextContent(t("dialogue.failed")),
+    );
+    expect(screen.queryByTestId("dialogue-msg-player")).not.toBeInTheDocument();
+    expect(screen.getByTestId("dialogue-input")).toHaveValue("누구세요?");
+  });
+
+  it("U8 BR-U8-27: a 503 for a missing provider says an LLM key is required", async () => {
+    (api.startDialogue as Mock).mockResolvedValue(conversation());
+    (api.say as Mock).mockRejectedValue(new HttpError(503, "Service Unavailable",
+      '{"detail":"npc dialogue needs an LLM provider (set OPENAI_API_KEY)"}'));
+    renderPanel();
+    await waitFor(() => expect(screen.getByTestId("dialogue-input")).toBeEnabled());
+    typeAndSend("누구세요?");
+    await waitFor(() => expect(screen.getByTestId("dialogue-error")).toHaveTextContent(t("llm.required")));
+    expect(screen.getByTestId("dialogue-input")).toHaveValue("누구세요?");
+  });
+
+  it("U3 review S04: the 'session closed' line stays when the panel turns read-only", async () => {
+    (api.startDialogue as Mock).mockResolvedValue(conversation());
+    (api.say as Mock).mockRejectedValue(new HttpError(409, "Conflict", '{"detail":"session is closed: s1"}'));
+    (api.dialogueHistory as Mock).mockResolvedValue(conversation());
+    const props = { sessionId: "s1", npc: MARA, llmAvailable: true, busy: false,
+      onClose: vi.fn(), onEndTalk: vi.fn(), onClosed: vi.fn() };
+    const { rerender } = render(<DialoguePanel {...props} />);
+    await waitFor(() => expect(screen.getByTestId("dialogue-input")).toBeEnabled());
+    typeAndSend("누구세요?");
+    await waitFor(() => expect(screen.getByTestId("dialogue-error")).toHaveTextContent(t("play.sessionClosed")));
+    expect(props.onClosed).toHaveBeenCalled();
+    rerender(<DialoguePanel {...props} readOnly />); // the page re-read: the session is closed
+    await waitFor(() => expect(api.dialogueHistory).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.getByTestId("dialogue-error")).toHaveTextContent(t("play.sessionClosed"));
+  });
+
+  it("without an LLM the history still opens but the input is locked", async () => {
+    (api.startDialogue as Mock).mockResolvedValue(conversation([msg("npc", "지난 이야기")]));
+    renderPanel({ llmAvailable: false });
+    await waitFor(() => expect(screen.getByTestId("dialogue-msg-npc")).toBeInTheDocument());
+    expect(screen.getByTestId("dialogue-no-llm")).toHaveTextContent(t("dialogue.noLlm"));
+    expect(screen.getByTestId("dialogue-input")).toBeDisabled();
+    expect(screen.getByTestId("dialogue-send-btn")).toBeDisabled();
+  });
+
+  it("a failed open shows the error and keeps the input locked", async () => {
+    (api.startDialogue as Mock).mockRejectedValue(new HttpError(400, "Bad Request", "npc not here"));
+    renderPanel();
+    await waitFor(() => expect(screen.getByTestId("dialogue-error")).toHaveTextContent("400"));
+    expect(screen.getByTestId("dialogue-input")).toBeDisabled();
+  });
+
+  it("while a turn runs, talking still works but end talk (a turn) is off", async () => {
+    (api.startDialogue as Mock).mockResolvedValue(conversation());
+    renderPanel({ busy: true });
+    await waitFor(() => expect(screen.getByTestId("dialogue-input")).toBeEnabled());
+    expect(screen.getByTestId("dialogue-end-btn")).toBeDisabled();
+  });
+
+  it("while a line is on its way the input is locked (review U5 #9)", async () => {
+    (api.startDialogue as Mock).mockResolvedValue(conversation());
+    let fail!: (e: unknown) => void;
+    (api.say as Mock).mockReturnValue(new Promise((_, rej) => (fail = rej)));
+    renderPanel();
+    await waitFor(() => expect(screen.getByTestId("dialogue-input")).toBeEnabled());
+    typeAndSend("Q1");
+    expect(screen.getByTestId("dialogue-input")).toBeDisabled();
+    await act(async () => fail(new HttpError(503, "Service Unavailable", "")));
+    expect(screen.getByTestId("dialogue-input")).toBeEnabled();
+    expect(screen.getByTestId("dialogue-input")).toHaveValue("Q1");
+  });
+
+  it("a closed session shows the history read-only (review U5 #7)", async () => {
+    (api.dialogueHistory as Mock).mockResolvedValue(conversation([msg("npc", "지난 이야기")]));
+    renderPanel({ readOnly: true });
+    await waitFor(() => expect(screen.getByTestId("dialogue-msg-npc")).toBeInTheDocument());
+    expect(api.startDialogue).not.toHaveBeenCalled();
+    expect(api.dialogueHistory).toHaveBeenCalledWith("s1", "n1");
+    expect(screen.getByTestId("dialogue-input")).toBeDisabled();
+    expect(screen.getByTestId("dialogue-end-btn")).toBeDisabled();
+  });
+
+  it("a closed session with no talk yet shows an empty history, not an error", async () => {
+    (api.dialogueHistory as Mock).mockRejectedValue(new HttpError(404, "Not Found", "no conversation"));
+    renderPanel({ readOnly: true });
+    await waitFor(() => expect(screen.getByTestId("dialogue-messages")).toHaveTextContent(t("dialogue.empty")));
+    expect(screen.queryByTestId("dialogue-error")).not.toBeInTheDocument();
+  });
+
+  it("end talk and close call back", async () => {
+    (api.startDialogue as Mock).mockResolvedValue(conversation());
+    const props = renderPanel();
+    fireEvent.click(await screen.findByTestId("dialogue-end-btn"));
+    fireEvent.click(screen.getByTestId("dialogue-close-btn"));
+    expect(props.onEndTalk).toHaveBeenCalledTimes(1);
+    expect(props.onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("DialoguePanel when the session closes elsewhere (U3, U7 review #12)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("a 409 'closed' on start or say says so and tells the page", async () => {
+    (api.startDialogue as Mock).mockRejectedValueOnce(
+      new HttpError(409, "Conflict", '{"detail":"session is closed: s1"}'),
+    );
+    const onClosed = vi.fn();
+    renderPanel({ onClosed });
+    await waitFor(() => expect(screen.getByText(t("play.sessionClosed"))).toBeInTheDocument());
+    expect(onClosed).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PlayPage with dialogue and the language toggle", () => {
+  function renderPlay() {
+    return render(
+      <MemoryRouter initialEntries={["/play/s1"]}>
+        <Routes>
+          <Route path="/play/:sessionId?" element={<PlayPage pollMs={5} />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  beforeEach(() => {
+    (api.getSession as Mock).mockResolvedValue({ id: "s1", world_id: "w", status: "open", turn: 0 });
+    (api.getRegion as Mock).mockResolvedValue(view());
+    (api.getLog as Mock).mockResolvedValue([]);
+    (api.listTurnRuns as Mock).mockResolvedValue([]);
+    (api.listNpcs as Mock).mockResolvedValue([
+      { npc: MARA, has_conversation: true, message_count: 2 },
+    ]);
+    (api.startDialogue as Mock).mockResolvedValue(conversation([msg("npc", "어서 오게")]));
+  });
+
+  it("the hearsay heading carries the NPCs-do-not-know-this hint", async () => {
+    renderPlay();
+    expect(await screen.findByTestId("hearsay-hint")).toHaveTextContent(t("play.hearsayHint"));
+    await waitFor(() => expect(screen.getByTestId("npc-n1-talked")).toBeInTheDocument());
+  });
+
+  it("talk opens the panel; end talk spends a turn with EndTalk and closes it", async () => {
+    (api.act as Mock).mockResolvedValue({
+      id: "run1", session_id: "s1", status: "running", cost_turns: 1, action: null,
+    });
+    (api.getTurnRun as Mock).mockResolvedValue({
+      id: "run1", session_id: "s1", status: "done", cost_turns: 1, action: null,
+      result: { session: { id: "s1", world_id: "w", status: "open", turn: 1 }, changes: [], narration: [], budget_exhausted: false, llm_failed: false },
+    });
+    renderPlay();
+    fireEvent.click(await screen.findByTestId("npc-n1-talk-btn"));
+    expect(await screen.findByTestId("dialogue-panel")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("dialogue-msg-npc")).toHaveTextContent("어서 오게"));
+    fireEvent.click(screen.getByTestId("dialogue-end-btn"));
+    await waitFor(() => expect(api.act).toHaveBeenCalledWith("s1", { type: "end_talk", npc_id: "n1" }));
+    expect(screen.queryByTestId("dialogue-panel")).not.toBeInTheDocument();
+  });
+
+  it("moving away closes the panel and coming back does not reopen it (review U5 #8)", async () => {
+    (api.act as Mock).mockResolvedValue({ id: "run1", session_id: "s1", status: "running", cost_turns: 1, action: null });
+    (api.getTurnRun as Mock).mockResolvedValue({
+      id: "run1", session_id: "s1", status: "done", cost_turns: 1, action: null,
+      result: { session: { id: "s1", world_id: "w", status: "open", turn: 1 }, changes: [], narration: [], budget_exhausted: false, llm_failed: false },
+    });
+    const away = view({ region_id: "b", region_name: "Hollow", npcs: [] });
+    renderPlay();
+    fireEvent.click(await screen.findByTestId("npc-n1-talk-btn"));
+    expect(await screen.findByTestId("dialogue-panel")).toBeInTheDocument();
+    (api.getRegion as Mock).mockResolvedValue(away);
+    fireEvent.click(screen.getByTestId("wait-btn")); // any refresh that lands elsewhere
+    await waitFor(() => expect(screen.getByTestId("region-title")).toHaveTextContent("Hollow"));
+    (api.getRegion as Mock).mockResolvedValue(view());
+    fireEvent.click(await screen.findByTestId("wait-btn"));
+    await waitFor(() => expect(screen.getByTestId("region-title")).toHaveTextContent("Riverton"));
+    expect(screen.queryByTestId("dialogue-panel")).not.toBeInTheDocument();
+    expect(api.startDialogue).toHaveBeenCalledTimes(1);
+  });
+
+  it("a late answer in the previous language does not overwrite the new one (review U5 #11)", async () => {
+    renderPlay();
+    await screen.findByTestId("region-scene");
+    let slowEn!: (v: RegionView) => void;
+    (api.getRegion as Mock)
+      .mockReturnValueOnce(new Promise<RegionView>((r) => (slowEn = r)))
+      .mockResolvedValueOnce(view({ region_name: "Riverton-ko" }));
+    fireEvent.click(screen.getByTestId("lang-en")); // read A: slow
+    fireEvent.click(screen.getByTestId("lang-ko")); // read B: fast, the newest
+    await waitFor(() => expect(screen.getByTestId("region-title")).toHaveTextContent("Riverton-ko"));
+    await act(async () => slowEn(view({ region_name: "Riverton-en" })));
+    expect(screen.getByTestId("region-title")).toHaveTextContent("Riverton-ko");
+  });
+
+  it("switching to en relabels the screen and re-reads the region", async () => {
+    renderPlay();
+    await screen.findByTestId("region-scene");
+    const readsBefore = (api.getRegion as Mock).mock.calls.length;
+    expect(screen.getByTestId("nav-play")).toHaveTextContent("플레이");
+    fireEvent.click(screen.getByTestId("lang-en"));
+    await waitFor(() => expect((api.getRegion as Mock).mock.calls.length).toBe(readsBefore + 1));
+    expect(lang()).toBe("en");
+    expect(screen.getByTestId("nav-play")).toHaveTextContent("Play");
+    expect(screen.getByTestId("lang-en")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("region-scene")).toHaveTextContent("People here");
+  });
+});

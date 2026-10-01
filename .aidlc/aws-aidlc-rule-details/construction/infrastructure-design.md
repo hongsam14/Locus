@@ -55,6 +55,12 @@ Map logical software components to actual infrastructure choices for deployment 
 - Create `aidlc-docs/construction/{unit-name}/infrastructure-design/deployment-architecture.md`
 - If shared infrastructure: Create `aidlc-docs/construction/shared-infrastructure.md`
 
+### Step 6a: Plan Review (MANDATORY — before the completion message)
+- **Load `common/plan-review.md`** and run it for this stage: reviewer **architecture-reviewer**, class **adversarial (max 2 iterations; builder fixes between passes)**, reviewed artifact `aidlc-docs/construction/{unit-name}/infrastructure-design/infrastructure-design.md` plus `deployment-architecture.md` / `shared-infrastructure.md`
+- Log the request and the verdict in `aidlc-docs/audit.md` and note the verdict in `aidlc-docs/aidlc-state.md` as plan-review.md § 3 directs
+- Do not proceed to Step 7 until a verdict is recorded; present the Review brief (plan-review.md § 5) immediately before the "WHAT'S NEXT?" block
+- After a "Request Changes" revision, re-run this step before re-presenting the approval
+
 ### Step 7: Present Completion Message
 - Present completion message in this structure:
      1. **Completion Announcement** (mandatory): Always start with this:

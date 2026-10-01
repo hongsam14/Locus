@@ -1,0 +1,115 @@
+{
+  "regions": [
+    {
+      "name": "Emberleaf Isle",
+      "level": "continent"
+    },
+    {
+      "name": "Greenreach",
+      "level": "province",
+      "parent": "Emberleaf Isle"
+    },
+    {
+      "name": "Stonebrow",
+      "level": "province",
+      "parent": "Emberleaf Isle"
+    },
+    {
+      "name": "Saltmarch",
+      "level": "province",
+      "parent": "Emberleaf Isle"
+    },
+    {
+      "name": "Sylvarch",
+      "level": "town",
+      "parent": "Greenreach"
+    },
+    {
+      "name": "Ambermeadow",
+      "level": "town",
+      "parent": "Greenreach"
+    },
+    {
+      "name": "Ironcrag",
+      "level": "town",
+      "parent": "Stonebrow"
+    },
+    {
+      "name": "Ashen Dig",
+      "level": "town",
+      "parent": "Stonebrow"
+    },
+    {
+      "name": "Saltwake Harbor",
+      "level": "town",
+      "parent": "Saltmarch"
+    },
+    {
+      "name": "Gutterlight",
+      "level": "town",
+      "parent": "Saltmarch"
+    },
+    {
+      "name": "Hollowdeep",
+      "level": "town",
+      "parent": "Saltmarch"
+    },
+    {
+      "name": "Sunstrand",
+      "level": "town",
+      "parent": "Saltmarch"
+    }
+  ],
+  "connections": [
+    {
+      "from": "Sylvarch",
+      "to": "Ambermeadow",
+      "kind": "river"
+    },
+    {
+      "from": "Ambermeadow",
+      "to": "Saltwake Harbor",
+      "kind": "river"
+    },
+    {
+      "from": "Saltwake Harbor",
+      "to": "Gutterlight",
+      "kind": "route"
+    },
+    {
+      "from": "Saltwake Harbor",
+      "to": "Sunstrand",
+      "kind": "adjacent"
+    },
+    {
+      "from": "Gutterlight",
+      "to": "Hollowdeep",
+      "kind": "route"
+    },
+    {
+      "from": "Sylvarch",
+      "to": "Hollowdeep",
+      "kind": "route"
+    },
+    {
+      "from": "Gutterlight",
+      "to": "Ironcrag",
+      "kind": "route"
+    },
+    {
+      "from": "Ironcrag",
+      "to": "Ashen Dig",
+      "kind": "adjacent"
+    },
+    {
+      "from": "Ambermeadow",
+      "to": "Ironcrag",
+      "kind": "blocked"
+    },
+    {
+      "from": "Hollowdeep",
+      "to": "Ashen Dig",
+      "kind": "blocked"
+    }
+  ]
+}

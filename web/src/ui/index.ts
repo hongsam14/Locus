@@ -9,3 +9,6 @@ export { Range } from "./Range";
 export { LocalizedText } from "./LocalizedText";
 export { NotificationCenter } from "./NotificationCenter";
 export type { Notif } from "./NotificationCenter";
+export { CommitRange } from "./CommitRange";
+export { LlmNotice } from "./LlmNotice";
+export { InProgressBadge } from "./InProgressBadge";

@@ -126,6 +126,12 @@ If the analysis in step 7 reveals ANY ambiguous answers, you MUST:
 - [ ] If all steps complete, verify units are ready for design stages
 - [ ] Mark Units Generation stage as complete
 
+## Step 15a: Plan Review (MANDATORY — before the completion message)
+- **Load `common/plan-review.md`** and run it for this stage: reviewer **architecture-reviewer**, class **advisory**, reviewed artifact `aidlc-docs/inception/application-design/unit-of-work.md` (or the cycle subdirectory) plus `unit-of-work-dependency.md`, `unit-of-work-story-map.md` and the approved unit plan
+- Log the request and the verdict in `aidlc-docs/audit.md` and note the verdict in `aidlc-docs/aidlc-state.md` as plan-review.md § 3 directs
+- Do not proceed to Step 16 until a verdict is recorded; present the Review brief (plan-review.md § 5) immediately before the "WHAT'S NEXT?" block
+- After a "Request Changes" revision, re-run this step before re-presenting the approval
+
 ## Step 16: Present Completion Message
 
 ```markdown

@@ -71,6 +71,12 @@ This stage generates code for each unit of work through two integrated parts:
 - [ ] Explain step sequence and story coverage
 - [ ] Note total number of steps and estimated scope
 
+## Step 5a: Plan Review of the Unit Plan (MANDATORY — before the approval prompt)
+- **Load `common/plan-review.md`** and run it for this stage: reviewer **architecture-reviewer**, class **adversarial (max 2 iterations; you fix the plan between passes)**, reviewed artifact `aidlc-docs/construction/plans/{unit-name}-code-generation-plan.md`; pass this unit's design artifacts, `unit-of-work.md`, the application-design artifacts, `requirements.md` and read-only workspace access as upstream. Review record: `aidlc-docs/construction/plans/reviews/{unit-name}-code-generation-plan-review-NN.md`
+- Log the request and the verdict in `aidlc-docs/audit.md` and note the verdict in `aidlc-docs/aidlc-state.md` as plan-review.md § 3 directs
+- Do not proceed to Step 6 until a verdict is recorded; present the Review brief (plan-review.md § 5) immediately before the "WHAT'S NEXT?" block
+- After a "Request Changes" revision, re-run this step before re-presenting the approval
+
 ## Step 6: Log Approval Prompt
 - [ ] Before asking for approval, log the prompt with timestamp in `aidlc-docs/audit.md`
 - [ ] Include reference to the complete unit code generation plan
@@ -79,7 +85,7 @@ This stage generates code for each unit of work through two integrated parts:
 ## Step 7: Wait for Explicit Approval
 - [ ] Do not proceed until the user explicitly approves the unit code generation plan
 - [ ] Approval must cover the entire plan and generation sequence
-- [ ] If user requests changes, update the plan and repeat approval process
+- [ ] If user requests changes, update the plan, re-run Step 5a (Plan Review) on the revision, and repeat approval process
 
 ## Step 8: Record Approval Response
 - [ ] Log the user's approval response with timestamp in `aidlc-docs/audit.md`
@@ -192,7 +198,7 @@ This stage generates code for each unit of work through two integrated parts:
 - Create explicit, numbered steps for all generation activities
 - Include story traceability in the plan
 - Document unit context and dependencies
-- Get explicit user approval before generation
+- Get the Plan Review verdict recorded (Step 5a), then explicit user approval before generation
 
 ### Generation Phase Rules
 - **NO HARDCODED LOGIC**: Only execute what's written in the unit plan

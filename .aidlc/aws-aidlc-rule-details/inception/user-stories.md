@@ -248,6 +248,12 @@ If the analysis in step 9 reveals ANY ambiguous answers, you MUST:
 - [ ] If all steps complete, verify stories are ready for next stage
 - [ ] Ensure all mandatory artifacts are generated
 
+## Step 18a: Plan Review (MANDATORY — before the approval prompt)
+- **Load `common/plan-review.md`** and run it for this stage: reviewer **product-lead-reviewer**, class **advisory**, reviewed artifact `aidlc-docs/inception/user-stories/stories.md` plus `personas.md` and the approved story plan
+- Log the request and the verdict in `aidlc-docs/audit.md` and note the verdict in `aidlc-docs/aidlc-state.md` as plan-review.md § 3 directs
+- Do not proceed to Step 19 until a verdict is recorded; present the Review brief (plan-review.md § 5) immediately before the "WHAT'S NEXT?" block
+- After a "Request Changes" revision, re-run this step before re-presenting the approval
+
 ## Step 19: Log Approval Prompt
 - Before asking for approval, log the prompt with timestamp in `aidlc-docs/audit.md`
 - Include the complete approval prompt text

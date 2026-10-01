@@ -17,8 +17,10 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Response, UploadFile
 
+from api import uploads
 from api.deps import get_localization, get_play_optional, get_shared, get_world
 from api.errors import http_error
+from api.routers import world_editor
 from api.schemas import UnignoreIn, WorldInfo, purge_translations
 from locus.localization.wiring import LocalizationContainer
 from locus.play.errors import TurnInProgressError
@@ -27,8 +29,6 @@ from locus.shared.models import (
     BuildReport,
     GraphSummary,
     ImportReport,
-    Knowledge,
-    Region,
     WikiPrior,
 )
 from locus.shared.models.reports import BuildWarning
@@ -177,6 +177,7 @@ def build_world_upload(
     memos: list[UploadFile] = File(default=[]),
     maps: list[UploadFile] = File(default=[]),
     images: list[UploadFile] = File(default=[]),
+    concept_arts: list[UploadFile] = File(default=[]),
     name: str | None = Form(default=None),
     description: str | None = Form(default=None),
     replace: bool = Form(default=True),
@@ -185,23 +186,39 @@ def build_world_upload(
     play: PlayContainer | None = Depends(get_play_optional),
     loc: LocalizationContainer | None = Depends(get_localization),
 ) -> BuildReport:
-    """Build from uploaded files (multipart): memos (text), maps (JSON), images (map).
+    """Build from uploaded files (multipart): memos (text), maps (JSON), images (map),
+    concept arts (U3). Each field has a file count and size cap, memos a length cap and
+    images a format check (413 / 422, nfr §1.1).
 
     A sync route: FastAPI runs it in the threadpool, so a minutes-long build never
     blocks the single worker's event loop (review #10)."""
     builder = _need(w.builder, "world build (LLM provider)")
+    for field, files, cap in (
+        ("memos", memos, uploads.MEMO),
+        ("maps", maps, uploads.MAP),
+        ("images", images, uploads.MAP_IMAGE),
+        ("concept_arts", concept_arts, uploads.CONCEPT_ART),
+    ):
+        uploads.check_count(field, files, cap)
     structured: list[dict] = []
     for f in maps:
         try:
-            structured.append(json.loads(f.file.read().decode("utf-8")))
-        except (UnicodeDecodeError, ValueError) as exc:
+            structured.append(json.loads(uploads.read_capped("maps", f, uploads.MAP)))
+        except (UnicodeDecodeError, ValueError) as exc:  # fixed text (U3, NFR R-08)
             raise HTTPException(
-                status_code=422, detail=f"map {f.filename!r} is not JSON: {exc}"
+                status_code=422, detail=f"map {f.filename!r} is not valid JSON"
             ) from exc
+
+    def b64(data: bytes) -> str:
+        return base64.b64encode(data).decode("ascii")
+
     inputs = WorldInputs(
-        memos=[f.file.read().decode("utf-8", errors="replace") for f in memos],
+        memos=[uploads.read_memo(f) for f in memos],
         structured_maps=structured,
-        map_images=[base64.b64encode(f.file.read()).decode("ascii") for f in images],
+        map_images=[b64(uploads.read_image("images", f, uploads.MAP_IMAGE)) for f in images],
+        concept_arts=[
+            b64(uploads.read_image("concept_arts", f, uploads.CONCEPT_ART)) for f in concept_arts
+        ],
         name=name,
         description=description,
     )
@@ -333,10 +350,13 @@ def import_world_file_upload(
     loc: LocalizationContainer | None = Depends(get_localization),
 ) -> ImportReport:
     """Load a World File uploaded as multipart (sync route, see build_world_upload)."""
+    data = uploads.read_capped("file", file, uploads.WORLD_FILE)  # 20 MiB (nfr §1.1)
     try:
-        raw = json.loads(file.file.read().decode("utf-8"))
-    except (UnicodeDecodeError, ValueError) as exc:
-        raise HTTPException(status_code=422, detail=f"not a JSON file: {exc}") from exc
+        raw = json.loads(data)
+    except (UnicodeDecodeError, ValueError) as exc:  # fixed text (NFR-6)
+        raise HTTPException(
+            status_code=422, detail=f"{file.filename!r} is not a JSON World File"
+        ) from exc
     return _import(
         world_id, raw, replace=replace, confirm=confirm, remap=remap, w=w, play=play, loc=loc
     )
@@ -424,21 +444,6 @@ def related_priors(
     )
 
 
-# --- edits ------------------------------------------------------------------ #
-@router.put("/worlds/{world_id}/regions/{region_id}", response_model=Region)
-def upsert_region(
-    world_id: str, region_id: str, region: Region, w: WorldContainer = Depends(get_world)
-) -> Region:
-    return _need(w.editors, "world editor").regions.upsert_region(region)
-
-
-@router.put("/worlds/{world_id}/knowledge/{knowledge_id}", response_model=Knowledge)
-def upsert_knowledge(
-    world_id: str, knowledge_id: str, knowledge: Knowledge, w: WorldContainer = Depends(get_world)
-) -> Knowledge:
-    return _need(w.editors, "world editor").knowledge.upsert_knowledge(knowledge)
-
-
 # --- augmentation runs (U3 BLM §4.3 〔Step 1.3 정정〕) ---------------------------- #
 _AUG_ERRORS = (LookupError, ValueError, AugmentationConflict)
 
@@ -492,3 +497,7 @@ def unignore_augmentation(
         return _need(w.augmentation, "augmentation").unignore(run_id, body.issue_key)
     except _AUG_ERRORS as exc:
         raise http_error(exc) from exc
+
+
+# --- the world editor (U3, BLM §7) — its own module, mounted under /api/world ---- #
+router.include_router(world_editor.router)

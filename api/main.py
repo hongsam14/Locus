@@ -21,6 +21,7 @@ from api.routers import gm as gm_router
 from api.routers import knowledge as knowledge_router
 from api.routers import play as play_router
 from api.routers import world as world_router
+from api.uploads import BodyLimitMiddleware
 from locus.knowledge.wiring import KnowledgeContainer
 from locus.localization.wiring import LocalizationContainer
 from locus.play.wiring import PlayContainer
@@ -144,6 +145,7 @@ def create_app(
 
     app = FastAPI(title="Locus", version="0.2.0", lifespan=lifespan)
     app.state.containers = containers
+    app.add_middleware(BodyLimitMiddleware)  # U3, NFR-6: 48 MiB, World File 20 MiB
 
     @app.exception_handler(RequestValidationError)
     async def _invalid(_request: Request, exc: RequestValidationError) -> JSONResponse:

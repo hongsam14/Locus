@@ -386,3 +386,86 @@ def localize_deed_views(
 
 # U7: the GM overlay carries names already and no translated field (FR-D4).
 WorldStateOut = WorldState
+
+
+# --------------------------------------------------------------------------- #
+# U3 world editor (BLM §7). Knowledge carries ``*_ko``; NPC text is shown as written
+# (no ``npc`` translation kind, BR-U3-37).
+# --------------------------------------------------------------------------- #
+from locus.shared.models import ConnectionEdge, ConnectionKind, Knowledge, Region  # noqa: E402
+from locus.world.editor import (  # noqa: E402
+    ConnectionView,
+    EditorRegionView,
+    NameRef,
+    ScopedKnowledge,
+)
+from locus.world.wiki.schemas import BrokenRef, PriorUsage  # noqa: E402
+
+
+class LocalizedKnowledge(Knowledge):
+    statement_ko: str | None = None
+    title_ko: str | None = None
+
+
+class ScopedKnowledgeOut(ScopedKnowledge):
+    knowledge: LocalizedKnowledge
+
+
+class EditorRegionViewOut(BaseModel):
+    """``EditorRegionView`` with translated knowledge (same fields)."""
+
+    region: Region
+    children: list[NameRef] = Field(default_factory=list)
+    connections: list[ConnectionView] = Field(default_factory=list)
+    knowledge: list[ScopedKnowledgeOut] = Field(default_factory=list)
+    npcs: list[NPC] = Field(default_factory=list)
+
+
+class ConnectionSave(ConnectionEdge):
+    """``PUT …/connections``: a pair to save; ``previous_kind`` makes it a kind change
+    that keeps weight, rationale, prior ref and provenance (BR-U3-11)."""
+
+    previous_kind: ConnectionKind | None = None
+
+
+class ScopesIn(BaseModel):
+    region_ids: list[str] = Field(default_factory=list)
+
+
+class PriorRefsOut(BaseModel):
+    usages: list[PriorUsage] = Field(default_factory=list)
+    broken: list[BrokenRef] = Field(default_factory=list)
+
+
+def localize_knowledge(
+    items: Sequence[Knowledge],
+    loc: LocalizationContainer | None,
+    *,
+    world_id: str,
+    lang: str | None = None,
+) -> list[LocalizedKnowledge]:
+    enrichment = enrichment_for(
+        loc, items, kind="knowledge", fields=["statement", "title"], world_id=world_id, lang=lang
+    )
+    return localize(
+        items,
+        LocalizedKnowledge,
+        enrichment,
+        [("statement", "statement_ko"), ("title", "title_ko")],
+    )
+
+
+def localize_editor_view(
+    view: EditorRegionView, loc: LocalizationContainer | None, *, lang: str | None = None
+) -> EditorRegionViewOut:
+    knowledge = localize_knowledge(
+        [s.knowledge for s in view.knowledge], loc, world_id=view.region.world_id, lang=lang
+    )
+    data = view.model_dump(exclude={"knowledge"})
+    return EditorRegionViewOut(
+        **data,
+        knowledge=[
+            ScopedKnowledgeOut(knowledge=k, scope_region_ids=s.scope_region_ids)
+            for k, s in zip(knowledge, view.knowledge, strict=True)
+        ],
+    )

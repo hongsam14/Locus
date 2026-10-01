@@ -558,19 +558,20 @@
   - #12 409 본문 고정 테스트(`session is closed`, `turn in progress`)
 
 ### Step 8 — API (BLM §7과 Step 1.3 정정)
-- [ ] 8.1 `api/uploads.py`(NFR §1.1, R-04·R-05)
+- [x] 8.1 `api/uploads.py`(NFR §1.1, R-04·R-05)
   - `BodyLimitMiddleware`(경로별 한도 표)를 `api/main.py`에 단다.
   - 칸별 상수와 `read_capped(file, limit)`, 이미지 매직 바이트 판별(PNG·JPEG·WebP)
   - `build/upload`: `concept_arts` 칸, 칸 검사(개수·크기·메모 60,000자·형식)
   - 지도 JSON 422 고정 문구(R-08)
-- [ ] 8.2 편집 경로 `api/routers/world.py`
+- [x] 8.2 편집 경로 `api/routers/world.py`
+  - 〔실행 메모〕 편집 경로는 새 모듈 `api/routers/world_editor.py`에 두었다. `world.py`의 라우터가 이것을 include하므로 경로는 `/api/world` 그대로다. `world.py`의 옛 `PUT` 지역·지식 경로는 옮겼다. 연결 삭제의 응답은 `{"deleted": n}`이다.
   - BLM §7 표 전체를 단다.
     - `PUT regions/{r}`·`POST regions`·`GET regions/{r}/editor`
     - 연결 둘
     - 지식 다섯
     - NPC 셋
   - `GET /worlds` 응답은 그대로다(4.7에서 `catalog`로 옮김).
-- [ ] 8.3 지역 삭제와 세션(BLM §2, BR-U3-16)
+- [x] 8.3 지역 삭제와 세션(BLM §2, BR-U3-16)
   - `locus/play/session_service.py::open_player_regions(world_id) -> dict[str, list[str]]`
   - 라우터
     - 열린 세션의 GM 리스(`play.guard.hold`)를 `ExitStack`에 잡는다. 턴 중이면 409이고 `ExitStack`이 잡은 것을 놓는다(`hold`는 기다리지 않으므로 교착이 없다).
@@ -579,15 +580,15 @@
   - `delete-plan`은 같은 계산으로 `blocked_by_sessions`를 채운다(리스 없음, 표시용).
   - play가 없으면 보호 집합은 비고 리스도 없다.
   - 알려진 한계는 위 절과 같다.
-- [ ] 8.4 보강·wiki·초안 경로
+- [x] 8.4 보강·wiki·초안 경로
   - `POST runs`(LLM 없이도 200), `GET runs/{id}`, `POST answer`(→ `AnswerResult`), `POST revert`(200 + run, 409 셋), `POST unignore`
   - `GET priors`·`GET prior-refs`·`DELETE priors/{p}`
   - `POST regions/{r}/npc-drafts`: LLM 없으면 503, `n` 범위 밖이면 400
-- [ ] 8.5 `api/schemas.py`·`errors.py`
+- [x] 8.5 `api/schemas.py`·`errors.py`
   - `EditorRegionView` DTO: 지식 진술에만 `*_ko`를 붙인다(`enrich`). NPC는 원문이다.
   - 지식 삭제 라우터는 `purge_translations(loc, kind="knowledge", ids=[k])`를 부른다(BR-U3-3).
   - 오류 매핑: `RegionInUseError`, `ChangeAlreadyRevertedError`, `RevertOrderError`, `RevertConflictError`, `RunFinishedError` → 409, 고정 문구
-- [ ] 8.6 테스트
+- [x] 8.6 테스트
   - `tests/api/test_world_editor_api.py`
     - 경로마다 정상·400·404·409
     - 지역 삭제: 플레이어가 있으면 409와 세션 id, 턴 중이면 409, 리스를 쥔 사이 이동 시도 → 409

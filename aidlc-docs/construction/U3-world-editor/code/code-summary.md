@@ -150,3 +150,19 @@
     - 기존 테스트 의도된 변경: `test_config.py`(기본값 단언·env 표), `test_topology.py`(A3-15)
   - 변이(모두 잡음): #13 문자열 비교로 되돌림, #14 옛 자르기, C17 검증기 제거, C18 변환 제거
   - pytest 833
+- **Step 8**
+  - `api/uploads.py`
+    - 순수 ASGI `BodyLimitMiddleware`(48 MiB, World File 두 경로 20 MiB, 헤더·청크 두 경로)
+    - 칸 상한·`read_capped`·`read_memo`·`read_image`(PNG·JPEG·WebP 앞 바이트)
+  - `build/upload`에 `concept_arts`. 지도 JSON 422와 World File 422는 고정 문구다.
+  - `api/routers/world_editor.py`(새 모듈, `world.py`가 include)
+    - BLM §7 전 경로
+    - 지역 삭제는 열린 세션 GM 리스를 `ExitStack`으로 잡고, `protected`(지역 → 세션 id)로 409를 낸다.
+    - `delete-plan`의 `blocked_by_sessions`
+  - `SessionService.open_sessions`·`open_player_regions`
+  - `api/schemas.py`: `LocalizedKnowledge`, `EditorRegionViewOut`(지식만 `*_ko`), `ConnectionSave(previous_kind)`, `ScopesIn`, `PriorRefsOut`, `localize_editor_view`·`localize_knowledge`
+  - 테스트 17개
+    - `test_world_editor_api.py` 10: 경로, 409 둘, 리스 중 이동 시도 회귀, 구조 단언 ④⑤, LLM 없는 조립
+    - `test_uploads.py` 7
+  - 변이: 청크 세기를 끄면 청크 테스트가 실패한다(잡음).
+  - pytest 850

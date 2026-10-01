@@ -133,6 +133,19 @@ class SessionService:
     def list_sessions(self, world_id: str) -> list[GameSession]:
         return self._repo.list_sessions(world_id)
 
+    def open_sessions(self, world_id: str) -> list[GameSession]:
+        return [s for s in self._repo.list_sessions(world_id) if str(s.status) == "open"]
+
+    def open_player_regions(self, world_id: str) -> dict[str, list[str]]:
+        """region id -> the open sessions whose player stands there (U3 Q2=A): the
+        regions the world editor may not delete (BR-U3-16)."""
+        out: dict[str, list[str]] = {}
+        for session in self.open_sessions(world_id):
+            player = self._repo.get_player(session.id)
+            if player is not None:
+                out.setdefault(player.region_id, []).append(session.id)
+        return out
+
     def get_timeline(self, session_id: str) -> list[TimelineEntry]:
         self._require(session_id)
         return self._repo.list_timeline(session_id)

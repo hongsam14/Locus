@@ -3370,3 +3370,16 @@ R-16 → Accepted risk
 **Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 7.
 
 ---
+
+## U3 Code Generation Part 2 — Step 8 (API)
+**Timestamp**: 2026-10-01T10:23:47Z
+**AI Response**:
+- Upload limits: pure ASGI body limit plus field caps and image format checks; fixed 422 texts.
+- Editor routes in the new `api/routers/world_editor.py` (mounted under /api/world).
+- Region delete holds the leases of open sessions and returns 409 with the session ids.
+- `open_player_regions`; editor DTOs with knowledge `*_ko`.
+- Tests: 17 new (paths, 409s, the lease regression, structural ④⑤, LLM-free assembly, uploads). Mutation caught.
+- Gates: pytest 850, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 8.
+
+---

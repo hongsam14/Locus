@@ -146,7 +146,9 @@ def delete_region(
 def save_connection(
     world_id: str, body: ConnectionSave, w: WorldContainer = Depends(get_world)
 ) -> list[ConnectionEdge]:
-    """Save a pair (BR-U3-10); with ``previous_kind`` it is a kind change (BR-U3-11)."""
+    """Save a pair (BR-U3-10); with ``previous_kind`` it is a kind change (BR-U3-11)
+    and only the kind changes: the pair keeps its weight, rationale, prior ref and
+    provenance, and the rest of the body is not written over them (U3 review #3)."""
     connections = _editors(w).connections
     edge = ConnectionEdge(**body.model_dump(exclude={"previous_kind"}))
     try:
@@ -158,7 +160,7 @@ def save_connection(
                 b_region_id=edge.target_region_id,
                 kind=body.previous_kind,
             )
-            connections.change_connection_kind(key, edge.kind)
+            return connections.change_connection_kind(key, edge.kind)
         return connections.upsert_connection(edge)
     except _ERRORS as exc:
         raise http_error(exc) from exc

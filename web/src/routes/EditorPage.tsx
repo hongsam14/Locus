@@ -35,6 +35,7 @@ export function EditorPage() {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [mapUrl, setMapUrl] = useState<string | null>(null);
+  const [augRunId, setAugRunId] = useState<string | null>(null);
 
   async function reload() {
     try {
@@ -50,9 +51,16 @@ export function EditorPage() {
   useEffect(() => {
     setData(null);
     setSelected(null);
+    setAugRunId(null);
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldId]);
+
+  // A World File load or a rebuild can remove the selected region: drop the selection
+  // instead of keeping an inspector that would save a region the world no longer has.
+  useEffect(() => {
+    if (data && selected && !data.regions.some((r) => r.id === selected)) setSelected(null);
+  }, [data, selected]);
 
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -138,7 +146,7 @@ export function EditorPage() {
           {tab === "region" &&
             (selected ? (
               <RegionInspector key={selected} worldId={worldId} regionId={selected} regions={regions}
-                onChanged={reload}
+                reloadKey={rev} onChanged={reload}
                 onDeleted={(message) => { setSelected(null); setToast(message); reload(); }} />
             ) : (
               <div className="text-ink-soft text-sm">{t("editor.pickRegion")}</div>
@@ -147,7 +155,8 @@ export function EditorPage() {
             <UnscopedPanel worldId={worldId} regions={regions} reloadKey={rev} onChanged={reload} />
           )}
           {tab === "augment" && (
-            <AugmentPanel worldId={worldId} regions={regions} entities={entities} onChanged={reload} />
+            <AugmentPanel worldId={worldId} regions={regions} entities={entities} onChanged={reload}
+              runId={augRunId} onRunId={setAugRunId} />
           )}
           {tab === "wiki" && <WikiPanel worldId={worldId} regions={regions} reloadKey={rev} />}
         </div>

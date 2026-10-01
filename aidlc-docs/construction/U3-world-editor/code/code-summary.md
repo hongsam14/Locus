@@ -338,3 +338,22 @@ curl -s -X POST $W/build/upload -F memos=@notes.md -F images=@map.png
 - 위 §8 운영자 실행 결과를 U8 배포 문서에 싣는다.
 - `operations.md`의 "Web UI (U10)" 절 한 줄(검토/편집/보강 UI)은 U8 문서 정리에서 화면 넷(`/`, 에디터, GM, 플레이어)으로 고친다.
 - 지역 삭제 리스 경합(§6)은 여러 제작자를 받을 때 다시 본다.
+
+## 10. 승인 뒤 리뷰 후속 수정 (2026-10-01, `code-review-01` 사람의 선택 A)
+저장된 데이터를 조용히 틀리게 만들거나 주요 기능·게이트를 깨는 #1~#7과, 한 줄로 고치는 #9·#11을 고쳤다. 나머지는 U8로 넘긴다(아래).
+
+| # | 고친 곳 | 고친 내용 | 테스트 | 변이 |
+|---|---|---|---|---|
+| 1 | `RegionInspector`(`reloadKey`), `EditorPage` | 페이지가 월드를 다시 읽으면(지도 끌기, World File 불러오기, 빌드) 인스펙터도 지역을 다시 읽는다. 선택한 지역이 월드에서 사라지면 선택을 푼다 | vitest: 끌기 뒤 폼 저장이 새 위치를 보낸다 | 다시 읽기 제거 → 실패 |
+| 2 | `AugmentPanel`(`runId`·`onRunId`), `EditorPage` | run id를 페이지가 갖는다. 탭으로 돌아오면 `GET runs/{id}`로 다시 읽고, 404면 "lost"다 | vitest 2: 다시 마운트 뒤 되돌리기 가능, 없는 run은 lost | 다시 읽기 제거 → 2 실패 |
+| 3 | `api/routers/world_editor.py` | `previous_kind`면 `change_connection_kind`의 결과를 돌려주고, 본문으로 다시 쓰지 않는다 | pytest: 근거·prior·출처가 남는다 | 뒤 쓰기 되살림 → 실패 |
+| 4 | `augmentation/apply.py` `revert` | 노드에 더해 엣지도 본다. 그 변경이 쓰거나 지운 엣지 identity의 지금 엣지가 `edges_added`와 같지 않으면 `RevertConflictError` | pytest 4(무게·종류·삭제·편집 없음) | 엣지 검사 제거 → 3 실패 |
+| 5 | `ConnectionList` | 빈 값·읽을 수 없는 값·범위 밖은 저장하지 않고 저장된 무게를 다시 보인다 | vitest: "", "abc", "1.5" | 옛 검사 → 실패 |
+| 6 | `BuildPanel`, `HomePage` | 화면이 id의 존재를 모르면 처음엔 `replace=false`로 보내고, 409(있음)면 교체를 묻는다. `/`에서 교체한 빌드는 리포트에 남는다 | vitest: 첫 전송 replace=false → 확인 → replace=true | 늘 true → 실패 |
+| 7 | `test_augmentation.py` TP-U3-5 생성기 | 쌍의 두 방향에 같은 끊긴 ref를 준다(BR-U3-10). 저장된 반례도 통과한다(반례 DB는 지우지 않음) | 무작위 seed 5번 통과 | — |
+| 9 | `augmentation/engine.py` | 예산이 다 되면 `break` 대신 `continue`. 뒤 지식의 캐시된 충돌 판정이 남는다 | pytest: 예산 소진 뒤 편집해도 k-b 충돌이 남는다 | `break` → 실패 |
+| 11 | `turn/advancer.py` `_start` | 월드 스냅샷을 가드를 잡은 뒤 읽는다 | pytest: acquire가 스냅샷 읽기보다 먼저 | 옛 순서 → 실패 |
+
+- 정정: BR-U3-27과 BLM §4.3에 "엣지도 run 밖 편집에 든다"를 달았다(〔U3 리뷰 정정〕). `CLAUDE.md`와 `web/README.md`의 "entities" 편집은 사실이 아니어서 고쳤다(리뷰 §5).
+- 게이트: pytest **857**(+7), vitest **129**(+5), ruff·black·tsc clean, mypy 11(기준선).
+- U8로 넘기는 것: #8(보강 예산 모델, 설계 결정), #10, #12~#15, 리뷰 §3 상한 밖 32건, §2 정리 17건, §5 문서 메모와 설계 메모 1~10. 목록은 U8 FD 플랜의 "넘겨받은 것"에 있다. 설계 결정 셋(보강 예산 모델, 전역 지식의 자리, "맞음"이 wiki_conflict를 끝내는 방법)은 U3 후속이나 다음 주기에서 정한다.

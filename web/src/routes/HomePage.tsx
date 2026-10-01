@@ -105,7 +105,10 @@ export function HomePage() {
           })
         } />
       <BuildPanel open={building} exists={false} onClose={() => setBuilding(false)}
-        onBuilt={(worldId, report) => report.ok && navigate(`/editor/${encodeURIComponent(worldId)}`)} />
+        onBuilt={(worldId, report) =>
+          // A replace stays on the report (what was replaced, the backup) — U3 review #6
+          report.ok && !report.replaced && navigate(`/editor/${encodeURIComponent(worldId)}`)
+        } />
     </div>
   );
 }

@@ -204,10 +204,17 @@ def _broken_worlds(draw):
         )
         for k in file.knowledge
     ]
-    conns = [
-        c.model_copy(update={"wiki_prior_ref": draw(gone)}) if draw(st.booleans()) else c
-        for c in file.connections
-    ]
+    # A connection is a pair with one prior ref (BR-U3-10): both directions get the same
+    # broken ref, as an edit or an import would leave them. Drawing per direction made
+    # pairs the detector (one issue per pair) and this oracle count differently — a
+    # flaky property (U3 review #7).
+    refs: dict[str, str | None] = {}
+    conns = []
+    for c in file.connections:
+        pair = connection_id(ConnectionKey.of(c))
+        if pair not in refs:
+            refs[pair] = draw(gone) if draw(st.booleans()) else None
+        conns.append(c.model_copy(update={"wiki_prior_ref": refs[pair]}) if refs[pair] else c)
     kg = KnowledgeGraph(world_id="w", entities=entities, knowledge=knowledge, priors=file.priors)
     return _snap(kg, regions, conns)
 
@@ -494,6 +501,61 @@ def test_ignore_is_out_of_the_undo_order_and_can_be_asked_again() -> None:
         stopped.answer(run.id, AugmentationAnswer(question_id="q", action="ignore"))
 
 
+@pytest.mark.parametrize("outside", ["weight", "kind", "delete", None])
+def test_a_connection_answer_is_not_undone_over_an_outside_edit(outside) -> None:
+    """U3 review #4 (BR-U3-27): an answer on a connection records no node, so undo
+    checks the edges it wrote. An edit of that pair after the answer refuses the undo
+    with nothing written; with no edit the undo puts the broken ref back."""
+    stack, w = _seeded()
+    prior = WikiPrior(
+        world_id="w",
+        prior_type=PriorType.FACT,
+        condition="road",
+        effect="carts pass",
+        provenance=_prov(),
+    )
+    persist_graph(stack.graph, stack.search, None, "w", priors=[prior])
+    stack.cache.invalidate("w")
+    road = ConnectionEdge(
+        world_id="w",
+        source_region_id=w["riverton"].id,
+        target_region_id=w["hollow"].id,
+        kind=ConnectionKind.ROUTE,
+        weight=0.5,
+        rationale="old road",
+        wiki_prior_ref="gone-prior",
+        provenance=_prov(),
+    )
+    stack.editors.connections.upsert_connection(road)
+    svc = _service(stack)
+    run = svc.start_run("w")
+    q = next(q for q in run.open_questions if q.target and q.target.field == "wiki_prior_ref")
+    res = svc.answer(run.id, AugmentationAnswer(question_id=q.id, action="edit", ref_id=prior.id))
+    assert res.change is not None
+    key = ConnectionKey.of(road)
+    if outside == "weight":
+        stack.editors.connections.upsert_connection(
+            road.model_copy(update={"wiki_prior_ref": prior.id, "weight": 0.9})
+        )
+    elif outside == "kind":
+        stack.editors.connections.change_connection_kind(key, ConnectionKind.RIVER)
+    elif outside == "delete":
+        stack.editors.connections.delete_connection(key)
+    if outside is None:
+        svc.revert(res.run.id, res.change.id)
+        refs = {
+            e.properties.get("wiki_prior_ref")
+            for e in stack.graph.get_edges("w")
+            if e.type == "CONNECTED_TO"
+        }
+        assert refs == {"gone-prior"}
+        return
+    before = stack.state()
+    with pytest.raises(RevertConflictError):
+        svc.revert(res.run.id, res.change.id)
+    assert stack.state() == before
+
+
 def test_concurrent_reverts_of_one_change_take_turns() -> None:
     """NFR N3-7: two clicks on one undo -> one revert, one 409."""
     stack, w = _seeded()
@@ -659,6 +721,30 @@ def test_same_snapshot_detected_again_calls_no_llm_and_an_edit_rejudges_once() -
     stack.editors.knowledge.upsert_knowledge(fish.model_copy(update={"statement": "eels"}))
     engine.detect("w", state, lambda: True)
     assert llm.calls[used:] == ["_Verdict"]  # only the edited item is judged again
+
+
+def test_a_spent_budget_keeps_the_cached_conflicts_after_an_edit() -> None:
+    """U3 review #9: once the budget is spent an edited item is not judged again, and
+    the cached verdicts of the items sorted after it still make wiki_conflict issues."""
+    stack, w = _seeded()
+    for kid in ("k-a", "k-b"):
+        stack.editors.knowledge.create_knowledge(
+            Knowledge(
+                id=kid, world_id="w", statement=f"{kid} flows uphill", title=kid, provenance=_prov()
+            ),
+            w["riverton"].id,
+        )
+    llm, wiki = _LLM(), _Wiki()
+    engine = AugmentationEngine(stack.editors, llm=llm, wiki_provider=lambda wid: wiki)
+    state = RunState(run=AugmentationRun(world_id="w"))
+    issues, _snap = engine.detect("w", state, lambda: True)
+    conflicts = {i.target_ids[0] for i in issues if i.type == IssueType.WIKI_CONFLICT}
+    assert {"k-a", "k-b"} <= conflicts
+    ka = gm.node_to_knowledge(stack.graph.get_node("w", "k-a"))  # type: ignore[arg-type]
+    stack.editors.knowledge.upsert_knowledge(ka.model_copy(update={"statement": "k-a, edited"}))
+    issues, _snap = engine.detect("w", state, lambda: False)  # the budget is spent
+    conflicts = {i.target_ids[0] for i in issues if i.type == IssueType.WIKI_CONFLICT}
+    assert "k-b" in conflicts and "k-a" not in conflicts
 
 
 def test_no_grounding_prior_means_no_judgement() -> None:

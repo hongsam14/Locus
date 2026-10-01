@@ -414,3 +414,32 @@ def test_a_plus_nine_timestamp_round_trips_through_sqlite() -> None:
     back = repo.get_deed(s.id, deed.id)
     assert back is not None and back.messages_through == when
     assert back.messages_through.utcoffset() == timedelta(0)
+
+
+# --- U3 code review #11 ------------------------------------------------------- #
+def test_a_turn_reads_the_world_after_it_takes_the_guard() -> None:
+    """U3 review #11: an editor region delete holds the session leases while it writes.
+    A turn reads the world snapshot only after it took the guard, so a move is never
+    checked against a world read before a delete that finished in between."""
+    from locus.play.models import MoveAction
+    from tests.play.test_player_mode import _engine
+
+    _repo, _gm, turns, session, _player = _engine()
+    order: list[str] = []
+    acquire, read = turns.guard.acquire, turns._snapshots.get
+
+    def guarded(*args, **kwargs):
+        order.append("acquire")
+        return acquire(*args, **kwargs)
+
+    def snapshot(world_id):
+        order.append("snapshot")
+        return read(world_id)
+
+    turns.guard.acquire = guarded  # type: ignore[method-assign]
+    turns._snapshots.get = snapshot  # type: ignore[method-assign]
+    turns._start(session.id, MoveAction(to_region_id="b"))
+    try:
+        assert order[:2] == ["acquire", "snapshot"]
+    finally:
+        turns.guard.release(session.id)

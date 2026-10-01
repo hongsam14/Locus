@@ -95,8 +95,8 @@ class AugmentationEngine:
                 priors = self._lookup(wiki, terrain, region, state)
                 if not priors:  # nothing to judge against: no call
                     continue
-                if not take():
-                    break
+                if not take():  # budget spent: judge no more, but keep the cached verdicts
+                    continue  # of the pairs after this one (U3 review #9)
                 judged += 1
                 verdict = self._judge(k, terrain, region, priors)
                 if verdict is not None:  # a failed call is asked again next detection

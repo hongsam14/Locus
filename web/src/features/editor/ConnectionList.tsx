@@ -40,8 +40,15 @@ export function ConnectionList({
                 aria-label={t("editor.connection.weight")} disabled={busy}
                 data-testid={`connection-weight-${id}`} className="sketch-border w-16 px-1 text-xs"
                 onBlur={(e) => {
-                  const w = Number(e.target.value);
-                  if (w !== c.weight && w >= 0 && w <= 1) onChangeWeight(c, w);
+                  // An empty or unreadable box is not 0: put the saved weight back instead of
+                  // saving a weight that blocks the path (U3 review #5)
+                  const raw = e.target.value.trim();
+                  const w = Number(raw);
+                  if (raw === "" || !Number.isFinite(w) || w < 0 || w > 1) {
+                    e.target.value = String(c.weight);
+                    return;
+                  }
+                  if (w !== c.weight) onChangeWeight(c, w);
                 }} />
               <Button size="sm" variant="danger" disabled={busy} data-testid={`connection-delete-${id}`}
                 onClick={() => onDelete(c)}>

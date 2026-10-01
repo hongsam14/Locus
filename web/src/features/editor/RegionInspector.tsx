@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../../api";
 import { t, useRequestLang } from "../../i18n";
 import type {
@@ -27,19 +27,23 @@ type Pending =
 
 /** One region in the editor (US-2.2·2.3·2.4·2.5): its fields, connections, knowledge
  * and inhabitants. Every write re-reads the region; ``onChanged`` lets the page re-read
- * the world (the map and the unscoped count). */
+ * the world (the map and the unscoped count). ``reloadKey`` changes whenever the page
+ * re-read the world (a map drag, a World File load, a build): the view is read again so
+ * the form never saves a stale region over newer data (U3 review #1, BR-U3-1). */
 export function RegionInspector({
   worldId,
   regionId,
   regions,
   onChanged,
   onDeleted,
+  reloadKey = 0,
 }: {
   worldId: string;
   regionId: string;
   regions: Region[];
   onChanged: () => void;
   onDeleted: (message: string) => void;
+  reloadKey?: number;
 }) {
   const [view, setView] = useState<EditorRegionView | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +64,13 @@ export function RegionInspector({
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldId, regionId, lang]);
+  const seenKey = useRef(reloadKey);
+  useEffect(() => {
+    if (seenKey.current === reloadKey) return; // the mount read above covers the first key
+    seenKey.current = reloadKey;
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloadKey]);
 
   /** Run a write, then re-read; false when it failed (the error is shown). */
   async function write(fn: () => Promise<unknown>): Promise<boolean> {

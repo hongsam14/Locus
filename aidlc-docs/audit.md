@@ -3439,3 +3439,136 @@ R-16 → Accepted risk
 **Context**: CONSTRUCTION / U3 — Code Generation complete.
 
 ---
+
+## U8 Functional Design Part 1 — plan and questions
+**Timestamp**: 2026-10-01T10:58:46Z
+**User Input**: (continuation of "Continue to Next Stage" — U3 approved; next unit U8)
+**AI Response**: An exploration agent surveyed the U8 state:
+- The demo has 5 regions and only a blocked connection pair, so no move is possible. No event seeds; World File v1 has no place for them, and readers ignore unknown keys.
+- One-click demo appears only with no worlds and goes to the editor.
+- No key-less guidance on `/` or the editor.
+- README tells the old purpose. `tools` compose profile is referenced but absent. requirements.txt lacks sqlalchemy/psycopg/python-multipart. LICENSE MIT vs pyproject Proprietary.
+- No CI. No live scenario script.
+Wrote `construction/plans/U8-demo-deploy-docs-functional-design-plan.md` with a current-state table, six questions (Q1 demo world, Q2 event seeds, Q3 one-click destination, Q4 key-less notice, Q5 CI, Q6 license) and assumptions A8-1..10. Asking Q1·Q2 first.
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Part 1.
+
+---
+
+## U8 Functional Design Part 1 — design principle from the human
+**Timestamp**: 2026-10-01T12:43:25Z
+**User Input**: "그런데 데모 지역을 코드에 const로 박아버리는 형태는 부적절한데. demo world파일을 로드하는 형태가 맞지 않나?" (Q1·Q2 question call declined)
+**AI Response**: Agreed. Surveyed the hardcoding:
+- web `HomePage.tsx:11` DEMO const, `api/world.ts:86·94`, `AppNav.tsx:17`
+- backend `demo/__init__.py` inline memo/map (copies of `examples/demo_world/memo.txt`, `map.json`), `build_from_sources` name check, map image read from outside the package
+- CLI `--demo-sources`
+Added the principle "데모는 데이터다" to the U8 FD plan: code knows demos only through the manifest; each demo is files (World File + optional sources); the UI lists `GET /demos`. Added a current-state row and assumption A8-11 (move the hardcoded parts to manifest/files). Updated A8-4 (start region in the manifest entry) and reframed Q1 (now about content and test inputs only).
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Part 1.
+
+---
+
+## U8 Functional Design Part 1 — Q1·Q2 answers
+**Timestamp**: 2026-10-01T12:46:46Z
+**User Input**: Q1 = "C. 새 월드로 바꾼다"; Q2 = "A. 월드에 저장, GM [시작] (Recommended)"
+**AI Response**: Recorded both. Q1=C leaves the new world's identity open → follow-up Q1-1 (setting/name). Added A8-12: the old Aldermoor World File moves to `tests/fixtures/` for tests that use it as a generic input; demo tests switch to the new world; living docs get the new name; past unit code-summaries stay as historical records (a one-line mapping note in operations.md instead). Asking Q1-1 and Q3 next.
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Part 1.
+
+---
+
+## U8 Functional Design Part 1 — Q1-1·Q3 answers
+**Timestamp**: 2026-10-01T12:57:11Z
+**User Input**: Q1-1 = "(A). 메이플스토리의 스토리를 참고해서. `https://www.inven.co.kr/board/maple/2304/24374`이 사이트 링크 참고"; Q3 = "A. [바로 플레이]+[에디터] (Recommended)"
+**AI Response**: Read the link: a fan-made index of MapleStory story posts (루트론, 2020-11-01), mostly Arcane River lore (소멸의 여로, 츄츄 아일랜드, 레헬른, 아르카나, 모라스, 에스페라), Grandis/Cernium, the Black Mage, Transcendents, Erda, seal stones — not the story text itself. Added follow-ups Q1-2 (how faithfully: inspired original names vs MapleStory names as a fan demo — the names and story are Nexon's, the repo has a GitHub remote and a LICENSE question open) and Q1-3 (which part: Arcane River / Victoria Island / both). Recorded Q3=A.
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Part 1.
+
+---
+
+## U8 Functional Design Part 1 — Q1-2·Q1-3 answers
+**Timestamp**: 2026-10-01T13:01:52Z
+**User Input**: Q1-2 = "A. 구조·분위기만, 이름은 새로 (Recommended)"; Q1-3 = "B. 빅토리아 아일랜드"
+**AI Response**: Recorded. The new demo world borrows Victoria Island's structure and mood (forest, rocky mountain, plains, city, port, underground; a river drawn in) with original names and text; the README credits MapleStory as inspiration. Asking Q4 (key-less notice) and Q5 (CI) next.
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Part 1.
+
+---
+
+## U8 Functional Design Part 1 — Q4·Q5 answers
+**Timestamp**: 2026-10-01T13:14:53Z
+**User Input**: Q4 = "A. 서버가 알리고 화면이 미리 안내 (Recommended)"; Q5 = "A. 지금 넣고 audit도 0건으로 (Recommended)"
+**AI Response**: Recorded. Asking Q6 (license) next — the last question.
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Part 1.
+
+---
+
+## U8 Functional Design Part 2 — artifacts and Plan Review request
+**Timestamp**: 2026-10-01T13:26:10Z
+**User Input**: Q6 = "A. MIT로 맞춘다" (all questions answered: Q1=C, Q1-1=A, Q1-2=A, Q1-3=B, Q2=A, Q3=A, Q4=A, Q5=A, Q6=A)
+**AI Response**: Wrote `construction/U8-demo-deploy-docs/functional-design/`:
+- domain-entities: DemoInfo manifest entry and sources, EventSeed (enums moved to shared), SeedView, Capabilities, the Emberleaf Isle content spec (12 regions, 10 connection pairs, 15 NPCs, 3 seeds), repo metadata.
+- business-logic-model: demo-as-data (backend, CLI, web, old Aldermoor to tests/fixtures), one-click flow, seed storage/read/start, key-less tour, docs and metadata, CI, live scenario.
+- business-rules: BR-U8-1..36, TP-U8-1..8, EX-1..11, story trace.
+- frontend-components: DemoCards, LlmNotice/useCapabilities, SeedPanel, LLM-button disabling, InProgressBadge, API client and i18n changes.
+Verified: consensus path weights (max-product incl. blocked) and deed spread (passable, one hop per turn) give the stated outcomes. Plan Review requested: architecture-reviewer, adversarial, iteration 1 of ≤2.
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Part 2.
+
+---
+
+## U3 code review (/code-review max) — result
+**Timestamp**: 2026-10-01T13:30:27Z
+**User Input**: (none — background review launched after the U3 code gate)
+**AI Response**: Record `aidlc-docs/construction/U3-world-editor/code/reviews/code-review-01.md` (scope `git diff 9228861..bc1bd3a`). 15 correctness findings, all confirmed by reproduction; plus 32 above-cap correctness, 17 cleanup, 12 dismissed, 10 design/doc memos.
+- Top findings:
+  - #1: the inspector saves a stale region view whole (drag undone).
+  - #2: the augmentation run is lost on a tab switch.
+  - #3: a kind change re-saves from the body, losing rationale, prior and provenance.
+  - #4: connection-target reverts skip the outside-edit check.
+  - #5: an empty weight box saves 0 and blocks the path.
+  - #6: `/` build replaces an existing world without asking.
+  - #7: TP-U3-5 is flaky. A saved counterexample in the git-ignored `.hypothesis/examples` now makes pytest 849 passed / 1 failed in this checkout.
+- Orchestrator spot-check: #3 verified (`world_editor.py:154-162`), #7 verified (`test_augmentation.py:205-208` draws per edge), #1 consistent with `RegionInspector.tsx:57-62,149-150`.
+- The code is approved, so the human chooses how to handle the fixes (A mix / B all to U8 / C accept). The U8 FD review is running in parallel.
+**Context**: CONSTRUCTION / U3 post-approval review; U8 FD Part 2 under Plan Review.
+
+---
+
+## U3 code review — human choice
+**Timestamp**: 2026-10-01T13:34:03Z
+**User Input**: "A. 섞는다 (Recommended)"
+**AI Response**: Fix #1–#7, #9 and #11 now as U3 post-approval commits, with regression tests and a gate re-run, and correct BR-U3-27 / BLM §4.3 ("outside edit" includes edges). Carry the rest (#8, #10, #12–#15, §3, §2, design memos) to the U8 code-generation plan's carry table. The three design decisions (augmentation budget model, where global knowledge is edited, how "confirm" ends wiki_conflict) stay open for a U3 follow-up or the next cycle.
+**Context**: CONSTRUCTION / U3 post-approval review fixes; U8 FD Plan Review iteration 1 returned in parallel.
+
+---
+
+## U8 Functional Design — Plan Review iteration 1 verdict and fixes
+**Timestamp**: 2026-10-01T13:37:26Z
+**AI Response**: Reviewer (architecture-reviewer, adversarial, iter 1) returned NOT-READY with 5 Major and 6 Minor findings (`functional-design/reviews/functional-design-review-01.md`). Fixed all eleven in place, each marked 〔검토 01 R-xx〕:
+- R-01: license table form; explicit package-data globs.
+- R-02: 503 table rebuilt from code with dependency fields; `priors` removed.
+- R-03: one-click failure semantics (ok=false, busy_sessions, missing start region).
+- R-04: three graphs separated; computed weight table; relic narrative corrected.
+- R-05: live scenario reordered by player position; support arithmetic.
+- R-06: SeedService, create_event keyword extension, SeedAlreadyRunningError 409, 201 EventOut.
+- R-07: change points listed; FR-A2 exception; init-schema note.
+- R-08: loadDemo argument order unified.
+- R-09: manifest validated once at assembly; sources build differs.
+- R-10: help/docstring names; TP-U8-6 search terms.
+- R-11: separate audit job; `npm ci` prerequisite.
+Re-dispatching for iteration 2.
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Plan Review.
+
+---
+
+## U3 post-approval review fixes (choice A)
+**Timestamp**: 2026-10-01T13:45:56Z
+**AI Response**: Fixed #1–#7, #9 and #11:
+- #1: the inspector re-reads on the page reload key.
+- #2: the run id is kept by the page and re-read with getRun.
+- #3: a kind change only moves the pair.
+- #4: revert checks edges.
+- #5: the weight box rejects empty or invalid values.
+- #6: build sends replace=false first and asks on 409.
+- #7: the TP-U3-5 generator keeps a pair invariant; the saved counterexample passes.
+- #9: continue instead of break.
+- #11: the snapshot is read after the guard.
+Tests: pytest +7, vitest +5; every fix caught by a mutation. Gates: pytest 857, vitest 129, ruff/black/tsc clean, mypy 11. Corrected BR-U3-27 / BLM §4.3 (edges count as outside edits), CLAUDE.md/web README ("entities" not edited). code-summary §10 records it; the rest is listed under "넘겨받은 것" in the U8 FD plan.
+**Context**: CONSTRUCTION / U3 post-approval review fixes.
+
+---

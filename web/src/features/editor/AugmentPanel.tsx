@@ -10,17 +10,24 @@ const kindOf = (q: AugQuestion) => q.issue_key.split(":")[0];
 /** The augmentation Q&A (US-2.6, BR-U3-24..28): one run kept by the screen; each
  * question names its target and offers only the server's actions; an answer returns
  * the run with its next questions; changes undo latest first; an ignored question can
- * be asked again. A restart loses runs (BR-U3-42): the panel then offers a new search. */
+ * be asked again. A restart loses runs (BR-U3-42): the panel then offers a new search.
+ * The page keeps the run id (``runId``/``onRunId``) so leaving the tab — a click on the
+ * map switches to the region tab — does not drop the run: back on the tab the panel
+ * reads it again (U3 review #2, BR-U3-26). */
 export function AugmentPanel({
   worldId,
   regions,
   entities,
   onChanged,
+  runId = null,
+  onRunId,
 }: {
   worldId: string;
   regions: Region[];
   entities: NameRef[];
   onChanged: () => void;
+  runId?: string | null;
+  onRunId?: (id: string | null) => void;
 }) {
   const [run, setRun] = useState<AugRun | null>(null);
   const [lost, setLost] = useState(false);
@@ -33,7 +40,21 @@ export function AugmentPanel({
   useEffect(() => {
     setRun(null);
     setLost(false);
+    if (!runId) return;
+    let alive = true;
+    api
+      .getRun(runId)
+      .then((r) => alive && setRun(r))
+      .catch((e) => alive && (statusOf(e) === 404 ? setLost(true) : setError(String(e))));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldId]);
+  useEffect(() => {
+    if (run) onRunId?.(run.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run?.id]);
 
   const needsPriors = run?.open_questions.some((q) =>
     ["wiki_prior_ref", "derived_from_prior_ids"].includes(q.target?.field ?? ""),

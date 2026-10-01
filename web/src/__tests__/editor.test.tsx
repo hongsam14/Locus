@@ -136,6 +136,35 @@ describe("RegionInspector (US-2.2·2.3·2.4·2.5)", () => {
       expect.objectContaining({ statement: "a dry well", world_id: "w" })));
   });
 
+  it("reads the region again when the page re-read the world, so a save keeps a drag", async () => {
+    // U3 review #1 (BR-U3-1): the form saves the whole region; a stale view undid a drag
+    (api.updateRegion as Mock).mockResolvedValue({});
+    const props = { worldId: "w", regionId: "r1", regions, onChanged: () => {}, onDeleted: () => {} };
+    const { rerender } = render(<RegionInspector {...props} reloadKey={0} />);
+    await waitFor(() => screen.getByTestId("region-form"));
+    (api.getEditorRegion as Mock).mockResolvedValue({
+      ...VIEW, region: { ...VIEW.region, position: { x: 0.5, y: 0.5 } },
+    });
+    rerender(<RegionInspector {...props} reloadKey={1} />); // the page moved the marker
+    await waitFor(() => expect(api.getEditorRegion).toHaveBeenCalledTimes(2));
+    fireEvent.change(screen.getByTestId("region-description"), { target: { value: "by the river" } });
+    fireEvent.click(screen.getByTestId("region-save"));
+    await waitFor(() => expect(api.updateRegion).toHaveBeenCalledWith("w",
+      expect.objectContaining({ position: { x: 0.5, y: 0.5 }, description: "by the river" })));
+  });
+
+  it("an empty or unreadable weight box saves nothing and shows the saved weight again", async () => {
+    // U3 review #5: Number("") is 0, which blocked the path
+    open();
+    const box = (await screen.findByTestId("connection-weight-r1|r2|route")) as HTMLInputElement;
+    for (const typed of ["", "abc", "1.5"]) {
+      fireEvent.change(box, { target: { value: typed } });
+      fireEvent.blur(box);
+      expect(box.value).toBe("0.6");
+    }
+    expect(api.saveConnection).not.toHaveBeenCalled();
+  });
+
   it("sets scopes to the picked regions", async () => {
     (api.setScopes as Mock).mockResolvedValue({ region_ids: ["r1", "r2"] });
     open();
@@ -242,6 +271,30 @@ describe("AugmentPanel (BR-U3-24..28)", () => {
     await waitFor(() => expect(screen.getByText(t("augment.reverted"))).toBeInTheDocument());
   });
 
+  it("hands its run id to the page and reads the run again when it comes back", async () => {
+    // U3 review #2 (BR-U3-26): a click on the map unmounts the tab; the run must survive
+    const change = { id: "c1", description: "low_confidence:confirm", added_ids: [], reverted: false };
+    (api.startRun as Mock).mockResolvedValue(runOf());
+    (api.getRun as Mock).mockResolvedValue(runOf({ answers: 1, history: [change] }));
+    const onRunId = vi.fn();
+    const { unmount } = render(
+      <AugmentPanel worldId="w" regions={regions} entities={[]} onChanged={() => {}} onRunId={onRunId} />,
+    );
+    fireEvent.click(screen.getByTestId("augment-find"));
+    await waitFor(() => expect(onRunId).toHaveBeenCalledWith("run1"));
+    unmount();
+    render(<AugmentPanel worldId="w" regions={regions} entities={[]} onChanged={() => {}} runId="run1" />);
+    await waitFor(() => expect(api.getRun).toHaveBeenCalledWith("run1"));
+    await waitFor(() => expect(screen.getAllByTestId("augment-revert")[0]).not.toBeDisabled());
+    expect(api.startRun).toHaveBeenCalledTimes(1);
+  });
+
+  it("a run the server no longer has is reported lost when the panel comes back", async () => {
+    (api.getRun as Mock).mockRejectedValue(new HttpError(404, "Not Found", "run not found"));
+    render(<AugmentPanel worldId="w" regions={regions} entities={[]} onChanged={() => {}} runId="gone" />);
+    await waitFor(() => expect(screen.getByTestId("augment-lost")).toBeInTheDocument());
+  });
+
   it("a lost run (404 after a restart) offers a new search", async () => {
     (api.startRun as Mock).mockResolvedValue(runOf());
     (api.answer as Mock).mockRejectedValue(new HttpError(404, "Not Found", "run not found"));
@@ -292,5 +345,26 @@ describe("BuildPanel (BR-U3-35)", () => {
     await waitFor(() => expect(screen.getByTestId("build-report")).toBeInTheDocument());
     expect(((api.uploadBuild as Mock).mock.calls[1][1] as FormData).get("confirm")).toBe("true");
     expect(onBuilt).toHaveBeenCalledWith("w", expect.objectContaining({ ok: true }));
+  });
+
+  it("where the screen cannot tell, a world that exists is replaced only after a yes", async () => {
+    // U3 review #6 (BR-U3-35): `/` opens the panel without knowing the typed id
+    (api.uploadBuild as Mock)
+      .mockRejectedValueOnce(new HttpError(409, "Conflict", '{"detail":"world already exists: mine"}'))
+      .mockResolvedValueOnce({ world_id: "mine", regions_created: 1, connections_created: 0,
+        entities_created: 0, knowledge_created: 1, corroborations_created: 0, warnings: [],
+        unscoped_knowledge_ids: [], llm_calls: 1, embedding_calls: 0, replaced: true,
+        closed_session_ids: [], priors_created: 0, ok: true });
+    render(<MemoryRouter><BuildPanel open exists={false} onClose={() => {}} onBuilt={() => {}} /></MemoryRouter>);
+    fireEvent.change(screen.getByTestId("build-world-id"), { target: { value: "mine" } });
+    fireEvent.change(screen.getByTestId("build-memo"), { target: { value: "a note" } });
+    fireEvent.click(screen.getByTestId("build-submit"));
+    await waitFor(() => expect(screen.getByTestId("build-confirm")).toBeInTheDocument());
+    expect(((api.uploadBuild as Mock).mock.calls[0][1] as FormData).get("replace")).toBe("false");
+    fireEvent.click(screen.getByText(t("action.confirm")));
+    await waitFor(() => expect(api.uploadBuild).toHaveBeenCalledTimes(2));
+    const second = (api.uploadBuild as Mock).mock.calls[1][1] as FormData;
+    expect(second.get("replace")).toBe("true");
+    expect(second.get("confirm")).toBe("false");
   });
 });

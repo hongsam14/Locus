@@ -231,6 +231,45 @@ def test_connections_save_change_kind_and_delete() -> None:
     assert client.put("/api/world/worlds/w/connections", json=self_loop).status_code == 400
 
 
+def test_a_kind_change_keeps_the_pair_fields_and_writes_nothing_else() -> None:
+    """U3 review #3 (BR-U3-11): with ``previous_kind`` only the kind changes. The body's
+    other fields (no rationale or prior, another provenance) are not written over the
+    pair, and the save is one move (upsert + delete), not a second replace."""
+    client, _play, graph, _s, w = _world()
+    a, b = w["town"].id, w["hollow"].id
+    body = {
+        "world_id": "w",
+        "source_region_id": a,
+        "target_region_id": b,
+        "kind": "blocked",
+        "weight": 0.2,
+        "rationale": "the pass is snowed in",
+        "wiki_prior_ref": "prior-pass",
+        "provenance": {"source": "inferred", "generated_by": "demo-author"},
+    }
+    assert client.put("/api/world/worlds/w/connections", json=body).status_code == 200
+    moved = {
+        "world_id": "w",
+        "source_region_id": a,
+        "target_region_id": b,
+        "kind": "adjacent",
+        "weight": 0.6,
+        "provenance": {"source": "input", "generated_by": "designer"},
+        "previous_kind": "blocked",
+    }
+    r = client.put("/api/world/worlds/w/connections", json=moved)
+    assert r.status_code == 200
+    pair = r.json()
+    assert {e["kind"] for e in pair} == {"adjacent"} and len(pair) == 2
+    for e in pair:
+        assert e["weight"] == 0.2 and e["rationale"] == "the pass is snowed in"
+        assert e["wiki_prior_ref"] == "prior-pass"
+        assert e["provenance"]["source"] == "inferred"
+    stored = [e for e in graph.get_edges("w", ["CONNECTED_TO"]) if e.properties["kind"] != "route"]
+    assert sorted(e.properties["kind"] for e in stored) == ["adjacent", "adjacent"]
+    assert all(e.properties.get("rationale") == "the pass is snowed in" for e in stored)
+
+
 def test_knowledge_add_edit_scopes_unscoped_and_delete() -> None:
     client, _play, graph, search, w = _world()
     new = Knowledge(world_id="w", statement="a dry well", title="well", provenance=_prov())

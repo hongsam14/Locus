@@ -216,7 +216,6 @@ class TurnAdvancer(SessionAppService):
     ) -> TurnRun:
         """Guard + validate against the current position + immediate state (BLM §4.1)."""
         session = self._require_open(session_id)
-        snapshot = self._snapshots.get(session.world_id)
         run = TurnRun(session_id=session_id, action=action, started_turn=session.turn)
         if isinstance(action, DeclareAction):
             run.lang = lang  # the narration's language (U6, FD review R-17)
@@ -226,6 +225,10 @@ class TurnAdvancer(SessionAppService):
             # the acquire would otherwise be counted as this run's (U6 review #8).
             session = self._require_open(session_id)
             run.started_turn = session.turn
+            # The world is read under the guard too: an editor region delete holds the
+            # leases while it writes, so a snapshot read before the acquire could move the
+            # player into a region deleted in between (U3 review #11).
+            snapshot = self._snapshots.get(session.world_id)
             player = self._repo.get_player(session_id)
             option = None
             if action is not None:

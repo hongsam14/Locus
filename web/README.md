@@ -29,7 +29,7 @@ npm run build      # tsc type-check + vite production build -> dist/
   4px to move it (`PUT …/regions/{id}`); the region tool adds a region where you click; the
   connection tool joins two regions with a kind and weight. A background image overlays the map.
 - **Inspector** (`RegionInspector`): the region's fields, its connections, its knowledge and
-  scopes, NPCs (with LLM drafts) and entities. Deleting a region asks first; the server
+  scopes, and NPCs (with LLM drafts). Deleting a region asks first; the server
   refuses (409) while an open session's player stands there and names those sessions.
 - **Side tabs**: unscoped knowledge, augmentation Q&A (answer, ignore, undo latest-first),
   the wiki priors used as evidence.

@@ -15,8 +15,10 @@ const FIELDS = [
 
 /** Build a world from sources (US-2.1, BR-U3-35): notes, structured maps, map images and
  * concept art as multipart. An existing world is replaced only after a yes; open sessions
- * are closed only after a second yes (BR-U2-25). Over-limit files answer 413/422 and the
- * server's text is shown (nfr §1.1). */
+ * are closed only after a second yes (BR-U2-25). Where the screen does not know whether
+ * the typed id exists (``/``), the first send does not replace and the server's 409 asks
+ * the question (U3 review #6). Over-limit files answer 413/422 and the server's text is
+ * shown (nfr §1.1). */
 export function BuildPanel({
   open,
   worldId: fixedId,
@@ -43,13 +45,13 @@ export function BuildPanel({
   const id = (fixedId ?? worldId).trim();
   const hasInput = memo.trim() || Object.values(files).some((f) => f.length);
 
-  async function send(confirm: boolean) {
+  async function send(replace: boolean, confirm: boolean) {
     const form = new FormData();
     for (const { name: field } of FIELDS) for (const f of files[field] ?? []) form.append(field, f);
     if (memo.trim()) form.append("memos", new File([memo], "typed.txt", { type: "text/plain" }));
     if (name.trim()) form.append("name", name.trim());
     if (description.trim()) form.append("description", description.trim());
-    form.append("replace", "true");
+    form.append("replace", String(replace));
     form.append("confirm", String(confirm));
     setBusy(true);
     setError(null);
@@ -60,6 +62,7 @@ export function BuildPanel({
     } catch (e) {
       const m = /"open_sessions":\s*(\d+)/.exec(String(e));
       if (statusOf(e) === 409 && m && !confirm) setAsk({ sessions: Number(m[1]) });
+      else if (statusOf(e) === 409 && !replace && !m) setAsk("replace"); // the id exists
       else setError(String(e));
     } finally {
       setBusy(false);
@@ -96,7 +99,7 @@ export function BuildPanel({
         <div className="flex justify-end gap-2">
           <Button size="sm" onClick={onClose}>{t("action.close")}</Button>
           <Button size="sm" variant="primary" data-testid="build-submit" disabled={busy || !id || !hasInput}
-            onClick={() => (exists ? setAsk("replace") : send(false))}>
+            onClick={() => (exists ? setAsk("replace") : send(false, false))}>
             {t("build.submit")}
           </Button>
         </div>
@@ -106,7 +109,7 @@ export function BuildPanel({
         onConfirm={() => {
           const a = ask;
           setAsk(null);
-          send(a !== "replace"); // the second question is the session one
+          send(true, a !== "replace"); // the second question is the session one
         }}>
         <span data-testid="build-confirm">
           {ask === "replace" ? t("build.replaceConfirm")

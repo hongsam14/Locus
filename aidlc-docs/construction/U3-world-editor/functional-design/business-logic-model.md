@@ -189,7 +189,7 @@
 - **되돌리기**: `revert(run_id, change_id)`
   - 그 run의 기록에서 찾는다. `reverted`면 409다.
   - **나중 것부터**다. 아직 되돌리지 않은 변경 중 가장 나중 것이 아니면 409("먼저 나중 변경을 되돌리세요")다. 그래서 앞선 되돌리기가 나중 변경을 덮어쓰지 않는다.
-  - **검사 순서** 〔Step 1.3 정정〕(FD 검토 R-08): 없는 변경 404 → 이미 되돌림 409(`ChangeAlreadyRevertedError`) → 가장 나중이 아님 409(`RevertOrderError`) → run 밖 편집 409(`RevertConflictError`). run 밖 편집은 지금 노드가 `nodes_after`와 다르거나 `added_ids` 노드가 없는 경우다. 거절이면 아무것도 쓰지 않는다.
+  - **검사 순서** 〔Step 1.3 정정〕(FD 검토 R-08): 없는 변경 404 → 이미 되돌림 409(`ChangeAlreadyRevertedError`) → 가장 나중이 아님 409(`RevertOrderError`) → run 밖 편집 409(`RevertConflictError`). run 밖 편집은 지금 노드가 `nodes_after`와 다르거나 `added_ids` 노드가 없는 경우다. 거절이면 아무것도 쓰지 않는다. 〔U3 리뷰 정정〕 엣지도 run 밖 편집에 든다. 그 변경이 쓰거나 지운 엣지 identity 가운데 지금 엣지가 `edges_added`와 정확히 같지 않은 것이 있으면(무게·근거 편집, 쌍 삭제, 종류 바꾸기, 지운 엣지의 재추가) 409다(code-review-01 #4, 설계 메모 4).
   - 되돌리기와 `unignore`는 `answers`를 바꾸지 않는다. 응답은 다시 탐지한 run이다 〔Step 1.3 정정〕.
   - 순서
     1. `edges_added` 지우기

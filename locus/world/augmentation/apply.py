@@ -180,12 +180,17 @@ def _repoint(issue: Issue, target_id, action, answer, world_id, editors: Editors
 # --------------------------------------------------------------------------- #
 def revert(change: ChangeSet, *, world_id: str, editors: Editors) -> None:
     """Undo ``change``. Refused, with nothing written, when a node it touched was edited
-    after it (or a node it made is gone) — a change outside this run."""
+    after it (or a node it made is gone), or when an edge it wrote or removed has changed
+    since — a change outside this run. The edge check covers answers whose target is a
+    connection or a scope, which record no node (U3 review #4, BR-U3-27)."""
     graph = editors.writes.graph
     for snap in change.nodes_after:
         now = graph.get_node(world_id, snap.id)
         if now is None or _props(now.properties) != _props(snap.properties):
             raise RevertConflictError(f"{snap.id} was edited after this change")
+    edited = _edges_edited_since(graph, world_id, change)
+    if edited:
+        raise RevertConflictError(f"{edited} was edited after this change")
     with editors.writes.writing(world_id):
         graph.delete_edges(world_id, [_key(e) for e in change.edges_added])
         for nid in change.added_ids:
@@ -255,6 +260,39 @@ def _edges(graph, world_id: str, ids: list[str]) -> dict[tuple, EdgeSnapshot]:
         for e in graph.get_edges(world_id)
         if e.source_id in watch or e.target_id in watch
     }
+
+
+def _edges_edited_since(graph, world_id: str, change: ChangeSet) -> str | None:
+    """The first edge identity whose edges no longer equal what ``change`` left, or None.
+
+    Among the identities the change wrote or removed (type, endpoints, kind/id), the
+    edges stored now must be exactly the ones it added: a changed weight or rationale, a
+    deleted pair, a kind change or a re-added removed edge all differ."""
+    idents = {_ident(e) for e in [*change.edges_added, *change.edges_removed]}
+    if not idents:
+        return None
+    expected = {_full(e) for e in change.edges_added}
+    now: set[tuple] = set()
+    for edge in graph.get_edges(world_id):
+        snap = EdgeSnapshot(
+            type=edge.type,
+            source_id=edge.source_id,
+            target_id=edge.target_id,
+            properties=dict(edge.properties),
+        )
+        if _ident(snap) in idents:
+            now.add(_full(snap))
+    diff = sorted(now ^ expected)
+    return f"{diff[0][0]} {diff[0][1]}->{diff[0][2]}" if diff else None
+
+
+def _ident(e: EdgeSnapshot) -> tuple:
+    k = _key(e)
+    return (k.type, k.source_id, k.target_id, json.dumps(k.identity, sort_keys=True, default=str))
+
+
+def _full(e: EdgeSnapshot) -> tuple:
+    return (e.type, e.source_id, e.target_id, json.dumps(e.properties, sort_keys=True, default=str))
 
 
 def _key(e: EdgeSnapshot) -> EdgeKey:

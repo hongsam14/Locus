@@ -118,15 +118,15 @@
 ## Steps
 
 ### Step 1 — 기준선·뼈대·승인 산출물 정정
-- [ ] 1.1 실측값을 `construction/U7-gm-mode-hardening/code/code-summary.md` 초안의 기준선으로 적는다. 기대값은 `pytest -q --no-cov` 636, `npx vitest run` 74, `mypy locus api` 11이다.
-- [ ] 1.2 새 파일을 만든다(빈 docstring).
+- [x] 1.1 실측값을 `construction/U7-gm-mode-hardening/code/code-summary.md` 초안의 기준선으로 적는다. 기대값은 `pytest -q --no-cov` 636, `npx vitest run` 74, `mypy locus api` 11이다.
+- [x] 1.2 새 파일을 만든다(빈 docstring).
   - 백엔드: `locus/shared/text.py`, `locus/play/player/log.py`, `locus/play/world_state.py`
   - 프론트엔드
     - `web/src/features/gm/`: `GmHub.tsx`, `ManualTurnPanel.tsx`, `EventPanel.tsx`, `DistortionPanel.tsx`, `RumorPanel.tsx`, `TimelinePanel.tsx`, `PlayerStrip.tsx`, `WorldStateOverlay.tsx`
     - `web/src/ui/CommitRange.tsx`
   - 테스트: `tests/play/test_feedback.py`, `tests/play/test_player_log.py`, `tests/play/test_world_state.py`, `tests/play/test_gm_events.py`, `tests/api/test_gm_mode_api.py`, `web/src/__tests__/gm.test.tsx`
   - `web/src/SessionPanel.tsx`는 8.2에서 지운다.
-- [ ] 1.3 **승인 산출물 정정**: 각 곳에 "〔Step 1.3 정정〕"을 붙이고 audit에 한 줄 남긴다.
+- [x] 1.3 **승인 산출물 정정**: 각 곳에 "〔Step 1.3 정정〕"을 붙이고 audit에 한 줄 남긴다.
   - BLM §6: DistortionService의 스냅샷 주입, WorldStateService 의존과 조립(R-01)
   - BLM에 새 절 "GM 세션 시작 기록"(R-02)
   - BLM §1.5·EX-2: 입력 수열로 고쳐 씀(R-03)

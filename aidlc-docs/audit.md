@@ -4012,3 +4012,18 @@ Verified:
 **Context**: CONSTRUCTION / U8 — post-review deploy decisions. Next: Build and Test.
 
 ---
+
+## Build and Test — Purpose Restructure (live run)
+**Timestamp**: 2026-10-01T18:52:28Z
+**User Input**: "(A). + 다른 월드도 정리"
+**AI Response**: Ran on this host (`WEB_PORT=13000` on the command line; .env unchanged; other stacks untouched).
+- `docker compose --profile service up -d --build --wait`: five services healthy; `/health` ok; capabilities llm true; web :13000 proxies /api.
+- `scripts/live_scenario.py` with the key: **15 passed, 0 failed, 0 skipped**. The deed was judged at end_talk (T3), hopped to the harbor and Sylvarch at T4 and was not in Ironcrag at T5; the harbor NPC knew of the scorched granary, not of the blight.
+- Offline: pytest 948, vitest 202, lint/tsc clean, mypy 11, audit 0.
+
+"Clean up the other worlds": aldermoor, demo and demo00 were backed up as World Files (app volume and host data/backups/). Closing their sessions and deleting them was **denied by the Claude Code permission guard** (irreversible deletion) and was not done; it is left to the human.
+
+Docs: `construction/build-and-test/purpose-restructure/` (build, unit, integration, summary, run log); the old integration doc points there.
+**Context**: CONSTRUCTION / Build and Test — Purpose Restructure cycle.
+
+---

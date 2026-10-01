@@ -2901,3 +2901,23 @@ R-04 → Accepted risk
 R-05 → Accepted risk
 R-06 → Accepted risk
 R-07 → Accepted risk
+
+---
+
+## U7 Code Generation Part 1 — plan written
+**Timestamp**: 2026-10-01T02:13:13Z
+**AI Response**: Wrote `construction/plans/U7-gm-mode-hardening-code-generation-plan.md`.
+- 11 steps: baseline/corrections, tuning, models+storage, pure functions, turn engine, services+wiring, API, frontend, docs, verification, gate.
+- A carry table closing FD R-01..09, NFR R-01..07, U6 code-review-01 #5–#15 and C1–C16, the scene-shadowing decision (decided: apply the same source hiding), and U5 C1/C4/say-500/newline forging.
+- Decisions taken in the plan:
+  - R-06 truncation order (player region → active-event regions → rumor-dense → leaves → upper levels).
+  - NFR R-01 per-field char caps with a 21,000-char computed bound (corrects the 8,000 in nfr-light via Step 1.3).
+  - NFR R-03 `one_line` normalizer over all Unicode line separators and control characters.
+  - NFR R-04: every env has a default, and invalid values fail startup.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — U7
+**Timestamp**: 2026-10-01T02:13:13Z
+**AI Response**: Dispatching aidlc-architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/U7-gm-mode-hardening-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/U7-gm-mode-hardening-code-generation-plan-review-01.md`.
+**Context**: CONSTRUCTION / U7 — Code Generation Part 1, Plan Review.

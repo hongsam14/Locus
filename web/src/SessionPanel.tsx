@@ -51,6 +51,7 @@ interface Props {
   session: GameSession;
   regionId: string | null; // GameMaster target = map-selected region
   onChanged?: () => void; // notify parent (e.g. refresh RegionPanel/session)
+  reloadKey?: number; // U6: bumped when a deed void changed rumors elsewhere on the page
 }
 
 const CATEGORIES: EventCategory[] = [
@@ -62,7 +63,7 @@ const CATEGORIES: EventCategory[] = [
   "discovery",
 ];
 
-export function SessionPanel({ session, regionId, onChanged }: Props) {
+export function SessionPanel({ session, regionId, onChanged, reloadKey = 0 }: Props) {
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [rumors, setRumors] = useState<SessionRumor[]>([]);
   const [events, setEvents] = useState<SessionEvent[]>([]);
@@ -120,7 +121,7 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
     } catch (e) {
       if (mine === readSeq.current) setError(String(e));
     }
-  }, [session.id, regionId, displayLang]);
+  }, [session.id, regionId, displayLang, reloadKey]);
 
   useEffect(() => {
     refresh();
@@ -448,6 +449,11 @@ export function SessionPanel({ session, regionId, onChanged }: Props) {
                   {r.promoted && (
                     <Badge data-testid={`promoted-${r.id}`} tone="promoted">
                       {t("gm.promoted")}
+                    </Badge>
+                  )}
+                  {r.origin_kind === "deed" && (
+                    <Badge data-testid={`deed-badge-${r.id}`} tone="event">
+                      {t("badge.deed")}
                     </Badge>
                   )}
                   <span className="text-ink-soft text-xs">d{r.distortion_degree.toFixed(2)}</span>

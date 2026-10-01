@@ -1,5 +1,6 @@
 // `/api/gm` — GameMaster controls: timeline, rumors, distortion, turns, events.
 import type {
+  DeedViewOut,
   EventCategory,
   EventLifecycle,
   RegionDistortion,
@@ -7,6 +8,7 @@ import type {
   SessionRumor,
   TimelineEntry,
   TurnResult,
+  VoidResult,
 } from "../types";
 import { enc, http, withLang } from "./http";
 
@@ -54,4 +56,9 @@ export const gmApi = {
     http<SessionEvent>(`${s(sid)}/events/${enc(eid)}/resolve`, { method: "POST" }),
   discardEvent: (sid: string, eid: string) =>
     http<void>(`${s(sid)}/events/${enc(eid)}`, { method: "DELETE" }),
+
+  // U6 deeds (US-5.6)
+  listDeeds: (sid: string) => http<DeedViewOut[]>(withLang(`${s(sid)}/deeds`)),
+  voidDeed: (sid: string, deedId: string) =>
+    http<VoidResult>(`${s(sid)}/deeds/${enc(deedId)}/void`, { method: "POST" }),
 };

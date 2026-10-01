@@ -4,6 +4,7 @@ import { MapOverlay } from "../MapOverlay";
 import { RegionPanel } from "../RegionPanel";
 import { SessionBar } from "../SessionBar";
 import { SessionPanel } from "../SessionPanel";
+import { DeedPanel } from "../features/gm/DeedPanel";
 import { api } from "../api";
 import { t, useLang } from "../i18n";
 import type { GameSession, WorldExport } from "../types";
@@ -22,6 +23,7 @@ export function GmPage() {
   const [mapUrl, setMapUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sessionRev, setSessionRev] = useState(0);
+  const [deedRev, setDeedRev] = useState(0); // U6: a void changed rumors on this page
   // Current route session + loaded world, readable from async continuations so a
   // late response for a previous session never rebinds the screen (review U1 #3).
   const sessionIdRef = useRef(sessionId);
@@ -71,6 +73,12 @@ export function GmPage() {
   function onSessionChanged() {
     setSessionRev((n) => n + 1);
     loadSession();
+  }
+
+  // A deed void turned rumors off: re-read the GM hub and the region panel too.
+  function onDeedChanged() {
+    setDeedRev((n) => n + 1);
+    setSessionRev((n) => n + 1);
   }
 
   // Switching sessions in the bar changes the route (same-session events, e.g.
@@ -157,7 +165,18 @@ export function GmPage() {
                 sessionId={session.id}
               />
             )}
-            <SessionPanel session={session} regionId={selected} onChanged={onSessionChanged} />
+            <SessionPanel
+              session={session}
+              regionId={selected}
+              onChanged={onSessionChanged}
+              reloadKey={deedRev}
+            />
+            <DeedPanel
+              key={`deeds-${session.id}-${sessionRev}`}
+              sessionId={session.id}
+              closed={session.status === "closed"}
+              onChanged={onDeedChanged}
+            />
           </div>
         </div>
       )}

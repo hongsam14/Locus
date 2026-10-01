@@ -46,6 +46,8 @@ vi.mock("../api", () => ({
     resolveEvent: vi.fn(),
     discardEvent: vi.fn(),
     listDistortions: vi.fn(),
+    listDeeds: vi.fn(),
+    voidDeed: vi.fn(),
   },
 }));
 import { api } from "../api";

@@ -255,11 +255,11 @@
   - `act`의 `?lang=en` → `run.lang == "en"`
 
 ### Step 8 — 프론트엔드 (frontend-components.md)
-- [ ] 8.1 `web/src/types.ts`와 API 모듈
+- [x] 8.1 `web/src/types.ts`와 API 모듈
   - `types.ts`: `DeclareAction`, `Narration`, `Deed`, `DeedAppraisal`, `DeedViewOut`, `SessionRumor` 기원 넷, `ActionResult.declaration`, `RegionView.declare_max_chars`
   - `api/play.ts`: `act`가 `withLang`을 쓴다.
   - `api/gm.ts`: `listDeeds`(`withLang`)와 `voidDeed`
-- [ ] 8.2 컴포넌트
+- [x] 8.2 컴포넌트
   - `ActionBar`: 선언 입력, `maxChars`, `onDeclare → Promise<boolean>`
   - `NarrationCard`
   - `PlayPage`: `act`가 `Promise<boolean>`을 돌려주고, `declare`가 있고, 결과의 `declaration`을 쓴다.
@@ -267,7 +267,7 @@
   - `PlayLog`: `GM_ONLY_KINDS`
   - `features/gm/DeedPanel.tsx`를 `GmPage`에 둔다(`sessionRev` 키, `onChanged` → SessionPanel 재조회).
   - `i18n.ts`: ko·en 키(frontend-components §4)와 타임라인 템플릿 여섯
-- [ ] 8.3 테스트 `web/src/__tests__/deeds.test.tsx`(frontend-components §6)
+- [x] 8.3 테스트 `web/src/__tests__/deeds.test.tsx`(frontend-components §6)
   - ActionBar, PlayPage 선언·400·409, 배지, PlayLog 필터
   - DeedPanel(판단·도달 지역·취소 확인·409·취소된 행적)
   - i18n 키 집합은 기존 테스트가 새 키를 덮는다.

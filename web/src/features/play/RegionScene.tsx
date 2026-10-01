@@ -71,6 +71,13 @@ export function RegionScene({
             <Badge tone={r.promoted ? "promoted" : "neutral"}>
               {r.promoted ? t("gm.promoted") : t("badge.rumor")}
             </Badge>{" "}
+            {r.origin_kind === "deed" && (
+              <>
+                <Badge tone="event" data-testid={`deed-badge-${r.id}`}>
+                  {t("badge.deed")}
+                </Badge>{" "}
+              </>
+            )}
             <Badge>d{r.distortion_degree.toFixed(2)}</Badge>{" "}
             <LocalizedText ko={r.statement_ko} original={r.statement} />
           </li>

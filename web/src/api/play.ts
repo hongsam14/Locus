@@ -39,8 +39,9 @@ export const playApi = {
   // U4 player mode
   getPlayer: (sid: string) => http<Player>(`${s(sid)}/player`),
   getRegion: (sid: string) => http<RegionView>(withLang(`${s(sid)}/region`)),
+  // U6: the display language travels with the action (a declaration is narrated in it)
   act: (sid: string, action: PlayerAction) =>
-    http<TurnRun>(`${s(sid)}/act`, { method: "POST", body: JSON.stringify(action) }),
+    http<TurnRun>(withLang(`${s(sid)}/act`), { method: "POST", body: JSON.stringify(action) }),
   getTurnRun: (sid: string, runId: string) => http<TurnRun>(`${s(sid)}/turn-runs/${enc(runId)}`),
   listTurnRuns: (sid: string, status?: string) =>
     http<TurnRun[]>(`${s(sid)}/turn-runs${status ? `?status=${enc(status)}` : ""}`),

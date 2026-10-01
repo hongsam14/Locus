@@ -4,6 +4,7 @@ import { api } from "../api";
 import { ActionBar } from "../features/play/ActionBar";
 import { DialoguePanel } from "../features/play/DialoguePanel";
 import { LlmBanner } from "../features/play/LlmBanner";
+import { NarrationCard } from "../features/play/NarrationCard";
 import { MovePanel } from "../features/play/MovePanel";
 import { PlayLog } from "../features/play/PlayLog";
 import { RegionScene } from "../features/play/RegionScene";
@@ -11,6 +12,7 @@ import { changeSummary, changeTitle } from "../features/play/summary";
 import { t, useLang, useRequestLang } from "../i18n";
 import type {
   GameSession,
+  Narration,
   PlayerAction,
   RegionTurnChange,
   RegionView,
@@ -42,6 +44,7 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
   const [lastChanges, setLastChanges] = useState<RegionTurnChange[] | null>(null);
   const [npcCounts, setNpcCounts] = useState<Record<string, number>>({}); // U5: messages per NPC
   const [activeNpcId, setActiveNpcId] = useState<string | null>(null);
+  const [declaration, setDeclaration] = useState<Narration | null>(null); // U6: last answer
   useLang(); // labels follow the display language
   const requestLangKey = useRequestLang(); // translated data follows the requested language
   // Route session readable from async continuations so a late response for a
@@ -140,6 +143,7 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
         } else if (current.result) {
           const res = current.result;
           setLastChanges(res.changes);
+          if (res.declaration) setDeclaration(res.declaration);
           for (const rc of res.changes) {
             const body = changeSummary(rc);
             if (body) addNotif({ region_id: rc.region_id, title: changeTitle(rc), body });
@@ -169,6 +173,7 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
     setLog([]);
     setRun(null);
     setLastChanges(null);
+    setDeclaration(null);
     setNpcCounts({});
     setActiveNpcId(null);
     setError(null);
@@ -195,15 +200,19 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
     };
   }, [sessionId, refresh, poll]);
 
-  async function act(action: PlayerAction) {
+  /** Start an action; true when the server accepted it (202). U6: the declaration box
+   * restores its text on false (400 shown as an error, 409 as a notice). */
+  async function act(action: PlayerAction): Promise<boolean> {
     const sid = sessionId;
     setError(null);
+    setDeclaration(null);
     try {
       const started = await api.act(sid, action);
-      if (sessionIdRef.current !== sid) return;
+      if (sessionIdRef.current !== sid) return false;
       setRun(started);
       await refresh(); // the player has already arrived (BR-U4-10)
       void poll(sid, started.id, genRef.current);
+      return true;
     } catch (e) {
       const msg = String(e);
       if (msg.startsWith("Error: 409") || msg.startsWith("409")) {
@@ -211,6 +220,7 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
       } else {
         setError(msg);
       }
+      return false;
     }
   }
 
@@ -270,7 +280,14 @@ export function PlayPage({ pollMs = 700 }: { pollMs?: number }) {
                 ))}
               </ul>
             )}
-            <ActionBar running={run} disabled={busy} onWait={() => act({ type: "wait" })} />
+            <NarrationCard narration={declaration} />
+            <ActionBar
+              running={run}
+              disabled={busy}
+              onWait={() => act({ type: "wait" })}
+              onDeclare={(text) => act({ type: "declare", text })}
+              maxChars={view.declare_max_chars ?? 300}
+            />
             <MovePanel
               moves={view.moves}
               disabled={busy}

@@ -236,6 +236,12 @@ export interface SessionRumor {
   confidence: number;
   promoted: boolean;
   statement_ko?: string | null; // X1 localization (response-only)
+  active?: boolean; // false once pruned or voided (the GM deed view lists those too)
+  // U6: where the rumor came from ("deed" = a player's deed, spread along the map)
+  origin_kind?: "canonical" | "deed";
+  origin_deed_id?: string | null;
+  origin_appraisal_id?: string | null;
+  spread_from_region_id?: string | null;
 }
 
 export interface RegionDistortion {
@@ -301,7 +307,8 @@ export interface PlayerCreate {
 export type PlayerAction =
   | { type: "move"; to_region_id: string }
   | { type: "wait" }
-  | { type: "end_talk"; npc_id: string };
+  | { type: "end_talk"; npc_id: string }
+  | { type: "declare"; text: string };
 
 export interface MoveOption {
   region_id: string;
@@ -329,6 +336,7 @@ export interface RegionView {
   moves: MoveOption[];
   turn_running: boolean;
   llm_available: boolean;
+  declare_max_chars?: number; // U6: the server's declaration limit
 }
 
 export type TurnRunStatus = "running" | "done" | "failed";
@@ -343,6 +351,7 @@ export interface ActionResult {
   budget_exhausted: boolean;
   llm_failed: boolean;
   llm_available: boolean;
+  declaration?: Narration | null; // U6: a declare action's narration
 }
 
 export interface TurnRun {
@@ -394,4 +403,61 @@ export interface EventDraft {
   category: EventCategory;
   description: string;
   magnitude: number;
+}
+
+// --- U6 deeds & spread -------------------------------------------------------- //
+/** A declaration's outcome: `text` in the display language, `record` in English. */
+export interface Narration {
+  text: string;
+  record: string;
+  lang: string;
+  llm_calls: number;
+}
+
+export type DeedKind = "arrival" | "statement" | "declared_action";
+
+export interface Deed {
+  id: string;
+  session_id: string;
+  player_id: string;
+  region_id: string;
+  turn: number;
+  kind: DeedKind;
+  text: string;
+  declaration?: string | null;
+  witnessed_npc_ids: string[];
+  voided: boolean;
+  voided_turn?: number | null;
+  created_at?: string | null;
+  // GM view (DeedViewOut)
+  text_ko?: string | null;
+  region_name?: string;
+  witness_names?: string[];
+}
+
+export interface DeedAppraisal {
+  id: string;
+  deed_id: string;
+  npc_id: string;
+  noteworthy: boolean;
+  salience: number;
+  slant: string;
+  retelling: string;
+  turn: number;
+  seeded_rumor_id?: string | null;
+  retelling_ko?: string | null;
+  npc_name?: string;
+}
+
+export interface DeedViewOut {
+  deed: Deed;
+  appraisals: DeedAppraisal[];
+  rumors: SessionRumor[];
+  reached_region_ids: string[];
+  reached_region_names: string[];
+}
+
+export interface VoidResult {
+  deed_id: string;
+  deactivated_rumor_ids: string[];
 }

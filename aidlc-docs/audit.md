@@ -3593,3 +3593,72 @@ Tests: pytest +7, vitest +5; every fix caught by a mutation. Gates: pytest 857, 
 - R-13 → Accepted risk (code plan Step 1 correction: the Ironcrag hearsay list is every town at ≥ 0.15 in the table, asserted from the table)
 
 ---
+
+## U8 Infrastructure Design Part 1 — plan and questions
+**Timestamp**: 2026-10-01T13:49:26Z
+**User Input**: (continuation of "Continue to Next Stage" — U8 FD approved)
+**AI Response**: Read the deploy files. Facts:
+- Bind-mount volumes need `setup-volumes.sh` first, so the start is two commands.
+- OpenSearch Dashboards starts by default with no healthcheck; the docs use a `tools` profile that does not exist.
+- Infra ports are published on 0.0.0.0 with fixed numbers; this host already holds 7474/7687.
+- web uses `npm install` on node:20 and nginx has no `client_max_body_size` (1 MiB).
+- There is no CI.
+Wrote `construction/plans/U8-demo-deploy-docs-infrastructure-design-plan.md`: three questions (Q1 volumes, Q2 Dashboards, Q3 CI image job) and assumptions I8-1..8 (127.0.0.1 + env-overridable host ports, node:22 + npm ci, nginx 48m, one workflow). Asking Q1·Q2 first.
+**Context**: CONSTRUCTION / U8 — Infrastructure Design (light), Part 1.
+
+---
+
+## U8 Infrastructure Design Part 1 — Q1·Q2 answers
+**Timestamp**: 2026-10-01T13:51:48Z
+**User Input**: Q1 = "B. bind mount 유지"; Q2 = "A. tools 프로필로 옮긴다 (Recommended)"
+**AI Response**: Recorded. Q1=B keeps `./data` bind mounts and `setup-volumes.sh`; the README start becomes a preparation command plus the start command, a recorded deviation from US-1.1's "one command" (the human's decision). Asking Q3 (CI image job).
+**Context**: CONSTRUCTION / U8 — Infrastructure Design (light), Part 1.
+
+---
+
+## U8 Infrastructure Design Part 2 — artifacts and Plan Review request
+**Timestamp**: 2026-10-01T13:54:00Z
+**User Input**: Q3 = "A. 이미지 작업을 더한다 (Recommended)"
+**AI Response**: Wrote `construction/U8-demo-deploy-docs/infrastructure-design/`:
+- infrastructure-design.md:
+  - services and profiles (default infra, service app+web, tools dashboard)
+  - 127.0.0.1 and env-overridable infra ports
+  - bind mounts kept, with the US-1.1 deviation recorded
+  - app image unchanged plus package-data
+  - web: node:22, npm ci, nginx 48m, healthcheck
+  - CI: four jobs (backend with seed, frontend, audit, images)
+  - observation, risks
+- deployment-architecture.md: visitor, developer and CI diagrams, start flow, acceptance-check map.
+Plan Review requested: architecture-reviewer, adversarial, iteration 1 of ≤2.
+**Context**: CONSTRUCTION / U8 — Infrastructure Design (light), Part 2.
+
+---
+
+## U8 Infrastructure Design — Plan Review iteration 1 verdict
+**Timestamp**: 2026-10-01T13:56:00Z
+**AI Response**: Reviewer (architecture-reviewer, adversarial, iter 1) returned READY with six open findings (`infrastructure-design/reviews/infrastructure-design-review-01.md`):
+- R-01 Major: relative `driver_opts.device` paths unproven.
+- R-02 Major: web healthcheck `localhost` may resolve to ::1 while nginx listens on IPv4 only.
+- R-03..R-06 Minor: nginx 413 shape; package-data change and image demo-check script; CI baseline / npm cache path / tsbuildinfo; port variables in env.example and `down` with tools.
+Terminal verdict: artifacts frozen.
+Orchestrator evidence for the gate (read-only): `docker compose config` (Compose v2.40.3) renders the relative `./data/...` devices as absolute paths, and `locus_*` volumes already exist on this host.
+**Context**: CONSTRUCTION / U8 — Infrastructure Design (light), Plan Review complete; gate next.
+
+---
+
+## U8 Infrastructure Design — approval gate
+**Timestamp**: 2026-10-01T14:00:03Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U8 Infrastructure Design approved. Next: U8 Code Generation Part 1 (plan).
+**Context**: CONSTRUCTION / U8 — Infrastructure Design (light) complete.
+
+## Plan Review Dispositions — Infrastructure Design — U8 데모·배포·문서
+**Timestamp**: 2026-10-01T14:00:03Z
+- R-01 → Accepted risk (compose config renders absolute paths on this host; the live scenario step 1 confirms the stack actually starts, with a fallback to `${PWD}`-based devices)
+- R-02 → Accepted risk (code: web healthcheck uses `http://127.0.0.1/`)
+- R-03 → Accepted risk (code: nginx limit set just above the app's so the app judges the limit, or a JSON error_page)
+- R-04 → Accepted risk (code plan: package-data glob change listed; the image demo-check script specified)
+- R-05 → Accepted risk (code plan: local baseline of ruff/black/tsc/npm ci first; npm cache-dependency-path; tsbuildinfo in web/.dockerignore)
+- R-06 → Accepted risk (code: port variables in env.example and the compose header; docs add `--profile tools` to down)
+
+---

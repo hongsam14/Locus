@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../../api";
 import { t, useRequestLang } from "../../i18n";
 import type { Knowledge, Region } from "../../types";
@@ -24,12 +24,16 @@ export function UnscopedPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lang = useRequestLang();
+  const readSeq = useRef(0);
 
+  /** Only the newest read is drawn (U3 review S31). */
   async function load() {
+    const seq = ++readSeq.current;
     try {
-      setItems(await api.listUnscoped(worldId));
+      const list = await api.listUnscoped(worldId);
+      if (seq === readSeq.current) setItems(list);
     } catch (e) {
-      setError(String(e));
+      if (seq === readSeq.current) setError(String(e));
     }
   }
   useEffect(() => {
@@ -42,8 +46,7 @@ export function UnscopedPanel({
     setError(null);
     try {
       await fn();
-      await load();
-      onChanged();
+      onChanged(); // the page re-reads the world and bumps reloadKey: one read (U3 C12)
     } catch (e) {
       setError(String(e));
     } finally {

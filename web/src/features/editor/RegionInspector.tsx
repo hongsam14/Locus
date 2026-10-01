@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../api";
+import { openSessionsOf, statusOf } from "../../api/http";
 import { t, useRequestLang } from "../../i18n";
 import type {
   ConnectionKind,
@@ -50,12 +51,17 @@ export function RegionInspector({
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
   const lang = useRequestLang();
+  const readSeq = useRef(0);
 
+  /** Read the region; only the newest read is drawn, so a slow read in the language the
+   * screen just left cannot paint over the new one (U3 review S31). */
   async function load() {
+    const seq = ++readSeq.current;
     try {
-      setView(await api.getEditorRegion(worldId, regionId));
+      const v = await api.getEditorRegion(worldId, regionId);
+      if (seq === readSeq.current) setView(v);
     } catch (e) {
-      setError(String(e));
+      if (seq === readSeq.current) setError(String(e));
     }
   }
   useEffect(() => {
@@ -120,7 +126,12 @@ export function RegionInspector({
       await load();
       onChanged();
     } catch (e) {
-      setError(String(e));
+      // a player walked in while the dialog was open: the plan's blocked line, its
+      // sessions and a confirm that stays off — not the raw 409 (U3 review S05)
+      const ids = statusOf(e) === 409 ? openSessionsOf(e)?.sessionIds ?? [] : [];
+      if (p.kind === "region" && ids.length) {
+        setPending({ kind: "region", plan: { ...p.plan, blocked_by_sessions: ids } });
+      } else setError(String(e));
     } finally {
       setBusy(false);
     }
@@ -181,6 +192,7 @@ export function RegionInspector({
         </div>
       )}
       <ConfirmDelete open={pending != null} plan={pending?.kind === "region" ? pending.plan : null}
+        regions={regions}
         message={message} busy={busy} error={pending ? error : null} onConfirm={confirmDelete}
         onCancel={() => setPending(null)} />
     </Panel>

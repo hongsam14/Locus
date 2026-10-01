@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
-import { statusOf } from "../../api/http";
+import { useReplaceConfirm } from "../../api/http";
 import { SessionBar } from "../../SessionBar";
 import { t } from "../../i18n";
 import type { Region } from "../../types";
@@ -9,7 +9,8 @@ import { Button, Modal } from "../../ui";
 
 /** The world's bar (US-6.2·6.3, BR-U3-15/36): its name, save as a World File, load one
  * (replacing the world after a yes, closing open sessions after a second), build from
- * sources, and the "open sessions" band that leads to them. */
+ * sources, and the sessions band: the open ones, or a session start when there are none
+ * (U3 review S01 — the editor's way into play). */
 export function WorldFileBar({
   worldId,
   name,
@@ -28,7 +29,7 @@ export function WorldFileBar({
   const navigate = useNavigate();
   const input = useRef<HTMLInputElement | null>(null);
   const [file, setFile] = useState<object | null>(null);
-  const [ask, setAsk] = useState<"replace" | { sessions: number } | null>(null);
+  const replace = useReplaceConfirm(); // "replace?" then "close N sessions?" (U3 C8)
   const [showSessions, setShowSessions] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +54,7 @@ export function WorldFileBar({
     setError(null);
     try {
       setFile(JSON.parse(await readText(f)));
-      setAsk("replace");
+      replace.askReplace();
     } catch {
       setError(t("file.load") + ": JSON?");
     }
@@ -68,9 +69,7 @@ export function WorldFileBar({
       setFile(null);
       onLoaded();
     } catch (e) {
-      const m = /"open_sessions":\s*(\d+)/.exec(String(e));
-      if (statusOf(e) === 409 && m && !confirm) setAsk({ sessions: Number(m[1]) });
-      else setError(String(e)); // 422: an unsupported version, the server's words
+      if (!replace.sessionsAsked(e, confirm)) setError(String(e)); // 422: the server's words
     } finally {
       setBusy(false);
     }
@@ -85,12 +84,20 @@ export function WorldFileBar({
         {t("file.load")}
       </Button>
       <input ref={input} type="file" accept=".json,application/json" className="hidden"
-        data-testid="file-input" onChange={(e) => pick(e.target.files?.[0])} />
+        data-testid="file-input" onChange={(e) => {
+          void pick(e.target.files?.[0]);
+          e.target.value = ""; // the same file again is a new pick (U3 review S24)
+        }} />
       <Button size="sm" data-testid="file-build" onClick={onBuild}>{t("file.build")}</Button>
-      {(openSessions ?? 0) > 0 && (
+      {(openSessions ?? 0) > 0 ? (
         <button type="button" className="text-xs underline text-danger" data-testid="open-sessions-band"
           onClick={() => setShowSessions((v) => !v)}>
           {t("file.openSessions", { n: openSessions ?? 0 })}
+        </button>
+      ) : openSessions === 0 && (
+        <button type="button" className="text-xs underline" data-testid="start-session-band"
+          onClick={() => setShowSessions((v) => !v)}>
+          {t("home.startSession")}
         </button>
       )}
       {error && <span className="text-danger text-sm" data-testid="file-error">{error}</span>}
@@ -101,19 +108,15 @@ export function WorldFileBar({
             onPlay={(out) => navigate(`/play/${encodeURIComponent(out.session.id)}`)} />
         </div>
       )}
-      <Modal open={ask != null} confirmTone="danger" busy={busy} title={t("file.load")}
+      <Modal open={replace.open} confirmTone="danger" busy={busy} title={t("file.load")}
         onCancel={() => {
-          setAsk(null);
+          replace.cancel();
           setFile(null);
         }}
-        onConfirm={() => {
-          const a = ask;
-          setAsk(null);
-          load(a !== "replace");
-        }}>
+        onConfirm={() => void load(replace.answer())}>
         <span data-testid="file-confirm">
-          {ask === "replace" ? t("file.replaceConfirm")
-            : t("file.closeSessionsConfirm", { n: typeof ask === "object" && ask ? ask.sessions : 0 })}
+          {replace.ask === "replace" ? t("file.replaceConfirm")
+            : t("file.closeSessionsConfirm", { n: replace.sessions })}
         </span>
       </Modal>
     </div>

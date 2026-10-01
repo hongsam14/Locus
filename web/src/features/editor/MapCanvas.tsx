@@ -16,9 +16,27 @@ export interface NewRegion {
   position: { x: number; y: number };
 }
 
+/** The stored connection of this pair and kind, either way round (a pair is one
+ * connection, BR-U3-10), or undefined. */
+export function sameConnection(
+  connections: ConnectionEdge[],
+  a: string,
+  b: string,
+  kind: ConnectionKind,
+): ConnectionEdge | undefined {
+  return connections.find(
+    (c) =>
+      c.kind === kind &&
+      ((c.source_region_id === a && c.target_region_id === b) ||
+        (c.source_region_id === b && c.target_region_id === a)),
+  );
+}
+
 /** The editor's map (US-2.2, Q5=A): three tools, always visible, so it is clear what a
  * click does. Select picks and drags (a click alone saves nothing, BR-U3-30); add
- * region opens a form at the clicked spot; connect takes two regions in turn. */
+ * region opens a form at the clicked spot; connect takes two regions in turn — on a
+ * pair that already has the chosen kind the form edits that connection (U3 #15).
+ * ``disabled`` (no world to edit, U3 review S21) turns every tool off. */
 export function MapCanvas({
   regions,
   connections,
@@ -26,6 +44,7 @@ export function MapCanvas({
   selectedConnection,
   mapImageUrl,
   busy = false,
+  disabled = false,
   onSelect,
   onSelectConnection,
   onMove,
@@ -38,6 +57,7 @@ export function MapCanvas({
   selectedConnection: ConnectionEdge | null;
   mapImageUrl?: string | null;
   busy?: boolean;
+  disabled?: boolean;
   onSelect: (id: string) => void;
   onSelectConnection: (c: ConnectionEdge) => void;
   onMove: (id: string, x: number, y: number) => void;
@@ -81,6 +101,7 @@ export function MapCanvas({
             variant={tool === m ? "primary" : "ghost"}
             aria-pressed={tool === m}
             data-testid={`map-tool-${m === "addRegion" ? "add-region" : m}`}
+            disabled={disabled}
             onClick={() => choose(m)}
           >
             {t(`map.tool.${m}`)}
@@ -96,14 +117,14 @@ export function MapCanvas({
         selectedId={tool === "connect" ? first : selectedId}
         selectedConnection={selectedConnection}
         mapImageUrl={mapImageUrl}
-        draggable={tool === "select"}
+        draggable={tool === "select" && !disabled}
         onSelect={pick}
         onMove={onMove}
-        onBackground={tool === "addRegion" ? (x, y) => setAt({ x, y }) : undefined}
+        onBackground={tool === "addRegion" && !disabled ? (x, y) => setAt({ x, y }) : undefined}
         onSelectConnection={tool === "select" ? onSelectConnection : undefined}
       />
       {at && (
-        <RegionForm
+        <NewRegionForm
           regions={regions}
           busy={busy}
           onCancel={() => setAt(null)}
@@ -117,6 +138,7 @@ export function MapCanvas({
         <ConnectionForm
           title={`${name(pair[0])} – ${name(pair[1])}`}
           busy={busy}
+          existing={(kind) => sameConnection(connections, pair[0], pair[1], kind)}
           onCancel={() => setPair(null)}
           onSubmit={(kind, weight) => {
             onCreateConnection(pair[0], pair[1], kind, weight);
@@ -139,7 +161,8 @@ function Dialog({ testId, children }: { testId: string; children: ReactNode }) {
   );
 }
 
-function RegionForm({ regions, busy, onSubmit, onCancel }: {
+/** The map's new-region form (U3 review C8: not the inspector's ``RegionForm``). */
+function NewRegionForm({ regions, busy, onSubmit, onCancel }: {
   regions: Region[];
   busy: boolean;
   onSubmit: (r: Omit<NewRegion, "position">) => void;
@@ -177,21 +200,36 @@ function RegionForm({ regions, busy, onSubmit, onCancel }: {
 }
 
 export function ConnectionForm({ title, busy, initialKind = "route", initialWeight = 0.6,
-  onSubmit, onCancel }: {
+  existing = () => undefined, onSubmit, onCancel }: {
   title: string;
   busy: boolean;
   initialKind?: ConnectionKind;
   initialWeight?: number;
+  /** The stored connection of the pair for a kind: the form then edits it. */
+  existing?: (kind: ConnectionKind) => ConnectionEdge | undefined;
   onSubmit: (kind: ConnectionKind, weight: number) => void;
   onCancel: () => void;
 }) {
   const [kind, setKind] = useState<ConnectionKind>(initialKind);
-  const [weight, setWeight] = useState(initialWeight);
+  const [weight, setWeight] = useState(existing(initialKind)?.weight ?? initialWeight);
+  const old = existing(kind);
   return (
     <Dialog testId="connection-form">
-      <h2 className="font-display text-lg">{t("editor.connection.add")}: {title}</h2>
+      <h2 className="font-display text-lg">
+        {t(old ? "editor.connection.edit" : "editor.connection.add")}: {title}
+      </h2>
+      {old && (
+        <p className="text-xs text-ink-soft" data-testid="connection-exists">
+          {t("editor.connection.exists", { kind, weight: old.weight.toFixed(2) })}
+        </p>
+      )}
       <select data-testid="connection-kind" value={kind}
-        onChange={(e) => setKind(e.target.value as ConnectionKind)}
+        onChange={(e) => {
+          const next = e.target.value as ConnectionKind;
+          setKind(next);
+          const stored = existing(next);
+          if (stored) setWeight(stored.weight); // start from what is saved
+        }}
         className="sketch-border bg-paper-card px-2 py-1 text-sm" aria-label={t("editor.connection.kind")}>
         {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
       </select>

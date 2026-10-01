@@ -3831,3 +3831,24 @@ Intended test changes: home demo button, `llm-banner`, the dialogue 503 body. 17
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 10.
 
 ---
+
+## U8 Code Generation Part 2 — Step 11a (U3 carry: editor screen)
+**Timestamp**: 2026-10-01T15:34:59Z
+**AI Response**: Closed:
+- C1: a drag is one PUT; the world list is read only on mount, load and build; the unscoped count comes from the server.
+- #14: a fresh build panel per opening.
+- #15: the connect tool edits a stored pair and keeps its grounds and prior.
+- S01 remainder: a session start on the bar; the two strings. Recorded: the plan put this in Step 10.
+- S05: a blocked delete shows its sessions.
+- S21: map tools are off with no world.
+- S23: the marker captures the pointer; cancel and lost capture end the drag. Design note: captured on the marker so clicks still select.
+- S24: the file box is reset after a pick.
+- S25: names for all six plan lines.
+- S31: the last read wins.
+- C8: the replace hook in BuildPanel and WorldFileBar; NewRegionForm.
+- C12: one read per write.
+- C17: an empty title is sent as is.
+17 tests and 1 intended change; 20/20 mutations caught. Gates: vitest 185, tsc clean.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 11a.
+
+---

@@ -51,7 +51,8 @@ export function openSessionsOf(
   err: unknown,
 ): { open?: number; busy?: number; sessionIds: string[] } | null {
   if (statusOf(err) !== 409) return null;
-  const body = err instanceof HttpError ? err.body : String(err).replace(/^.*?: /, "");
+  // an HttpError's body, or the body part of an "Error: 409 Conflict: {…}" message
+  const body = err instanceof HttpError ? err.body : String(err).replace(/^(Error: )?\d{3} [^:]*: /, "");
   try {
     const detail = (JSON.parse(body) as { detail?: unknown }).detail;
     if (!detail || typeof detail !== "object") return null;

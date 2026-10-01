@@ -59,6 +59,8 @@ describe("the 409 and 503 helpers", () => {
     expect(openSessionsOf(new HttpError(409, "Conflict", '{"detail":"world exists"}'))).toBeNull();
     expect(openSessionsOf(new HttpError(409, "Conflict", "not json"))).toBeNull();
     expect(openSessionsOf(new HttpError(400, "Bad Request", '{"detail":{"open_sessions":1}}'))).toBeNull();
+    // a plain Error carrying the same "NNN Status: body" message (U8 Step 11a)
+    expect(openSessionsOf(new Error('409 Conflict: {"detail":{"open_sessions":2}}'))?.open).toBe(2);
   });
 
   it("needsLlm is a 503 for a missing provider, not a failed call", () => {

@@ -108,7 +108,8 @@ function TextForm({ initialTitle, initialStatement, busy, onSubmit, onCancel }: 
       <div className="flex gap-1">
         <Button size="sm" onClick={onCancel}>{t("action.cancel")}</Button>
         <Button size="sm" variant="primary" data-testid="knowledge-save" disabled={busy || !valid}
-          onClick={() => onSubmit(title.trim() || statement.trim().slice(0, 60), statement.trim())}>
+          // an empty title is the server's to fill (fallback_title, U3 review C17)
+          onClick={() => onSubmit(title.trim(), statement.trim())}>
           {t("editor.knowledge.save")}
         </Button>
       </div>

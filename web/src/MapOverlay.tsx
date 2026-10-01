@@ -96,6 +96,10 @@ export function MapOverlay({
             setDrag(null);
           }
         }}
+        // a drag the browser took away (a touch scroll, a lost window) ends unsaved; the
+        // capture after a normal release ends nothing, the release already did (U3 S23)
+        onPointerCancel={() => setDrag(null)}
+        onLostPointerCapture={() => setDrag(null)}
         onClick={(e) => {
           if (onBackground && e.target === e.currentTarget) {
             const n = clientToNorm(e);
@@ -137,6 +141,13 @@ export function MapOverlay({
               style={{ cursor: draggable ? "grab" : "pointer" }}
               onPointerDown={(e) => {
                 if (draggable) {
+                  // the marker keeps the pointer: a release outside the map still ends the
+                  // drag, and a click still lands on the marker (U3 review S23)
+                  try {
+                    e.currentTarget.setPointerCapture?.(e.pointerId);
+                  } catch {
+                    // no active pointer (a synthetic event): the svg handlers still apply
+                  }
                   const start = { x: e.clientX, y: e.clientY };
                   setDrag({ id: r.id, x: c.x, y: c.y, start, moved: false });
                 }

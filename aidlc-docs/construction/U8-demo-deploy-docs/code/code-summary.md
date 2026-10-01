@@ -219,3 +219,35 @@
       - 서버 3: C5 스냅샷 규칙, C5 export, 웹 소스의 데모 이름(TP-U8-6)
       - 남은 하나는 같은 동작이다: `useCapabilities`에서 캐시 확인을 빼도 `useState(cached)`가 같은 값을 준다.
   - 게이트: pytest 918, vitest 169, tsc·ruff·black clean, mypy 11
+- **Step 11a** (U3 이월: 에디터 화면)
+  - C1
+    - 지도 끌기는 PUT 한 번이고, 성공하면 `rev`만 올린다(인스펙터가 지역을 다시 읽음, U3 #1 유지). 실패하면 월드를 다시 읽어 표식을 되돌리고 오류를 보인다.
+    - `listWorlds`는 마운트, World File 불러오기, 빌드 뒤에만 읽는다(`reloadAll`).
+    - 스코프 없음 탭 수는 export의 `unscoped_knowledge_ids`다(C5).
+  - #14: EditorPage도 패널을 열 때마다 `BuildPanel`의 `key`를 바꾼다(HomePage는 Step 10에서).
+  - #15
+    - `sameConnection`(같은 쌍·종류, 방향 무관)이 있으면 연결 폼이 "연결 고치기"로 열리고, 저장된 가중치와 안내 줄(`connection-exists`)을 보인다.
+    - 저장 본문은 기존 연결(근거·prior·출처)에 폼의 가중치만 얹는다. 다른 종류를 고르면 새 연결이다.
+  - S01 나머지
+    - 〔기록〕 플랜은 Step 10에 두었지만 10.3에서 AppNav만 했다. 여기서 마저 했다.
+    - WorldFileBar는 열린 세션이 0이면 [세션 시작] 띠(`start-session-band`)로 세션 picker를 연다.
+    - `gm.noSessionHint`·`play.noSession` 문구가 홈(/)과 에디터 띠를 가리킨다.
+  - S05: 지역 삭제 409(`session_ids`)는 계획의 `blocked_by_sessions`로 넣는다. 그래서 막힘 문구와 세션이 보이고 확인은 꺼진다(원문 409를 보이지 않음).
+  - S21(화면): 월드가 없으면(export 404) 지도 도구 셋이 꺼진다(`MapCanvas disabled`).
+  - S23
+    - 끌기 시작 때 표식(`<g>`)이 포인터를 잡는다. `pointercancel`·`lostpointercapture`는 저장 없이 끌기를 끝낸다.
+    - 〔설계 메모〕 플랜은 "pointerdown에서 setPointerCapture"다. 잡는 곳을 svg가 아닌 표식으로 했다. click을 잡은 요소로 보내는 브라우저에서도 표식 클릭(지역 고르기)이 살아 있게 하려는 것이다.
+  - S24: 고른 뒤 파일 칸을 비운다.
+  - S25: 지역 삭제 계획 여섯 항목 모두 수와 이름을 보인다. 연결은 다른 끝 지역 이름과 종류로 보인다.
+  - S31: RegionInspector·UnscopedPanel은 읽기 순번을 두고 마지막 읽기만 그린다.
+  - C8
+    - BuildPanel·WorldFileBar가 `useReplaceConfirm`을 쓴다(정규식 파싱 삭제).
+    - 지도의 새 지역 폼 이름을 `NewRegionForm`으로 바꿨다.
+    - `openSessionsOf`가 평범한 `Error`의 "NNN Status: 본문" 메시지도 읽는다.
+  - C12: UnscopedPanel의 쓰기 뒤 `load()`를 뺐다. 페이지의 `reloadKey`가 한 번 읽는다.
+  - C17(웹): 제목 칸이 비면 빈 제목을 보낸다(서버가 `fallback_title`로 채움, 9a).
+  - 테스트
+    - `editor.test` 16(위 항목마다, EditorPage는 라우터로 그림)과 `capabilities.test` 1
+    - 의도된 변경: UnscopedPanel 테스트(C12, 페이지처럼 `reloadKey`를 올리는 하네스. 읽기 2번 단언)
+  - 변이 20건 모두 잡음: C1 셋, #14, #15 둘, S21, S01, S05, S25, S31 둘, C12, C17, S23 셋, S24, C8 WorldFileBar
+  - 게이트: vitest 185, tsc clean

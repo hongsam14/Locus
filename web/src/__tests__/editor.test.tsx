@@ -1,6 +1,7 @@
 // U3 world editor (frontend-components §6, EX-11, BR-U3-24..32).
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { useState } from "react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "../api/http";
 import { resetCapabilities } from "../capabilities";
@@ -10,11 +11,15 @@ import { ConfirmDelete } from "../features/editor/ConfirmDelete";
 import { NpcDraftCards } from "../features/editor/NpcDraftCards";
 import { isDrag } from "../features/editor/drag";
 import { MapCanvas } from "../features/editor/MapCanvas";
+import { KnowledgeList } from "../features/editor/KnowledgeList";
+import { WorldFileBar } from "../features/editor/WorldFileBar";
+import { MapOverlay } from "../MapOverlay";
+import { EditorPage } from "../routes/EditorPage";
 import { RegionInspector } from "../features/editor/RegionInspector";
 import { UnscopedPanel } from "../features/editor/UnscopedPanel";
 import { WikiPanel } from "../features/editor/WikiPanel";
 import { t } from "../i18n";
-import type { AugRun, EditorRegionView, Region, RegionDeletePlan } from "../types";
+import type { AugRun, ConnectionEdge, EditorRegionView, Region, RegionDeletePlan, WorldExport } from "../types";
 
 vi.mock("../api", () => ({
   api: {
@@ -43,6 +48,13 @@ vi.mock("../api", () => ({
     revert: vi.fn(),
     unignore: vi.fn(),
     uploadBuild: vi.fn(),
+    exportWorld: vi.fn(),
+    listWorlds: vi.fn(),
+    createRegion: vi.fn(),
+    importWorldFile: vi.fn(),
+    getWorldFile: vi.fn(),
+    listSessions: vi.fn().mockResolvedValue([]),
+    startSession: vi.fn(),
   },
 }));
 import { api } from "../api";
@@ -229,12 +241,19 @@ describe("UnscopedPanel (BR-U3-14)", () => {
       .mockResolvedValueOnce([{ id: "k9", world_id: "w", statement: "lost", title: "lost", confidence: 1, provenance: { source: "input" } }])
       .mockResolvedValueOnce([]);
     (api.setScopes as Mock).mockResolvedValue({ region_ids: ["r2"] });
-    render(<UnscopedPanel worldId="w" regions={regions} onChanged={() => {}} />);
+    // U8 intended change: U3 review C12 — the panel no longer reads again on its own; the
+    // page re-reads the world and bumps reloadKey, as EditorPage does
+    function Page() {
+      const [rev, setRev] = useState(0);
+      return <UnscopedPanel worldId="w" regions={regions} reloadKey={rev} onChanged={() => setRev((r) => r + 1)} />;
+    }
+    render(<Page />);
     await waitFor(() => screen.getByTestId("unscoped-k9"));
     fireEvent.change(screen.getByTestId("unscoped-region-k9"), { target: { value: "r2" } });
     fireEvent.click(screen.getByTestId("unscoped-assign-k9"));
     await waitFor(() => expect(api.setScopes).toHaveBeenCalledWith("w", "k9", ["r2"]));
     await waitFor(() => expect(screen.queryByTestId("unscoped-k9")).not.toBeInTheDocument());
+    expect(api.listUnscoped).toHaveBeenCalledTimes(2); // the mount read and one after the write
   });
 });
 
@@ -447,5 +466,251 @@ describe("U8 editor", () => {
     unmount();
     render(<ConfirmDelete open plan={{ ...plan, seed_ids: [] }} onConfirm={() => {}} onCancel={() => {}} />);
     expect(screen.queryByTestId("delete-plan-seeds")).not.toBeInTheDocument();
+  });
+});
+
+
+// --------------------------------------------------------------------------- //
+// U3 code-review-01, editor screen (U8 Step 11a): #14 #15 S01 S05 S21 S23 S24 S25 S31,
+// C1 C5 C8 C12 C17
+// --------------------------------------------------------------------------- //
+describe("U3 review carry: the editor screen", () => {
+  const ROAD: ConnectionEdge = { world_id: "w", source_region_id: "r1", target_region_id: "r2",
+    kind: "route", weight: 0.35, rationale: "old road", wiki_prior_ref: "p1",
+    provenance: { source: "inferred", generated_by: "demo-author" } };
+  const WORLD: WorldExport = { world_id: "w", regions, connections: [ROAD, { ...ROAD,
+    source_region_id: "r2", target_region_id: "r1" }], entities: [], knowledge: [], scopes: [],
+    unscoped_knowledge_ids: ["k7", "k8"] };
+  function editor() {
+    render(
+      <MemoryRouter initialEntries={["/editor/w"]}>
+        <Routes><Route path="/editor/:worldId" element={<EditorPage />} /></Routes>
+      </MemoryRouter>,
+    );
+  }
+  beforeEach(() => {
+    resetCapabilities();
+    (api.capabilities as Mock).mockResolvedValue({ llm: true, vlm: true, embedding: true });
+    (api.exportWorld as Mock).mockResolvedValue(WORLD);
+    (api.listWorlds as Mock).mockResolvedValue([{ id: "w", name: "W", region_count: 2, open_sessions: 0 }]);
+    (api.listSessions as Mock).mockResolvedValue([]);
+  });
+  afterEach(() => resetCapabilities());
+
+  it("C1: a drag is one PUT — no world or world-list read after it", async () => {
+    (api.updateRegion as Mock).mockResolvedValue({});
+    editor();
+    await waitFor(() => screen.getByTestId("region-marker-r1"));
+    const exports = (api.exportWorld as Mock).mock.calls.length;
+    const lists = (api.listWorlds as Mock).mock.calls.length;
+    const marker = screen.getByTestId("region-marker-r1");
+    const svg = marker.closest("svg") as SVGSVGElement;
+    fireEvent.pointerDown(marker, { clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(svg, { clientX: 120, clientY: 100 });
+    fireEvent.pointerUp(svg, { clientX: 120, clientY: 100 });
+    await waitFor(() => expect(api.updateRegion).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 20));
+    expect((api.exportWorld as Mock).mock.calls.length).toBe(exports);
+    expect((api.listWorlds as Mock).mock.calls.length).toBe(lists);
+  });
+
+  it("C1: a failed drag save reads the world again and says why", async () => {
+    (api.updateRegion as Mock).mockRejectedValue(new HttpError(500, "Server Error", "graph down"));
+    editor();
+    await waitFor(() => screen.getByTestId("region-marker-r1"));
+    const exports = (api.exportWorld as Mock).mock.calls.length;
+    const marker = screen.getByTestId("region-marker-r1");
+    const svg = marker.closest("svg") as SVGSVGElement;
+    fireEvent.pointerDown(marker, { clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(svg, { clientX: 120, clientY: 100 });
+    fireEvent.pointerUp(svg, { clientX: 120, clientY: 100 });
+    await waitFor(() => expect(screen.getByTestId("editor-error")).toHaveTextContent("graph down"));
+    expect((api.exportWorld as Mock).mock.calls.length).toBe(exports + 1);
+  });
+
+  it("C5: the unscoped tab counts the server's list", async () => {
+    editor();
+    await waitFor(() => expect(screen.getByTestId("editor-tab-unscoped")).toHaveTextContent("2"));
+  });
+
+  it("#14: a closed build panel keeps no files — reopened, [build] needs new input", async () => {
+    editor();
+    await waitFor(() => screen.getByTestId("file-build"));
+    fireEvent.click(screen.getByTestId("file-build"));
+    const art = new File(["x"], "old-map.png", { type: "image/png" });
+    fireEvent.change(screen.getByTestId("build-images"), { target: { files: [art] } });
+    await waitFor(() => expect(screen.getByTestId("build-submit")).toBeEnabled());
+    fireEvent.click(screen.getByText(t("action.close")));
+    fireEvent.click(screen.getByTestId("file-build"));
+    await waitFor(() => expect(api.capabilities).toHaveBeenCalled());
+    expect(screen.getByTestId("build-submit")).toBeDisabled();
+  });
+
+  it("#15: the connect tool on a stored pair edits it and keeps its grounds and prior", async () => {
+    (api.saveConnection as Mock).mockResolvedValue([]);
+    editor();
+    await waitFor(() => screen.getByTestId("region-marker-r1"));
+    fireEvent.click(screen.getByTestId("map-tool-connect"));
+    fireEvent.click(screen.getByTestId("region-marker-r2"));
+    fireEvent.click(screen.getByTestId("region-marker-r1"));
+    expect(screen.getByTestId("connection-form")).toHaveTextContent(t("editor.connection.edit"));
+    expect(screen.getByTestId("connection-exists")).toHaveTextContent("0.35");
+    expect(screen.getByTestId("connection-weight")).toHaveValue("0.35");
+    fireEvent.change(screen.getByTestId("connection-weight"), { target: { value: "0.5" } });
+    fireEvent.click(screen.getByTestId("connection-save"));
+    await waitFor(() => expect(api.saveConnection).toHaveBeenCalledTimes(1));
+    expect((api.saveConnection as Mock).mock.calls[0][1]).toMatchObject({
+      source_region_id: "r2", target_region_id: "r1", kind: "route", weight: 0.5,
+      rationale: "old road", wiki_prior_ref: "p1",
+      provenance: { source: "inferred", generated_by: "demo-author" },
+    });
+  });
+
+  it("#15: another kind on that pair is a new connection", async () => {
+    (api.saveConnection as Mock).mockResolvedValue([]);
+    editor();
+    await waitFor(() => screen.getByTestId("region-marker-r1"));
+    fireEvent.click(screen.getByTestId("map-tool-connect"));
+    fireEvent.click(screen.getByTestId("region-marker-r1"));
+    fireEvent.click(screen.getByTestId("region-marker-r2"));
+    fireEvent.change(screen.getByTestId("connection-kind"), { target: { value: "river" } });
+    expect(screen.queryByTestId("connection-exists")).not.toBeInTheDocument();
+    expect(screen.getByTestId("connection-form")).toHaveTextContent(t("editor.connection.add"));
+    fireEvent.click(screen.getByTestId("connection-save"));
+    await waitFor(() => expect(api.saveConnection).toHaveBeenCalledTimes(1));
+    const body = (api.saveConnection as Mock).mock.calls[0][1];
+    expect(body).toMatchObject({ kind: "river", provenance: { source: "input", generated_by: "designer" } });
+    expect(body.wiki_prior_ref).toBeUndefined();
+  });
+
+  it("S21: with no world to edit the map tools are off", async () => {
+    (api.exportWorld as Mock).mockRejectedValue(new HttpError(404, "Not Found", "world not found"));
+    editor();
+    await waitFor(() => screen.getByTestId("empty-hint"));
+    expect(screen.getByTestId("map-tool-add-region")).toBeDisabled();
+    expect(screen.getByTestId("map-tool-connect")).toBeDisabled();
+  });
+
+  it("S01: with no open session the bar offers a session start", async () => {
+    editor();
+    fireEvent.click(await screen.findByTestId("start-session-band"));
+    expect(await screen.findByTestId("session-new-btn")).toBeInTheDocument();
+    expect(screen.queryByTestId("open-sessions-band")).not.toBeInTheDocument();
+  });
+
+  it("S05: a delete refused because a player walked in shows who, and stays off", async () => {
+    const plan: RegionDeletePlan = { region_id: "r1", region_name: "Riverton", children: [],
+      connections: [], npcs: [], knowledge_to_unscope: [], knowledge_scope_removed: [],
+      entities_unlocated: [], blocked_by_sessions: [] };
+    (api.getEditorRegion as Mock).mockResolvedValue(VIEW);
+    (api.getDeletePlan as Mock).mockResolvedValue(plan);
+    (api.deleteRegion as Mock).mockRejectedValue(new HttpError(409, "Conflict", JSON.stringify(
+      { detail: { message: "a player of an open session stands in this region", session_ids: ["s7"] } })));
+    render(<RegionInspector worldId="w" regionId="r1" regions={regions} onChanged={() => {}} onDeleted={() => {}} />);
+    fireEvent.click(await screen.findByTestId("region-delete"));
+    fireEvent.click(await screen.findByText(t("delete.confirm")));
+    await waitFor(() => expect(screen.getByTestId("delete-blocked")).toHaveTextContent("s7"));
+    expect(screen.getByText(t("delete.confirm"))).toBeDisabled();
+    expect(screen.getByTestId("confirm-delete")).not.toHaveTextContent("409");
+  });
+
+  it("S25: the delete plan names what goes, by the region at the far end for connections", () => {
+    const plan: RegionDeletePlan = { region_id: "r1", region_name: "Riverton", children: [],
+      connections: [{ world_id: "w", a_region_id: "r1", b_region_id: "r2", kind: "route" }],
+      npcs: [], knowledge_to_unscope: [], knowledge_scope_removed: [{ id: "k1", name: "mill" }],
+      entities_unlocated: [{ id: "e1", name: "Old Bell" }], blocked_by_sessions: [] };
+    render(<ConfirmDelete open plan={plan} regions={regions} onConfirm={() => {}} onCancel={() => {}} />);
+    const list = screen.getByTestId("delete-plan");
+    expect(list).toHaveTextContent("Hollow (route)");
+    expect(list).toHaveTextContent("mill");
+    expect(list).toHaveTextContent("Old Bell");
+  });
+
+  it("S31: a slow read in the language just left does not paint over the newer one", async () => {
+    let first: (v: EditorRegionView) => void = () => {};
+    (api.getEditorRegion as Mock)
+      .mockImplementationOnce(() => new Promise((r) => (first = r)))
+      .mockResolvedValueOnce({ ...VIEW, region: { ...VIEW.region, name: "Riverton (new)" } });
+    const props = { worldId: "w", regionId: "r1", regions, onChanged: () => {}, onDeleted: () => {} };
+    const { rerender } = render(<RegionInspector {...props} reloadKey={0} />);
+    rerender(<RegionInspector {...props} reloadKey={1} />);
+    await waitFor(() => expect(screen.getByTestId("region-inspector")).toHaveTextContent("Riverton (new)"));
+    await act(async () => first({ ...VIEW, region: { ...VIEW.region, name: "Riverton (old)" } }));
+    expect(screen.getByTestId("region-inspector")).not.toHaveTextContent("Riverton (old)");
+  });
+
+  it("S31: the unscoped list draws only its newest read", async () => {
+    let first: (v: unknown[]) => void = () => {};
+    (api.listUnscoped as Mock)
+      .mockImplementationOnce(() => new Promise((r) => (first = r)))
+      .mockResolvedValueOnce([]);
+    const { rerender } = render(<UnscopedPanel worldId="w" regions={regions} reloadKey={0} onChanged={() => {}} />);
+    rerender(<UnscopedPanel worldId="w" regions={regions} reloadKey={1} onChanged={() => {}} />);
+    await waitFor(() => screen.getByText(t("editor.unscoped.none")));
+    await act(async () => first([{ id: "k9", world_id: "w", statement: "lost", title: "lost", confidence: 1, provenance: { source: "input" } }]));
+    expect(screen.queryByTestId("unscoped-k9")).not.toBeInTheDocument();
+  });
+
+  it("C17: a fact added without a title sends no title of the client's making", () => {
+    const onSubmit = vi.fn();
+    render(<KnowledgeList items={[]} regions={regions} busy={false} onCreate={onSubmit}
+      onUpdate={() => {}} onSetScopes={() => {}} onDelete={() => {}} />);
+    fireEvent.click(screen.getByTestId("knowledge-add"));
+    fireEvent.change(screen.getByTestId("knowledge-statement"), { target: { value: "  The mill wheel turns at dawn and dusk  " } });
+    fireEvent.click(screen.getByTestId("knowledge-save"));
+    expect(onSubmit).toHaveBeenCalledWith("", "The mill wheel turns at dawn and dusk");
+  });
+
+  it("S23: a drag the browser cancels or takes away ends without a save", () => {
+    const onMove = vi.fn();
+    const captured: number[] = [];
+    const proto = Element.prototype as unknown as { setPointerCapture?: (id: number) => void };
+    const had = proto.setPointerCapture;
+    proto.setPointerCapture = (id: number) => void captured.push(id);
+    try {
+      render(<MapOverlay regions={regions} connections={[]} selectedId={null} draggable onSelect={() => {}} onMove={onMove} />);
+      const marker = screen.getByTestId("region-marker-r1");
+      const svg = marker.closest("svg") as SVGSVGElement;
+      for (const end of ["pointerCancel", "lostPointerCapture"] as const) {
+        fireEvent.pointerDown(marker, { clientX: 100, clientY: 100, pointerId: 7 });
+        fireEvent.pointerMove(svg, { clientX: 130, clientY: 100 });
+        fireEvent[end](svg);
+        fireEvent.pointerUp(svg, { clientX: 130, clientY: 100 });
+      }
+      expect(onMove).not.toHaveBeenCalled();
+      expect(captured.length).toBe(2); // the marker took the pointer each time
+    } finally {
+      proto.setPointerCapture = had;
+    }
+  });
+
+  it("S24: the file box is emptied after a pick, so the same file can be picked again", async () => {
+    render(<MemoryRouter><WorldFileBar worldId="w" name="W" openSessions={0} regions={regions}
+      onLoaded={() => {}} onBuild={() => {}} /></MemoryRouter>);
+    const input = screen.getByTestId("file-input") as HTMLInputElement;
+    const set = vi.fn();
+    Object.defineProperty(input, "value", { configurable: true, get: () => "", set });
+    const file = new File(['{"format_version": 1}'], "w.world.json", { type: "application/json" });
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(set).toHaveBeenCalledWith("");
+    await waitFor(() => expect(screen.getByTestId("file-confirm")).toHaveTextContent(t("file.replaceConfirm")));
+  });
+
+  it("C8: the World File bar asks replace, then the session question, then loads with confirm", async () => {
+    (api.importWorldFile as Mock)
+      .mockRejectedValueOnce(new HttpError(409, "Conflict", '{"detail":{"open_sessions":3,"session_ids":["a","b","c"]}}'))
+      .mockResolvedValueOnce({ ok: true });
+    const onLoaded = vi.fn();
+    render(<MemoryRouter><WorldFileBar worldId="w" name="W" openSessions={3} regions={regions}
+      onLoaded={onLoaded} onBuild={() => {}} /></MemoryRouter>);
+    const file = new File(['{"format_version": 1}'], "w.world.json", { type: "application/json" });
+    fireEvent.change(screen.getByTestId("file-input"), { target: { files: [file] } });
+    await waitFor(() => screen.getByTestId("file-confirm"));
+    fireEvent.click(screen.getByText(t("action.confirm")));
+    await waitFor(() => expect(screen.getByTestId("file-confirm")).toHaveTextContent(t("file.closeSessionsConfirm", { n: 3 })));
+    fireEvent.click(screen.getByText(t("action.confirm")));
+    await waitFor(() => expect(onLoaded).toHaveBeenCalled());
+    expect((api.importWorldFile as Mock).mock.calls.map((c) => c[2])).toEqual([
+      { replace: true, confirm: false }, { replace: true, confirm: true }]);
   });
 });

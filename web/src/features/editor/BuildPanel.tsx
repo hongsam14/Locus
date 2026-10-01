@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api } from "../../api";
-import { needsLlm, statusOf } from "../../api/http";
+import { needsLlm, openSessionsOf, statusOf, useReplaceConfirm } from "../../api/http";
 import { llmOff, useCapabilities } from "../../capabilities";
 import { t } from "../../i18n";
 import type { BuildReport } from "../../types";
@@ -38,7 +38,7 @@ export function BuildPanel({
   const [description, setDescription] = useState("");
   const [memo, setMemo] = useState("");
   const [files, setFiles] = useState<Record<string, File[]>>({});
-  const [ask, setAsk] = useState<"replace" | { sessions: number } | null>(null);
+  const replaceQ = useReplaceConfirm(); // "replace?" then "close N sessions?" (U3 C8)
   const noLlm = llmOff(useCapabilities()); // U8 (BR-U8-25): building calls the LLM
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,9 +62,8 @@ export function BuildPanel({
       setReport(r);
       onBuilt(id, r);
     } catch (e) {
-      const m = /"open_sessions":\s*(\d+)/.exec(String(e));
-      if (statusOf(e) === 409 && m && !confirm) setAsk({ sessions: Number(m[1]) });
-      else if (statusOf(e) === 409 && !replace && !m) setAsk("replace"); // the id exists
+      if (replaceQ.sessionsAsked(e, confirm)) return;
+      if (statusOf(e) === 409 && !replace && !openSessionsOf(e)) replaceQ.askReplace(); // the id exists
       else setError(needsLlm(e) ? t("llm.required") : String(e)); // BR-U8-27
     } finally {
       setBusy(false);
@@ -106,21 +105,17 @@ export function BuildPanel({
           <Button size="sm" onClick={onClose}>{t("action.close")}</Button>
           <Button size="sm" variant="primary" data-testid="build-submit"
             disabled={busy || !id || !hasInput || noLlm} title={noLlm ? t("llm.required") : undefined}
-            onClick={() => (exists ? setAsk("replace") : send(false, false))}>
+            onClick={() => (exists ? replaceQ.askReplace() : send(false, false))}>
             {t("build.submit")}
           </Button>
         </div>
       </div>
-      <Modal open={ask != null} confirmTone="danger" title={t("build.title")}
-        onCancel={() => setAsk(null)}
-        onConfirm={() => {
-          const a = ask;
-          setAsk(null);
-          send(true, a !== "replace"); // the second question is the session one
-        }}>
+      <Modal open={replaceQ.open} confirmTone="danger" title={t("build.title")}
+        onCancel={replaceQ.cancel}
+        onConfirm={() => void send(true, replaceQ.answer())}>
         <span data-testid="build-confirm">
-          {ask === "replace" ? t("build.replaceConfirm")
-            : t("build.closeSessions", { n: typeof ask === "object" && ask ? ask.sessions : 0 })}
+          {replaceQ.ask === "replace" ? t("build.replaceConfirm")
+            : t("build.closeSessions", { n: replaceQ.sessions })}
         </span>
       </Modal>
     </div>

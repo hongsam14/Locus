@@ -5,7 +5,7 @@ import { statusOf } from "../api/http";
 import { llmOff, useCapabilities } from "../capabilities";
 import { AugmentPanel } from "../features/editor/AugmentPanel";
 import { BuildPanel } from "../features/editor/BuildPanel";
-import { MapCanvas, type NewRegion } from "../features/editor/MapCanvas";
+import { MapCanvas, type NewRegion, sameConnection } from "../features/editor/MapCanvas";
 import { RegionInspector } from "../features/editor/RegionInspector";
 import { UnscopedPanel } from "../features/editor/UnscopedPanel";
 import { WikiPanel } from "../features/editor/WikiPanel";
@@ -33,6 +33,7 @@ export function EditorPage() {
   const [tab, setTab] = useState<Tab>("region");
   const [rev, setRev] = useState(0);
   const [building, setBuilding] = useState(false);
+  const [buildKey, setBuildKey] = useState(0); // a fresh panel per opening (U3 #14)
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -47,14 +48,21 @@ export function EditorPage() {
       if (statusOf(e) === 404) setMissing(true);
       else setError(String(e));
     }
-    api.listWorlds().then((ws) => setInfo(ws.find((w) => w.id === worldId) ?? null)).catch(() => {});
     setRev((r) => r + 1);
   }
+  // The world list is read for its open-session count only: on mount and after a load or
+  // a build, the writes that can change it — not after every edit (U3 review C1).
+  const loadInfo = () =>
+    api.listWorlds().then((ws) => setInfo(ws.find((w) => w.id === worldId) ?? null)).catch(() => {});
+  const reloadAll = () => {
+    loadInfo();
+    return reload();
+  };
   useEffect(() => {
     setData(null);
     setSelected(null);
     setAugRunId(null);
-    reload();
+    reloadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldId]);
 
@@ -77,12 +85,25 @@ export function EditorPage() {
     }
   }
 
-  function move(id: string, x: number, y: number) {
+  // A drag is one PUT: the map already shows the new spot, so the world is not read
+  // again; the inspector re-reads its region (rev) so it never saves the old spot back
+  // (U3 #1). A failed save reads the world again to put the marker back (U3 review C1).
+  async function move(id: string, x: number, y: number) {
     const region = data?.regions.find((r) => r.id === id);
     if (!data || !region) return;
     const updated = { ...region, position: { x, y } };
     setData({ ...data, regions: data.regions.map((r) => (r.id === id ? updated : r)) });
-    run(() => api.updateRegion(worldId, updated));
+    setBusy(true);
+    setError(null);
+    try {
+      await api.updateRegion(worldId, updated);
+      setRev((r) => r + 1);
+    } catch (e) {
+      setError(String(e));
+      await reload();
+    } finally {
+      setBusy(false);
+    }
   }
   const createRegion = (r: NewRegion) =>
     run(async () => {
@@ -90,14 +111,23 @@ export function EditorPage() {
       setSelected(made.id);
       setTab("region");
     });
-  const createConnection = (a: string, b: string, kind: ConnectionKind, weight: number) =>
-    run(() => api.saveConnection(worldId, { world_id: worldId, source_region_id: a,
-      target_region_id: b, kind, weight, provenance: PROV }));
+  // The connect tool on a pair that already has this kind edits that connection: its
+  // grounds, prior and source are kept and only the weight is the form's (U3 #15).
+  const createConnection = (a: string, b: string, kind: ConnectionKind, weight: number) => {
+    const old = sameConnection(data?.connections ?? [], a, b, kind);
+    return run(() => api.saveConnection(worldId, old
+      ? { ...old, source_region_id: a, target_region_id: b, weight }
+      : { world_id: worldId, source_region_id: a, target_region_id: b, kind, weight, provenance: PROV }));
+  };
+
+  const openBuild = () => {
+    setBuildKey((k) => k + 1); // no files or report left from the last opening (U3 #14)
+    setBuilding(true);
+  };
 
   const noLlm = llmOff(caps);
   const regions = data?.regions ?? [];
-  const scoped = new Set((data?.scopes ?? []).map((s) => s.knowledge_id));
-  const unscoped = (data?.knowledge ?? []).filter((k) => !k.is_global && !scoped.has(k.id)).length;
+  const unscoped = data?.unscoped_knowledge_ids?.length ?? 0; // the server's rule (C5)
   const entities = (data?.entities ?? []) as NameRef[];
 
   return (
@@ -105,14 +135,14 @@ export function EditorPage() {
       <AppNav worldId={worldId} />
       <LlmNotice visible={noLlm} />
       <WorldFileBar worldId={worldId} name={data?.world?.name ?? info?.name ?? worldId}
-        openSessions={info?.open_sessions ?? null} regions={regions} onLoaded={reload}
-        onBuild={() => setBuilding(true)} />
+        openSessions={info?.open_sessions ?? null} regions={regions} onLoaded={reloadAll}
+        onBuild={openBuild} />
       {error && <div className="p-2 text-danger" data-testid="editor-error">{error}</div>}
       {toast && <Toast onClose={() => setToast(null)}>{toast}</Toast>}
       {missing && (
         <div className="p-3 flex items-center gap-2" data-testid="empty-hint">
           <span className="text-ink-soft">{t("home.empty")}</span>
-          <Button size="sm" variant="primary" onClick={() => setBuilding(true)}>
+          <Button size="sm" variant="primary" onClick={openBuild}>
             {t("home.buildFromSources")}
           </Button>
         </div>
@@ -134,7 +164,7 @@ export function EditorPage() {
       )}
       <div className="flex flex-wrap gap-4 p-3">
         <MapCanvas regions={regions} connections={data?.connections ?? []} selectedId={selected}
-          selectedConnection={conn} busy={busy} mapImageUrl={mapUrl}
+          selectedConnection={conn} busy={busy} mapImageUrl={mapUrl} disabled={missing}
           onSelect={(id) => { setSelected(id); setConn(null); setTab("region"); }}
           onSelectConnection={(c) => { setConn(c); setSelected(c.source_region_id); setTab("region"); }}
           onMove={move} onCreateRegion={createRegion} onCreateConnection={createConnection} />
@@ -165,8 +195,8 @@ export function EditorPage() {
           {tab === "wiki" && <WikiPanel worldId={worldId} regions={regions} reloadKey={rev} />}
         </div>
       </div>
-      <BuildPanel open={building} worldId={worldId} exists={data != null}
-        onClose={() => setBuilding(false)} onBuilt={() => reload()} />
+      <BuildPanel key={buildKey} open={building} worldId={worldId} exists={data != null}
+        onClose={() => setBuilding(false)} onBuilt={() => reloadAll()} />
     </div>
   );
 }

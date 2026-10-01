@@ -10,16 +10,16 @@ from fastapi import APIRouter, Depends
 from api.deps import display_lang, get_localization, get_play
 from api.errors import PLAY_ERRORS, http_error
 from api.schemas import (
-    DeedAppraisalOut,
-    DeedOut,
     DeedViewOut,
     DistortionUpdate,
     EventCreate,
     EventOut,
     RumorOut,
     SupportUpdate,
+    WorldStateOut,
     enrichment_for,
     localize,
+    localize_deed_views,
     purge_translations,
 )
 from locus.localization.wiring import LocalizationContainer
@@ -33,7 +33,6 @@ from locus.play.models import (
 )
 from locus.play.turn.advancer import TurnResult
 from locus.play.wiring import PlayContainer
-from locus.shared.models.util import clamp01
 
 router = APIRouter(prefix="/api/gm", tags=["gm"])
 
@@ -194,12 +193,18 @@ def set_distortion(
         p.distortions.set_region_distortion(session_id, region_id, body.degree)
     except PLAY_ERRORS as exc:
         raise http_error(exc) from exc
-    stored = p.repo.get_region_distortion(session_id, region_id)
-    return RegionDistortion(
-        session_id=session_id,
-        region_id=region_id,
-        distortion_degree=stored if stored is not None else clamp01(body.degree),
-    )
+    # the stored row (P10): the service has checked the region, so it exists now
+    return next(r for r in p.repo.list_region_distortions(session_id) if r.region_id == region_id)
+
+
+@router.get("/sessions/{session_id}/state", response_model=WorldStateOut)
+def world_state(session_id: str, p: PlayContainer = Depends(get_play)) -> WorldStateOut:
+    """The map overlay: distortion, rumor counts and active events per region (US-5.5).
+    Read-only, no LLM, closed sessions allowed."""
+    try:
+        return p.world_state.state(session_id)
+    except PLAY_ERRORS as exc:
+        raise http_error(exc) from exc
 
 
 @router.get("/sessions/{session_id}/distortions", response_model=list[RegionDistortion])
@@ -340,49 +345,19 @@ def list_deeds(
         regions, npcs = p.deeds.names(session_id)
     except PLAY_ERRORS as exc:
         raise http_error(exc) from exc
-    deeds = [v.deed for v in views]
-    appraisals = [a for v in views for a in v.appraisals if a.retelling]
-    deed_tr = enrichment_for(
-        loc, deeds, kind="deed", fields=["text"], session_id=session_id, lang=lang
-    )
-    appraisal_tr = enrichment_for(
-        loc,
-        appraisals,
-        kind="deed_appraisal",
-        fields=["retelling"],
-        session_id=session_id,
-        lang=lang,
-    )
     rumors_out = {
         r.id: r
         for r in _rumors_out(loc, session_id, [r for v in views for r in v.rumors], lang=lang)
     }
-    out: list[DeedViewOut] = []
-    for v in views:
-        deed = DeedOut(
-            **v.deed.model_dump(),
-            text_ko=deed_tr.get(v.deed.id, {}).get("text"),
-            region_name=regions.get(v.deed.region_id, v.deed.region_id),
-            witness_names=[npcs.get(n, n) for n in v.deed.witnessed_npc_ids],
-        )
-        judged = [
-            DeedAppraisalOut(
-                **a.model_dump(),
-                retelling_ko=appraisal_tr.get(a.id, {}).get("retelling"),
-                npc_name=npcs.get(a.npc_id, a.npc_id),
-            )
-            for a in v.appraisals
-        ]
-        out.append(
-            DeedViewOut(
-                deed=deed,
-                appraisals=judged,
-                rumors=[rumors_out[r.id] for r in v.rumors],
-                reached_region_ids=v.reached_region_ids,
-                reached_region_names=[regions.get(r, r) for r in v.reached_region_ids],
-            )
-        )
-    return out
+    return localize_deed_views(
+        loc,
+        views,
+        regions=regions,
+        npcs=npcs,
+        rumors_out=rumors_out,
+        session_id=session_id,
+        lang=lang,
+    )
 
 
 @router.post(

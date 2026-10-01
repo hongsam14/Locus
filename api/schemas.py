@@ -19,6 +19,7 @@ from locus.play.models import (
     Conversation,
     Deed,
     DeedAppraisal,
+    DeedView,
     EventCategory,
     EventLifecycle,
     GameSession,
@@ -27,6 +28,7 @@ from locus.play.models import (
     RegionView,
     SessionEvent,
     SessionRumor,
+    WorldState,
 )
 from locus.shared.models import NPC, KnowledgeView, QueryResult
 
@@ -326,3 +328,55 @@ class DeedViewOut(BaseModel):
     rumors: list[RumorOut]
     reached_region_ids: list[str]
     reached_region_names: list[str]
+
+
+def localize_deed_views(
+    loc: Any,
+    views: list[DeedView],
+    *,
+    regions: dict[str, str],
+    npcs: dict[str, str],
+    rumors_out: dict[str, Any],
+    session_id: str,
+    lang: str,
+) -> list[DeedViewOut]:
+    """The GM deed panel's rows with names and ``*_ko`` fields (U6 review C12: the
+    translation lookup lives with the other localizers, not in the router)."""
+    deeds = [v.deed for v in views]
+    told = [a for v in views for a in v.appraisals if a.retelling]
+    deed_tr = enrichment_for(
+        loc, deeds, kind="deed", fields=["text"], session_id=session_id, lang=lang
+    )
+    told_tr = enrichment_for(
+        loc, told, kind="deed_appraisal", fields=["retelling"], session_id=session_id, lang=lang
+    )
+    out: list[DeedViewOut] = []
+    for v in views:
+        deed = DeedOut(
+            **v.deed.model_dump(),
+            text_ko=deed_tr.get(v.deed.id, {}).get("text"),
+            region_name=regions.get(v.deed.region_id, v.deed.region_id),
+            witness_names=[npcs.get(n, n) for n in v.deed.witnessed_npc_ids],
+        )
+        judged = [
+            DeedAppraisalOut(
+                **a.model_dump(),
+                retelling_ko=told_tr.get(a.id, {}).get("retelling"),
+                npc_name=npcs.get(a.npc_id, a.npc_id),
+            )
+            for a in v.appraisals
+        ]
+        out.append(
+            DeedViewOut(
+                deed=deed,
+                appraisals=judged,
+                rumors=[rumors_out[r.id] for r in v.rumors],
+                reached_region_ids=v.reached_region_ids,
+                reached_region_names=[regions.get(r, r) for r in v.reached_region_ids],
+            )
+        )
+    return out
+
+
+# U7: the GM overlay carries names already and no translated field (FR-D4).
+WorldStateOut = WorldState

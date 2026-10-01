@@ -272,15 +272,15 @@
   - 구조 단언: `/state` 읽기 5회, `npcs` `get_conversation` 0회
 
 ### Step 7 — API
-- [ ] 7.1 `api/errors.py`: `LlmCallFailedError` → 503 고정 문구, `PLAY_ERRORS`에 더한다.
-- [ ] 7.2 `api/routers/play.py`: `/log`(필터는 서비스가 함), `say` 503
-- [ ] 7.3 `api/routers/gm.py`·`api/schemas.py`
+- [x] 7.1 `api/errors.py`: `LlmCallFailedError` → 503 고정 문구, `PLAY_ERRORS`에 더한다.
+- [x] 7.2 `api/routers/play.py`: `/log`(필터는 서비스가 함), `say` 503
+- [x] 7.3 `api/routers/gm.py`·`api/schemas.py`
   - `GET /state`(`WorldStateOut`)
   - `/distortions`, `PUT distortion` 404(대체 분기 제거)
   - `suggest`(`n` 그대로 int, 서비스 400)
   - 재생성의 `deactivated_ids` 정리
   - C12 `localize_deed_views`
-- [ ] 7.4 테스트 `tests/api/test_gm_mode_api.py`
+- [x] 7.4 테스트 `tests/api/test_gm_mode_api.py`
   - 새 계약 1~7
   - 구조 단언 NFR R-05(`/log` 2회, `/distortions` 2회 + 스냅샷 1회)
   - 기존 `test_play_api.py:88`, `test_play_gm_api.py:194`를 고친다(`# U7 intended change`).

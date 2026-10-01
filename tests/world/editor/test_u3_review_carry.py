@@ -22,6 +22,7 @@ from locus.shared.models import (
     RegionLevel,
     SourceKind,
 )
+from locus.shared.storage import graph_mapping as gm
 from locus.shared.storage.persistence import persist_graph
 from locus.world.editor import ConnectionKey
 from tests.world.editor.helpers import Stack
@@ -276,3 +277,62 @@ def test_c5_the_editor_list_and_the_export_agree() -> None:
     assert exported == listed == stack.cache.get("w").unscoped_knowledge_ids
     k.set_scopes("w", well.id, [w["riverton"].id])
     assert well.id not in stack.exporter.export_world("w")["unscoped_knowledge_ids"]
+
+
+# --------------------------------------------------------------------------- #
+# U8 code-review-01 #4: S29 and C11 judge by what is stored, so the same edit sent again
+# after a cut finishes the job (BR-U3-8)
+# --------------------------------------------------------------------------- #
+def _flaky_index(stack, times: int = 1):
+    real, left = stack.search.index, {"n": times}
+
+    def index(docs):
+        if left["n"] > 0:
+            left["n"] -= 1
+            raise RuntimeError("opensearch down")
+        real(docs)
+
+    stack.search.index = index
+
+
+def test_u8_4_a_knowledge_edit_cut_at_the_index_is_finished_by_the_retry() -> None:
+    stack, w = _aldermoor()
+    k1: Knowledge = w["k1"]
+    edited = k1.model_copy(update={"confidence": 0.3, "statement": "the mill wheel stopped"})
+    _flaky_index(stack)
+    with pytest.raises(RuntimeError, match="opensearch down"):
+        stack.editors.knowledge.upsert_knowledge(edited)
+    stack.editors.knowledge.upsert_knowledge(edited)  # the same request again
+    snap = stack.cache.get("w")
+    assert [k.confidence for k in snap.kg.knowledge if k.id == k1.id] == [0.3]
+    scopes = [s for s in snap.kg.scopes if s.knowledge_id == k1.id]
+    assert scopes and all(s.confidence == 0.3 for s in scopes)
+    assert "stopped" in stack.search.docs[("w", k1.id)].text
+
+
+def test_u8_4_a_scope_edge_already_off_is_set_right_by_the_next_save() -> None:
+    """U3 design memo 4: an edge that drifted from its node (0.3 vs 0.9) is mended by any
+    save, as the comparison is with the stored edge."""
+    stack, w = _aldermoor()
+    k1: Knowledge = w["k1"]
+    k_scopes = [s for s in stack.cache.get("w").kg.scopes if s.knowledge_id == k1.id]
+    drifted = [s.model_copy(update={"confidence": 0.9}) for s in k_scopes]
+    stack.graph.upsert_edges(gm.scope_edges(drifted))
+    stack.cache.invalidate("w")
+    stack.editors.knowledge.upsert_knowledge(k1)  # same confidence on the node
+    scopes = [s for s in stack.cache.get("w").kg.scopes if s.knowledge_id == k1.id]
+    assert scopes and all(s.confidence == k1.confidence for s in scopes)
+
+
+def test_u8_4_an_npc_move_cut_at_the_index_reindexes_on_the_retry() -> None:
+    stack, w = _aldermoor()
+    npc = w["npcs"][0]
+    moved = npc.model_copy(update={"home_region_id": w["hollow"].id, "description": "moved"})
+    _flaky_index(stack)
+    with pytest.raises(RuntimeError, match="opensearch down"):
+        stack.editors.npcs.upsert_npc(moved)
+    stack.editors.npcs.upsert_npc(moved)
+    doc = stack.search.docs[("w", npc.id)]
+    assert "moved" in doc.text
+    homes = [x.home_region_id for x in stack.cache.get("w").npcs if x.id == npc.id]
+    assert homes == [w["hollow"].id]

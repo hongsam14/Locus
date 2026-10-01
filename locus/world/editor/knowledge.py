@@ -17,23 +17,28 @@ class KnowledgeEditor:
         self._w = writes
 
     def upsert_knowledge(self, knowledge: Knowledge) -> Knowledge:
-        """Replace the item and re-index it; its scopes stay, but a changed confidence is
-        copied onto its DIRECT scope edges, which the region views read (U3 review S29).
-        ``region_hint`` is a build-time value and is not stored. An empty title gets the
-        server's fallback (C17)."""
+        """Replace the item and re-index it; its scopes stay, but its DIRECT scope edges,
+        which the region views read, get its confidence (U3 review S29). Both are judged on
+        what is stored — the edge values, the node behind the search document — so the
+        same request sent again after a cut finishes the job (U8 review #4, BR-U3-8); an
+        edge that was already off is set right on the next save. ``region_hint`` is a
+        build-time value and is not stored. An empty title gets the server's fallback
+        (C17)."""
         snapshot = self._w.require_world(knowledge.world_id)  # S21
         old = self._w.own_label(knowledge.world_id, knowledge.id, "Knowledge")  # S26
         knowledge = _clean(knowledge)
         before = gm.node_to_knowledge(old) if old is not None else None
-        scopes = [
+        stale = [
             s.model_copy(update={"confidence": knowledge.confidence})
             for s in snapshot.kg.scopes
-            if s.knowledge_id == knowledge.id and str(s.scope_type) == ScopeType.DIRECT.value
+            if s.knowledge_id == knowledge.id
+            and str(s.scope_type) == ScopeType.DIRECT.value
+            and s.confidence != knowledge.confidence
         ]
         with self._w.writing(knowledge.world_id):
             self._write_item(knowledge, before)
-            if before is not None and before.confidence != knowledge.confidence and scopes:
-                self._w.graph.upsert_edges(gm.scope_edges(scopes))
+            if stale:
+                self._w.graph.upsert_edges(gm.scope_edges(stale))
         return knowledge
 
     def create_knowledge(self, knowledge: Knowledge, region_id: str) -> Knowledge:
@@ -56,9 +61,11 @@ class KnowledgeEditor:
         return knowledge
 
     def _write_item(self, knowledge: Knowledge, before: Knowledge | None = None) -> None:
-        self._w.replace([gm.knowledge_to_node(knowledge)])
+        # the document first, the node last: the node is what C11 compares with, so a
+        # cut before it leaves the old text there and the retry indexes again (U8 #4)
         previous = [gm.knowledge_doc(before)] if before is not None else None
         self._w.index([gm.knowledge_doc(knowledge)], previous=previous)
+        self._w.replace([gm.knowledge_to_node(knowledge)])
 
     def set_scopes(self, world_id: str, knowledge_id: str, region_ids: list[str]) -> list[str]:
         """The item's DIRECT scopes become exactly ``region_ids`` (BR-U3-13); an empty

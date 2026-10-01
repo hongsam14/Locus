@@ -28,6 +28,9 @@ class EntityEditor:
         ):
             raise LookupError(f"region not found: {entity.located_in}")
         with self._w.writing(entity.world_id):
+            # the document before the node it is compared with (U8 review #4, C11)
+            previous = [gm.entity_doc(gm.node_to_entity(old))] if old is not None else None
+            self._w.index([gm.entity_doc(entity)], previous=previous)
             if old_loc and old_loc != entity.located_in:
                 self._w.graph.delete_edges(
                     entity.world_id,
@@ -36,8 +39,6 @@ class EntityEditor:
             self._w.replace([gm.entity_to_node(entity)])
             if entity.located_in and entity.located_in != old_loc:
                 self._w.graph.upsert_edges(gm.located_in_edges([entity]))
-            previous = [gm.entity_doc(gm.node_to_entity(old))] if old is not None else None
-            self._w.index([gm.entity_doc(entity)], previous=previous)
         return entity
 
     def delete_entity(self, world_id: str, entity_id: str) -> None:

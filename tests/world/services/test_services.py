@@ -456,4 +456,6 @@ def test_editor_invalidates_even_when_indexing_fails() -> None:  # review #12
     k = Knowledge(world_id="w", statement="s", title="t", provenance=_prov())
     with pytest.raises(RuntimeError):
         Editors.assemble(graph, search, cache=cache).knowledge.upsert_knowledge(k)
-    assert not cache.is_cached("w") and len(cache.get("w").kg.knowledge) == 1
+    # U8 intended change: U8 review #4 — the document is written before the node, so a
+    # failed index leaves nothing behind and the same request sent again writes it all
+    assert not cache.is_cached("w") and len(cache.get("w").kg.knowledge) == 0

@@ -36,6 +36,9 @@ class NpcEditor:
         }
         gone = sorted(homes - {npc.home_region_id})
         with self._w.writing(npc.world_id):
+            # the document before the node it is compared with (U8 review #4, C11)
+            previous = [gm.npc_doc(gm.node_to_npc(old))] if old is not None else None
+            self._w.index([gm.npc_doc(npc)], previous=previous)
             if npc.home_region_id not in homes:
                 self._w.graph.upsert_edges(gm.lives_in_edges([npc]))
             self._w.replace([gm.npc_to_node(npc)])
@@ -44,8 +47,6 @@ class NpcEditor:
                     npc.world_id,
                     [EdgeKey(type="LIVES_IN", source_id=npc.id, target_id=h) for h in gone],
                 )
-            previous = [gm.npc_doc(gm.node_to_npc(old))] if old is not None else None
-            self._w.index([gm.npc_doc(npc)], previous=previous)
         return npc
 
     def delete_npc(self, world_id: str, npc_id: str) -> None:

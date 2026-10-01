@@ -5,6 +5,7 @@ meta touch (EX-23)."""
 from __future__ import annotations
 
 import random
+from pathlib import Path
 
 import pytest
 from hypothesis import HealthCheck, given, settings
@@ -28,16 +29,17 @@ from locus.world.worldfile import (
 from tests.shared.storage.fakes import InMemoryGraphRepository, InMemorySearchRepository
 from tests.world.strategies import world_files
 
+FIXTURE = Path(__file__).resolve().parents[2] / "fixtures" / "aldermoor"
+
 
 def _demo_file(world_id: str) -> WorldFile:
-    """The packaged Aldermoor World File re-stamped to ``world_id`` — a rich, deterministic
+    """The Aldermoor fixture World File (the pre-U8 demo) re-stamped to ``world_id`` — a rich, deterministic
     fixture (no ``.example()`` flakiness)."""
     import json
 
-    from locus.world.demo import WORLDS_DIR
     from locus.world.worldfile import set_world_id
 
-    raw = json.loads((WORLDS_DIR / "aldermoor.world.json").read_text(encoding="utf-8"))
+    raw = json.loads((FIXTURE / "aldermoor.world.json").read_text(encoding="utf-8"))
     return set_world_id(WorldFile.parse(raw), world_id)
 
 

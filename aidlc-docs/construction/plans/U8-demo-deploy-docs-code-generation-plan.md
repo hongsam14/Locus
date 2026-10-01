@@ -156,19 +156,19 @@
 - [x] 4.3 테스트: TP-U8-3, EX-7, API 삭제 계획·보고 필드.
 
 ### Step 5 — 데모는 데이터다 (BLM §1, BR-U8-1~5, TP-U8-6, EX-11)
-- [ ] 5.1 `locus/world/demo/__init__.py`: `DemoSources`, `DemoInfo`(+ `start_region_id`, `credits`, `sources`), 조립 때 한 번 검사·보관(경고 한 번), `list`·`info`·`load`, `build_from_sources`가 항목 소스를 읽는다. 상수(`_DEMO_MEMO`, `_DEMO_MAP`, `_MAP_IMAGE`), `load_demo_world()`, 이름 검사를 지운다. 경로는 매니페스트 폴더 밖 거절. `importer`는 선택 인자(None이면 `load`가 RuntimeError).
-- [ ] 5.2 API `GET /demos` 응답: `name`, `title`, `description`, `credits`, `start_region_id`, `has_sources`(`api/schemas.py` `DemoInfoOut`). 소스 없는 데모의 소스 빌드는 404.
-- [ ] 5.3 CLI: `world build --demo <name>`(옛 `--demo-sources` 대신), 별칭 `build-world --demo`는 소스가 있는 첫 항목. 도움말의 Aldermoor 문구 정리. `npc_drafts.py:112` 예시 정리(FD R-10).
-- [ ] 5.4 `check_packaged() -> list[str]`(같은 모듈): 설치된 매니페스트를 `DemoWorlds(None)`으로 읽어 항목 0개, 검사 실패 항목, 없는 소스 파일을 문제 목록으로 돌려준다. CI 이미지 작업이 `python -c "from locus.world.demo import check_packaged as c; p=c(); print(p); raise SystemExit(bool(p))"`로 쓴다(Infra R-04).
-- [ ] 5.5 `pyproject.toml` package-data를 `world/demo/worlds/*.json`, `world/demo/worlds/*/*`로.
-- [ ] 5.6 옛 Aldermoor: World File과 `examples/demo_world/*`(memo.txt, map.json, map.png, generate_map.py, README)를 `tests/fixtures/aldermoor/`로 옮긴다. 일반 입력으로 쓰던 테스트(`test_worldfile`, `test_region_delete`, `test_world_api`, `test_cli`, `test_demo`의 소스 빌드)는 픽스처 경로를 쓴다. `examples/`를 지운다.
-- [ ] 5.7 테스트: TP-U8-6(코드 검색, 검색어는 새·옛 데모 이름과 지역 id·이름), EX-11(잘못된 항목은 빠지고 나머지는 보임), 경로 탈출 거절, `check_packaged`, CLI `--demo`.
+- [x] 5.1 `locus/world/demo/__init__.py`: `DemoSources`, `DemoInfo`(+ `start_region_id`, `credits`, `sources`), 조립 때 한 번 검사·보관(경고 한 번), `list`·`info`·`load`, `build_from_sources`가 항목 소스를 읽는다. 상수(`_DEMO_MEMO`, `_DEMO_MAP`, `_MAP_IMAGE`), `load_demo_world()`, 이름 검사를 지운다. 경로는 매니페스트 폴더 밖 거절. `importer`는 선택 인자(None이면 `load`가 RuntimeError).
+- [x] 5.2 API `GET /demos` 응답: `name`, `title`, `description`, `credits`, `start_region_id`, `has_sources`(`api/schemas.py` `DemoInfoOut`). 소스 없는 데모의 소스 빌드는 404.
+- [x] 5.3 CLI: `world build --demo <name>`(옛 `--demo-sources` 대신), 별칭 `build-world --demo`는 소스가 있는 첫 항목. 도움말의 Aldermoor 문구 정리. `npc_drafts.py:112` 예시 정리(FD R-10).
+- [x] 5.4 `check_packaged() -> list[str]`(같은 모듈): 설치된 매니페스트를 `DemoWorlds(None)`으로 읽어 항목 0개, 검사 실패 항목, 없는 소스 파일을 문제 목록으로 돌려준다. CI 이미지 작업이 `python -c "from locus.world.demo import check_packaged as c; p=c(); print(p); raise SystemExit(bool(p))"`로 쓴다(Infra R-04).
+- [x] 5.5 `pyproject.toml` package-data를 `world/demo/worlds/*.json`, `world/demo/worlds/*/*`로.
+- [x] 5.6 옛 Aldermoor: World File과 `examples/demo_world/*`(memo.txt, map.json, map.png, generate_map.py, README)를 `tests/fixtures/aldermoor/`로 옮긴다. 일반 입력으로 쓰던 테스트(`test_worldfile`, `test_region_delete`, `test_world_api`, `test_cli`, `test_demo`의 소스 빌드)는 픽스처 경로를 쓴다. `examples/`를 지운다.
+- [x] 5.7 테스트: TP-U8-6(코드 검색, 검색어는 새·옛 데모 이름과 지역 id·이름), EX-11(잘못된 항목은 빠지고 나머지는 보임), 경로 탈출 거절, `check_packaged`, CLI `--demo`.
 
 ### Step 6 — Emberleaf Isle 콘텐츠 (domain-entities §5, BR-U8-6~11, TP-U8-4, EX-9·10)
-- [ ] 6.1 `locus/world/demo/worlds/emberleaf.world.json`(v1): 지역 12, 연결 10쌍(두 방향, 무게·종류·근거, 1·2·9번은 `wiki_prior_ref`), 마을 지식(DIRECT 2개 이상, 소문거리 셋 이상), 지방 지식 1~2, 전역 1~2, 엔티티 약 8, prior 2, NPC 15, 씨앗 3. 글은 영어, 이름은 창작(원작 고유명사 없음).
-- [ ] 6.2 `locus/world/demo/worlds/emberleaf/memo.md`(설정 글), `emberleaf/map.json`(구조 지도: 지역·연결).
-- [ ] 6.3 매니페스트: `emberleaf` 항목 하나(제목·설명·credits·`start_region_id=region-saltwake`·sources). Aldermoor 항목은 지운다.
-- [ ] 6.4 테스트(`tests/world/test_demo.py`): TP-U8-4(개수·계층·마을당 NPC 1~3·지방/섬 0·연결 쌍·종류 섞임·시작 지역에서 도달·막힌 쌍의 우회·씨앗 2~3), 최대 곱 무게표(domain-entities §5.2, 셋째 자리), 합의 결과(EX-9: 강 마을 셋 상호 DIRECT 그대로, Ironcrag의 전해 들음 = 표에서 0.15 이상 0.5 미만 마을 모두, FD R-13), 전파 계획(EX-10: Ambermeadow 행적 → 1턴 Saltwake·Sylvarch, Ironcrag는 3턴 전 없음), 금지어(BR-U8-10), 불러오기 LLM 0회.
+- [x] 6.1 `locus/world/demo/worlds/emberleaf.world.json`(v1): 지역 12, 연결 10쌍(두 방향, 무게·종류·근거, 1·2·9번은 `wiki_prior_ref`), 마을 지식(DIRECT 2개 이상, 소문거리 셋 이상), 지방 지식 1~2, 전역 1~2, 엔티티 약 8, prior 2, NPC 15, 씨앗 3. 글은 영어, 이름은 창작(원작 고유명사 없음).
+- [x] 6.2 `locus/world/demo/worlds/emberleaf/memo.md`(설정 글), `emberleaf/map.json`(구조 지도: 지역·연결).
+- [x] 6.3 매니페스트: `emberleaf` 항목 하나(제목·설명·credits·`start_region_id=region-saltwake`·sources). Aldermoor 항목은 지운다.
+- [x] 6.4 테스트(`tests/world/test_demo.py`): TP-U8-4(개수·계층·마을당 NPC 1~3·지방/섬 0·연결 쌍·종류 섞임·시작 지역에서 도달·막힌 쌍의 우회·씨앗 2~3), 최대 곱 무게표(domain-entities §5.2, 셋째 자리), 합의 결과(EX-9: 강 마을 셋 상호 DIRECT 그대로, Ironcrag의 전해 들음 = 표에서 0.15 이상 0.5 미만 마을 모두, FD R-13), 전파 계획(EX-10: Ambermeadow 행적 → 1턴 Saltwake·Sylvarch, Ironcrag는 3턴 전 없음), 금지어(BR-U8-10), 불러오기 LLM 0회.
 
 ### Step 7 — 씨앗 시작 (BLM §3, BR-U8-15~18, TP-U8-5, EX-4)
 - [ ] 7.1 `EventService.create_event`에 키워드 `provenance: Provenance | None = None`, `timeline_extra: Mapping[str, str] | None = None`.

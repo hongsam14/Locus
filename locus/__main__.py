@@ -24,7 +24,7 @@ from locus.shared.config import Settings, get_settings
 from locus.shared.storage.schema import ensure_world_schema
 from locus.shared.wiring import SharedContainer, assemble_shared
 from locus.world.build import WorldBuilder, WorldExistsError
-from locus.world.demo import DemoWorlds, load_demo_world
+from locus.world.demo import DemoWorlds
 from locus.world.ingestion.service import WorldInputs
 from locus.world.worldfile import (
     UnsupportedWorldFile,
@@ -35,13 +35,30 @@ from locus.world.worldfile import (
 )
 
 
-def _load_inputs(path: str | None, demo_sources: bool) -> WorldInputs:
-    if demo_sources:
-        return load_demo_world()
+def _load_inputs(path: str | None, demo: str | None) -> WorldInputs:
+    """Build inputs from a JSON file, or from a manifest demo's sources (U8 BR-U8-4)."""
+    if demo:
+        try:
+            return DemoWorlds().sources(demo)
+        except LookupError as exc:
+            raise SystemExit(str(exc)) from exc
     if path:
         with open(path, encoding="utf-8") as fh:
             return WorldInputs(**json.load(fh))
-    raise SystemExit("provide --inputs <file.json> or --demo-sources")
+    raise SystemExit("provide --inputs <file.json> or --demo <name>")
+
+
+def _demo_name(args: argparse.Namespace) -> str | None:
+    """``world build --demo <name>``; the one-cycle alias ``build-world --demo`` takes the
+    first manifest demo that has sources (no demo name in code, BR-U8-1)."""
+    if getattr(args, "demo", None):
+        return str(args.demo)
+    if getattr(args, "demo_alias", False):
+        for info in DemoWorlds().list():
+            if info.has_sources:
+                return info.name
+        raise SystemExit("no packaged demo has sources")
+    return None
 
 
 # --- composition helpers (CLI is a composition root) ------------------------------ #
@@ -151,7 +168,7 @@ def cmd_world_build(args: argparse.Namespace) -> int:
     try:
         _e, _i, _d, builder = _world_services(shared, settings, with_builder=True)
         assert builder is not None
-        inputs = _load_inputs(args.inputs, args.demo_sources)  # fail before touching sessions
+        inputs = _load_inputs(args.inputs, _demo_name(args))  # fail before touching sessions
         open_ids = (
             _guard_open_sessions(shared, args.world, force=args.force) if args.replace else []
         )
@@ -207,7 +224,7 @@ def cmd_world_import(args: argparse.Namespace) -> int:
 def cmd_world_demo(args: argparse.Namespace) -> int:
     settings = get_settings()
     if args.list:
-        for info in DemoWorlds(None).list():  # type: ignore[arg-type]
+        for info in DemoWorlds().list():
             print(f"{info.name}\t{info.title}\t{info.description or ''}")
         return 0
     if not (args.name and args.world):
@@ -287,7 +304,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_build.add_argument("--world", required=True, help="world id")
     p_build.add_argument("--inputs", help="JSON file with WorldInputs (images base64)")
     p_build.add_argument(
-        "--demo-sources", action="store_true", help="use the bundled Aldermoor sources"
+        "--demo", metavar="NAME", help="build from a packaged demo's sources (see `demo --list`)"
     )
     _add_replace_flags(p_build)
     p_build.set_defaults(func=cmd_world_build)
@@ -308,7 +325,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_demo = wsub.add_parser("demo", help="List or load packaged demo worlds (no LLM)")
     p_demo.add_argument("--list", action="store_true")
-    p_demo.add_argument("--name", help="demo name, e.g. aldermoor")
+    p_demo.add_argument("--name", help="demo name (see --list)")
     p_demo.add_argument("--world", help="target world id")
     _add_replace_flags(p_demo)
     p_demo.set_defaults(func=cmd_world_demo)
@@ -320,7 +337,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_alias_build = sub.add_parser("build-world", help="alias of `world build`")
     p_alias_build.add_argument("--world", required=True)
     p_alias_build.add_argument("--inputs")
-    p_alias_build.add_argument("--demo", dest="demo_sources", action="store_true")
+    p_alias_build.add_argument("--demo", dest="demo_alias", action="store_true")
     _add_replace_flags(p_alias_build)
     p_alias_build.set_defaults(func=cmd_world_build)
 

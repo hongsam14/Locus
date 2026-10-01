@@ -44,11 +44,12 @@ def fake_env(monkeypatch, tmp_path):
 
 def test_demo_export_import_roundtrip_and_list(fake_env, capsys) -> None:
     graph, _state, tmp = fake_env
+    # U8 intended change: BR-U8-1 — the packaged demo is the manifest's (Emberleaf Isle)
     assert cli.main(["world", "demo", "--list"]) == 0
-    assert "aldermoor" in capsys.readouterr().out
-    assert cli.main(["world", "demo", "--name", "aldermoor", "--world", "w"]) == 0
+    assert "emberleaf" in capsys.readouterr().out
+    assert cli.main(["world", "demo", "--name", "emberleaf", "--world", "w"]) == 0
     report = json.loads(capsys.readouterr().out)
-    assert report["ok"] and report["counts"]["regions"] == 5
+    assert report["ok"] and report["counts"]["regions"] == 12
 
     out = tmp / "w.world.json"
     assert cli.main(["world", "export", "--world", "w", "--out", str(out)]) == 0
@@ -62,7 +63,7 @@ def test_demo_export_import_roundtrip_and_list(fake_env, capsys) -> None:
 
     assert cli.main(["world", "list"]) == 0
     listing = capsys.readouterr().out
-    assert "w\tAldermoor" in listing and "w2\tAldermoor" in listing
+    assert "w\tEmberleaf Isle" in listing and "w2\tEmberleaf Isle" in listing
 
     # legacy alias still works
     assert cli.main(["export", "--world", "w2", "--out", str(tmp / "legacy.json")]) == 0
@@ -75,7 +76,7 @@ def test_import_exit_codes(fake_env, capsys) -> None:
     with pytest.raises(SystemExit, match="cannot read world file"):
         cli.main(["world", "import", "--world", "w", "--file", str(bad)])
 
-    assert cli.main(["world", "demo", "--name", "aldermoor", "--world", "w"]) == 0
+    assert cli.main(["world", "demo", "--name", "emberleaf", "--world", "w"]) == 0
     capsys.readouterr()
     good = tmp / "good.json"
     assert cli.main(["world", "export", "--world", "w", "--out", str(good)]) == 0
@@ -92,13 +93,13 @@ def test_import_exit_codes(fake_env, capsys) -> None:
 
 def test_open_sessions_need_force(fake_env, capsys) -> None:
     _graph, state, tmp = fake_env
-    assert cli.main(["world", "demo", "--name", "aldermoor", "--world", "w"]) == 0
+    assert cli.main(["world", "demo", "--name", "emberleaf", "--world", "w"]) == 0
     state["sessions"] = _Sessions([_Session("s1", "open"), _Session("s2", "closed")])
     with pytest.raises(SystemExit, match="--force"):
-        cli.main(["world", "demo", "--name", "aldermoor", "--world", "w"])
+        cli.main(["world", "demo", "--name", "emberleaf", "--world", "w"])
     assert state["sessions"].closed == []
     capsys.readouterr()
-    assert cli.main(["world", "demo", "--name", "aldermoor", "--world", "w", "--force"]) == 0
+    assert cli.main(["world", "demo", "--name", "emberleaf", "--world", "w", "--force"]) == 0
     assert state["sessions"].closed == ["s1"]
     assert json.loads(capsys.readouterr().out)["closed_session_ids"] == ["s1"]
 
@@ -129,3 +130,17 @@ def test_u7_review_3_the_cli_builder_uses_the_world_tuning(monkeypatch) -> None:
     assert builder is not None
     assert builder._topology_factory(None)._tuning.base_weights["route"] == 0.35
     assert builder._ontology_factory(None, None, None)._dedup_threshold == 0.95
+
+
+def test_build_reads_a_named_demo_s_sources_and_the_alias_takes_the_first() -> None:
+    """U8 (BR-U8-1·4): `world build --demo <name>` reads the manifest; the one-cycle
+    alias `build-world --demo` takes the first demo with sources; no name in code."""
+    import argparse
+
+    assert cli._demo_name(argparse.Namespace(demo="emberleaf")) == "emberleaf"
+    assert cli._demo_name(argparse.Namespace(demo=None, demo_alias=True)) == "emberleaf"
+    assert cli._demo_name(argparse.Namespace(demo=None, demo_alias=False)) is None
+    inputs = cli._load_inputs(None, "emberleaf")
+    assert inputs.name == "Emberleaf Isle" and inputs.memos
+    with pytest.raises(SystemExit, match="demo world not found"):
+        cli._load_inputs(None, "nope")

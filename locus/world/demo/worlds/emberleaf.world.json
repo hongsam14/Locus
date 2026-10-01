@@ -1,0 +1,1691 @@
+{
+  "connections": [
+    {
+      "kind": "blocked",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [
+          "prior-collapsed-road"
+        ],
+        "source": "input"
+      },
+      "rationale": "The cliff road fell three winters ago; no one climbs it now.",
+      "source_region_id": "region-ambermeadow",
+      "target_region_id": "region-ironcrag",
+      "weight": 0.2,
+      "wiki_prior_ref": "prior-collapsed-road",
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "river",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [
+          "prior-river-news"
+        ],
+        "source": "input"
+      },
+      "rationale": "The lower Glimmerrun carries barges from Ambermeadow to the harbor.",
+      "source_region_id": "region-ambermeadow",
+      "target_region_id": "region-saltwake",
+      "weight": 1.0,
+      "wiki_prior_ref": "prior-river-news",
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "river",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [
+          "prior-river-news"
+        ],
+        "source": "input"
+      },
+      "rationale": "The Glimmerrun runs from Sylvarch's spring down to Ambermeadow.",
+      "source_region_id": "region-ambermeadow",
+      "target_region_id": "region-sylvarch",
+      "weight": 1.0,
+      "wiki_prior_ref": "prior-river-news",
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "blocked",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "rationale": "An old tunnel under the island, sealed by the founders.",
+      "source_region_id": "region-ashen-dig",
+      "target_region_id": "region-hollowdeep",
+      "weight": 0.2,
+      "wiki_prior_ref": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "adjacent",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "rationale": "The dig lies an hour's walk across the plateau.",
+      "source_region_id": "region-ashen-dig",
+      "target_region_id": "region-ironcrag",
+      "weight": 0.8,
+      "wiki_prior_ref": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "route",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "rationale": "A woods track leaves the canals for Hollowdeep.",
+      "source_region_id": "region-gutterlight",
+      "target_region_id": "region-hollowdeep",
+      "weight": 0.5,
+      "wiki_prior_ref": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "route",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "rationale": "The Dustroad: the long way round, the only open road onto the plateau.",
+      "source_region_id": "region-gutterlight",
+      "target_region_id": "region-ironcrag",
+      "weight": 0.34,
+      "wiki_prior_ref": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "route",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "rationale": "The harbor road runs up to Gutterlight's canals.",
+      "source_region_id": "region-gutterlight",
+      "target_region_id": "region-saltwake",
+      "weight": 0.6,
+      "wiki_prior_ref": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "blocked",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "rationale": "An old tunnel under the island, sealed by the founders.",
+      "source_region_id": "region-hollowdeep",
+      "target_region_id": "region-ashen-dig",
+      "weight": 0.2,
+      "wiki_prior_ref": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "route",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "rationale": "A woods track leaves the canals for Hollowdeep.",
+      "source_region_id": "region-hollowdeep",
+      "target_region_id": "region-gutterlight",
+      "weight": 0.5,
+      "wiki_prior_ref": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "route",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "rationale": "A faint path through the deep woods.",
+      "source_region_id": "region-hollowdeep",
+      "target_region_id": "region-sylvarch",
+      "weight": 0.4,
+      "wiki_prior_ref": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "blocked",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [
+          "prior-collapsed-road"
+        ],
+        "source": "input"
+      },
+      "rationale": "The cliff road fell three winters ago; no one climbs it now.",
+      "source_region_id": "region-ironcrag",
+      "target_region_id": "region-ambermeadow",
+      "weight": 0.2,
+      "wiki_prior_ref": "prior-collapsed-road",
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "adjacent",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "rationale": "The dig lies an hour's walk across the plateau.",
+      "source_region_id": "region-ironcrag",
+      "target_region_id": "region-ashen-dig",
+      "weight": 0.8,
+      "wiki_prior_ref": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "route",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "rationale": "The Dustroad: the long way round, the only open road onto the plateau.",
+      "source_region_id": "region-ironcrag",
+      "target_region_id": "region-gutterlight",
+      "weight": 0.34,
+      "wiki_prior_ref": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "river",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [
+          "prior-river-news"
+        ],
+        "source": "input"
+      },
+      "rationale": "The lower Glimmerrun carries barges from Ambermeadow to the harbor.",
+      "source_region_id": "region-saltwake",
+      "target_region_id": "region-ambermeadow",
+      "weight": 1.0,
+      "wiki_prior_ref": "prior-river-news",
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "route",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "rationale": "The harbor road runs up to Gutterlight's canals.",
+      "source_region_id": "region-saltwake",
+      "target_region_id": "region-gutterlight",
+      "weight": 0.6,
+      "wiki_prior_ref": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "adjacent",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "rationale": "Sunstrand's beach begins at the harbor wall.",
+      "source_region_id": "region-saltwake",
+      "target_region_id": "region-sunstrand",
+      "weight": 0.8,
+      "wiki_prior_ref": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "adjacent",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "rationale": "Sunstrand's beach begins at the harbor wall.",
+      "source_region_id": "region-sunstrand",
+      "target_region_id": "region-saltwake",
+      "weight": 0.8,
+      "wiki_prior_ref": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "river",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [
+          "prior-river-news"
+        ],
+        "source": "input"
+      },
+      "rationale": "The Glimmerrun runs from Sylvarch's spring down to Ambermeadow.",
+      "source_region_id": "region-sylvarch",
+      "target_region_id": "region-ambermeadow",
+      "weight": 1.0,
+      "wiki_prior_ref": "prior-river-news",
+      "world_id": "emberleaf"
+    },
+    {
+      "kind": "route",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "rationale": "A faint path through the deep woods.",
+      "source_region_id": "region-sylvarch",
+      "target_region_id": "region-hollowdeep",
+      "weight": 0.4,
+      "wiki_prior_ref": null,
+      "world_id": "emberleaf"
+    }
+  ],
+  "entities": [
+    {
+      "confidence": 0.6,
+      "description": "The sorcerer the founders sealed beneath the island.",
+      "entity_type": "person",
+      "id": "entity-ashen-sorcerer",
+      "located_in": "region-emberleaf",
+      "name": "Ashen Sorcerer",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "description": "The river from Sylvarch's spring to the sea at Saltwake.",
+      "entity_type": "terrain",
+      "id": "entity-glimmerrun",
+      "located_in": "region-greenreach",
+      "name": "Glimmerrun River",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "description": "Ironcrag's oath forge.",
+      "entity_type": "place",
+      "id": "entity-great-forge",
+      "located_in": "region-ironcrag",
+      "name": "Great Forge",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "description": "Pell's ferry to the mainland.",
+      "entity_type": "object",
+      "id": "entity-harbor-ferry",
+      "located_in": "region-saltwake",
+      "name": "Harbor Ferry",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "description": "The guild that runs Gutterlight's night markets.",
+      "entity_type": "custom",
+      "id": "entity-lantern-guild",
+      "located_in": "region-gutterlight",
+      "name": "Lantern Guild",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "description": "Carved stones found at the dig, marked with rings.",
+      "entity_type": "object",
+      "id": "entity-ringed-stones",
+      "located_in": "region-ashen-dig",
+      "name": "Ringed Stones",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "description": "The founders' wards, kept in the mages' library.",
+      "entity_type": "object",
+      "id": "entity-sealing-wards",
+      "located_in": "region-sylvarch",
+      "name": "Sealing Wards",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "description": "The cliffs between the meadows and the plateau.",
+      "entity_type": "terrain",
+      "id": "entity-stonebrow-cliffs",
+      "located_in": "region-stonebrow",
+      "name": "Stonebrow Cliffs",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    }
+  ],
+  "event_seeds": [
+    {
+      "category": "politics",
+      "description": "Vex's lieutenants turn on each other over the canal tolls; half the city's lanterns go dark.",
+      "id": "seed-lantern-feud",
+      "lifecycle": null,
+      "magnitude": 0.4,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_id": "region-gutterlight",
+      "title": "The Lantern Guild splits",
+      "world_id": "emberleaf"
+    },
+    {
+      "category": "plague",
+      "description": "Grey spots spread through Ambermeadow's mushroom fields; whole rows are burned and the harvest is in doubt.",
+      "id": "seed-mushroom-blight",
+      "lifecycle": null,
+      "magnitude": 0.5,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_id": "region-ambermeadow",
+      "title": "Blight in the mushroom fields",
+      "world_id": "emberleaf"
+    },
+    {
+      "category": "discovery",
+      "description": "The diggers break into a chamber sealed with the founders' rings and carry out a stone that hums.",
+      "id": "seed-sealed-relic",
+      "lifecycle": null,
+      "magnitude": 0.6,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_id": "region-ashen-dig",
+      "title": "A sealed relic unearthed",
+      "world_id": "emberleaf"
+    }
+  ],
+  "exported_at": null,
+  "format_version": 1,
+  "knowledge": [
+    {
+      "about_entity_ids": [
+        "entity-harbor-ferry"
+      ],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "k-arrivals",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Newcomers step off the ferry at Saltwake and give their names to Harbormaster Olin.",
+      "title": "Arrivals",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [],
+      "confidence": 0.6,
+      "derived_from_prior_ids": [],
+      "id": "k-breathing-caves",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Old Fenn says the caverns breathe when the seal weakens, and that they breathed last week.",
+      "title": "Breathing caves",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "k-cliff-watch",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Captain Brisa's archers still watch the old cliff road, closed since the rockslide.",
+      "title": "The cliff watch",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [],
+      "confidence": 0.7,
+      "derived_from_prior_ids": [],
+      "id": "k-dark-districts",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Vex's lieutenants quarrel over the canal tolls; two lantern districts went dark this week.",
+      "title": "Dark districts",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "k-deep-gate",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Warden Ysolde guards the gate to the caverns below Hollowdeep; no one goes down without her leave.",
+      "title": "The deep gate",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [
+        "entity-sealing-wards"
+      ],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "k-elders-library",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Archmage Elowen keeps the founders' sealing wards in Sylvarch's library; only apprentices who pass the Trial may read them.",
+      "title": "The elder's library",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "k-fallen-road",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "The cliff road down to Ambermeadow fell three winters ago; Ironcrag has only the long Dustroad to the lowlands now.",
+      "title": "The fallen road",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "k-ferry-days",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Pell's ferry crosses to the mainland every third day, weather allowing.",
+      "title": "Ferry days",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [
+        "entity-great-forge"
+      ],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "k-forge-oath",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Ironcrag's warriors swear an oath at the Great Forge before they may carry a blade outside the town.",
+      "title": "The forge oath",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [
+        "entity-glimmerrun"
+      ],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "k-glimmerrun",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "The Glimmerrun rises at Sylvarch's spring and runs past Ambermeadow to the sea at Saltwake; barges carry goods and gossip down it in a day.",
+      "title": "The Glimmerrun",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [],
+      "confidence": 0.7,
+      "derived_from_prior_ids": [],
+      "id": "k-glowing-spring",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "The spring under the great tree has glowed faintly every night this month, and the mages will not say why.",
+      "title": "The spring glows",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [],
+      "confidence": 0.6,
+      "derived_from_prior_ids": [],
+      "id": "k-knocking-rock",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Foreman Rusk stopped the night shift after two diggers heard knocking from inside the rock.",
+      "title": "Knocking in the rock",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [
+        "entity-lantern-guild"
+      ],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "k-lantern-guild",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "The Lantern Guild runs Gutterlight's night markets and decides which lanterns stay lit.",
+      "title": "The Lantern Guild",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "k-mushroom-harvest",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Ambermeadow's mushroom fields feed half the island; the harvest comes in before the first frost.",
+      "title": "Mushroom harvest",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [
+        "entity-ringed-stones"
+      ],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "k-older-walls",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "The diggers have reached walls older than the founders, carved with rings like those on the sealing wards.",
+      "title": "Older walls",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "k-one-harbor",
+      "is_global": true,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Every ship that reaches Emberleaf docks at Saltwake Harbor; there is no other safe landing.",
+      "title": "One harbor",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [],
+      "confidence": 0.75,
+      "derived_from_prior_ids": [],
+      "id": "k-salt-tax",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "The harbor raised the salt tax this season, and the fishwives say it will rise again.",
+      "title": "The salt tax",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [
+        "entity-ashen-sorcerer"
+      ],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "k-sealed-sorcerer",
+      "is_global": true,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Long ago the five founders sealed the Ashen Sorcerer beneath Emberleaf; the seal holds while the towns keep their oaths.",
+      "title": "The sealed sorcerer",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [],
+      "confidence": 0.7,
+      "derived_from_prior_ids": [],
+      "id": "k-spotted-caps",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Tobbin found grey spots on the caps in his east field and burned a whole row.",
+      "title": "Spotted caps",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "k-stonebrow-pride",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Stonebrow folk trust their own and half believe any news from below the cliffs.",
+      "title": "Stonebrow pride",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "k-tide-pools",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Sunstrand's tide pools are full of glowing shells, sold as charms in Saltwake.",
+      "title": "Tide pools",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [
+        "entity-lantern-guild"
+      ],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "k-trade-and-smuggling",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Saltmarch lives on trade; what the harbor does not tax, the Lantern Guild moves through Gutterlight's canals.",
+      "title": "Trade and smuggling",
+      "topic": null,
+      "world_id": "emberleaf"
+    },
+    {
+      "about_entity_ids": [],
+      "confidence": 0.9,
+      "derived_from_prior_ids": [],
+      "id": "k-wreck-guide",
+      "is_global": false,
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "region_hint": null,
+      "statement": "Coral guides visitors along the beach and knows every wreck on the shore.",
+      "title": "The wreck guide",
+      "topic": null,
+      "world_id": "emberleaf"
+    }
+  ],
+  "npcs": [
+    {
+      "description": "Leads the archers who watch the fallen cliff road.",
+      "home_region_id": "region-ambermeadow",
+      "id": "npc-brisa",
+      "name": "Captain Brisa",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "archer captain",
+      "traits": [
+        "steady",
+        "watchful"
+      ],
+      "world_id": "emberleaf"
+    },
+    {
+      "description": "Guides visitors along the shore and collects glowing shells.",
+      "home_region_id": "region-sunstrand",
+      "id": "npc-coral",
+      "name": "Coral",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "beach guide",
+      "traits": [
+        "lively",
+        "honest"
+      ],
+      "world_id": "emberleaf"
+    },
+    {
+      "description": "Ironcrag's chief, who swore the forge oath forty winters ago.",
+      "home_region_id": "region-ironcrag",
+      "id": "npc-durgan",
+      "name": "Chief Durgan",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "warrior chief",
+      "traits": [
+        "proud",
+        "blunt"
+      ],
+      "world_id": "emberleaf"
+    },
+    {
+      "description": "Keeper of the founders' wards; speaks slowly and answers questions with questions.",
+      "home_region_id": "region-sylvarch",
+      "id": "npc-elowen",
+      "name": "Archmage Elowen",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "mage elder",
+      "traits": [
+        "wise",
+        "guarded"
+      ],
+      "world_id": "emberleaf"
+    },
+    {
+      "description": "A hermit who listens to the caverns and is rarely believed.",
+      "home_region_id": "region-hollowdeep",
+      "id": "npc-fenn",
+      "name": "Old Fenn",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "hermit",
+      "traits": [
+        "odd",
+        "earnest"
+      ],
+      "world_id": "emberleaf"
+    },
+    {
+      "description": "Tends the Great Forge and hears every rumor that comes up the Dustroad.",
+      "home_region_id": "region-ironcrag",
+      "id": "npc-ketta",
+      "name": "Ketta",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "blacksmith",
+      "traits": [
+        "gruff",
+        "fair"
+      ],
+      "world_id": "emberleaf"
+    },
+    {
+      "description": "Buys and sells whatever the canals bring, no questions asked.",
+      "home_region_id": "region-gutterlight",
+      "id": "npc-marlo",
+      "name": "Marlo",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "fence",
+      "traits": [
+        "sly",
+        "nervous"
+      ],
+      "world_id": "emberleaf"
+    },
+    {
+      "description": "Keeps the Tide Lantern inn, where travellers trade news.",
+      "home_region_id": "region-saltwake",
+      "id": "npc-nessa",
+      "name": "Nessa",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "innkeeper",
+      "traits": [
+        "warm",
+        "shrewd"
+      ],
+      "world_id": "emberleaf"
+    },
+    {
+      "description": "Writes down every newcomer's name and every ship's cargo.",
+      "home_region_id": "region-saltwake",
+      "id": "npc-olin",
+      "name": "Harbormaster Olin",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "harbormaster",
+      "traits": [
+        "orderly",
+        "dry"
+      ],
+      "world_id": "emberleaf"
+    },
+    {
+      "description": "Runs the ferry to the mainland and carries letters for a coin.",
+      "home_region_id": "region-saltwake",
+      "id": "npc-pell",
+      "name": "Pell",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "ferry captain",
+      "traits": [
+        "cheerful",
+        "chatty"
+      ],
+      "world_id": "emberleaf"
+    },
+    {
+      "description": "An apprentice who has not passed the Trial and talks too much about the library.",
+      "home_region_id": "region-sylvarch",
+      "id": "npc-pip",
+      "name": "Pip",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "apprentice mage",
+      "traits": [
+        "curious",
+        "talkative"
+      ],
+      "world_id": "emberleaf"
+    },
+    {
+      "description": "Runs the dig and keeps the diggers' fears out of his reports.",
+      "home_region_id": "region-ashen-dig",
+      "id": "npc-rusk",
+      "name": "Foreman Rusk",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "dig foreman",
+      "traits": [
+        "practical",
+        "secretive"
+      ],
+      "world_id": "emberleaf"
+    },
+    {
+      "description": "Farms the east fields and worries about the harvest.",
+      "home_region_id": "region-ambermeadow",
+      "id": "npc-tobbin",
+      "name": "Tobbin",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "mushroom farmer",
+      "traits": [
+        "anxious",
+        "kind"
+      ],
+      "world_id": "emberleaf"
+    },
+    {
+      "description": "Master of the Lantern Guild, polite and never fully honest.",
+      "home_region_id": "region-gutterlight",
+      "id": "npc-vex",
+      "name": "Vex",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "guild master",
+      "traits": [
+        "smooth",
+        "cunning"
+      ],
+      "world_id": "emberleaf"
+    },
+    {
+      "description": "Guards the deep gate and trusts no one who wants to go down.",
+      "home_region_id": "region-hollowdeep",
+      "id": "npc-ysolde",
+      "name": "Warden Ysolde",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "role": "gate warden",
+      "traits": [
+        "stern",
+        "loyal"
+      ],
+      "world_id": "emberleaf"
+    }
+  ],
+  "prior_links": [],
+  "priors": [
+    {
+      "condition": "the only direct road between two settlements has collapsed",
+      "confidence": 0.85,
+      "description": "A fallen road isolates a town.",
+      "domains": [
+        "geography"
+      ],
+      "effect": "travel must go around; news arrives late and second-hand",
+      "id": "prior-collapsed-road",
+      "prior_type": "terrain_rule",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "condition": "a navigable river joins two settlements",
+      "confidence": 0.9,
+      "description": "A river is the fastest road.",
+      "domains": [
+        "geography",
+        "logistics"
+      ],
+      "effect": "boats carry goods and news between them within a day; connection weight is high",
+      "id": "prior-river-news",
+      "prior_type": "terrain_rule",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    }
+  ],
+  "regions": [
+    {
+      "attributes": {
+        "terrain_kind": "river"
+      },
+      "description": "An archers' town among mushroom fields on the Glimmerrun.",
+      "id": "region-ambermeadow",
+      "level": "town",
+      "name": "Ambermeadow",
+      "parent_id": "region-greenreach",
+      "position": {
+        "x": 0.27,
+        "y": 0.44
+      },
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "attributes": {
+        "terrain_kind": "mountain"
+      },
+      "description": "A dig into ruins older than the island's founders.",
+      "id": "region-ashen-dig",
+      "level": "town",
+      "name": "Ashen Dig",
+      "parent_id": "region-stonebrow",
+      "position": {
+        "x": 0.88,
+        "y": 0.4
+      },
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "attributes": {},
+      "description": "An island split by the Stonebrow cliffs and joined by the Glimmerrun river.",
+      "id": "region-emberleaf",
+      "level": "continent",
+      "name": "Emberleaf Isle",
+      "parent_id": null,
+      "position": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "attributes": {
+        "terrain_kind": "forest"
+      },
+      "description": "The western woods and meadows the Glimmerrun runs through.",
+      "id": "region-greenreach",
+      "level": "province",
+      "name": "Greenreach",
+      "parent_id": "region-emberleaf",
+      "position": {
+        "x": 0.25,
+        "y": 0.32
+      },
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "attributes": {
+        "terrain_kind": "river"
+      },
+      "description": "A city of canals and alleys, run at night by the Lantern Guild.",
+      "id": "region-gutterlight",
+      "level": "town",
+      "name": "Gutterlight",
+      "parent_id": "region-saltmarch",
+      "position": {
+        "x": 0.58,
+        "y": 0.64
+      },
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "attributes": {
+        "terrain_kind": "forest"
+      },
+      "description": "A quiet town in the deep woods, built over caverns that go down a long way.",
+      "id": "region-hollowdeep",
+      "level": "town",
+      "name": "Hollowdeep",
+      "parent_id": "region-saltmarch",
+      "position": {
+        "x": 0.42,
+        "y": 0.4
+      },
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "attributes": {
+        "terrain_kind": "mountain"
+      },
+      "description": "A warriors' town of stone halls on the plateau.",
+      "id": "region-ironcrag",
+      "level": "town",
+      "name": "Ironcrag",
+      "parent_id": "region-stonebrow",
+      "position": {
+        "x": 0.72,
+        "y": 0.18
+      },
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "attributes": {
+        "terrain_kind": "coast"
+      },
+      "description": "The southern coast and lowlands, where the island trades.",
+      "id": "region-saltmarch",
+      "level": "province",
+      "name": "Saltmarch",
+      "parent_id": "region-emberleaf",
+      "position": {
+        "x": 0.5,
+        "y": 0.78
+      },
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "attributes": {
+        "terrain_kind": "coast"
+      },
+      "description": "The harbor where every ship and every newcomer lands.",
+      "id": "region-saltwake",
+      "level": "town",
+      "name": "Saltwake Harbor",
+      "parent_id": "region-saltmarch",
+      "position": {
+        "x": 0.38,
+        "y": 0.88
+      },
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "attributes": {
+        "terrain_kind": "mountain"
+      },
+      "description": "The eastern rock plateau above the cliffs.",
+      "id": "region-stonebrow",
+      "level": "province",
+      "name": "Stonebrow",
+      "parent_id": "region-emberleaf",
+      "position": {
+        "x": 0.78,
+        "y": 0.28
+      },
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "attributes": {
+        "terrain_kind": "coast"
+      },
+      "description": "A long beach of tide pools east of the harbor.",
+      "id": "region-sunstrand",
+      "level": "town",
+      "name": "Sunstrand",
+      "parent_id": "region-saltmarch",
+      "position": {
+        "x": 0.64,
+        "y": 0.9
+      },
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    },
+    {
+      "attributes": {
+        "terrain_kind": "forest"
+      },
+      "description": "A mages' town in the crowns of giant trees, around the Glimmerrun's spring.",
+      "id": "region-sylvarch",
+      "level": "town",
+      "name": "Sylvarch",
+      "parent_id": "region-greenreach",
+      "position": {
+        "x": 0.16,
+        "y": 0.14
+      },
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "world_id": "emberleaf"
+    }
+  ],
+  "relations": [
+    {
+      "confidence": 0.8,
+      "id": "rel-sorcerer-wards",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "relation_type": "sealed_by",
+      "source_id": "entity-ashen-sorcerer",
+      "target_id": "entity-sealing-wards",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.7,
+      "id": "rel-stones-wards",
+      "provenance": {
+        "generated_by": "demo-author",
+        "note": null,
+        "refs": [],
+        "source": "input"
+      },
+      "relation_type": "resembles",
+      "source_id": "entity-ringed-stones",
+      "target_id": "entity-sealing-wards",
+      "world_id": "emberleaf"
+    }
+  ],
+  "scopes": [
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "k-arrivals",
+      "region_id": "region-saltwake",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.6,
+      "is_rumor": false,
+      "knowledge_id": "k-breathing-caves",
+      "region_id": "region-hollowdeep",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "k-cliff-watch",
+      "region_id": "region-ambermeadow",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.7,
+      "is_rumor": false,
+      "knowledge_id": "k-dark-districts",
+      "region_id": "region-gutterlight",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "k-deep-gate",
+      "region_id": "region-hollowdeep",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "k-elders-library",
+      "region_id": "region-sylvarch",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "k-fallen-road",
+      "region_id": "region-ironcrag",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "k-ferry-days",
+      "region_id": "region-saltwake",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "k-forge-oath",
+      "region_id": "region-ironcrag",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "k-glimmerrun",
+      "region_id": "region-greenreach",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.7,
+      "is_rumor": false,
+      "knowledge_id": "k-glowing-spring",
+      "region_id": "region-sylvarch",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.6,
+      "is_rumor": false,
+      "knowledge_id": "k-knocking-rock",
+      "region_id": "region-ashen-dig",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "k-lantern-guild",
+      "region_id": "region-gutterlight",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "k-mushroom-harvest",
+      "region_id": "region-ambermeadow",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "k-older-walls",
+      "region_id": "region-ashen-dig",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.75,
+      "is_rumor": false,
+      "knowledge_id": "k-salt-tax",
+      "region_id": "region-saltwake",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.7,
+      "is_rumor": false,
+      "knowledge_id": "k-spotted-caps",
+      "region_id": "region-ambermeadow",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "k-stonebrow-pride",
+      "region_id": "region-stonebrow",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "k-tide-pools",
+      "region_id": "region-sunstrand",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "k-trade-and-smuggling",
+      "region_id": "region-saltmarch",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    },
+    {
+      "confidence": 0.9,
+      "is_rumor": false,
+      "knowledge_id": "k-wreck-guide",
+      "region_id": "region-sunstrand",
+      "scope_type": "direct",
+      "world_id": "emberleaf"
+    }
+  ],
+  "world": {
+    "description": "An island of tree-top mages, meadow archers, cliff warriors and harbor rogues, split by the Stonebrow cliffs and joined by the Glimmerrun river.",
+    "id": "emberleaf",
+    "name": "Emberleaf Isle"
+  }
+}

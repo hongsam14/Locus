@@ -3737,3 +3737,16 @@ Orchestrator evidence for R-06 (read-only): `npm audit` says both advisories (GH
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 4.
 
 ---
+
+## U8 Code Generation Part 2 — Steps 6 and 5 (Emberleaf content; demos are data)
+**Timestamp**: 2026-10-01T14:29:20Z
+**AI Response**: Per execution note R-01, the content and the manifest swap came first.
+- Emberleaf Isle World File and sources are generated from the real models; the manifest has one entry.
+- `locus/world/demo` is rewritten: manifest-driven, checked once, `problems`, `sources`, `check_packaged`, no constants.
+- `GET /demos` returns DemoInfoOut. The CLI uses `--demo <name>` (alias kept). Leftover names cleaned. package-data globs widened.
+- Aldermoor and `examples/` moved to `tests/fixtures/aldermoor` (lint excludes fixtures).
+- Tests: demo (11, incl. TP-U8-4, the weight table, EX-9, EX-10, EX-11, forbidden names), TP-U8-6 (backend scope), CLI. Mutations caught.
+- Gates: pytest 875, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Steps 5–6.
+
+---

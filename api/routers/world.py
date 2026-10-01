@@ -21,7 +21,7 @@ from api import uploads
 from api.deps import get_localization, get_play_optional, get_shared, get_world
 from api.errors import http_error
 from api.routers import world_editor
-from api.schemas import UnignoreIn, WorldInfo, purge_translations
+from api.schemas import DemoInfoOut, UnignoreIn, WorldInfo, purge_translations
 from locus.localization.wiring import LocalizationContainer
 from locus.play.errors import TurnInProgressError
 from locus.play.wiring import PlayContainer
@@ -40,7 +40,6 @@ from locus.world.augmentation.types import (
     AugmentationRun,
 )
 from locus.world.build import WorldExistsError
-from locus.world.demo import DemoInfo
 from locus.world.ingestion.service import WorldInputs
 from locus.world.wiring import WorldContainer
 from locus.world.worldfile import UnsupportedWorldFile, WorldFile, to_json_bytes
@@ -363,9 +362,10 @@ def import_world_file_upload(
 
 
 # --- demo worlds ------------------------------------------------------------- #
-@router.get("/demos", response_model=list[DemoInfo])
-def list_demos(w: WorldContainer = Depends(get_world)) -> list[DemoInfo]:
-    return _need(w.demo, "demo worlds").list()
+@router.get("/demos", response_model=list[DemoInfoOut])
+def list_demos(w: WorldContainer = Depends(get_world)) -> list[DemoInfoOut]:
+    """The manifest's demos (U8, BR-U8-19): the home screen draws a card for each."""
+    return [DemoInfoOut.of(info) for info in _need(w.demo, "demo worlds").list()]
 
 
 @router.post("/worlds/{world_id}/demo/{name}", response_model=ImportReport)

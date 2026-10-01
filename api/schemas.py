@@ -393,6 +393,7 @@ WorldStateOut = WorldState
 # (no ``npc`` translation kind, BR-U3-37).
 # --------------------------------------------------------------------------- #
 from locus.shared.models import ConnectionEdge, ConnectionKind, Knowledge, Region  # noqa: E402
+from locus.world.demo import DemoInfo  # noqa: E402
 from locus.world.editor import (  # noqa: E402
     ConnectionView,
     EditorRegionView,
@@ -469,3 +470,26 @@ def localize_editor_view(
             for k, s in zip(knowledge, view.knowledge, strict=True)
         ],
     )
+
+
+class DemoInfoOut(BaseModel):
+    """``GET /api/world/demos``: a manifest entry as the home screen needs it (U8 FD
+    domain-entities §1). File and source paths stay on the server."""
+
+    name: str
+    title: str
+    description: str | None = None
+    credits: str | None = None
+    start_region_id: str
+    has_sources: bool = False
+
+    @classmethod
+    def of(cls, info: DemoInfo) -> DemoInfoOut:
+        return cls(
+            name=info.name,
+            title=info.title,
+            description=info.description,
+            credits=info.credits,
+            start_region_id=info.start_region_id,
+            has_sources=info.has_sources,
+        )

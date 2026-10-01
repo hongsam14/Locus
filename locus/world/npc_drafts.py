@@ -109,7 +109,7 @@ def draft_prompt(snapshot: WorldSnapshot, region_id: str, *, n: int = DRAFTS_MAX
 
 
 def _path(snapshot: WorldSnapshot, region_id: str) -> str:
-    """Ancestors from the top, e.g. "Aldermoor > Riverton" (the region itself left out)."""
+    """Ancestors from the top, e.g. "Isle > Province" (the region itself left out)."""
     names: list[str] = []
     seen = {region_id}
     parent = snapshot.regions_by_id[region_id].parent_id

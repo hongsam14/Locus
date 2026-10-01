@@ -1,6 +1,6 @@
 """Deterministic region-name resolution (U2 Q3=A, BR-U2-8/9, RE A11).
 
-Same-name regions of different levels ("Riverton" the town and "Riverton" the
+Same-name regions of different levels ("Ford" the town and "Ford" the
 province) used to resolve to whichever came last in a dict. One rule, one place:
 
 - a hint that names a level matches that level exactly, or nothing;

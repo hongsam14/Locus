@@ -88,7 +88,14 @@ class _Demo:
         self.loaded: list = []
 
     def list(self):
-        return [DemoInfo(name="aldermoor", title="Aldermoor", file="aldermoor.world.json")]
+        return [
+            DemoInfo(
+                name="aldermoor",
+                title="Aldermoor",
+                file="aldermoor.world.json",
+                start_region_id="region-riverton",  # U8: a manifest entry names its start
+            )
+        ]
 
     def info(self, name):
         for item in self.list():
@@ -322,7 +329,16 @@ def test_list_worlds_reports_meta_and_open_sessions() -> None:
 def test_demo_list_and_load() -> None:
     demo = _Demo()
     client = _client(demo=demo)
-    assert client.get("/api/world/demos").json()[0]["name"] == "aldermoor"
+    listed = client.get("/api/world/demos").json()[0]
+    # U8 intended change: the card fields only — no file or source paths (domain-entities §1)
+    assert listed == {
+        "name": "aldermoor",
+        "title": "Aldermoor",
+        "description": None,
+        "credits": None,
+        "start_region_id": "region-riverton",
+        "has_sources": False,
+    }
     r = client.post("/api/world/worlds/w/demo/aldermoor")
     assert r.status_code == 200 and demo.loaded == [("aldermoor", "w", True)]
     assert client.post("/api/world/worlds/w/demo/nope").status_code == 404

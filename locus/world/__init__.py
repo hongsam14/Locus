@@ -9,7 +9,7 @@ In-progress modules (kept, not finished — FR-I): ``ingestion/concept_art_inges
 """
 
 from locus.world.build import WorldBuilder
-from locus.world.demo import DemoInfo, DemoWorlds, load_demo_world
+from locus.world.demo import DemoInfo, DemoSources, DemoWorlds, check_packaged
 from locus.world.editor import (
     ConnectionEditor,
     Editors,
@@ -34,7 +34,8 @@ __all__ = [
     "WorldFileExporter",
     "DemoInfo",
     "DemoWorlds",
-    "load_demo_world",
+    "DemoSources",
+    "check_packaged",
     "WorldContainer",
     "assemble_world",
 ]

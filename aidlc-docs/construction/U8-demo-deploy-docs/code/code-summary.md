@@ -47,3 +47,39 @@
   - 테스트: TP-U3-2 의도된 변경, EX-7 새로
   - 변이: 씨앗 삭제를 빼면 3개 실패(잡음)
   - pytest 866
+- **Step 6 → 5** (〔실행 메모 R-01〕 콘텐츠·매니페스트를 먼저, 그다음 Aldermoor 이동)
+  - 6.1~6.3 Emberleaf Isle
+    - World File: 지역 12, 연결 10쌍(20 엣지), 지식 23(전역 2·지방 3·마을 18), 엔티티 8, 관계 2, prior 2, NPC 15, 씨앗 3
+    - 소스 `emberleaf/memo.md`·`map.json`(그림 없음)
+    - 매니페스트는 `emberleaf` 하나(제목·설명·credits·`start_region_id`·sources)
+    - 만든 방법: 스크래치 생성 스크립트가 실제 모델로 만들어 `sort_sections`·`to_json`으로 썼다. 저장소에는 결과 파일만 있다(데모는 데이터).
+  - 5.1 `locus/world/demo/__init__.py`를 다시 썼다.
+    - `DemoSources`·`DemoInfo`(+ `start_region_id`·`credits`·`sources`·`has_sources`)
+    - 조립 때 한 번 검사하고 `problems`를 공개한다(〔실행 메모 R-02〕).
+    - `importer`는 선택 인자다(없으면 `load`만 RuntimeError).
+    - `sources()`, `build_from_sources`
+    - 경로 탈출 거절. 상수·`load_demo_world`·이름 검사 삭제.
+  - 5.2 `GET /demos` → `DemoInfoOut`(카드 필드만)
+  - 5.3 CLI
+    - `world build --demo <name>`, 별칭 `build-world --demo`(소스가 있는 첫 항목)
+    - 도움말 정리
+    - `npc_drafts.py`·`topology/naming.py` docstring 예시, `locus/world/__init__.py` 내보내기(`DemoSources`·`check_packaged`)
+  - 5.4 `check_packaged()`(설치본 확인용, `DemoWorlds.problems` + 빈 목록)
+  - 5.5 package-data `world/demo/worlds/*.json`, `world/demo/worlds/*/*`
+  - 5.6 옛 Aldermoor World File과 `examples/demo_world/*`를 `tests/fixtures/aldermoor/`로 옮겼다(`examples/` 삭제).
+    - ruff·black은 `tests/fixtures`를 제외한다(픽스처 데이터, `generate_map.py`의 옛 린트).
+    - `_demo_file`(World File 테스트)은 픽스처를 읽는다.
+    - CLI 테스트는 패키지 데모(`emberleaf`)로 바꿨다(`# U8 intended change`).
+    - API 테스트의 가짜 `DemoInfo`에 `start_region_id`를 더했다. `/demos` 응답 단언은 카드 필드다.
+  - 테스트
+    - `tests/world/test_demo.py` 다시 씀(11)
+      - 매니페스트, 불러오기(LLM 0, 교체), 소스, EX-11(잘못된 항목 여섯)
+      - 소스 없음 → LookupError, 지도 그림 base64
+      - TP-U8-4(모양), 도달·우회, 무게표(domain-entities §5.2, 셋째 자리까지 일치)
+      - EX-9: Ironcrag 전해 들음 = 표의 0.15~0.5 마을 전부(FD R-13)
+      - EX-10: 1턴 Saltwake·Sylvarch, 3턴 Ironcrag
+      - 금지어
+    - `tests/test_demo_as_data.py`(TP-U8-6, `locus/`·`api/`; `web/src`는 Step 10에서 더한다)
+    - CLI `--demo` 1
+  - 변이(모두 잡음): 경로 탈출 검사 빼기, 지나갈 수 있는 시작 지역 검사 빼기 → EX-11 실패
+  - pytest 875

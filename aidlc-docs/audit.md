@@ -2974,3 +2974,11 @@ R-07 → Accepted risk
 - Plan deviations are listed in code-summary §5: R-01 call-site moves, the GM-set share reset pulled into step 5, the say 503 mapping and the NPC route pulled into step 6, `one_line` folding tabs, `npcs_here` returning counts, and C2 as `seed_candidates` plus a wider `list_deeds`.
 Summary: `construction/U7-gm-mode-hardening/code/code-summary.md`.
 **Context**: CONSTRUCTION / U7 — Code Generation Part 2, step 11 (code gate) next.
+
+---
+
+## U7 Code Generation — approval gate
+**Timestamp**: 2026-10-01T04:11:45Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U7 code approved. Running `/code-review` on the U7 diff (`git diff 5eb3760..HEAD`, code plan commit → code summary) in the background. Next unit in the order U1→U2→U4→U5→U6→U7→**U3**: U3 월드 에디터 (Functional Design Part 1).
+**Context**: CONSTRUCTION / U7 — Code Generation complete.

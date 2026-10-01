@@ -4043,3 +4043,17 @@ Docs: `construction/build-and-test/purpose-restructure/` (build, unit, integrati
 **Context**: CONSTRUCTION / Build and Test — Purpose Restructure cycle.
 
 ---
+
+## Build and Test — Approval; Operations; cycle close
+**Timestamp**: 2026-10-01T19:05:31Z
+**User Input**: "Approve & Continue (Recommended)"
+**AI Response**: Build and Test approved. Operations (placeholder): operations.md already holds the U8 section (Step 14); CLAUDE.md Status now says the cycle is complete. The next-cycle list is gathered in `operations/next-cycle.md`:
+- screen polish (the human's follow-up)
+- CI first run and the PostgreSQL concurrency check
+- U8 review #9–#15, §3, the cleanups and open design memos
+- U3 design memos 1·2·5
+- the four in-progress features and tech debt
+**PURPOSE RESTRUCTURE CYCLE COMPLETE.** The branch is committed, not pushed.
+**Context**: CONSTRUCTION → OPERATIONS (placeholder) — Purpose Restructure cycle.
+
+---

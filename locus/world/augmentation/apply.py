@@ -182,13 +182,25 @@ def revert(change: ChangeSet, *, world_id: str, editors: Editors) -> None:
     """Undo ``change``. Refused, with nothing written, when a node it touched was edited
     after it (or a node it made is gone), or when an edge it wrote or removed has changed
     since — a change outside this run. The edge check covers answers whose target is a
-    connection or a scope, which record no node (U3 review #4, BR-U3-27)."""
+    connection or a scope, which record no node (U3 review #4, BR-U3-27).
+
+    A revert that passed these checks once (``revert_started``) and was cut part-way
+    finds each item either as the change left it or as it was before; anything else is
+    still an outside edit. Every write below is idempotent, so the same revert sent again
+    redoes them all and ends where an uncut one would (U8 review #6, U3 review S03)."""
     graph = editors.writes.graph
+    resuming = change.revert_started
+    before = {s.id: _props(s.properties) for s in change.nodes_before}
     for snap in change.nodes_after:
         now = graph.get_node(world_id, snap.id)
-        if now is None or _props(now.properties) != _props(snap.properties):
-            raise RevertConflictError(f"{snap.id} was edited after this change")
-    edited = _edges_edited_since(graph, world_id, change)
+        if now is not None and _props(now.properties) == _props(snap.properties):
+            continue
+        if resuming and now is None and snap.id in change.added_ids:
+            continue  # a node it made, already deleted by the cut revert
+        if resuming and now is not None and before.get(snap.id) == _props(now.properties):
+            continue  # already restored by the cut revert
+        raise RevertConflictError(f"{snap.id} was edited after this change")
+    edited = _edges_edited_since(graph, world_id, change, resuming=resuming)
     if edited:
         raise RevertConflictError(f"{edited} was edited after this change")
     change.revert_started = True  # past the checks: a retry may resume (U3 review S03)
@@ -262,32 +274,6 @@ def _edges(graph, world_id: str, ids: list[str]) -> dict[tuple, EdgeSnapshot]:
     }
 
 
-def is_undone(change: ChangeSet, *, world_id: str, editors: Editors) -> bool:
-    """The graph is back where ``change`` found it: its nodes as before, the nodes it made
-    gone, and the edges it touched as before (U3 review S03)."""
-    graph = editors.writes.graph
-    for snap in change.nodes_before:
-        now = graph.get_node(world_id, snap.id)
-        if now is None or _props(now.properties) != _props(snap.properties):
-            return False
-    if any(graph.get_node(world_id, nid) is not None for nid in change.added_ids):
-        return False
-    idents = {_ident(e) for e in [*change.edges_added, *change.edges_removed]}
-    expected = {_full(e) for e in change.edges_removed}
-    return _current(graph, world_id, idents) == expected
-
-
-def finish_revert(change: ChangeSet, *, world_id: str, editors: Editors) -> None:
-    """The search side of a revert whose graph writes already happened (idempotent)."""
-    with editors.writes.writing(world_id):
-        editors.writes.unindex(world_id, change.added_ids)
-        restored = [
-            Node(id=s.id, label=s.label, world_id=world_id, properties=s.properties)
-            for s in change.nodes_before
-        ]
-        editors.writes.index([d for d in (_doc(n) for n in restored) if d is not None])
-
-
 def _current(graph, world_id: str, idents: set[tuple]) -> set[tuple]:
     """The stored edges with one of ``idents``, read around their ends (U3 review C10)."""
     ends = sorted({i[1] for i in idents} | {i[2] for i in idents})
@@ -304,18 +290,25 @@ def _current(graph, world_id: str, idents: set[tuple]) -> set[tuple]:
     return now
 
 
-def _edges_edited_since(graph, world_id: str, change: ChangeSet) -> str | None:
+def _edges_edited_since(
+    graph, world_id: str, change: ChangeSet, *, resuming: bool = False
+) -> str | None:
     """The first edge identity whose edges no longer equal what ``change`` left, or None.
 
     Among the identities the change wrote or removed (type, endpoints, kind/id), the
     edges stored now must be exactly the ones it added: a changed weight or rationale, a
-    deleted pair, a kind change or a re-added removed edge all differ."""
+    deleted pair, a kind change or a re-added removed edge all differ. Resuming a cut
+    revert, each stored edge may be one the change added or one it removed (half undone);
+    only an edge that is neither is an outside edit (U8 review #6)."""
     idents = {_ident(e) for e in [*change.edges_added, *change.edges_removed]}
     if not idents:
         return None
     expected = {_full(e) for e in change.edges_added}
     now = _current(graph, world_id, idents)
-    diff = sorted(now ^ expected)
+    if resuming:
+        diff = sorted(now - expected - {_full(e) for e in change.edges_removed})
+    else:
+        diff = sorted(now ^ expected)
     return f"{diff[0][0]} {diff[0][1]}->{diff[0][2]}" if diff else None
 
 

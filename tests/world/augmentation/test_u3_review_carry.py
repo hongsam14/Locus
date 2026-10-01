@@ -195,3 +195,69 @@ def test_s10_removing_or_undoing_knowledge_purges_its_translations(monkeypatch) 
         params={"change_id": res["change"]["id"]},
     )
     assert purged[-1] == added
+
+
+# --------------------------------------------------------------------------- #
+# U8 code-review-01 #6: a revert cut between its graph writes is finished by the retry
+# --------------------------------------------------------------------------- #
+def _answered(case: str):
+    stack, w = _seeded()
+    svc = _service(stack)
+    if case == "connection_remove":
+        stack.editors.connections.upsert_connection(
+            ConnectionEdge(
+                world_id="w",
+                source_region_id=w["riverton"].id,
+                target_region_id=w["hollow"].id,
+                kind=ConnectionKind.ROUTE,
+                weight=0.5,
+                rationale="old road",
+                wiki_prior_ref="gone-prior",
+                provenance=_prov(),
+            )
+        )
+    run = svc.start_run("w")
+    if case == "gap_add":
+        q = _question(run, "gap", w["hollow"].id)
+        answer = AugmentationAnswer(question_id=q.id, action="add", statement="Wells run dry")
+    elif case == "confirm":
+        q = _question(run, "low_confidence", w["fish"].id)
+        answer = AugmentationAnswer(question_id=q.id, action="confirm")
+    else:
+        q = next(q for q in run.open_questions if q.target and q.target.kind == "connection")
+        answer = AugmentationAnswer(question_id=q.id, action="remove")
+    state = stack.state()  # what a finished revert must give back
+    res = svc.answer(run.id, answer)
+    assert res.change is not None
+    return stack, svc, run.id, res.change.id, state
+
+
+@pytest.mark.parametrize("case", ["gap_add", "confirm", "connection_remove"])
+def test_u8_6_a_revert_cut_at_any_write_is_finished_by_the_retry(case) -> None:
+    stack, svc, run_id, change_id, state = _answered(case)
+    start = len(stack.meter.calls)
+    svc.revert(run_id, change_id)
+    writes = len(stack.meter.calls) - start
+    assert stack.state() == state and writes > 1
+    for n in range(writes):
+        stack, svc, run_id, change_id, state = _answered(case)
+        stack.meter.cut_at = len(stack.meter.calls) + n
+        with pytest.raises(RuntimeError, match="cut at write"):
+            svc.revert(run_id, change_id)
+        again = svc.revert(run_id, change_id)  # was a lasting 409 "edited after"
+        assert stack.state() == state, f"{case}: cut at write {n}"
+        assert next(c for c in again.history if c.id == change_id).reverted
+
+
+def test_u8_6_an_outside_edit_still_blocks_a_resumed_revert() -> None:
+    """Resuming is lenient only about the revert's own half-done writes."""
+    stack, svc, run_id, change_id, _state = _answered("connection_remove")
+    stack.meter.cut_at = len(stack.meter.calls)  # cut at the first write
+    with pytest.raises(RuntimeError, match="cut at write"):
+        svc.revert(run_id, change_id)
+    pairs = [e for e in stack.graph.get_edges("w", ["CONNECTED_TO"]) if e.properties.get("kind")]
+    outside = pairs[0].model_copy(update={"properties": {**pairs[0].properties, "weight": 0.95}})
+    stack.graph.upsert_edges([outside])  # the designer saved a new weight meanwhile
+    stack.cache.invalidate("w")
+    with pytest.raises(Exception, match="edited after"):
+        svc.revert(run_id, change_id)

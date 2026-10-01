@@ -15,7 +15,7 @@ from pydantic import BaseModel
 
 from locus.shared.models import Knowledge, Region, WorldSnapshot
 from locus.shared.text import MATERIAL, one_line
-from locus.world.augmentation.apply import apply_answer, finish_revert, is_undone
+from locus.world.augmentation.apply import apply_answer
 from locus.world.augmentation.apply import revert as _revert
 from locus.world.augmentation.detectors import conflict_pairs, detect_structural
 from locus.world.augmentation.questions import QuestionGenerator
@@ -75,12 +75,9 @@ class AugmentationEngine:
         return apply_answer(issue, question, answer, world_id=world_id, editors=self._editors)
 
     def revert(self, world_id: str, change: ChangeSet) -> None:
-        """Undo ``change``. A revert cut after its checks (``revert_started``) whose
-        graph is already back finishes the search side instead of reporting the run's
-        own writes as an outside edit (U3 review S03)."""
-        if change.revert_started and is_undone(change, world_id=world_id, editors=self._editors):
-            finish_revert(change, world_id=world_id, editors=self._editors)
-            return
+        """Undo ``change``. A revert cut anywhere after its checks (``revert_started``)
+        is finished by the same revert sent again: its own half-done writes are not taken
+        for an outside edit (U3 review S03, U8 review #6)."""
         _revert(change, world_id=world_id, editors=self._editors)
 
     # -- wiki conflicts (BR-U3-22/41, NFR R-03) ---------------------------- #

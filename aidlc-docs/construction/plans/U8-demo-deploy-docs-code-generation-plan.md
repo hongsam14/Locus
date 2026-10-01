@@ -222,8 +222,8 @@
 - [x] 14.4 `web/README.md`(데모 카드, 씨앗 패널, 키 없음 안내). 〔U8 정정〕: U3 BLM §1.4:77, U3 nfr-light §3 리버스 프록시 문장.
 
 ### Step 15 — 라이브 시나리오 (BLM §7, BR-U8-36)
-- [ ] 15.1 `scripts/live_scenario.py`(표준 라이브러리 `urllib`): 단계 1~12와 R-05의 기다리기, PASS·FAIL·SKIP, 키 없으면 LLM 단계 SKIP, FAIL이면 종료 코드 1. `--base http://localhost:8000`, `--world emberleaf`.
-- [ ] 15.2 단위 테스트: 가짜 HTTP 응답으로 판정·SKIP·종료 코드(서버 없이).
+- [x] 15.1 `scripts/live_scenario.py`(표준 라이브러리 `urllib`): 단계 1~12와 R-05의 기다리기, PASS·FAIL·SKIP, 키 없으면 LLM 단계 SKIP, FAIL이면 종료 코드 1. `--base http://localhost:8000`, `--world emberleaf`.
+- [x] 15.2 단위 테스트: 가짜 HTTP 응답으로 판정·SKIP·종료 코드(서버 없이).
 - [ ] 15.3 실제 실행은 Build & Test(운영자 또는 사람이 허락한 이 호스트의 포트 덮어쓰기 기동)에서 한다. 첫 확인 항목은 compose 기동(Infra R-01).
 
 ### Step 16 — 검증·요약

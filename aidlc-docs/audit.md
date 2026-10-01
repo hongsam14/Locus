@@ -3923,3 +3923,21 @@ TP-U8-7 adds 4 tests; 4/4 mutations caught. Metadata confirmed through the app i
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 14.
 
 ---
+
+## U8 Code Generation Part 2 — Step 15 (live scenario)
+**Timestamp**: 2026-10-01T16:03:24Z
+**AI Response**: Added `scripts/live_scenario.py` (urllib only):
+- Steps 1–12 with the 9a wait. Step 10 is split into 10a distortion (no LLM) and 10b dialogue (LLM).
+- Regions are found by name. Each step prints PASS, FAIL or SKIP; any FAIL exits 1.
+
+Tests (`tests/test_live_scenario.py`, 9):
+- The real API runs in-process without a key through a TestClient adapter (two world ids).
+- A scripted server covers the LLM-path verdicts.
+- 5/5 mutations caught.
+
+Found and fixed: the keyless test fixture built `KnowledgeContainer(params=None)`, so `GET /region` was a 500 in that fixture only. It now uses `assemble_knowledge`.
+
+The actual run against a live stack (15.3) is left to Build & Test. Gates: pytest 933, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 15.
+
+---

@@ -10,9 +10,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from api.main import create_app
-from locus.knowledge.cache import WorldCache
-from locus.knowledge.loader import WorldLoader
-from locus.knowledge.wiring import KnowledgeContainer
+from locus.knowledge.wiring import assemble_knowledge
 from locus.play import InMemoryPlayRepository
 from locus.play.turn.executor import SyncTurnExecutor
 from locus.play.wiring import assemble_play
@@ -27,10 +25,9 @@ W = "emberleaf"  # the packaged demo, loaded into its own id (test input, BR-U8-
 def _keyless():
     graph, search = InMemoryGraphRepository(), InMemorySearchRepository()
     shared = SharedContainer(settings=Settings(), graph=graph, search=search, llm=None)
-    cache = WorldCache(WorldLoader(graph))
-    knowledge = KnowledgeContainer(
-        loader=WorldLoader(graph), cache=cache, query=None, params=None  # type: ignore[arg-type]
-    )
+    # the production knowledge assembly: the region view needs its consensus params (a
+    # bare container with params=None made GET /region a 500 — found by U8 Step 15)
+    knowledge = assemble_knowledge(shared)
     world = assemble_world(shared, knowledge)
     play = assemble_play(
         shared, knowledge, repo=InMemoryPlayRepository(), executor=SyncTurnExecutor()

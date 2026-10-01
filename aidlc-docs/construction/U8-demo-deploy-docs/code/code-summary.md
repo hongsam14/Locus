@@ -371,3 +371,26 @@
     - README의 `--profile` 값이 compose에 있는 프로필이다.
     - 변이 2건 모두 잡음
   - 게이트: pytest 924, vitest 197, ruff·black clean
+- **Step 15** (라이브 시나리오, BLM §7, BR-U8-36)
+  - 15.1 `scripts/live_scenario.py`(표준 라이브러리 `urllib`)
+    - 단계: 1·2·3·4·5·6·7·8·9·9a·10a·10b·11·12
+    - 10은 둘로 나눴다. 왜곡도(LLM 없음)와 대화(LLM)라서, 키가 없을 때 앞쪽은 여전히 판정한다.
+    - 지역은 이름으로 찾는다. 다른 world id로 불러와 id가 다시 매겨져도 돈다. NPC는 플레이어 지역의 첫 NPC, 씨앗은 Ambermeadow 지역의 것이다.
+    - PASS·FAIL·SKIP
+      - 키가 없으면 5·6·10b가 SKIP이다. 선언이 없으면 9·11이 SKIP이다.
+      - 증인 판단이 씨앗을 만들지 않았으면 9·11이 까닭과 함께 SKIP이다. LLM에 달린 일이라 FAIL로 보지 않는다.
+      - 1~3 중 하나가 FAIL이면 나머지는 SKIP이다.
+      - 연결 실패와 응답 모양 오류는 FAIL이고 멈추지 않는다.
+      - FAIL이 있으면 종료 코드 1이다.
+    - 옵션: `--base`, `--world`(교체된다고 알린다), `--poll`, `--timeout`
+    - 〔설계 메모〕 FD 2단계의 `llm_calls=0`은 `ImportReport`에 없는 필드다. 불러오기 `ok`와 지역 12로 본다. LLM 0회는 BR-U2-28 테스트가 지킨다.
+  - 15.2 테스트 `tests/test_live_scenario.py` 9
+    - 실제 API를 프로세스 안에서 키 없이 조립해(TP-U8-8 조립) TestClient 어댑터로 끝까지 돌린다(9 PASS, 5 SKIP). world id 둘(`emberleaf`, `emberleaf-live` 다시 매김)로 돌린다.
+    - 흉내 서버로 본 판정: LLM 있음 전부 PASS, 씨앗 안 됨 SKIP, 너무 빠른 전파 FAIL, 스택 꺼짐(1 FAIL + 13 SKIP, 종료 1), 연결 거부, 실패한 run과 끝나지 않는 run, `main` 옵션
+    - 변이 5건 모두 잡음: 먼 지역 단언, 게이트, 종료 코드, 씨앗 SKIP, id를 이름으로 찾기
+  - 〔발견·수정〕 키 없는 조립 테스트(`tests/api/test_keyless_api.py`)의 fixture에 문제가 있었다.
+    - `KnowledgeContainer(params=None)`로 조립해서 `GET /region`이 500이었다(제품 코드는 `assemble_knowledge`라 문제없음).
+    - 실제 API로 시나리오를 돌리다 드러났다. fixture를 `assemble_knowledge(shared)`로 바꿨다. TP-U8-8 docstring의 "production way"에 맞는 조립이다.
+  - 문서: operations.md U8 절과 README 개발 절에 시나리오 명령 한 줄
+  - 15.3 실제 실행은 Build & Test(운영자, 또는 사람이 허락한 이 호스트의 포트 덮어쓰기 기동)에서 한다. 아직 하지 않았다.
+  - 게이트: pytest 933, ruff·black clean(`scripts` 포함), mypy 11

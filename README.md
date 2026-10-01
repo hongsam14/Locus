@@ -84,6 +84,8 @@ cd web && npx tsc --noEmit && npx vitest run
 cd web && npm audit --omit=dev              # 0건이어야 한다
 ```
 
+띄운 스택에 대고 데모 흐름을 끝까지 확인하려면 `python scripts/live_scenario.py`를 돌립니다(대상 월드를 교체합니다. 단계마다 PASS·FAIL·SKIP, 키가 없으면 LLM 단계는 SKIP).
+
 이 저장소는 AWS AI-DLC 방법론으로 개발합니다. 설계·계획 산출물은 `aidlc-docs/`에 있습니다(상태: `aidlc-docs/aidlc-state.md`, 운영: `aidlc-docs/operations/operations.md`).
 
 ## 디렉터리

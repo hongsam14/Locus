@@ -35,6 +35,11 @@ class WikiAdmin:
         self._search = search_repo
         self._embedding = embedding
         self._cache = cache  # priors are canonical: invalidate after writes (BR-U2-17)
+        # the editors' delete rule (U3 review C3); imported here: the editor package
+        # imports this module for its citation maps
+        from locus.world.editor.writes import EditorWrites
+
+        self._writes = EditorWrites(graph_repo, search_repo, embedding, cache=cache)
 
     def upsert_prior(self, prior: WikiPrior) -> WikiPrior:
         """Create or update a prior (idempotent by id), keeping provenance."""
@@ -72,21 +77,9 @@ class WikiAdmin:
     def delete_prior(self, world_id: str, prior_id: str) -> None:
         """Delete a prior and its search document; what cites it is left for DANGLING
         (BLM §5.2). Graph first, then search; a prior already gone still has its search
-        document removed before the ``LookupError`` so a retry cleans up (NFR R-01)."""
-        node = self._graph.get_node(world_id, prior_id)
-        held = node is not None and node.label == "WikiPrior"
-        try:
-            if held:
-                self._graph.delete_node(world_id, prior_id)
-            self._search.delete(world_id, [prior_id])
-        finally:
-            if held:
-                try:
-                    touch_world_meta(self._graph, world_id, last_writer="edit")
-                finally:
-                    if self._cache is not None:
-                        self._cache.invalidate(world_id)
-        if not held:
+        document removed before the ``LookupError`` so a retry cleans up (NFR R-01), and a
+        node of another kind under that id keeps its document (U3 review S12)."""
+        if not self._writes.delete_held(world_id, prior_id, "WikiPrior"):
             raise LookupError(f"wiki prior not found: {prior_id}")
 
     def _snapshot(self, world_id: str) -> WorldSnapshot:

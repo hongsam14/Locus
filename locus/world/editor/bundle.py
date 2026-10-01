@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 from locus.knowledge.cache import SnapshotCache
 from locus.shared.llm.base import EmbeddingProvider
-from locus.shared.storage.base import GraphRepository, Node, SearchRepository
+from locus.shared.storage.base import GraphRepository, SearchRepository
 from locus.world.editor.connections import ConnectionEditor
 from locus.world.editor.entities import EntityEditor
 from locus.world.editor.knowledge import KnowledgeEditor
@@ -48,26 +48,16 @@ class Editors:
             entities=EntityEditor(w),
         )
 
-    def get_node(self, world_id: str, node_id: str) -> Node | None:
-        return self.writes.graph.get_node(world_id, node_id)
-
-    def prior_ids(self, world_id: str) -> set[str]:
-        """The world's stored prior ids (the snapshot carries them, no extra read)."""
-        return {p.id for p in self.writes.snapshot(world_id).kg.priors}
-
     def delete_any(self, world_id: str, node_id: str) -> bool:
-        """Delete a node by its label's own rule; False when it is not there."""
-        node = self.get_node(world_id, node_id)
+        """Delete what an augmentation REMOVE answer names — knowledge or an entity, the
+        only kinds a question removes (U3 review C4). False when it is not there."""
+        node = self.writes.graph.get_node(world_id, node_id)
         if node is None:
             return False
         if node.label == "Knowledge":
             self.knowledge.delete_knowledge(world_id, node_id)
         elif node.label == "Entity":
             self.entities.delete_entity(world_id, node_id)
-        elif node.label == "NPC":
-            self.npcs.delete_npc(world_id, node_id)
-        elif node.label == "Region":
-            self.regions.delete_region(world_id, node_id)
         else:
             raise ValueError(f"cannot delete a {node.label} here: {node_id}")
         return True

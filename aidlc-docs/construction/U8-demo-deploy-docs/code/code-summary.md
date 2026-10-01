@@ -103,3 +103,30 @@
     - 키 없이 쓰는 경로는 된다: 데모 불러오기 → 시작 지역 세션 → 강 이동 → 씨앗 시작, 보강 시작, `POST priors`.
     - 표 밖에서 500이 나온 경로는 없었다(고칠 것 없음).
   - pytest 878
+- **Step 9a** (U3 이월: 에디터 쓰기)
+  - 포트: `GraphRepository.replace_edges`(Neo4j `MERGE … SET r = $props`)·`edges_touching`(한 쿼리). 구현: Neo4j 어댑터, `InMemoryGraphRepository`, `MeteredGraph`(쓰기 하나로 셈). 손으로 쓴 가짜 둘(`test_services._GraphRepo`, `test_query._FakeGraphRepo`)은 그 경로를 타지 않아 그대로다.
+  - #13
+    - (a) NPC 집 옮기기: 새 LIVES_IN → 노드 → 옛 LIVES_IN. 옛 집은 엣지에서 읽는다.
+    - (b) `set_prior_ref`는 `replace_edges`로 제자리 교체한다.
+  - C3·S12: `EditorWrites.delete_held`(다른 라벨이면 손대지 않고, 없으면 검색 정리만 하고 메타는 쓰지 않음)
+    - 지식·NPC·엔티티 삭제와 `WikiAdmin.delete_prior`가 함께 쓴다.
+    - 〔이탈〕 WikiAdmin은 EditorWrites를 받지 않고 자기 안에서 만든다. 에디터 패키지가 wiki 모듈을 import하므로 지역 import로 순환을 피했다.
+  - C4: `Editors.prior_ids`·`get_node` 삭제(호출처 `apply.py` 2곳은 `writes.graph.get_node`), `delete_any`는 지식·엔티티만
+  - C6: `npc_drafts._path` = `level_path[:-1]`, `regions._connection_edges` → `connections.edge_keys`
+  - C11: `EditorWrites.index(…, previous=)`. 글과 meta가 모두 같은 문서는 다시 색인하지 않는다.
+    - 〔이탈〕 리뷰는 "글이 같으면 임베딩만 건너뜀"이었다. 색인은 문서를 통째로 덮으므로 벡터 없이 쓰면 벡터를 잃는다. 그래서 문서 전체가 같을 때만 건너뛴다.
+  - C17: 빈 제목은 서버의 `fallback_title`(create·upsert)
+  - S21: 편집 쓰기 앞의 `require_world`(스냅샷 읽기 — WorldMeta 없는 U2 이전 월드도 편집된다)
+  - S26: `own_label` — 같은 id가 다른 라벨이면 400
+    - 〔이탈〕 플랜은 가짜를 (world, label, id)로 다시 잡는 것까지였다. 편집 쓰기의 검사가 결함(Neo4j에 같은 id 노드 둘)을 막으므로 가짜의 키는 그대로 두었다. 키를 바꾸면 `get_node(world, id)`의 뜻이 바뀌어 테스트 전반이 흔들린다.
+  - S29: 신뢰도가 바뀌면 그 지식의 DIRECT 스코프 엣지 값도 고친다.
+  - S30: 지운 지역의 부모가 월드에 없으면 `new_parent_id = None`
+  - S32: 있는 id로 지식 추가 → 400
+  - #12(서버): 엔티티 확인·고침은 위치가 바뀔 때만 위치를 검사한다.
+  - 의도된 변경: `test_world_api._editors`·`test_services.test_graph_editor_upsert_and_delete`가 월드와 캐시를 갖는다(S21).
+  - 테스트
+    - `tests/world/editor/test_u3_review_carry.py` 13(#13 두 경로는 모든 쓰기에서 끊고 다시)
+    - 포트 계약 3
+  - 변이(모두 잡음): #13a 옛 집을 속성에서 읽기, #13b 지운 뒤 쓰기, S12 다른 라벨 문서 지우기, C11 이전 문서 무시, S29 스코프 갱신 빼기, S30 부모 그대로
+  - 호출처: `upsert_npc`·`update_entity`·`upsert_knowledge`의 서명은 그대로다(새 인자 없음). `EditorWrites.index`의 새 키워드는 선택이다.
+  - pytest 894

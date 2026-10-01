@@ -63,6 +63,18 @@ class InMemoryGraphRepository:
             key = e.properties.get(key_field) if key_field else None
             self._edges[(e.world_id, e.type, e.source_id, e.target_id, key)] = e.model_copy()
 
+    def replace_edges(self, edges: list[Edge]) -> None:
+        """U8: the fake's upsert already replaces an edge whole."""
+        self.upsert_edges(edges)
+
+    def edges_touching(
+        self, world_id: str, node_ids: list[str], types: list[str] | None = None
+    ) -> list[Edge]:
+        ids = set(node_ids)
+        return [
+            e for e in self.get_edges(world_id, types) if e.source_id in ids or e.target_id in ids
+        ]
+
     def replace_nodes(self, nodes: list[Node]) -> None:
         """U3: properties replaced whole (a property left out is removed)."""
         if self.fail_on_upsert is not None:

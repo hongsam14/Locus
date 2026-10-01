@@ -6,7 +6,7 @@ Editing a statement keeps its scopes (US-2.3 셋째); scopes change only through
 
 from __future__ import annotations
 
-from locus.shared.models import Knowledge, ScopeLink, ScopeType
+from locus.shared.models import Knowledge, ScopeLink, ScopeType, fallback_title
 from locus.shared.storage import graph_mapping as gm
 from locus.shared.storage.base import Edge, EdgeKey
 from locus.world.editor.writes import EditorWrites, require_region
@@ -17,17 +17,32 @@ class KnowledgeEditor:
         self._w = writes
 
     def upsert_knowledge(self, knowledge: Knowledge) -> Knowledge:
-        """Replace the item and re-index it; scopes are untouched. ``region_hint`` is a
-        build-time value and is not stored."""
-        knowledge = knowledge.model_copy(update={"region_hint": None})
+        """Replace the item and re-index it; its scopes stay, but a changed confidence is
+        copied onto its DIRECT scope edges, which the region views read (U3 review S29).
+        ``region_hint`` is a build-time value and is not stored. An empty title gets the
+        server's fallback (C17)."""
+        snapshot = self._w.require_world(knowledge.world_id)  # S21
+        old = self._w.own_label(knowledge.world_id, knowledge.id, "Knowledge")  # S26
+        knowledge = _clean(knowledge)
+        before = gm.node_to_knowledge(old) if old is not None else None
+        scopes = [
+            s.model_copy(update={"confidence": knowledge.confidence})
+            for s in snapshot.kg.scopes
+            if s.knowledge_id == knowledge.id and str(s.scope_type) == ScopeType.DIRECT.value
+        ]
         with self._w.writing(knowledge.world_id):
-            self._write_item(knowledge)
+            self._write_item(knowledge, before)
+            if before is not None and before.confidence != knowledge.confidence and scopes:
+                self._w.graph.upsert_edges(gm.scope_edges(scopes))
         return knowledge
 
     def create_knowledge(self, knowledge: Knowledge, region_id: str) -> Knowledge:
-        """ "지식 추가" on a region: the item plus one DIRECT scope (BR-U3-12)."""
-        require_region(self._w.snapshot(knowledge.world_id), region_id)
-        knowledge = knowledge.model_copy(update={"region_hint": None})
+        """ "지식 추가" on a region: the item plus one DIRECT scope (BR-U3-12). An id that
+        already exists is 400, as for regions and NPCs (U3 review S32)."""
+        require_region(self._w.require_world(knowledge.world_id), region_id)
+        if self._w.own_label(knowledge.world_id, knowledge.id, "Knowledge") is not None:
+            raise ValueError(f"knowledge already exists: {knowledge.id}")
+        knowledge = _clean(knowledge)
         scope = ScopeLink(
             world_id=knowledge.world_id,
             knowledge_id=knowledge.id,
@@ -40,9 +55,10 @@ class KnowledgeEditor:
             self._w.graph.upsert_edges(gm.scope_edges([scope]))
         return knowledge
 
-    def _write_item(self, knowledge: Knowledge) -> None:
+    def _write_item(self, knowledge: Knowledge, before: Knowledge | None = None) -> None:
         self._w.replace([gm.knowledge_to_node(knowledge)])
-        self._w.index([gm.knowledge_doc(knowledge)])
+        previous = [gm.knowledge_doc(before)] if before is not None else None
+        self._w.index([gm.knowledge_doc(knowledge)], previous=previous)
 
     def set_scopes(self, world_id: str, knowledge_id: str, region_ids: list[str]) -> list[str]:
         """The item's DIRECT scopes become exactly ``region_ids`` (BR-U3-13); an empty
@@ -97,6 +113,7 @@ class KnowledgeEditor:
         ids = [new_id if i == old_id else i for i in getattr(item, field)]
         ids = [i for i in dict.fromkeys(ids) if i]
         changed = item.model_copy(update={field: ids, "region_hint": None})
+        before = item
         with self._w.writing(world_id):
             if new_id:
                 self._w.graph.upsert_edges(
@@ -109,7 +126,7 @@ class KnowledgeEditor:
                         )
                     ]
                 )
-            self._write_item(changed)
+            self._write_item(changed, before)
             self._w.graph.delete_edges(
                 world_id, [EdgeKey(type=edge_type, source_id=knowledge_id, target_id=old_id)]
             )
@@ -119,12 +136,7 @@ class KnowledgeEditor:
         """Graph first, then search. An item already gone still has its document removed
         before the ``LookupError``, so a retry after a cut cleans up (NFR R-01). The
         router purges its translations (BR-U3-3)."""
-        held = self._w.node(world_id, knowledge_id, "Knowledge") is not None
-        with self._w.writing(world_id):
-            if held:
-                self._w.graph.delete_node(world_id, knowledge_id)
-            self._w.unindex(world_id, [knowledge_id])
-        if not held:
+        if not self._w.delete_held(world_id, knowledge_id, "Knowledge"):
             raise LookupError(f"knowledge not found: {knowledge_id}")
 
     def list_unscoped(self, world_id: str) -> list[Knowledge]:
@@ -133,3 +145,9 @@ class KnowledgeEditor:
         snapshot = self._w.snapshot(world_id)
         scoped = {s.knowledge_id for s in snapshot.kg.scopes}
         return [k for k in snapshot.kg.knowledge if not k.is_global and k.id not in scoped]
+
+
+def _clean(knowledge: Knowledge) -> Knowledge:
+    """No build-time hint; an empty title gets the server's fallback (U3 review C17)."""
+    title = (knowledge.title or "").strip() or fallback_title(knowledge.statement)
+    return knowledge.model_copy(update={"region_hint": None, "title": title})

@@ -47,8 +47,18 @@ class _Builder:
 
 
 def _editors() -> Editors:
-    """The real editor classes over in-memory storage (U3: was an ``_Editor`` fake)."""
-    return Editors.assemble(InMemoryGraphRepository(), InMemorySearchRepository())
+    """The real editor classes over in-memory storage (U3: was an ``_Editor`` fake).
+
+    U8 intended change: U3 review S21 — an edit writes into an existing world, so the
+    editors read world ``w`` through the cache, as ``assemble_world`` wires them."""
+    from locus.knowledge.cache import WorldCache
+    from locus.knowledge.loader import WorldLoader
+    from locus.shared.models import WorldMeta
+    from locus.shared.storage.persistence import persist_graph
+
+    graph, search = InMemoryGraphRepository(), InMemorySearchRepository()
+    persist_graph(graph, search, None, "w", meta=WorldMeta(id="w", name="W"))
+    return Editors.assemble(graph, search, cache=WorldCache(WorldLoader(graph)))
 
 
 class _Exporter:

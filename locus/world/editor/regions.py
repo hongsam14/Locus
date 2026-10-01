@@ -14,6 +14,7 @@ from collections.abc import Mapping, Sequence
 from locus.shared.models import Region, WorldSnapshot
 from locus.shared.storage import graph_mapping as gm
 from locus.shared.storage.base import EdgeKey
+from locus.world.editor.connections import edge_keys
 from locus.world.editor.models import (
     ConnectionKey,
     ConnectionView,
@@ -34,14 +35,16 @@ class RegionEditor:
 
     # -- add / replace (BR-U3-7) ------------------------------------------ #
     def create_region(self, region: Region) -> Region:
-        if self._w.node(region.world_id, region.id, "Region") is not None:
+        if self._w.own_label(region.world_id, region.id, "Region") is not None:
             raise ValueError(f"region already exists: {region.id}")
         return self.upsert_region(region)
 
     def upsert_region(self, region: Region) -> Region:
         """Replace the region; a changed parent rewrites ``CONTAINS`` (new edge first,
-        then the property, then the old edge)."""
-        old = self._w.node(region.world_id, region.id, "Region")
+        then the property, then the old edge). The world must exist (U3 review S21) and
+        the id may not belong to another kind of node (S26)."""
+        self._w.require_world(region.world_id)
+        old = self._w.own_label(region.world_id, region.id, "Region")
         old_parent = old.properties.get("parent_id") if old is not None else None
         if region.parent_id and region.parent_id != old_parent:
             self._check_parent(region)
@@ -113,7 +116,7 @@ class RegionEditor:
                 for nid in npc_ids:
                     g.delete_node(world_id, nid)
             if plan.connections:  # ⑤ both directions
-                g.delete_edges(world_id, _connection_edges(plan.connections))
+                g.delete_edges(world_id, [e for k in plan.connections for e in edge_keys(k)])
             g.delete_node(world_id, region_id)  # ⑥
         return RegionDeleteReport(
             **plan.model_dump(),
@@ -161,29 +164,6 @@ def _edge(kind: str, source: str, target: str) -> EdgeKey:
     return EdgeKey(type=kind, source_id=source, target_id=target)
 
 
-def _connection_edges(keys: list[ConnectionKey]) -> list[EdgeKey]:
-    out: list[EdgeKey] = []
-    for k in keys:
-        ident = {"kind": str(k.kind)}
-        out.append(
-            EdgeKey(
-                type="CONNECTED_TO",
-                source_id=k.a_region_id,
-                target_id=k.b_region_id,
-                identity=ident,
-            )
-        )
-        out.append(
-            EdgeKey(
-                type="CONNECTED_TO",
-                source_id=k.b_region_id,
-                target_id=k.a_region_id,
-                identity=ident,
-            )
-        )
-    return out
-
-
 def _children(snapshot: WorldSnapshot, region_id: str) -> list[NameRef]:
     return [
         NameRef(id=r.id, name=r.name) for r in snapshot.topo.regions if r.parent_id == region_id
@@ -227,7 +207,8 @@ def _plan(snapshot: WorldSnapshot, region_id: str) -> RegionDeletePlan:
     return RegionDeletePlan(
         region_id=region_id,
         region_name=region.name,
-        new_parent_id=region.parent_id,
+        # a parent the world does not hold is not handed to the children (U3 review S30)
+        new_parent_id=region.parent_id if region.parent_id in snapshot.regions_by_id else None,
         children=_children(snapshot, region_id),
         connections=keys,
         npcs=[NameRef(id=n.id, name=n.name) for n in snapshot.npcs_by_region.get(region_id, [])],

@@ -316,10 +316,16 @@ def test_orchestrator_distills_priors_and_links_per_world() -> None:
 # --------------------------------------------------------------------------- #
 def test_graph_editor_upsert_and_delete() -> None:
     # U3 intended change: BR-U3-1, 이탈 1 — a replace write; deletes go by kind
+    from locus.knowledge.cache import WorldCache
+    from locus.knowledge.loader import WorldLoader
+    from locus.shared.models import WorldMeta
+    from locus.shared.storage.persistence import persist_graph
     from tests.shared.storage.fakes import InMemoryGraphRepository, InMemorySearchRepository
 
     g, s = InMemoryGraphRepository(), InMemorySearchRepository()
-    editors = Editors.assemble(g, s)
+    # U8 intended change: U3 review S21 — the world must exist and the editors read it
+    persist_graph(g, s, None, "w", meta=WorldMeta(id="w", name="W"))
+    editors = Editors.assemble(g, s, cache=WorldCache(WorldLoader(g)))
     k = Knowledge(world_id="w", statement="new fact", title="new fact", provenance=_prov())
     editors.knowledge.upsert_knowledge(k)
     assert g.get_node("w", k.id).label == "Knowledge"  # type: ignore[union-attr]

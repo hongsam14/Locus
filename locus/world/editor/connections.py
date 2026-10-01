@@ -55,10 +55,13 @@ class ConnectionEditor:
             return self._w.graph.delete_edges(key.world_id, edge_keys(key))
 
     def set_prior_ref(self, key: ConnectionKey, prior_id: str | None) -> list[ConnectionEdge]:
-        """Change the cited prior of both directions together (FD 검토 R-11)."""
+        """Change the cited prior of both directions together (FD 검토 R-11). The pair is
+        replaced in place (``replace_edges``): no delete-then-write gap where a cut lost
+        the connection, and a cleared prior is really gone (U3 review #13)."""
         old = _existing(self._w.snapshot(key.world_id), key)
         pair = _pair(old.model_copy(update={"wiki_prior_ref": prior_id}))
-        self._write(key.world_id, delete=[key], create=pair)
+        with self._w.writing(key.world_id):
+            self._w.graph.replace_edges(gm.connection_edges(pair))
         return pair
 
     def _write(

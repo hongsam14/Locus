@@ -17,35 +17,40 @@ class NpcEditor:
         self._w = writes
 
     def create_npc(self, npc: NPC) -> NPC:
-        if self._w.node(npc.world_id, npc.id, "NPC") is not None:
+        if self._w.own_label(npc.world_id, npc.id, "NPC") is not None:
             raise ValueError(f"npc already exists: {npc.id}")
         return self.upsert_npc(npc)
 
     def upsert_npc(self, npc: NPC) -> NPC:
+        """Write order (U3 review #13): the new ``LIVES_IN`` first, then the node, then the
+        old ``LIVES_IN`` edges. The old homes are read from the edges (what the loader
+        follows), so a retry after a cut finds a leftover edge and removes it."""
+        self._w.require_world(npc.world_id)  # S21
         if self._w.node(npc.world_id, npc.home_region_id, "Region") is None:
             raise LookupError(f"region not found: {npc.home_region_id}")
-        old = self._w.node(npc.world_id, npc.id, "NPC")
-        old_home = old.properties.get("home_region_id") if old is not None else None
+        old = self._w.own_label(npc.world_id, npc.id, "NPC")  # S26
+        homes = {
+            e.target_id
+            for e in self._w.graph.edges_touching(npc.world_id, [npc.id], ["LIVES_IN"])
+            if e.source_id == npc.id
+        }
+        gone = sorted(homes - {npc.home_region_id})
         with self._w.writing(npc.world_id):
-            self._w.replace([gm.npc_to_node(npc)])
-            if old_home != npc.home_region_id:
+            if npc.home_region_id not in homes:
                 self._w.graph.upsert_edges(gm.lives_in_edges([npc]))
-            if old_home and old_home != npc.home_region_id:
+            self._w.replace([gm.npc_to_node(npc)])
+            if gone:
                 self._w.graph.delete_edges(
                     npc.world_id,
-                    [EdgeKey(type="LIVES_IN", source_id=npc.id, target_id=old_home)],
+                    [EdgeKey(type="LIVES_IN", source_id=npc.id, target_id=h) for h in gone],
                 )
-            self._w.index([gm.npc_doc(npc)])
+            previous = [gm.npc_doc(gm.node_to_npc(old))] if old is not None else None
+            self._w.index([gm.npc_doc(npc)], previous=previous)
         return npc
 
     def delete_npc(self, world_id: str, npc_id: str) -> None:
         """Node (DETACH takes ``LIVES_IN``), then the search document; an NPC already
         gone still has its document removed before the ``LookupError`` (NFR R-01).
         Conversations with it stay in the sessions (BR-U3-17)."""
-        held = self._w.node(world_id, npc_id, "NPC") is not None
-        with self._w.writing(world_id):
-            if held:
-                self._w.graph.delete_node(world_id, npc_id)
-            self._w.unindex(world_id, [npc_id])
-        if not held:
+        if not self._w.delete_held(world_id, npc_id, "NPC"):
             raise LookupError(f"npc not found: {npc_id}")

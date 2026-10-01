@@ -12,6 +12,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from locus.knowledge.cache import SnapshotSource
+from locus.knowledge.query import level_path
 from locus.shared.llm.base import LLMProvider
 from locus.shared.models import WorldSnapshot
 from locus.shared.models.graph import LocusModel
@@ -109,15 +110,9 @@ def draft_prompt(snapshot: WorldSnapshot, region_id: str, *, n: int = DRAFTS_MAX
 
 
 def _path(snapshot: WorldSnapshot, region_id: str) -> str:
-    """Ancestors from the top, e.g. "Isle > Province" (the region itself left out)."""
-    names: list[str] = []
-    seen = {region_id}
-    parent = snapshot.regions_by_id[region_id].parent_id
-    while parent and parent not in seen and parent in snapshot.regions_by_id:
-        seen.add(parent)
-        names.append(snapshot.regions_by_id[parent].name)
-        parent = snapshot.regions_by_id[parent].parent_id
-    return " > ".join(reversed(names))
+    """Ancestors from the top, e.g. "Isle > Province" (the region itself left out): the
+    knowledge query's ``level_path`` without its last name (U3 review C6)."""
+    return " > ".join(level_path(snapshot.regions_by_id[region_id], snapshot)[:-1])
 
 
 def _clip(raw: _Draft) -> NpcDraft | None:

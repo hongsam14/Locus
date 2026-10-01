@@ -120,6 +120,30 @@ class Neo4jGraphRepository(GraphRepository):
                 params["key"] = edge.properties[key_field]
             self._run(query, params)
 
+    def replace_edges(self, edges: list[Edge]) -> None:
+        """Replace each edge's properties whole (U8, U3 review #13): MERGE by type and
+        identity, then ``SET r = $props``, so a cleared property (a removed prior ref) is
+        gone and no delete-then-write gap exists."""
+        for edge in edges:
+            rel = _safe_ident(edge.type)
+            key_field = edge_identity_field(edge)
+            key_clause = f" {{{key_field}: $key}}" if key_field else ""
+            query = (
+                "MATCH (a {id: $source_id, world_id: $world_id}) "
+                "MATCH (b {id: $target_id, world_id: $world_id}) "
+                f"MERGE (a)-[r:{rel}{key_clause}]->(b) "
+                "SET r = $props"
+            )
+            params = {
+                "source_id": edge.source_id,
+                "target_id": edge.target_id,
+                "world_id": edge.world_id,
+                "props": edge.properties,
+            }
+            if key_field:
+                params["key"] = edge.properties[key_field]
+            self._run(query, params)
+
     def replace_nodes(self, nodes: list[Node]) -> None:
         """Replace each node's properties whole (U3 BR-U3-1): a property left out of
         ``properties`` is removed. One UNWIND query per label (NFR R-06); ``id`` and
@@ -208,6 +232,39 @@ class Neo4jGraphRepository(GraphRepository):
             "RETURN type(r) AS type, a.id AS source_id, b.id AS target_id, properties(r) AS props"
         )
         params: dict = {"world_id": world_id}
+        if types:
+            params["types"] = types
+        rows = self._run(query, params)
+        return [
+            Edge(
+                type=row["type"],
+                source_id=row["source_id"],
+                target_id=row["target_id"],
+                world_id=world_id,
+                properties=dict(row.get("props") or {}),
+            )
+            for row in rows
+        ]
+
+    def edges_touching(
+        self, world_id: str, node_ids: list[str], types: list[str] | None = None
+    ) -> list[Edge]:
+        """Edges with an end in ``node_ids`` (U8, U3 review C10): one query, not the
+        whole world's edges."""
+        if not node_ids:
+            return []
+        type_filter = ""
+        if types:
+            for t in types:
+                _safe_ident(t)
+            type_filter = "AND type(r) IN $types "
+        query = (
+            "MATCH (a {world_id: $world_id})-[r]->(b {world_id: $world_id}) "
+            "WHERE (a.id IN $ids OR b.id IN $ids) "
+            f"{type_filter}"
+            "RETURN type(r) AS type, a.id AS source_id, b.id AS target_id, properties(r) AS props"
+        )
+        params: dict = {"world_id": world_id, "ids": list(node_ids)}
         if types:
             params["types"] = types
         rows = self._run(query, params)

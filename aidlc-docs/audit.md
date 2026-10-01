@@ -3764,3 +3764,14 @@ Orchestrator evidence for R-06 (read-only): `npm audit` says both advisories (GH
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 8.
 
 ---
+
+## U8 Code Generation Part 2 — Step 9a (U3 carry: editor writes)
+**Timestamp**: 2026-10-01T14:42:46Z
+**AI Response**: Ports replace_edges/edges_touching. Closed #13 (a, b), #12 (server), C3/S12, C4, C6, C11, C17, S21, S26, S29, S30, S32. Deviations recorded:
+- WikiAdmin builds its own EditorWrites (import cycle).
+- C11 skips only fully unchanged docs (a vector would otherwise be lost).
+- S26 is enforced by an editor check, without rekeying the fake.
+Tests: 13 carry and 3 port contract; mutations caught after strengthening #13b to cut at every write. Gates: pytest 894, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 9a.
+
+---

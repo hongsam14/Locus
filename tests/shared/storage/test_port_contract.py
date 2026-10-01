@@ -229,3 +229,52 @@ def test_opensearch_delete_filters_by_world_and_ids() -> None:
     }
     assert repo.delete("w", []) == 0
     assert client.delete_by_query.call_count == 1
+
+
+# --------------------------------------------------------------------------- #
+# U8: replace_edges and edges_touching (U3 code review #13, C10)
+# --------------------------------------------------------------------------- #
+def _conn(**props) -> Edge:
+    return Edge(
+        type="CONNECTED_TO",
+        source_id="a",
+        target_id="b",
+        world_id="w",
+        properties={"kind": "route", **props},
+    )
+
+
+def test_replace_edges_keeps_exactly_the_written_properties() -> None:
+    """A cleared prior ref is gone after a replace; the identity (kind) still matches."""
+    g = InMemoryGraphRepository()
+    g.upsert_edges([_conn(weight=0.5, wiki_prior_ref="p1")])
+    g.replace_edges([_conn(weight=0.5)])
+    (edge,) = g.get_edges("w")
+    assert edge.properties == {"kind": "route", "weight": 0.5}
+
+
+def test_neo4j_replace_edges_merges_by_identity_and_sets_the_whole_map() -> None:
+    repo, rec = _neo4j()
+    repo.replace_edges([_conn(weight=0.5)])
+    ((query, params),) = rec
+    assert "MERGE (a)-[r:CONNECTED_TO {kind: $key}]->(b)" in query
+    assert "SET r = $props" in query and params["key"] == "route"
+
+
+def test_edges_touching_returns_only_edges_with_an_end_in_the_ids() -> None:
+    g = InMemoryGraphRepository()
+    g.upsert_edges(
+        [
+            _conn(),
+            Edge(type="LIVES_IN", source_id="n1", target_id="b", world_id="w"),
+            Edge(type="LIVES_IN", source_id="n2", target_id="c", world_id="w"),
+        ]
+    )
+    got = {(e.type, e.source_id) for e in g.edges_touching("w", ["b"])}
+    assert got == {("CONNECTED_TO", "a"), ("LIVES_IN", "n1")}
+    assert [e.source_id for e in g.edges_touching("w", ["b"], ["LIVES_IN"])] == ["n1"]
+    assert g.edges_touching("w", []) == []
+    repo, rec = _neo4j()
+    repo.edges_touching("w", ["b"], ["LIVES_IN"])
+    ((query, params),) = rec
+    assert "a.id IN $ids OR b.id IN $ids" in query and params["types"] == ["LIVES_IN"]

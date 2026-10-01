@@ -44,6 +44,20 @@ class EditorWrites:
         node = self.graph.get_node(world_id, node_id)
         return node if node is not None and node.label == label else None
 
+    def require_world(self, world_id: str) -> WorldSnapshot:
+        """An edit writes into an existing world only (U3 review S21): a mistyped world
+        id would otherwise create a world with no ``WorldMeta``. LookupError -> 404."""
+        return self.snapshot(world_id)
+
+    def own_label(self, world_id: str, node_id: str, label: str) -> Node | None:
+        """The stored node with this id when it is a ``label``; a node of another label
+        under the same id is refused (400): Neo4j keeps ids unique per label only, so an
+        edit would add a second node (U3 review S26)."""
+        node = self.graph.get_node(world_id, node_id)
+        if node is not None and node.label != label:
+            raise ValueError(f"id {node_id!r} is already a {node.label}, not a {label}")
+        return node
+
     # -- writes ----------------------------------------------------------- #
     @contextmanager
     def writing(self, world_id: str) -> Iterator[None]:
@@ -63,8 +77,16 @@ class EditorWrites:
         if nodes:
             self.graph.replace_nodes(nodes)
 
-    def index(self, docs: list[SearchDoc]) -> None:
-        docs = [d for d in docs if d.text.strip()]
+    def index(self, docs: list[SearchDoc], *, previous: list[SearchDoc] | None = None) -> None:
+        """Index ``docs``; a document equal (text and meta) to its ``previous`` version is
+        skipped, so an edit that leaves the searchable text alone costs no embedding call
+        (U3 review C11 — the stored vector stays, as nothing it was built from changed)."""
+        same = {(d.id, d.text, repr(sorted(d.meta.items()))) for d in previous or []}
+        docs = [
+            d
+            for d in docs
+            if d.text.strip() and (d.id, d.text, repr(sorted(d.meta.items()))) not in same
+        ]
         if not docs:
             return
         if self._embedding is not None:
@@ -79,6 +101,22 @@ class EditorWrites:
     def unindex(self, world_id: str, ids: list[str]) -> None:
         if ids:
             self.search.delete(world_id, ids)
+
+    def delete_held(self, world_id: str, node_id: str, label: str) -> bool:
+        """Delete a node by its kind's rule (U3 review C3, S12): graph first, then its
+        search document. A node already gone still has its document removed, so a retry
+        after a cut cleans up (NFR R-01), and touches nothing else. A node of another
+        label is left alone, document included. Returns whether it was held."""
+        node = self.graph.get_node(world_id, node_id)
+        if node is None:
+            self.unindex(world_id, [node_id])
+            return False
+        if node.label != label:
+            return False
+        with self.writing(world_id):
+            self.graph.delete_node(world_id, node_id)
+            self.unindex(world_id, [node_id])
+        return True
 
 
 # -- checks (BR-U3-5/6) -------------------------------------------------------- #

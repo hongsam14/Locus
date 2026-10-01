@@ -52,6 +52,10 @@ class MeteredGraph(InMemoryGraphRepository):
         self.meter.hit("delete_edges")
         return super().delete_edges(world_id, edges)
 
+    def replace_edges(self, edges):  # U8: one metered write (not the upsert it reuses)
+        self.meter.hit("replace_edges")
+        InMemoryGraphRepository.upsert_edges(self, edges)
+
     def delete_node(self, world_id, node_id):
         self.meter.hit("delete_node")
         super().delete_node(world_id, node_id)

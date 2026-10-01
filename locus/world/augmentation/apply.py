@@ -158,7 +158,7 @@ def _repoint(issue: Issue, target_id, action, answer, world_id, editors: Editors
     ref = None
     if action == AnswerAction.EDIT:
         ref = answer.ref_id
-        node = editors.get_node(world_id, ref) if ref else None
+        node = editors.writes.graph.get_node(world_id, ref) if ref else None
         if node is None or node.label != _REF_KIND.get(field):
             raise ValueError(f"{field} must point at an existing {_REF_KIND.get(field)}")
     if field == "parent_id":  # through the region editor: the cycle check applies
@@ -240,7 +240,7 @@ def _knowledge(editors: Editors, world_id: str, knowledge_id: str) -> Knowledge:
 def _nodes(editors: Editors, world_id: str, ids: list[str]) -> dict[str, NodeSnapshot]:
     out: dict[str, NodeSnapshot] = {}
     for nid in dict.fromkeys(ids):
-        node = editors.get_node(world_id, nid)
+        node = editors.writes.graph.get_node(world_id, nid)
         if node is not None:
             out[nid] = NodeSnapshot(id=node.id, label=node.label, properties=dict(node.properties))
     return out

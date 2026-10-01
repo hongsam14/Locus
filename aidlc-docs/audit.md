@@ -2982,3 +2982,20 @@ Summary: `construction/U7-gm-mode-hardening/code/code-summary.md`.
 **User Input**: "Continue to Next Stage (Recommended)"
 **AI Response**: U7 code approved. Running `/code-review` on the U7 diff (`git diff 5eb3760..HEAD`, code plan commit → code summary) in the background. Next unit in the order U1→U2→U4→U5→U6→U7→**U3**: U3 월드 에디터 (Functional Design Part 1).
 **Context**: CONSTRUCTION / U7 — Code Generation complete.
+
+---
+
+## U3 Functional Design Part 1 — plan and questions
+**Timestamp**: 2026-10-01T04:19:07Z
+**User Input**: (continuation of "Continue to Next Stage" — U7 approved; next unit U3)
+**AI Response**: An exploration agent surveyed the U3 code state. Findings:
+- `WorldEditor` has three methods.
+- No edge or search-document delete ports.
+- Updates cannot clear fields (props merge).
+- Region delete cascades only NPCs.
+- Augmentation B1–B6 still present; DANGLING detection is dead (the loader drops dangling relations, and Neo4j cannot store them).
+- No NPC CRUD or drafts; WikiAdmin has no refs.
+- Build, World File and world-list endpoints exist with no UI; `/` redirects to the editor.
+- B7/B8 live; no `features/editor/`.
+Wrote `construction/plans/U3-world-editor-functional-design-plan.md`: a current-state table, five questions (Q1 delete cascade, Q2 editing with open sessions, Q3 what "dangling" means, Q4 wiki refs depth, Q5 map drawing interaction) and assumptions A3-1..13. Asking Q1·Q2 first.
+**Context**: CONSTRUCTION / U3 — Functional Design Part 1.

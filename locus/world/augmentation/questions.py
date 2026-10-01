@@ -13,7 +13,7 @@ from collections.abc import Callable
 
 from pydantic import BaseModel
 
-from locus.shared.models import ConnectionKind, WorldSnapshot
+from locus.shared.models import WorldSnapshot
 from locus.shared.text import MATERIAL, one_line
 from locus.world.augmentation.types import (
     AnswerAction,
@@ -24,7 +24,6 @@ from locus.world.augmentation.types import (
     QuestionTarget,
     RefKind,
 )
-from locus.world.refs import ConnectionKey
 
 POLISH_MAX = 5  # new questions rewritten per detection
 A = AnswerAction
@@ -82,12 +81,10 @@ def target_of(issue: Issue, snapshot: WorldSnapshot) -> QuestionTarget:
     elif issue.target_kind == "entity":
         e = next((e for e in snapshot.kg.entities if e.id == tid), None)
         name = e.name if e else tid
-    elif issue.target_kind == "connection":
-        a, b, kind = (tid.split("|") + ["", "", ""])[:3]
-        name = f"{names.get(a, a)} – {names.get(b, b)} ({kind})"
-        connection = ConnectionKey(
-            world_id=snapshot.world_id, a_region_id=a, b_region_id=b, kind=ConnectionKind(kind)
-        )
+    elif issue.target_kind == "connection" and issue.connection is not None:
+        connection = issue.connection  # the detector's key, never re-split (U8 review #8)
+        a, b = connection.a_region_id, connection.b_region_id
+        name = f"{names.get(a, a)} – {names.get(b, b)} ({connection.kind})"
     else:
         name = names.get(tid, tid)
     return QuestionTarget(

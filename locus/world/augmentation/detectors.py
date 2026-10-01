@@ -110,7 +110,7 @@ def detect_dangling(snapshot: WorldSnapshot, prior_ids: set[str]) -> list[Issue]
     regions = set(snapshot.regions_by_id)
     entities = {e.id for e in snapshot.kg.entities}
 
-    def issue(kind, target, field, broken, what, region_id=None) -> Issue:
+    def issue(kind, target, field, broken, what, region_id=None, connection=None) -> Issue:
         return Issue(
             type=IssueType.DANGLING,
             description=f"{what}: {field} points at a missing {broken}.",
@@ -119,6 +119,7 @@ def detect_dangling(snapshot: WorldSnapshot, prior_ids: set[str]) -> list[Issue]
             region_id=region_id,
             field=field,
             broken_id=broken,
+            connection=connection,
             severity=0.8,
         )
 
@@ -134,7 +135,8 @@ def detect_dangling(snapshot: WorldSnapshot, prior_ids: set[str]) -> list[Issue]
     ]
     seen: set[str] = set()
     for c in snapshot.topo.connections:
-        cid = connection_id(ConnectionKey.of(c))
+        key = ConnectionKey.of(c)
+        cid = connection_id(key)
         if c.wiki_prior_ref and c.wiki_prior_ref not in prior_ids and cid not in seen:
             seen.add(cid)
             out.append(
@@ -145,6 +147,7 @@ def detect_dangling(snapshot: WorldSnapshot, prior_ids: set[str]) -> list[Issue]
                     c.wiki_prior_ref,
                     "A connection",
                     c.source_region_id,
+                    connection=key,
                 )
             )
     for k in snapshot.kg.knowledge:

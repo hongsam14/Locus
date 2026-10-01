@@ -58,6 +58,9 @@ class Issue(_Aug):
     region_id: str | None = None
     field: str | None = None  # dangling: the broken property
     broken_id: str | None = None  # dangling: the missing id (one issue per id in a list)
+    # a connection target as the detector found it: read instead of splitting "a|b|kind",
+    # which breaks on a region id with "|" in it (U8 review #8, U3 review C2)
+    connection: ConnectionKey | None = None
     severity: float = Field(default=0.5, ge=0.0, le=1.0)
 
     @property

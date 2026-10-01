@@ -295,3 +295,50 @@ def test_u8_7_with_the_search_down_one_lookup_per_detection() -> None:
     assert wiki.calls == 1
     engine.detect("w", state, lambda: True)
     assert wiki.calls == 2 and "_Verdict" not in llm.calls
+
+
+def test_u8_8_a_region_id_with_a_bar_starts_and_answers_a_connection_question() -> None:
+    """U8 review #8: the connection target is the detector's key, never "a|b|kind"
+    split again, so a region id with "|" no longer makes the run a 500."""
+    from locus.shared.models import Region, RegionLevel
+
+    stack, _w = _seeded()
+    gate = Region(
+        id="north|gate", world_id="w", name="North Gate", level=RegionLevel.TOWN, provenance=_prov()
+    )
+    south = Region(
+        id="south", world_id="w", name="South", level=RegionLevel.TOWN, provenance=_prov()
+    )
+    stack.editors.regions.create_region(gate)
+    stack.editors.regions.create_region(south)
+    stack.editors.connections.upsert_connection(
+        ConnectionEdge(
+            world_id="w",
+            source_region_id="south",
+            target_region_id="north|gate",
+            kind=ConnectionKind.ROUTE,
+            weight=0.5,
+            wiki_prior_ref="gone-prior",
+            provenance=_prov(),
+        )
+    )
+    svc = _service(stack)
+    run = svc.start_run("w")  # was ValueError "'south' is not a valid ConnectionKind"
+    q = next(q for q in run.open_questions if q.target and q.target.kind == "connection")
+    assert q.target.name == "North Gate – South (route)"
+    assert q.target.connection is not None and q.target.connection.a_region_id == "north|gate"
+    res = svc.answer(run.id, AugmentationAnswer(question_id=q.id, action="remove"))
+    assert res.change is not None
+    pair = [
+        c
+        for c in stack.cache.get("w").topo.connections
+        if {c.source_region_id, c.target_region_id} == {"north|gate", "south"}
+    ]
+    assert len(pair) == 2 and all(c.wiki_prior_ref is None for c in pair)
+    svc.revert(run.id, res.change.id)  # the record covers the pair, so the undo restores it
+    pair = [
+        c
+        for c in stack.cache.get("w").topo.connections
+        if {c.source_region_id, c.target_region_id} == {"north|gate", "south"}
+    ]
+    assert len(pair) == 2 and all(c.wiki_prior_ref == "gone-prior" for c in pair)

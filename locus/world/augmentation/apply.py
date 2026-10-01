@@ -25,7 +25,7 @@ from locus.world.augmentation.types import (
     NodeSnapshot,
     RevertConflictError,
 )
-from locus.world.editor import ConnectionKey, Editors
+from locus.world.editor import Editors
 
 _REF_KIND = {  # dangling field -> the label its new reference must have
     "parent_id": "Region",
@@ -80,9 +80,8 @@ def apply_answer(
 
 def _watched(issue: Issue, target_id: str) -> tuple[list[str], list[str]]:
     """(nodes that may change, ids whose edges may change)."""
-    if issue.target_kind == "connection":
-        a, b = target_id.split("|")[:2]
-        return [], [a, b]
+    if issue.target_kind == "connection" and issue.connection is not None:
+        return [], [issue.connection.a_region_id, issue.connection.b_region_id]
     return [target_id], [target_id]
 
 
@@ -170,8 +169,9 @@ def _repoint(issue: Issue, target_id, action, answer, world_id, editors: Editors
         entity = _entity(editors, world_id, target_id)
         editors.entities.update_entity(entity.model_copy(update={"located_in": ref}))
     elif field == "wiki_prior_ref":  # both directions of the connection
-        a, b, kind = target_id.split("|")
-        key = ConnectionKey(world_id=world_id, a_region_id=a, b_region_id=b, kind=kind)
+        if issue.connection is None:
+            raise ValueError("a connection answer needs its connection key")
+        key = issue.connection.model_copy(update={"world_id": world_id})
         editors.connections.set_prior_ref(key, ref)
     else:
         editors.knowledge.repoint(world_id, target_id, field, issue.broken_id or "", ref)

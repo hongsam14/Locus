@@ -18,7 +18,7 @@ class AugmentationEngine:
     def __init__(
         self,
         snapshots,
-        editor,
+        editors,
         graph_repo,
         wiki=None,
         llm=None,
@@ -32,7 +32,7 @@ class AugmentationEngine:
         self._cache = (
             cache if cache is not None else getattr(snapshots, "invalidate", None) and snapshots
         )
-        self._editor = editor
+        self._editors = editors  # the U3 editor classes (locus.world.editor.Editors)
         self._graph = graph_repo
         self._wiki = wiki
         self._wiki_provider = wiki_provider  # (world_id) -> CommonsenseWiki (single-world, BR-A9)
@@ -50,14 +50,14 @@ class AugmentationEngine:
     def apply_answer(self, world_id: str, answer: AugmentationAnswer) -> ChangeSet:
         try:
             return apply_answer(
-                answer, world_id=world_id, graph_repo=self._graph, editor=self._editor
+                answer, world_id=world_id, graph_repo=self._graph, editors=self._editors
             )
         finally:
             self._invalidate(world_id)
 
     def revert(self, world_id: str, change_set: ChangeSet) -> None:
         try:
-            _revert(change_set, world_id=world_id, graph_repo=self._graph, editor=self._editor)
+            _revert(change_set, world_id=world_id, graph_repo=self._graph, editors=self._editors)
         finally:
             self._invalidate(world_id)
 

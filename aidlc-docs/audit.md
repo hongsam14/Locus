@@ -3323,3 +3323,15 @@ R-16 → Accepted risk
 **Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 3.
 
 ---
+
+## U3 Code Generation Part 2 — Step 4 (editor package)
+**Timestamp**: 2026-10-01T09:49:11Z
+**AI Response**:
+- Replaced `WorldEditor` with the `locus/world/editor/` package (seven classes + `EditorWrites` + the `Editors` bundle).
+- Region delete follows the corrected order with an idempotent retry. Connections are written as pairs. Knowledge scopes, NPCs, entities and the catalog have their own classes.
+- Call sites in 4.7 updated (wiring, router, augmentation, tests), including R-14.
+- 22 new tests (TP-U3-1/2/2a/3/6, EX-1..5, write counts). Mutations caught.
+- Gates: pytest 778, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 4.
+
+---

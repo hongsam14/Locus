@@ -32,7 +32,6 @@ from locus.shared.models import (
     WikiPrior,
 )
 from locus.shared.models.reports import BuildWarning
-from locus.shared.storage import graph_mapping as gm
 from locus.shared.wiring import SharedContainer
 from locus.world.augmentation.types import AugmentationAnswer, AugmentationRun, ChangeSet
 from locus.world.build import WorldExistsError
@@ -229,37 +228,23 @@ def graph_summary(world_id: str, shared: SharedContainer = Depends(get_shared)) 
 # --- world list -------------------------------------------------------------- #
 @router.get("/worlds", response_model=list[WorldInfo])
 def list_worlds(
-    shared: SharedContainer = Depends(get_shared),
+    w: WorldContainer = Depends(get_world),
     play: PlayContainer | None = Depends(get_play_optional),
 ) -> list[WorldInfo]:
-    """Every stored world with its meta (BR-U2-24); pre-U2 worlds show ``name=id``."""
-    graph = shared.graph
-    if graph is None:
-        raise HTTPException(status_code=503, detail="graph repository unavailable")
+    """Every stored world with its meta (BR-U2-24); pre-U2 worlds show ``name=id``. The
+    rows come from ``WorldCatalog`` (U3, unchanged response); play adds open sessions."""
+    catalog = _need(w.catalog, "world catalog")
     out: list[WorldInfo] = []
-    for wid in graph.list_world_ids():
-        metas = graph.find_nodes(wid, "WorldMeta")
-        meta = gm.node_to_worldmeta(metas[0]) if metas else None
+    for row in catalog.list_worlds():
         open_sessions = None
         if play is not None:
             open_sessions = sum(
-                1 for s in play.sessions.list_sessions(wid) if str(s.status) == "open"
+                1 for s in play.sessions.list_sessions(row.id) if str(s.status) == "open"
             )
-        out.append(
-            WorldInfo(
-                id=wid,
-                name=meta.name if meta else wid,
-                description=meta.description if meta else None,
-                region_count=len(graph.find_nodes(wid, "Region")),
-                updated_at=meta.updated_at.isoformat() if meta else None,
-                last_writer=meta.last_writer if meta else None,
-                open_sessions=open_sessions,
-            )
-        )
+        out.append(WorldInfo(**row.model_dump(), open_sessions=open_sessions))
     return out
 
 
-# --- World File -------------------------------------------------------------- #
 @router.get("/worlds/{world_id}/export")
 def export_world(world_id: str, w: WorldContainer = Depends(get_world)) -> dict:
     """Compatibility: the v1 World File as JSON plus the legacy top-level ``world_id``."""
@@ -439,20 +424,14 @@ def related_priors(
 def upsert_region(
     world_id: str, region_id: str, region: Region, w: WorldContainer = Depends(get_world)
 ) -> Region:
-    return _need(w.editor, "world editor").upsert_region(region)
+    return _need(w.editors, "world editor").regions.upsert_region(region)
 
 
 @router.put("/worlds/{world_id}/knowledge/{knowledge_id}", response_model=Knowledge)
 def upsert_knowledge(
     world_id: str, knowledge_id: str, knowledge: Knowledge, w: WorldContainer = Depends(get_world)
 ) -> Knowledge:
-    return _need(w.editor, "world editor").upsert_knowledge(knowledge)
-
-
-@router.delete("/worlds/{world_id}/nodes/{node_id}", status_code=204)
-def delete_node(world_id: str, node_id: str, w: WorldContainer = Depends(get_world)) -> Response:
-    _need(w.editor, "world editor").delete_node(world_id, node_id)
-    return Response(status_code=204)
+    return _need(w.editors, "world editor").knowledge.upsert_knowledge(knowledge)
 
 
 # --- augmentation runs --------------------------------------------------------- #

@@ -54,3 +54,29 @@
     - 질의 중복 제거를 끄면 정규화 테스트가 실패한다.
     - 둘 다 잡았다.
   - pytest 756
+- **Step 4**
+  - `locus/world/editor/` 패키지: `models`·`writes`·`regions`·`connections`·`knowledge`·`npcs`·`entities`·`catalog`·`bundle`
+    - 가장 긴 모듈은 `regions.py` 233줄이다.
+  - 옛 `editor.py`를 지웠다. `WorldContainer.editor` → `editors` + `catalog`
+  - 라우터
+    - `GET /worlds`는 `WorldCatalog`를 쓴다(응답 그대로).
+    - `PUT` 지역·지식은 새 클래스를 부른다.
+    - `DELETE /nodes`를 지웠다(C-2).
+  - 보강: `apply`·`revert`·엔진 인자를 `editors`로 바꿨다(R-14). REMOVE는 `Editors.delete_any`다.
+  - 의도된 변경(`# U3 intended change`)
+    - `test_services.py`: `test_graph_editor_upsert_and_delete`, `test_deleting_a_region_cascades_to_its_npcs`
+    - `test_world_api.py`: `test_delete_node_endpoint`
+  - 픽스처 교체(동작 불변)
+    - `test_services.py`의 캐시·메타 테스트 셋
+    - `test_world_api.py`의 `_Editor` → 실제 `Editors`, `catalog`
+    - `test_augment_api.py`의 `editors=None`
+    - `test_augmentation.py`의 `_Editor` → 실제 `Editors`(R-14), 그것을 쓰는 테스트 셋
+  - 새 테스트
+    - `tests/world/editor/` 22개: `test_editors.py` 16, `test_region_delete.py` 6
+    - 도우미 `helpers.py`: `Meter`, 끊는 가짜, `Stack`
+    - 생성기 `editable_worlds`·`edit_ops`
+  - 변이(모두 잡음)
+    - TP-U3-2a: ① 순서를 옛 순서로 되돌림, ④ 순서를 노드 먼저로 바꿈
+    - TP-U3-3: 교체를 병합으로 바꿈
+    - set_prior_ref: 옛 쌍을 지우지 않음
+  - pytest 778

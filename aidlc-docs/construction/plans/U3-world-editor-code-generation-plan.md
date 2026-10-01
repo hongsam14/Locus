@@ -338,16 +338,17 @@
   - 의도된 변경(C-4) 표시
 
 ### Step 4 — 편집 패키지 `locus/world/editor/` (BLM §1, domain-entities §2)
-- [ ] 4.1 `models.py`
+- [x] 4.1 `models.py`
   - `ConnectionKey`, `NameRef`, `RegionDeletePlan`, `RegionDeleteReport`
   - `EditorRegionView`, `ConnectionView`(`prior: PriorRefView | None`, 3.3), `ScopedKnowledge`, `WorldSummary`
   - 오류 `RegionInUseError(region_id, session_ids)`
-- [ ] 4.2 `writes.py` `EditorWrites(graph, search, embedding, cache)`
+- [x] 4.2 `writes.py` `EditorWrites(graph, search, embedding, cache)`
   - `replace(nodes)`, `index(docs)`(임베딩 실패 무시, 지금 규칙), `unindex(world_id, ids)`
   - `written(world_id)`: `finally`에서 `touch_world_meta` + 캐시 무효화. 지금 `_written`과 같다(review #12 동작 유지).
   - `snapshot(world_id)`
   - 검사 도우미: 경로·본문 id(BR-U3-5 → `ValueError`), 참조 지역 존재(BR-U3-6 → `LookupError`)
-- [ ] 4.3 `regions.py` `RegionEditor(writes)`
+- [x] 4.3 `regions.py` `RegionEditor(writes)`
+  - 〔실행 메모〕 `protected`는 `Mapping[region_id, session_ids]`다(409 본문에 세션 id를 싣기 위해). 단순 upsert는 스냅샷 대신 `get_node` 한 번으로 옛 값을 읽는다. 스냅샷은 부모 순환 검사·계획·보기만 읽는다.
   - `create_region`, `upsert_region`(BR-U3-7 순환 400, `CONTAINS` 다시 쓰기, BLM §1.2)
   - `plan_region_delete`(BLM §1.3)
   - `delete_region(world_id, region_id, *, protected)`: 쓰기 순서는 정정된 BR-U3-8이다.
@@ -358,18 +359,19 @@
     5. 연결 두 방향(`delete_edges` 한 번)
     6. 지역 노드(DETACH)
   - `editor_view(world_id, region_id) -> EditorRegionView`: prior는 3.3의 `prior_ref_view`를 쓴다.
-- [ ] 4.4 `connections.py` `ConnectionEditor(writes)`
+- [x] 4.4 `connections.py` `ConnectionEditor(writes)`
   - `upsert_connection` → 두 방향 목록(BR-U3-10·11)
   - `change_connection_kind`(새 쌍 먼저, 옛 쌍 삭제, 같은 쌍이 있으면 400)
   - `delete_connection(key) -> int`(없으면 404)
   - `set_prior_ref(key, prior_id | None)`: 두 방향을 함께 쓴다(FD R-11)
-- [ ] 4.5 `knowledge.py` `KnowledgeEditor(writes)`
+- [x] 4.5 `knowledge.py` `KnowledgeEditor(writes)`
   - `create_knowledge(k, region_id)`
   - `upsert_knowledge(k)`: 스코프 유지, `region_hint`는 저장하지 않는다.
   - `set_scopes(world_id, kid, region_ids)`: DIRECT만 다룬다.
   - `delete_knowledge`: 그래프 → 검색. 노드가 없어도 검색 삭제를 부른 뒤 404다.
   - `list_unscoped`
-- [ ] 4.6 나머지와 묶음
+- [x] 4.6 나머지와 묶음
+  - 〔실행 메모〕 `Editors.prior_ids`는 스냅샷의 `kg.priors`를 읽는다(로더가 이미 싣는다, 그래프 읽기 0). 묶음을 만드는 곳은 `Editors.assemble(graph, search, embedding, cache=)`이다.
   - `npcs.py` `NpcEditor`: `create/upsert/delete`, `LIVES_IN` 다시 쓰기, 검색 문서. 삭제는 4.5와 같은 재시도 규칙이다.
   - `entities.py` `EntityEditor`: `update_entity`, `delete_entity`. 삭제는 4.5와 같은 재시도 규칙이다.
   - `catalog.py` `WorldCatalog.list_worlds() -> list[WorldSummary]`: 지금 라우터 `world.py:231-259`의 계산을 옮긴다(월드마다 `find_nodes` 2회).
@@ -377,7 +379,7 @@
     - `delete_any(world_id, node_id)`: 라벨로 종류별 삭제를 나눠 부른다(지역은 `protected=∅`). 보강 REMOVE만 쓴다(FD 이탈 1).
     - `prior_ids(world_id) -> set[str]`: `find_nodes(world, "WikiPrior")` 1회
     - `get_node(world_id, id)`: 되돌리기 비교용 읽기
-- [ ] 4.7 조립과 옛 모듈(이 하위 단계 안에서 호출처를 모두 고쳐 GREEN으로 닫는다)
+- [x] 4.7 조립과 옛 모듈(이 하위 단계 안에서 호출처를 모두 고쳐 GREEN으로 닫는다)
   - `locus/world/editor.py`를 지운다.
   - `locus/world/__init__.py:13·19`: `WorldEditor` export를 일곱 클래스 + `Editors` export로 바꾼다.
   - `locus/world/wiring.py`
@@ -400,7 +402,7 @@
     - `tests/api/test_augment_api.py:30-32` `WorldContainer(editor=None, …)` → `editors=None`
     - `tests/world/augmentation/test_augmentation.py:226` `AugmentationEngine(cache, editor, graph, llm=None)` → `editors`
     - 〔검토 02 처리 R-14〕 `test_augmentation.py:107`의 `_Editor` 가짜를 인메모리 그래프 위의 실제 `Editors`로 바꾼다. 이것을 넘기는 `:137-157`의 `apply_answer`·`revert`, `:225-226`의 엔진 생성도 함께 바꾼다. 4.7은 `apply_answer`·`revert`의 인자 이름(`editor` → `editors`)만 바꾼다. 나머지 시그니처는 6.5·6.6에서 바꾼다.
-- [ ] 4.8 테스트
+- [x] 4.8 테스트
   - `tests/world/strategies.py`를 넓힌다: 계층 숲 + 연결 쌍 + 스코프 0~3 지식 + NPC + `located_in` 엔티티를 가진 월드, 편집 연산 열.
   - `test_editors.py`
     - TP-U3-1, TP-U3-3(편집 경로 왕복)

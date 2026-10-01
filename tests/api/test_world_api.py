@@ -25,8 +25,10 @@ from locus.shared.storage import graph_mapping as gm
 from locus.shared.storage.base import Node
 from locus.shared.wiring import SharedContainer
 from locus.world.demo import DemoInfo
+from locus.world.editor import Editors, WorldCatalog
 from locus.world.wiring import WorldContainer
 from locus.world.worldfile import WorldFile, WorldFileMeta
+from tests.shared.storage.fakes import InMemoryGraphRepository, InMemorySearchRepository
 
 
 def _prov() -> Provenance:
@@ -44,18 +46,9 @@ class _Builder:
         return BuildReport(world_id=world_id, regions_created=2, knowledge_created=3)
 
 
-class _Editor:
-    def __init__(self) -> None:
-        self.deleted: list = []
-
-    def upsert_region(self, region):
-        return region
-
-    def upsert_knowledge(self, knowledge):
-        return knowledge
-
-    def delete_node(self, world_id, node_id):
-        self.deleted.append(node_id)
+def _editors() -> Editors:
+    """The real editor classes over in-memory storage (U3: was an ``_Editor`` fake)."""
+    return Editors.assemble(InMemoryGraphRepository(), InMemorySearchRepository())
 
 
 class _Exporter:
@@ -158,11 +151,13 @@ class _Play:
 
 
 def _client(
-    *, editor=None, builder="default", importer=None, demo=None, graph=None, play=None, loc=None
+    *, editors=None, builder="default", importer=None, demo=None, graph=None, play=None, loc=None
 ):
+    graph = graph or _GraphRepo()
     world = WorldContainer(
         cache=None,
-        editor=editor or _Editor(),
+        editors=editors or _editors(),
+        catalog=WorldCatalog(graph),
         exporter=_Exporter(),
         importer=importer or _Importer(),
         demo=demo or _Demo(),
@@ -171,7 +166,7 @@ def _client(
         wiki_admin=None,
         cross_world=None,
     )
-    shared = SharedContainer(settings=Settings(), graph=graph or _GraphRepo())
+    shared = SharedContainer(settings=Settings(), graph=graph)
     return TestClient(create_app(world=world, shared=shared, play=play, localization=loc))
 
 
@@ -349,9 +344,9 @@ def test_upsert_region_endpoint() -> None:
 
 
 def test_delete_node_endpoint() -> None:
-    editor = _Editor()
-    r = _client(editor=editor).delete("/api/world/worlds/w/nodes/n9")
-    assert r.status_code == 204 and editor.deleted == ["n9"]
+    # U3 intended change: 이탈 2 — the generic node delete is gone; deletes go by kind
+    r = _client().delete("/api/world/worlds/w/nodes/n9")
+    assert r.status_code in (404, 405)
 
 
 def test_upsert_knowledge_endpoint() -> None:

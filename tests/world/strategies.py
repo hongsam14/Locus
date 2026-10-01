@@ -310,3 +310,56 @@ def world_files(draw, world_id: str = "src") -> WorldFile:
         prior_links=prior_links,
         npcs=npcs,
     )
+
+
+# --------------------------------------------------------------------------- #
+# U3 editor generators (TP-U3-1·2·2a·6)
+# --------------------------------------------------------------------------- #
+@st.composite
+def editable_worlds(draw, world_id: str = "w") -> WorldFile:
+    """A World File whose knowledge may sit in 0–3 regions (``world_files`` gives at
+    most one scope each), so a region delete meets both "becomes unscoped" and "keeps
+    its other scopes" (TP-U3-2)."""
+    file = draw(world_files(world_id=world_id))
+    region_ids = [r.id for r in file.regions]
+    scopes = list(file.scopes)
+    seen = {(s.knowledge_id, s.region_id) for s in scopes}
+    for k in file.knowledge:
+        for rid in draw(st.lists(st.sampled_from(region_ids), max_size=2, unique=True)):
+            if (k.id, rid) not in seen:
+                seen.add((k.id, rid))
+                scopes.append(
+                    ScopeLink(
+                        world_id=world_id,
+                        knowledge_id=k.id,
+                        region_id=rid,
+                        scope_type=ScopeType.DIRECT,
+                        confidence=draw(_unit),
+                    )
+                )
+    return file.model_copy(update={"scopes": scopes})
+
+
+EDIT_OPS = (
+    "describe_region",
+    "set_scopes",
+    "save_connection",
+    "delete_connection",
+    "delete_knowledge",
+    "delete_region",
+    "move_npc",
+)
+
+
+@st.composite
+def edit_ops(draw) -> list[tuple]:
+    """A short list of editor operations, each an (op, ints...) tuple the test maps onto
+    whatever the world holds at that moment (TP-U3-6)."""
+    picks = st.integers(min_value=0, max_value=50)
+    return draw(
+        st.lists(
+            st.tuples(st.sampled_from(EDIT_OPS), picks, picks, picks, _unit),
+            min_size=1,
+            max_size=5,
+        )
+    )

@@ -19,7 +19,7 @@ from locus.shared.models import (
     SourceKind,
 )
 from locus.shared.storage.persistence import persist_graph
-from locus.world import WorldBuilder, WorldEditor, WorldFileExporter
+from locus.world import Editors, WorldBuilder, WorldFileExporter
 from locus.world.build import BuildProviders
 from locus.world.ontology.builder import OntologyBuild
 from locus.world.topology.builder import TopologyBuild
@@ -312,17 +312,20 @@ def test_orchestrator_distills_priors_and_links_per_world() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# WorldEditor
+# Editors (U3: was WorldEditor)
 # --------------------------------------------------------------------------- #
 def test_graph_editor_upsert_and_delete() -> None:
-    g, s = _GraphRepo(), _SearchRepo()
-    editor = WorldEditor(g, s, embedding=None)
+    # U3 intended change: BR-U3-1, 이탈 1 — a replace write; deletes go by kind
+    from tests.shared.storage.fakes import InMemoryGraphRepository, InMemorySearchRepository
+
+    g, s = InMemoryGraphRepository(), InMemorySearchRepository()
+    editors = Editors.assemble(g, s)
     k = Knowledge(world_id="w", statement="new fact", title="new fact", provenance=_prov())
-    editor.upsert_knowledge(k)
-    assert g.nodes[0].label == "Knowledge"
-    assert s.docs and s.docs[0].id == k.id
-    editor.delete_node("w", "n1")
-    assert g.deleted == ["n1"]
+    editors.knowledge.upsert_knowledge(k)
+    assert g.get_node("w", k.id).label == "Knowledge"  # type: ignore[union-attr]
+    assert ("w", k.id) in s.docs
+    editors.knowledge.delete_knowledge("w", k.id)
+    assert g.get_node("w", k.id) is None and ("w", k.id) not in s.docs
 
 
 # --------------------------------------------------------------------------- #
@@ -366,9 +369,9 @@ def test_editor_writes_invalidate_cache_and_touch_meta() -> None:
     before = cache.get("w").meta
     assert before is not None and before.last_writer == "build"
 
-    editor = WorldEditor(graph, search, embedding=None, cache=cache)
+    editors = Editors.assemble(graph, search, cache=cache)
     gen = cache.generation("w")
-    editor.upsert_region(region.model_copy(update={"description": "edited"}))
+    editors.regions.upsert_region(region.model_copy(update={"description": "edited"}))
     assert cache.generation("w") == gen + 1 and not cache.is_cached("w")
     after = cache.get("w").meta
     assert (
@@ -377,8 +380,8 @@ def test_editor_writes_invalidate_cache_and_touch_meta() -> None:
     assert cache.get("w").regions_by_id[region.id].description == "edited"
 
     k = Knowledge(world_id="w", statement="s", title="t", provenance=_prov())
-    editor.upsert_knowledge(k)
-    editor.delete_node("w", k.id)
+    editors.knowledge.upsert_knowledge(k)
+    editors.knowledge.delete_knowledge("w", k.id)
     assert cache.generation("w") == gen + 3
 
 
@@ -391,7 +394,7 @@ def test_editor_does_not_create_meta_for_pre_u2_worlds() -> None:
     cache = WorldCache(WorldLoader(graph))
     region = Region(world_id="old", name="R", level=RegionLevel.TOWN, provenance=_prov())
     persist_graph(graph, search, None, "old", regions=[region])  # no meta
-    WorldEditor(graph, search, cache=cache).upsert_region(region)
+    Editors.assemble(graph, search, cache=cache).regions.upsert_region(region)
     assert graph.find_nodes("old", "WorldMeta") == [] and cache.get("old").meta is None
 
 
@@ -424,8 +427,9 @@ def test_deleting_a_region_cascades_to_its_npcs() -> None:  # review #8
         ),
     ]
     persist_graph(graph, search, None, "w", regions=[keep, gone], npcs=npcs)
-    deleted = WorldEditor(graph, search, cache=cache).delete_node("w", gone.id)
-    assert set(deleted) == {gone.id, npcs[0].id}
+    # U3 intended change: BR-U3-8 — the region delete reports what it removed
+    report = Editors.assemble(graph, search, cache=cache).regions.delete_region("w", gone.id)
+    assert set(report.deleted_ids) == {gone.id, npcs[0].id}
     snap = cache.get("w")
     assert [n.name for n in snap.npcs] == ["B"] and snap.load_warnings == []
 
@@ -445,5 +449,5 @@ def test_editor_invalidates_even_when_indexing_fails() -> None:  # review #12
     search.fail_on_index = RuntimeError("opensearch down")
     k = Knowledge(world_id="w", statement="s", title="t", provenance=_prov())
     with pytest.raises(RuntimeError):
-        WorldEditor(graph, search, cache=cache).upsert_knowledge(k)
+        Editors.assemble(graph, search, cache=cache).knowledge.upsert_knowledge(k)
     assert not cache.is_cached("w") and len(cache.get("w").kg.knowledge) == 1

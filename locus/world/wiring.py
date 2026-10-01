@@ -16,7 +16,7 @@ from locus.shared.wiring import SharedContainer
 from locus.world.augmentation import AugmentationEngine, AugmentationService
 from locus.world.build import WorldBuilder
 from locus.world.demo import DemoWorlds
-from locus.world.editor import WorldEditor
+from locus.world.editor import Editors, WorldCatalog
 from locus.world.wiki import CommonsenseWiki, CrossWorldWikiExplorer, WikiAdmin
 from locus.world.worldfile.export import WorldFileExporter
 from locus.world.worldfile.import_ import WorldFileImporter
@@ -25,10 +25,11 @@ from locus.world.worldfile.import_ import WorldFileImporter
 @dataclass
 class WorldContainer:
     cache: SnapshotCache | None
-    editor: WorldEditor | None
+    editors: Editors | None  # U3: the editor classes (was one WorldEditor)
     exporter: WorldFileExporter | None
     importer: WorldFileImporter | None
     demo: DemoWorlds | None
+    catalog: WorldCatalog | None = None  # U3: the `/` world list (was a router query)
     # LLM-dependent (None without a provider -> their routes answer 503)
     builder: WorldBuilder | None = None
     augmentation: AugmentationService | None = None
@@ -46,14 +47,15 @@ def assemble_world(shared: SharedContainer, knowledge: KnowledgeContainer) -> Wo
     cache: SnapshotCache = knowledge.cache  # type: ignore[assignment]
     backup_dir = shared.settings.backup_dir
 
-    editor = WorldEditor(graph, search, embedding, cache=cache)
+    editors = Editors.assemble(graph, search, embedding, cache=cache)
     exporter = WorldFileExporter(cache)
     importer = WorldFileImporter(
         graph, search, embedding, cache, exporter=exporter, backup_dir=backup_dir
     )
     container = WorldContainer(
         cache=cache,
-        editor=editor,
+        editors=editors,
+        catalog=WorldCatalog(graph),
         exporter=exporter,
         importer=importer,
         demo=None,
@@ -79,7 +81,7 @@ def assemble_world(shared: SharedContainer, knowledge: KnowledgeContainer) -> Wo
         )
         container.builder = builder
         container.augmentation = AugmentationService(
-            AugmentationEngine(cache, editor, graph, wiki_provider=wiki_for, llm=llm, cache=cache)
+            AugmentationEngine(cache, editors, graph, wiki_provider=wiki_for, llm=llm, cache=cache)
         )
     container.demo = DemoWorlds(importer, builder)
     return container

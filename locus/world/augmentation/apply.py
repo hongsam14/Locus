@@ -19,7 +19,7 @@ def _snapshot(node: Node) -> NodeSnapshot:
     return NodeSnapshot(id=node.id, label=node.label, properties=dict(node.properties))
 
 
-def apply_answer(answer: AugmentationAnswer, *, world_id: str, graph_repo, editor) -> ChangeSet:
+def apply_answer(answer: AugmentationAnswer, *, world_id: str, graph_repo, editors) -> ChangeSet:
     cs = ChangeSet(description=f"answer:{answer.action}")
     action = AnswerAction(answer.action)
 
@@ -37,7 +37,7 @@ def apply_answer(answer: AugmentationAnswer, *, world_id: str, graph_repo, edito
                 source=SourceKind.AUGMENTATION, generated_by="designer", refs=[cs.id]
             ),
         )
-        editor.upsert_knowledge(k)
+        editors.knowledge.upsert_knowledge(k)
         cs.added_ids.append(k.id)
         if answer.region_id:
             scope = ScopeLink(
@@ -58,7 +58,7 @@ def apply_answer(answer: AugmentationAnswer, *, world_id: str, graph_repo, edito
 
     if action == AnswerAction.REMOVE:
         cs.removed.append(_snapshot(node))
-        editor.delete_node(world_id, target)
+        editors.delete_any(world_id, target)
         return cs
 
     # confirm / edit -> mutate a Knowledge node
@@ -73,13 +73,13 @@ def apply_answer(answer: AugmentationAnswer, *, world_id: str, graph_repo, edito
             knowledge.statement = answer.statement
         if answer.confidence is not None:
             knowledge.confidence = answer.confidence
-    editor.upsert_knowledge(knowledge)
+    editors.knowledge.upsert_knowledge(knowledge)
     return cs
 
 
-def revert(change_set: ChangeSet, *, world_id: str, graph_repo, editor) -> None:
+def revert(change_set: ChangeSet, *, world_id: str, graph_repo, editors) -> None:
     for nid in change_set.added_ids:
-        editor.delete_node(world_id, nid)
+        editors.delete_any(world_id, nid)
     for snap in change_set.removed + change_set.updated:
         graph_repo.upsert_nodes(
             [Node(id=snap.id, label=snap.label, world_id=world_id, properties=snap.properties)]

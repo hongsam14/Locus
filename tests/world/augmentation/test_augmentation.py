@@ -15,7 +15,6 @@ from locus.shared.models import (
     SourceKind,
 )
 from locus.shared.storage import graph_mapping as gm
-from locus.shared.storage.base import Node
 from locus.world.augmentation import (
     AugmentationService,
     InMemoryRunStore,
@@ -34,6 +33,8 @@ from locus.world.augmentation.types import (
     IssueType,
     RunStatus,
 )
+from locus.world.editor import Editors
+from tests.shared.storage.fakes import InMemoryGraphRepository, InMemorySearchRepository
 
 
 def _prov() -> Provenance:
@@ -104,58 +105,36 @@ def test_question_generator_template() -> None:
 # --------------------------------------------------------------------------- #
 # apply / revert
 # --------------------------------------------------------------------------- #
-class _Editor:
-    def __init__(self) -> None:
-        self.upserted: list = []
-        self.deleted: list = []
-
-    def upsert_knowledge(self, knowledge):
-        self.upserted.append(knowledge)
-        return knowledge
-
-    def delete_node(self, world_id, node_id):
-        self.deleted.append(node_id)
-
-
-class _GraphRepo:
-    def __init__(self, node: Node | None = None) -> None:
-        self._node = node
-        self.edges: list = []
-        self.nodes: list = []
-
-    def get_node(self, world_id, node_id):
-        return self._node
-
-    def upsert_edges(self, edges):
-        self.edges.extend(edges)
-
-    def upsert_nodes(self, nodes):
-        self.nodes.extend(nodes)
+def _editors():
+    """In-memory graph + search behind the real editor classes (U3 review 02 R-14)."""
+    graph, search = InMemoryGraphRepository(), InMemorySearchRepository()
+    return graph, search, Editors.assemble(graph, search)
 
 
 def test_apply_add_creates_knowledge_and_scope() -> None:
-    editor, graph = _Editor(), _GraphRepo()
+    graph, _search, editors = _editors()
     answer = AugmentationAnswer(
         question_id="q1", action=AnswerAction.ADD, statement="new lore", region_id="r1"
     )
-    cs = apply_answer(answer, world_id="w", graph_repo=graph, editor=editor)
+    cs = apply_answer(answer, world_id="w", graph_repo=graph, editors=editors)
     assert len(cs.added_ids) == 1
-    assert editor.upserted[0].statement == "new lore"
-    assert editor.upserted[0].provenance.source == SourceKind.AUGMENTATION
-    assert any(e.type == "SCOPED_TO" for e in graph.edges)
+    added = gm.node_to_knowledge(graph.get_node("w", cs.added_ids[0]))  # type: ignore[arg-type]
+    assert added.statement == "new lore"
+    assert added.provenance.source == SourceKind.AUGMENTATION
+    assert any(e.type == "SCOPED_TO" for e in graph.get_edges("w"))
 
 
 def test_apply_remove_and_revert() -> None:
     k = Knowledge(world_id="w", statement="bad", title="bad", provenance=_prov())
-    node = gm.knowledge_to_node(k)
-    editor, graph = _Editor(), _GraphRepo(node=node)
+    graph, _search, editors = _editors()
+    editors.knowledge.upsert_knowledge(k)
     answer = AugmentationAnswer(question_id="q1", action=AnswerAction.REMOVE, target_id=k.id)
-    cs = apply_answer(answer, world_id="w", graph_repo=graph, editor=editor)
-    assert editor.deleted == [k.id]
+    cs = apply_answer(answer, world_id="w", graph_repo=graph, editors=editors)
+    assert graph.get_node("w", k.id) is None
     assert cs.removed and cs.removed[0].id == k.id
     # revert restores the removed node
-    apply_revert(cs, world_id="w", graph_repo=graph, editor=editor)
-    assert graph.nodes and graph.nodes[0].id == k.id
+    apply_revert(cs, world_id="w", graph_repo=graph, editors=editors)
+    assert graph.get_node("w", k.id) is not None
 
 
 # --------------------------------------------------------------------------- #
@@ -222,8 +201,8 @@ def test_engine_apply_and_revert_invalidate_cache() -> None:
             self.invalidated.append(world_id)
 
     cache = _Cache()
-    editor, graph = _Editor(), _GraphRepo()
-    engine = AugmentationEngine(cache, editor, graph, llm=None)
+    graph, _search, editors = _editors()
+    engine = AugmentationEngine(cache, editors, graph, llm=None)
     change = engine.apply_answer(
         "w", AugmentationAnswer(question_id="q", action="add", statement="new fact", region_id="r1")
     )

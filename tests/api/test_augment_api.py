@@ -29,7 +29,7 @@ class _AugService:
 def _client() -> TestClient:
     world = WorldContainer(
         builder=None,
-        editor=None,
+        editors=None,
         augmentation=_AugService(),
         wiki_admin=None,
         cross_world=None,

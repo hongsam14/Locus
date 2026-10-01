@@ -10,13 +10,27 @@ In-progress modules (kept, not finished — FR-I): ``ingestion/concept_art_inges
 
 from locus.world.build import WorldBuilder
 from locus.world.demo import DemoInfo, DemoWorlds, load_demo_world
-from locus.world.editor import WorldEditor
+from locus.world.editor import (
+    ConnectionEditor,
+    Editors,
+    EntityEditor,
+    KnowledgeEditor,
+    NpcEditor,
+    RegionEditor,
+    WorldCatalog,
+)
 from locus.world.wiring import WorldContainer, assemble_world
 from locus.world.worldfile.export import WorldFileExporter
 
 __all__ = [
     "WorldBuilder",
-    "WorldEditor",
+    "ConnectionEditor",
+    "Editors",
+    "EntityEditor",
+    "KnowledgeEditor",
+    "NpcEditor",
+    "RegionEditor",
+    "WorldCatalog",
     "WorldFileExporter",
     "DemoInfo",
     "DemoWorlds",

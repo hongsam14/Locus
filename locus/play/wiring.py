@@ -26,6 +26,7 @@ from locus.play.storage.postgres_repo import PostgresPlayRepository
 from locus.play.turn.advancer import TurnAdvancer
 from locus.play.turn.executor import ThreadTurnExecutor, TurnExecutor
 from locus.play.turn.guard import TurnGuard
+from locus.play.world_state import WorldStateService
 from locus.shared.config.tuning import PlayTuning
 from locus.shared.llm.base import LLMProvider
 from locus.shared.wiring import SharedContainer
@@ -51,6 +52,8 @@ class PlayContainer:
     dialogue: NpcDialogueService
     # U6 — deeds, appraisals and the GM's view; no LLM needed
     deeds: DeedService
+    # U7 — the GM map overlay (FR-D4); no LLM needed
+    world_state: WorldStateService
 
 
 def assemble_play(
@@ -126,7 +129,8 @@ def assemble_play(
     container = PlayContainer(
         repo=store,
         sessions=SessionService(store, loader, guard, deeds=deeds),
-        distortions=DistortionService(store),
+        distortions=DistortionService(store, loader),
+        world_state=WorldStateService(store, loader),
         region_knowledge=region_knowledge,
         feedback=feedback,
         turns=turns,
@@ -134,7 +138,6 @@ def assemble_play(
             store,
             loader,
             region_knowledge,
-            knowledge.params,
             guard=guard,
             turns=turns,
             tuning=tuning,
@@ -142,7 +145,7 @@ def assemble_play(
         guard=guard,
         executor=executor,
         rumors=rumors,
-        events=EventService(store, loader, suggester=suggester, deeds=deeds),
+        events=EventService(store, loader, suggester=suggester, deeds=deeds, tuning=tuning),
         dialogue=dialogue,
         deeds=deeds,
     )

@@ -10,12 +10,11 @@ pre-validates the action for a friendly 400 and hands it to
 from __future__ import annotations
 
 from locus.knowledge.cache import SnapshotSource
-from locus.knowledge.consensus import DEFAULT_PARAMS, ConsensusParams
 from locus.knowledge.query import level_path
 from locus.play.base import SessionAppService
-from locus.play.errors import InvalidActionError
 from locus.play.models import Player, PlayerAction, RegionView, TimelineEntry, TurnRun
 from locus.play.player import movement
+from locus.play.player.log import player_log
 from locus.play.ports import PlayRepository
 from locus.play.region_knowledge import SessionKnowledgeService
 from locus.play.turn.advancer import TurnAdvancer
@@ -30,7 +29,6 @@ class PlayService(SessionAppService):
         repo: PlayRepository,
         snapshots: SnapshotSource,
         region_knowledge: SessionKnowledgeService,
-        params: ConsensusParams = DEFAULT_PARAMS,
         *,
         guard: TurnGuard,
         turns: TurnAdvancer,
@@ -39,7 +37,6 @@ class PlayService(SessionAppService):
         super().__init__(repo)
         self._snapshots = snapshots
         self._region_knowledge = region_knowledge  # the one consensus resolve (U5 dev. 5)
-        self._params = params
         self._guard = guard
         self._turns = turns
         self._tuning = tuning
@@ -95,9 +92,10 @@ class PlayService(SessionAppService):
         return self._repo.list_runs(session_id, status)
 
     def log(self, session_id: str) -> list[TimelineEntry]:
-        """The whole session timeline (U4 "basic"; the player filter is U7)."""
+        """The player's log: their own doings and what happened where they were
+        (U7, FR-C6, BR-U7-12). The GM timeline keeps every line."""
         self._require_session(session_id)
-        return self._repo.list_timeline(session_id)
+        return player_log(self._repo.list_timeline(session_id))
 
     # -- actions -------------------------------------------------------------
     def act(self, session_id: str, action: PlayerAction, *, lang: str | None = None) -> TurnRun:
@@ -108,10 +106,3 @@ class PlayService(SessionAppService):
         snapshot: WorldSnapshot = self._snapshots.get(session.world_id)
         movement.validate_action(snapshot, player, action, self._tuning)
         return self._turns.begin(session_id, action, lang=lang)
-
-    # -- internals -----------------------------------------------------------
-    def _require_player(self, session_id: str) -> Player:
-        player = self._repo.get_player(session_id)
-        if player is None:
-            raise InvalidActionError(f"session has no player: {session_id}")
-        return player

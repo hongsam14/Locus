@@ -11,9 +11,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from locus.knowledge.cache import SnapshotSource
+from locus.knowledge.query import region_briefs
 from locus.play.base import SessionAppService, require_region
-from locus.play.errors import LlmUnavailableError
+from locus.play.errors import InvalidActionError, LlmUnavailableError
 from locus.play.event import dynamics
+from locus.play.event import suggest_context as ctx
 from locus.play.event.suggester import EventSuggester
 from locus.play.models import (
     EventCategory,
@@ -25,6 +27,7 @@ from locus.play.models import (
     default_lifecycle,
 )
 from locus.play.ports import PlayRepository
+from locus.shared.config.tuning import PlayTuning
 from locus.shared.models import Provenance, SourceKind
 from locus.shared.models.util import clamp01
 
@@ -42,9 +45,11 @@ class EventService(SessionAppService):
         *,
         suggester: EventSuggester | None = None,
         deeds: DeedService | None = None,
+        tuning: PlayTuning | None = None,
     ) -> None:
         super().__init__(repo)
         self._snapshots = snapshots
+        self._tuning = tuning or PlayTuning()  # n cap and prompt size (U7, BR-U7-9/10)
         self._deeds = deeds  # U6: recent deeds feed the suggestion context (BR-U6-31)
         self._suggester = suggester  # optional LLM event proposals (BR-P2-16)
 
@@ -85,13 +90,15 @@ class EventService(SessionAppService):
             provenance=Provenance(source=SourceKind.SIMULATION, generated_by="gm:event"),
         )
         saved = self._repo.create_event(event)
+        name = self._region_name(session, region_id)
         self._timeline(
             session,
             TimelineKind.EVENT_CREATED,
-            f"created {cat.value} event in {region_id}",
+            f"created {cat.value} event in {name}",
             {
                 "event_id": saved.id,
                 "region_id": region_id,
+                "region_name": name,
                 "category": cat.value,
                 "magnitude": saved.magnitude,
             },
@@ -104,6 +111,8 @@ class EventService(SessionAppService):
         event = self._require_event(session_id, event_id)
         if event.is_resolved():  # idempotent (BR-P1-6)
             return event
+        if event.is_suggested():  # approve first (BR-U7-7, RE C5)
+            raise InvalidActionError(f"a suggested event must be approved first: {event_id}")
         # Restore, status and timeline in ONE transaction: a failure part-way used to
         # leave some regions restored while the event stayed ACTIVE, so the next turn
         # accumulated a second contribution and the symmetric restore was permanently
@@ -124,46 +133,78 @@ class EventService(SessionAppService):
                 self._entry(
                     session,
                     TimelineKind.EVENT_RESOLVED,
-                    f"resolved event {event_id}",
-                    {"event_id": event_id, "restored": restored},
+                    f"resolved {event.category} event in "
+                    f"{self._region_name(session, event.region_id)}",
+                    {
+                        "event_id": event_id,
+                        "restored": restored,
+                        "region_id": event.region_id,
+                        "region_name": self._region_name(session, event.region_id),
+                    },
                 )
             )
         return saved
 
     def discard_event(self, session_id: str, event_id: str) -> None:
         """Discard a SUGGESTED event (BR-P1-8). ACTIVE/RESOLVED cannot be discarded."""
-        self._require_open(session_id)
+        session = self._require_open(session_id)
         event = self._require_event(session_id, event_id)
         if not event.is_suggested():
             raise ValueError(f"only SUGGESTED events can be discarded: {event_id}")
-        self._repo.delete_event(session_id, event_id)
+        name = self._region_name(session, event.region_id)
+        # The line first, in the same unit of work: the row is gone afterwards, so the
+        # line keeps what was discarded (BR-U7-8, FR-E4).
+        with self._repo.uow() as u:
+            u.timeline.append_timeline(
+                self._entry(
+                    session,
+                    TimelineKind.EVENT_DISCARDED,
+                    f"discarded the {event.category} suggestion in {name}",
+                    {
+                        "event_id": event_id,
+                        "region_id": event.region_id,
+                        "region_name": name,
+                        "category": str(event.category),
+                        "description": event.description,
+                    },
+                )
+            )
+            u.events.delete_event(session_id, event_id)
 
     # -- suggest -> approve gate --------------------------------------------
     def suggest_events(self, session_id: str, *, n: int = 1) -> list[SessionEvent]:
         """LLM proposes up to ``n`` events, persisted as SUGGESTED (FR-P2.2, BR-P2-10).
 
-        Needs a provider (503 without one); an LLM failure is graceful -> [].
-        Invalid-region drafts are skipped.
+        U7 (BR-U7-9/10): ``n`` is 1..``max_event_suggestions`` (400 otherwise, before any
+        LLM call), and the prompt sees the world — region names, places, descriptions and
+        known facts, recent events and deeds — under a "material" heading. A draft's
+        region is found by id, else by the name the prompt showed. Needs a provider (503
+        without one); an LLM failure is graceful -> [].
         """
+        limit = self._tuning.max_event_suggestions
+        if not 1 <= n <= limit:
+            raise InvalidActionError(f"n must be between 1 and {limit}: {n}")
         if self._suggester is None:
             raise LlmUnavailableError("event suggestion needs an LLM provider (set OPENAI_API_KEY)")
         session = self._require_open(session_id)
-        region_ids = set(self._snapshots.get(session.world_id).regions_by_id)
+        snapshot = self._snapshots.get(session.world_id)
+        shown = self._shown_regions(session, snapshot)
         drafts = self._suggester.suggest(
-            world_id=session.world_id,
-            region_ids=list(region_ids),
+            context=ctx.suggestion_context(
+                shown, self._event_lines(session, snapshot), self._deed_lines(session)
+            ),
             turn=session.turn,
             n=n,
-            context=self._deed_context(session),
         )
         out: list[SessionEvent] = []
         for d in drafts:
-            if d.region_id not in region_ids:  # skip invalid region (BR-P2-10)
+            region_id = ctx.match_region(d.region_id, shown)
+            if region_id is None:  # skip a region the prompt did not show (BR-P2-10)
                 continue
             cat = EventCategory(d.category)
             event = SessionEvent(
                 session_id=session_id,
-                region_id=d.region_id,
+                region_id=region_id,
                 category=cat,
                 description=d.description,
                 magnitude=clamp01(d.magnitude),
@@ -174,11 +215,19 @@ class EventService(SessionAppService):
             )
             saved = self._repo.create_event(event)
             out.append(saved)
+            name = self._region_name(session, region_id)
             self._timeline(
                 session,
-                TimelineKind.EVENT_CREATED,
-                f"suggested {cat.value} event in {d.region_id}",
-                {"event_id": saved.id, "region_id": d.region_id, "suggested": True},
+                TimelineKind.EVENT_SUGGESTED,
+                f"suggested {cat.value} event in {name}",
+                {
+                    "event_id": saved.id,
+                    "region_id": region_id,
+                    "region_name": name,
+                    "category": cat.value,
+                    "magnitude": saved.magnitude,
+                    "description": saved.description,
+                },
             )
         return out
 
@@ -190,11 +239,17 @@ class EventService(SessionAppService):
             raise ValueError(f"only SUGGESTED events can be approved: {event_id}")
         event.approve()
         saved = self._repo.update_event(event)
+        name = self._region_name(session, event.region_id)
         self._timeline(
             session,
-            TimelineKind.EVENT_CREATED,
-            f"approved event {event_id}",
-            {"event_id": event_id, "approved": True},
+            TimelineKind.EVENT_APPROVED,
+            f"approved the {event.category} event in {name}",
+            {
+                "event_id": event_id,
+                "region_id": event.region_id,
+                "region_name": name,
+                "category": str(event.category),
+            },
         )
         return saved
 
@@ -205,17 +260,54 @@ class EventService(SessionAppService):
             raise LookupError(f"event not found: {event_id}")
         return event
 
-    def _deed_context(self, session: GameSession) -> str:
+    def _region_name(self, session: GameSession, region_id: str) -> str:
+        """FR-D3: lines name regions; the id stands in when the world lost the region."""
+        region = self._snapshots.get(session.world_id).regions_by_id.get(region_id)
+        return region.name if region is not None else region_id
+
+    def _shown_regions(self, session: GameSession, snapshot) -> list:
+        """The regions the suggestion prompt shows, in the FD review R-06 order."""
+        player = self._repo.get_player(session.id)
+        events = self._repo.list_events(session.id, EventStatus.ACTIVE.value)
+        counts: dict[str, int] = {}
+        for r in self._repo.list_rumors(session.id):
+            counts[r.region_id] = counts.get(r.region_id, 0) + 1
+        return ctx.pick_brief_regions(
+            region_briefs(snapshot, top_k=ctx.KNOWLEDGE_PER_REGION),
+            player_region_id=player.region_id if player is not None else None,
+            event_region_ids={e.region_id for e in events},
+            rumor_counts=counts,
+            limit=self._tuning.suggest_max_regions,
+        )
+
+    def _event_lines(self, session: GameSession, snapshot) -> list[str]:
+        """The latest five events that are not mere suggestions, newest first."""
+        names = {r.id: r.name for r in snapshot.topo.regions}
+        events = [
+            e
+            for e in self._repo.list_events(session.id)
+            if str(e.status) != EventStatus.SUGGESTED.value
+        ]
+        events.sort(key=lambda e: (e.created_turn, e.id), reverse=True)
+        return [
+            ctx.event_line(
+                names.get(e.region_id, e.region_id),
+                str(e.category),
+                e.magnitude,
+                str(e.status),
+                e.description,
+            )
+            for e in events[:5]
+        ]
+
+    def _deed_lines(self, session: GameSession) -> list[str]:
         """Recent deeds for the suggestion prompt (U6 BR-U6-31; FR-D2 보강): what the
         traveler did lately can give rise to events. Voided deeds are left out."""
         if self._deeds is None:
-            return ""
+            return []
         names = {r.id: r.name for r in self._snapshots.get(session.world_id).topo.regions}
         lines = []
         for deed, appraisals in self._deeds.recent(session.id, 5):
-            line = f"- [{names.get(deed.region_id, deed.region_id)}] {deed.text}"
             told = next((a.retelling for a in appraisals if a.noteworthy and a.retelling), None)
-            if told:
-                line += f" (retold: {told})"
-            lines.append(line)
-        return ("Recent deeds of the traveler:\n" + "\n".join(lines)) if lines else ""
+            lines.append(ctx.deed_line(names.get(deed.region_id, deed.region_id), deed.text, told))
+        return lines

@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from locus.knowledge.cache import SnapshotSource
+from locus.play.base import SessionAppService
 from locus.play.models import (
     DEFAULT_DISTORTION_DEGREE,
     EventStatus,
@@ -15,7 +17,9 @@ from locus.play.models import (
     RegionState,
     SessionEvent,
     SessionRumor,
+    WorldState,
 )
+from locus.play.ports import PlayRepository
 from locus.shared.models import Region
 
 
@@ -60,3 +64,31 @@ def summarize_state(
             )
         )
     return out
+
+
+class WorldStateService(SessionAppService):
+    """The GM overlay's read (FR-D4, BLM §4.3): five repository reads whatever the
+    number of regions, one snapshot read, no LLM, no writes. The reads are not bound in
+    one transaction: a turn committing in between can show one mixed frame, which the
+    next read corrects (NFR N7-2). Closed sessions are readable."""
+
+    def __init__(self, repo: PlayRepository, snapshots: SnapshotSource) -> None:
+        super().__init__(repo)
+        self._snapshots = snapshots
+
+    def state(self, session_id: str) -> WorldState:
+        session = self._require_session(session_id)
+        snapshot = self._snapshots.get(session.world_id)
+        player = self._repo.get_player(session_id)
+        regions = summarize_state(
+            snapshot.topo.regions,
+            self._repo.list_region_distortions(session_id),
+            self._repo.list_rumors(session_id),
+            self._repo.list_events(session_id, EventStatus.ACTIVE.value),
+        )
+        return WorldState(
+            session_id=session.id,
+            turn=session.turn,
+            player_region_id=player.region_id if player is not None else None,
+            regions=regions,
+        )

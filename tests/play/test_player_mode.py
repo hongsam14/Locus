@@ -683,10 +683,13 @@ def test_ex1_start_is_atomic_when_the_store_fails() -> None:
     assert repo._players == {} and repo._distortions == {}
 
 
-def test_gm_start_session_writes_no_timeline_entry() -> None:  # code-plan R-09
+def test_gm_start_session_records_its_start() -> None:
+    # U7 intended change: BR-U7-11 (was code-plan R-09 "no entry") — EX-15 of U7
     repo, _gm, sessions, _play = _services()
     s = sessions.start_session("w")
-    assert repo.get_player(s.id) is None and repo.list_timeline(s.id) == []
+    assert repo.get_player(s.id) is None
+    lines = repo.list_timeline(s.id)
+    assert [(e.kind, e.payload) for e in lines] == [("session_started", {"player": None})]
     assert len(repo.list_region_distortions(s.id)) == 4
 
 
@@ -766,14 +769,14 @@ def test_ex7_act_validates_then_begins_and_polls() -> None:
     assert view.region_name == "B" and view.turn == 2
 
 
-def test_ex15_log_returns_the_whole_timeline_in_order() -> None:
-    _repo, _gm, sessions, play = _services()
+def test_ex15_log_returns_the_players_lines_in_order() -> None:
+    # U7 intended change: BR-U7-12 — the log is the player's, not the whole timeline
+    repo, _gm, sessions, play = _services()
     session, _player = sessions.start("w", PlayerCreate(name="Ari", start_region_id="a"))
     play.act(session.id, WaitAction())
     kinds = [e.kind for e in play.log(session.id)]
-    assert (
-        kinds[0] == "session_started" and "player_waited" in kinds and kinds[-1] == "advance_turn"
-    )
+    assert kinds == ["session_started", "player_waited"]
+    assert [e.kind for e in repo.list_timeline(session.id)][-1] == "advance_turn"
 
 
 # --------------------------------------------------------------------------- #

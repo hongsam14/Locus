@@ -86,8 +86,10 @@ def test_ex7_act_answers_202_and_the_poll_reports_done() -> None:
         client.get(f"/api/play/sessions/{sid}/turn-runs", params={"status": "running"}).json() == []
     )
     log = client.get(f"/api/play/sessions/{sid}/log").json()
-    assert [e["kind"] for e in log][:2] == ["session_started", "player_waited"]
-    assert log[-1]["kind"] == "advance_turn"
+    # U7 intended change: BR-U7-12 — the player's log hides the turn machinery
+    assert [e["kind"] for e in log] == ["session_started", "player_waited"]
+    gm_timeline = client.get(f"/api/gm/sessions/{sid}/timeline").json()
+    assert gm_timeline[-1]["kind"] == "advance_turn"  # the GM still sees every line
     assert client.get(f"/api/play/sessions/{sid}/region").json()["turn"] == 1
 
 

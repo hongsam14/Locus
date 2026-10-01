@@ -11,8 +11,10 @@ identically everywhere.
 from __future__ import annotations
 
 from locus.knowledge.cache import SnapshotSource
+from locus.play.errors import InvalidActionError
 from locus.play.models import (
     GameSession,
+    Player,
     SessionStatus,
     TimelineEntry,
     TimelineKind,
@@ -51,6 +53,14 @@ class SessionAppService:
         if session.status == SessionStatus.CLOSED.value:
             raise SessionClosedError(f"session is closed: {session_id}")
         return session
+
+    def _require_player(self, session_id: str) -> Player:
+        """The session's player, or ``InvalidActionError`` (400) for a GM session
+        without one — the one copy every player-facing service uses (U5 review C4)."""
+        player = self._repo.get_player(session_id)
+        if player is None:
+            raise InvalidActionError(f"session has no player: {session_id}")
+        return player
 
     def _timeline(
         self,

@@ -66,7 +66,8 @@ def test_get_and_timeline_missing_raise_lookup() -> None:
         svc.close_session("missing")
 
 
-def test_timeline_empty_for_new_session() -> None:
+def test_timeline_of_a_new_session_holds_only_its_start() -> None:
+    # U7 intended change: BR-U7-11 — the GM session's start is recorded
     svc, _ = _service({"w": ["r1"]})
     s = svc.start_session("w")
-    assert svc.get_timeline(s.id) == []
+    assert [e.kind for e in svc.get_timeline(s.id)] == ["session_started"]

@@ -77,6 +77,12 @@ class RumorService(SessionAppService):
         return self._repo.list_rumors(session_id, region_id)
 
     # -- actions -------------------------------------------------------------
+
+    def _region_name(self, session: GameSession, region_id: str) -> str:
+        """The region's name for timeline lines (FR-D3); its id when the world lost it."""
+        region = self._snapshots.get(session.world_id).regions_by_id.get(region_id)
+        return region.name if region is not None else region_id
+
     def generate_rumors(
         self, session_id: str, region_id: str, *, degrees: list[float] | None = None
     ) -> list[SessionRumor]:
@@ -87,8 +93,12 @@ class RumorService(SessionAppService):
         self._timeline(
             session,
             TimelineKind.GENERATE,
-            f"generated {len(rumors)} rumors in {region_id}",
-            {"region_id": region_id, "rumor_ids": [r.id for r in rumors]},
+            f"generated {len(rumors)} rumors in {self._region_name(session, region_id)}",
+            {
+                "region_id": region_id,
+                "region_name": self._region_name(session, region_id),
+                "rumor_ids": [r.id for r in rumors],
+            },
         )
         return rumors
 
@@ -99,6 +109,7 @@ class RumorService(SessionAppService):
         self._require_generator()
         session = self._require_open(session_id)
         existing = self._repo.list_rumors(session_id, region_id)
+        name = self._region_name(session, region_id)  # FR-D3
         # FR-UX2.5 / BR-X3-9 (X3): preserve promoted rumors; drop only the
         # non-promoted ones then regenerate. (Was Q4=A drop-all incl. promoted.)
         # U6 (BR-U6-29): a player's deed rumors are only undone by a GM void, never by a
@@ -121,9 +132,10 @@ class RumorService(SessionAppService):
             self._timeline(
                 session,
                 TimelineKind.REGENERATE,
-                f"regenerated {region_id}: generation incomplete, kept everything",
+                f"regenerated {name}: generation incomplete, kept everything",
                 {
                     "region_id": region_id,
+                    "region_name": name,
                     "deactivated": [],
                     "kept": [r.id for r in existing],
                     "rumor_ids": [],
@@ -136,9 +148,10 @@ class RumorService(SessionAppService):
             self._timeline(
                 session,
                 TimelineKind.REGENERATE,
-                f"regenerated {region_id}: nothing to seed",
+                f"regenerated {name}: nothing to seed",
                 {
                     "region_id": region_id,
+                    "region_name": name,
                     "deactivated": [],
                     "kept": [r.id for r in existing],
                     "rumor_ids": [],
@@ -159,9 +172,10 @@ class RumorService(SessionAppService):
                 self._entry(
                     session,
                     TimelineKind.REGENERATE,
-                    f"regenerated {region_id}",
+                    f"regenerated {name}",
                     {
                         "region_id": region_id,
+                        "region_name": name,
                         "deactivated": [r.id for r in dropped],
                         "kept": [r.id for r in kept],
                         "rumor_ids": [r.id for r in saved],
@@ -180,8 +194,14 @@ class RumorService(SessionAppService):
         self._timeline(
             session,
             TimelineKind.ADJUST_SUPPORT,
-            f"support of {rumor_id} -> {rumor.support:.2f}",
-            {"rumor_id": rumor_id, "support": rumor.support},
+            f"support of a rumor in {self._region_name(session, rumor.region_id)}"
+            f" -> {rumor.support:.2f}",
+            {
+                "rumor_id": rumor_id,
+                "support": rumor.support,
+                "region_id": rumor.region_id,
+                "region_name": self._region_name(session, rumor.region_id),
+            },
         )
         return saved
 

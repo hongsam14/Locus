@@ -310,12 +310,6 @@ class NpcDialogueService(SessionAppService):
                 )
             )
 
-    def _require_player(self, session_id: str) -> Player:
-        player = self._repo.get_player(session_id)
-        if player is None:
-            raise InvalidActionError(f"session has no player: {session_id}")
-        return player
-
     @staticmethod
     def _require_npc_here(snapshot: WorldSnapshot, player: Player, npc_id: str) -> NPC:
         """404 when the NPC is not in this world; 400 when it lives elsewhere (BR-U5-28)."""

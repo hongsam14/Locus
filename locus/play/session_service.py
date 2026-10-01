@@ -8,8 +8,8 @@ Canonical access is read-only (NFR-R2).
 
 ``start(world_id, PlayerCreate)`` is the player-mode entry (US-3.1): it also
 creates the solo player and the ``SESSION_STARTED`` timeline entry. The older
-``start_session(world_id)`` keeps creating player-less GM sessions (BR-U4-30)
-and writes no timeline entry (code-plan R-09).
+``start_session(world_id)`` keeps creating player-less GM sessions (BR-U4-30);
+since U7 it records its start as well (BR-U7-11, FR-E4).
 """
 
 from __future__ import annotations
@@ -54,7 +54,8 @@ class SessionService:
         self._deeds = deeds  # U6: the start region's arrival is the first deed (BR-U6-1)
 
     def start_session(self, world_id: str) -> GameSession:
-        """GM session without a player (pre-U4 contract; no timeline entry)."""
+        """GM session without a player (pre-U4 contract). U7 (BR-U7-11, FR-E4): its
+        start is recorded too — ``player: null`` and no region."""
         snapshot = self._snapshot(world_id)
         with self._repo.uow() as u:
             session = u.sessions.create_session(world_id)
@@ -62,6 +63,15 @@ class SessionService:
                 u.distortions.set_region_distortion(
                     session.id, region.id, DEFAULT_DISTORTION_DEGREE
                 )
+            u.timeline.append_timeline(
+                TimelineEntry(
+                    session_id=session.id,
+                    turn=session.turn,
+                    kind=TimelineKind.SESSION_STARTED,
+                    summary="GM session started",
+                    payload={"player": None},
+                )
+            )
         return session
 
     def start(self, world_id: str, player: PlayerCreate) -> tuple[GameSession, Player]:

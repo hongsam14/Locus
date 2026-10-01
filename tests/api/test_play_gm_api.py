@@ -35,9 +35,11 @@ def test_start_list_get_close_flow() -> None:
     assert closed.status_code == 200 and closed.json()["status"] == "closed"
 
     timeline = client.get(f"/api/gm/sessions/{sid}/timeline")
-    # U4 (BR-U4-5): closing writes one SESSION_CLOSED entry; GM start writes none (R-09)
+    # U4 (BR-U4-5): closing writes one SESSION_CLOSED entry.
+    # U7 intended change: BR-U7-11 — a GM session's start is recorded too
     assert timeline.status_code == 200
-    assert [e["kind"] for e in timeline.json()] == ["session_closed"]
+    assert [e["kind"] for e in timeline.json()] == ["session_started", "session_closed"]
+    assert timeline.json()[0]["payload"] == {"player": None}
 
 
 def test_start_unknown_world_404() -> None:

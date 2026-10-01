@@ -22,3 +22,14 @@
     - domain-entities §4.2·§4.3·§4.4·§6·§8
     - business-rules BR-U3-8·23·27·28·41, TP-U3-2a(새로)·TP-U3-4
     - nfr-light §6(새 절)과 표시
+- **Step 2**
+  - `EdgeKey`, `GraphRepository.replace_nodes`·`delete_edges`, `SearchRepository.delete`를 더했다.
+  - 어댑터
+    - Neo4j: 라벨마다, (종류, identity 키)마다 UNWIND 하나. 제약 오류는 `ConstraintViolation`으로 바꾼다.
+    - OpenSearch: `delete_by_query` 하나
+    - 인메모리 가짜 둘
+  - 임시 가짜는 아직 고칠 곳이 없다(새 경로가 쓰지 않는다).
+  - `MATERIAL`을 `shared/text.py`로 옮겼다. 호출처는 넷이다.
+  - 테스트 `test_port_contract.py` 13개
+  - 변이: 가짜 `replace_nodes`를 병합으로 바꾸면 TP-U3-3이 실패한다(잡음).
+  - pytest 748

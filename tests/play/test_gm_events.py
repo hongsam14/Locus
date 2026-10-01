@@ -6,7 +6,6 @@ from __future__ import annotations
 from locus.play.event.suggest_context import (
     CONTEXT_MAX,
     DEED_LINE_MAX,
-    MATERIAL,
     deed_line,
     event_line,
     match_region,
@@ -15,6 +14,7 @@ from locus.play.event.suggest_context import (
     suggestion_context,
 )
 from locus.shared.models import RegionBrief
+from locus.shared.text import MATERIAL
 
 
 def _brief(rid: str, level: str = "town", name: str | None = None, **kw) -> RegionBrief:

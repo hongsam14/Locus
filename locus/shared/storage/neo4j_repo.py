@@ -12,6 +12,7 @@ import re
 from locus.shared.storage.base import (
     ConstraintViolation,
     Edge,
+    EdgeKey,
     GraphRepository,
     Node,
     edge_identity_field,
@@ -118,6 +119,57 @@ class Neo4jGraphRepository(GraphRepository):
             if key_field:
                 params["key"] = edge.properties[key_field]
             self._run(query, params)
+
+    def replace_nodes(self, nodes: list[Node]) -> None:
+        """Replace each node's properties whole (U3 BR-U3-1): a property left out of
+        ``properties`` is removed. One UNWIND query per label (NFR R-06); ``id`` and
+        ``world_id`` are merged back into the props so ``SET n = …`` keeps them."""
+        by_label: dict[str, list[dict]] = {}
+        for node in nodes:
+            props = {**node.properties, "id": node.id, "world_id": node.world_id}
+            by_label.setdefault(_safe_ident(node.label), []).append(
+                {"id": node.id, "world_id": node.world_id, "props": props}
+            )
+        for label, rows in by_label.items():
+            query = (
+                "UNWIND $rows AS row "
+                f"MERGE (n:{label} {{id: row.id, world_id: row.world_id}}) "
+                "SET n = row.props"
+            )
+            try:
+                self._run(query, {"rows": rows})
+            except Exception as exc:  # same translation as upsert_nodes
+                if type(exc).__name__ == "ConstraintError":
+                    raise ConstraintViolation(
+                        f"{label} id already exists in another world"
+                    ) from exc
+                raise
+
+    def delete_edges(self, world_id: str, edges: list[EdgeKey]) -> int:
+        """Delete the given edges (U3); missing ones are skipped. One UNWIND query per
+        edge type and identity shape. Returns how many were deleted."""
+        groups: dict[tuple[str, tuple[str, ...]], list[dict]] = {}
+        for key in edges:
+            fields = tuple(sorted(key.identity))
+            for f in fields:
+                _safe_ident(f)
+            groups.setdefault((_safe_ident(key.type), fields), []).append(
+                {"s": key.source_id, "t": key.target_id, "k": dict(key.identity)}
+            )
+        deleted = 0
+        for (rel, fields), rows in groups.items():
+            ident = ", ".join(f"{f}: row.k.{f}" for f in fields)
+            ident_clause = f" {{{ident}}}" if ident else ""
+            query = (
+                "UNWIND $rows AS row "
+                "MATCH (a {id: row.s, world_id: $world_id})"
+                f"-[r:{rel}{ident_clause}]->"
+                "(b {id: row.t, world_id: $world_id}) "
+                "DELETE r RETURN count(r) AS n"
+            )
+            result = self._run(query, {"rows": rows, "world_id": world_id})
+            deleted += sum(int(row.get("n", 0)) for row in result)
+        return deleted
 
     # -- reads ------------------------------------------------------------ #
     def get_node(self, world_id: str, node_id: str) -> Node | None:

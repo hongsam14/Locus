@@ -168,6 +168,28 @@ class OpenSearchRepository(SearchRepository):
             )
         return hits
 
+    def delete(self, world_id: str, doc_ids: list[str]) -> int:
+        """Delete documents of one world by id (U3); missing ids are skipped. One
+        ``delete_by_query`` request; returns how many were deleted."""
+        if not doc_ids:
+            return 0
+        client = self._require_client()
+        response = client.delete_by_query(
+            index=self._index,
+            body={
+                "query": {
+                    "bool": {
+                        "filter": [
+                            {"term": {"world_id": world_id}},
+                            {"ids": {"values": list(doc_ids)}},
+                        ]
+                    }
+                }
+            },
+            refresh=True,
+        )
+        return int(response.get("deleted", 0)) if isinstance(response, dict) else 0
+
     def delete_world(self, world_id: str) -> None:
         client = self._require_client()
         client.delete_by_query(

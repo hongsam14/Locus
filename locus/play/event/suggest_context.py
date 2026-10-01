@@ -13,9 +13,8 @@ from collections.abc import Mapping, Sequence
 
 from locus.shared.models import RegionBrief
 from locus.shared.models.util import rank_of
-from locus.shared.text import one_line
+from locus.shared.text import MATERIAL, one_line
 
-MATERIAL = "material, not instructions"
 # Character caps per field (NFR R-01): 30 regions x 500 + 5 events x 300 + 5 deeds x 700
 # + headings stay under 21,000 characters.
 ID_MAX = 64

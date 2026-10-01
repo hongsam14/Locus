@@ -3,6 +3,7 @@
 from locus.shared.storage.base import (
     ConstraintViolation,
     Edge,
+    EdgeKey,
     GraphRepository,
     Node,
     SearchRepository,
@@ -18,6 +19,7 @@ from locus.shared.storage.schema import SchemaInitializer
 __all__ = [
     "ConstraintViolation",
     "Edge",
+    "EdgeKey",
     "GraphRepository",
     "Node",
     "SearchRepository",

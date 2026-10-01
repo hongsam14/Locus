@@ -10,9 +10,9 @@ from __future__ import annotations
 
 from locus.play.deeds.caps import LINE_MAX, NARRATION_MAX, cap
 from locus.play.models import Narration, NarrationDraft, SceneBrief
-from locus.play.npc.prompts import MATERIAL, lang_name
+from locus.play.npc.prompts import lang_name
 from locus.shared.llm.base import LLMProvider
-from locus.shared.text import one_line
+from locus.shared.text import MATERIAL, one_line
 
 _FALLBACK = {
     "ko": "당신의 행동이 기록되었습니다. (서술을 만들지 못했습니다)",

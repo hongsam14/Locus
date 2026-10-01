@@ -12,7 +12,13 @@ from __future__ import annotations
 import random
 
 from locus.shared.models import SearchDoc, SearchHit
-from locus.shared.storage.base import ConstraintViolation, Edge, Node, edge_identity_field
+from locus.shared.storage.base import (
+    ConstraintViolation,
+    Edge,
+    EdgeKey,
+    Node,
+    edge_identity_field,
+)
 
 
 class InMemoryGraphRepository:
@@ -56,6 +62,38 @@ class InMemoryGraphRepository:
             key_field = edge_identity_field(e)
             key = e.properties.get(key_field) if key_field else None
             self._edges[(e.world_id, e.type, e.source_id, e.target_id, key)] = e.model_copy()
+
+    def replace_nodes(self, nodes: list[Node]) -> None:
+        """U3: properties replaced whole (a property left out is removed)."""
+        if self.fail_on_upsert is not None:
+            raise self.fail_on_upsert
+        for node in nodes:
+            for (wid, nid), _existing in self._nodes.items():
+                if nid == node.id and wid != node.world_id:
+                    raise ConstraintViolation(
+                        f"{node.label} id {node.id!r} already exists in world {wid!r}"
+                    )
+            self._nodes[(node.world_id, node.id)] = node.model_copy(
+                update={"properties": dict(node.properties)}
+            )
+
+    def delete_edges(self, world_id: str, edges: list[EdgeKey]) -> int:
+        """U3: delete the matching edges; an empty identity matches every parallel edge."""
+        deleted = 0
+        for key in edges:
+            doomed = [
+                k
+                for k, e in self._edges.items()
+                if e.world_id == world_id
+                and e.type == key.type
+                and e.source_id == key.source_id
+                and e.target_id == key.target_id
+                and all(e.properties.get(f) == v for f, v in key.identity.items())
+            ]
+            for k in doomed:
+                del self._edges[k]
+            deleted += len(doomed)
+        return deleted
 
     def delete_node(self, world_id: str, node_id: str) -> None:
         self._nodes.pop((world_id, node_id), None)
@@ -106,6 +144,7 @@ class InMemorySearchRepository:
     def __init__(self) -> None:
         self.docs: dict[tuple[str, str], SearchDoc] = {}
         self.fail_on_index: Exception | None = None
+        self.fail_on_delete: Exception | None = None
 
     def connect(self) -> None: ...
     def disconnect(self) -> None: ...
@@ -120,6 +159,15 @@ class InMemorySearchRepository:
             raise self.fail_on_index
         for d in docs:
             self.docs[(d.world_id, d.id)] = d.model_copy()
+
+    def delete(self, world_id: str, doc_ids: list[str]) -> int:
+        """U3: delete a world's documents by id; missing ids are skipped."""
+        if self.fail_on_delete is not None:
+            raise self.fail_on_delete
+        gone = [key for key in ((world_id, d) for d in doc_ids) if key in self.docs]
+        for key in gone:
+            del self.docs[key]
+        return len(gone)
 
     def hybrid_search(
         self,

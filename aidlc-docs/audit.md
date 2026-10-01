@@ -3303,3 +3303,10 @@ R-16 → Accepted risk
 **Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 1.
 
 ---
+
+## U3 Code Generation Part 2 — Step 2 (storage ports, MATERIAL)
+**Timestamp**: 2026-10-01T09:33:35Z
+**AI Response**: Added the `EdgeKey` port, `replace_nodes`, `delete_edges` and `SearchRepository.delete`. Implemented them in the Neo4j (UNWIND, constraint translation), OpenSearch (`delete_by_query`) and in-memory adapters. Added `test_port_contract.py` (13 tests; TP-U3-3 mutation caught). Moved `MATERIAL` to `shared/text.py`; 4 call sites updated. Gates: pytest 748, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 2.
+
+---

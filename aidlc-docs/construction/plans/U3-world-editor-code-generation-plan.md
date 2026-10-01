@@ -289,26 +289,26 @@
     - §2: ①·②·④ 순서와 종류별 삭제 재시도(R-01)
 
 ### Step 2 — 저장 포트 (domain-entities §1, NFR R-06)
-- [ ] 2.1 `locus/shared/storage/base.py`
+- [x] 2.1 `locus/shared/storage/base.py`
   - `EdgeKey(type, source_id, target_id, identity: dict = {})`. identity 규칙은 `edge_identity_field`와 같다.
   - `GraphRepository.replace_nodes(nodes)`, `GraphRepository.delete_edges(world_id, edges) -> int`
   - `SearchRepository.delete(world_id, doc_ids) -> int`
-- [ ] 2.2 어댑터. 2.1부터 2.3 끝까지 프로토콜 검사 테스트는 붉고, 2.3 끝에 GREEN이 된다.
+- [x] 2.2 어댑터. 2.1부터 2.3 끝까지 프로토콜 검사 테스트는 붉고, 2.3 끝에 GREEN이 된다.
   - `neo4j_repo.py`
     - `replace_nodes`: 라벨마다 `UNWIND $rows AS row MERGE (n:L {id: row.id, world_id: row.world_id}) SET n = row.props`다. props에 id·world_id를 합친다. `ConstraintError`는 `upsert_nodes`(`:92-98`)와 같게 `ConstraintViolation`으로 바꾼다.
     - `delete_edges`: 엣지 종류마다 UNWIND 하나다. identity가 있으면 그 키로 MATCH한다.
   - `opensearch_repo.py`: `delete`는 `world_id` 필터 + ids의 `delete_by_query` 하나다.
-- [ ] 2.3 가짜
+- [x] 2.3 가짜
   - `tests/shared/storage/fakes.py`: `InMemoryGraphRepository.replace_nodes/delete_edges`, `InMemorySearchRepository.delete`
   - 테스트 안 임시 가짜(`test_services.py`의 `_GraphRepo`·`_SearchRepo`, `test_augmentation.py:120`의 `_GraphRepo`, `test_wiki_build.py`의 `_Recording*`)는 새 경로가 그것을 쓸 때만 메서드를 더한다. 어느 것을 더했는지 code-summary에 적는다.
-- [ ] 2.4 테스트 `tests/shared/storage/test_port_contract.py`
+- [x] 2.4 테스트 `tests/shared/storage/test_port_contract.py`
   - 인메모리 동작
     - TP-U3-3: 교체 왕복. 빠진 속성은 사라지고 id·world_id는 남는다.
     - 없는 엣지·문서는 넘기고 지운 수를 돌려준다.
     - identity가 다른 평행 엣지는 하나만 지운다.
   - Neo4j Cypher 모양(가짜 드라이버, `test_storage.py` 방식): `SET n = row.props`, props의 id·world_id, UNWIND, 종류별 쿼리 수, 제약 오류 번역
   - OpenSearch 삭제 본문(가짜 클라이언트)
-- [ ] 2.5 `locus/shared/text.py`에 `MATERIAL`을 둔다(NFR R-07, C11).
+- [x] 2.5 `locus/shared/text.py`에 `MATERIAL`을 둔다(NFR R-07, C11).
   - 호출처: `play/npc/prompts.py:23`(정의 삭제, import), `play/event/suggest_context.py:18`(정의 삭제, import), `play/gm/narrator.py:13`(import 경로), `tests/play/test_gm_events.py:9`(import 경로)
   - 경계 테스트 GREEN
 

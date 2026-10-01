@@ -250,8 +250,6 @@ def test_record_appraisal_stores_the_statement_its_judgement_and_the_timeline() 
     sang = _deed(repo, session, player)
     run = TurnRun(session_id=session.id)
     outcome = AppraisalOutcome(
-        npc_id="n1",
-        summary="Ari asked about the mill.",
         statement_text="Ari asked about the mill.",
         appraisals=[_ap(session, sang, "n1")],
         statement_appraisal=DeedAppraisal(
@@ -275,7 +273,7 @@ def test_record_appraisal_drops_a_pair_written_meanwhile() -> None:
     repo, deeds, session, player = _setup()
     sang = _deed(repo, session, player)
     repo.save_appraisals([_ap(session, sang, "n1")])
-    outcome = AppraisalOutcome(npc_id="n1", appraisals=[_ap(session, sang, "n1")])
+    outcome = AppraisalOutcome(appraisals=[_ap(session, sang, "n1")])
     with pytest.raises(AppraisalExistsError):
         repo.save_appraisals([_ap(session, sang, "n1")])
     saved = deeds.record_appraisal(

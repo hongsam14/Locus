@@ -63,6 +63,11 @@ class TimelineKind(str, Enum):
     DEED_SEEDED = "deed_seeded"
     RUMOR_SPREAD = "rumor_spread"
     DEED_VOIDED = "deed_voided"
+    # U7 GM mode (additive): an event's life is recorded by kind (BR-U7-8). EVENT_CREATED
+    # is a GM's direct creation only from U7 on.
+    EVENT_SUGGESTED = "event_suggested"
+    EVENT_APPROVED = "event_approved"
+    EVENT_DISCARDED = "event_discarded"
 
 
 class GameSession(LocusModel):
@@ -110,6 +115,9 @@ class RegionDistortion(LocusModel):
     session_id: str
     region_id: str
     distortion_degree: float = Field(default=DEFAULT_DISTORTION_DEGREE, ge=0.0, le=1.0)
+    # U7 (Q2=A): the part of ``distortion_degree`` that rumor feedback put there. It is
+    # capped, given back once the region has no strong rumor, and cleared by a GM set.
+    feedback_share: float = Field(default=0.0, ge=0.0, le=1.0)
 
 
 class TimelineEntry(LocusModel):
@@ -485,13 +493,15 @@ class NpcReply(LocusModel):
 class RegenerateResult(LocusModel):
     """Outcome of regenerating a region's rumors (U5 deviation 2).
 
-    The two skip paths U4's review settled (``llm_incomplete``, ``no_sources``) delete
-    nothing, so ``deleted_ids`` is empty there and the router purges nothing.
+    U7 (BR-U7-16): the replaced rumors are deactivated, never deleted, so a kept rumor's
+    ``distorted_from_id`` still points at a row. The two skip paths U4's review settled
+    (``llm_incomplete``, ``no_sources``) touch nothing, so ``deactivated_ids`` is empty
+    there and the router purges nothing.
     """
 
     kept: list[SessionRumor] = Field(default_factory=list)
     fresh: list[SessionRumor] = Field(default_factory=list)
-    deleted_ids: list[str] = Field(default_factory=list)
+    deactivated_ids: list[str] = Field(default_factory=list)
     skipped_reason: Literal["llm_incomplete", "no_sources"] | None = None
 
     @property
@@ -596,9 +606,7 @@ class AppraisalDraft(LocusModel):
 class AppraisalOutcome(LocusModel):
     """What ``NpcDialogueService.appraise`` hands the deed service (no writes of its own)."""
 
-    npc_id: str
-    summary: str | None = None  # None: no statement deed (no new lines, or the call failed)
-    statement_text: str | None = None  # the statement deed's text when one is recorded
+    statement_text: str | None = None  # None: no statement deed (no new lines / failed call)
     appraisals: list[DeedAppraisal] = Field(default_factory=list)  # deed ids already bound
     statement_appraisal: DeedAppraisal | None = None  # bound to the new statement deed later
     messages_through: datetime | None = None
@@ -614,3 +622,26 @@ class SpreadTarget(LocusModel):
     weight: float = Field(ge=0.0, le=1.0)  # best_path_weights(origin)[X] × edge(X,Y)
     degree: float = Field(ge=0.0, le=1.0)  # ≥ max(parent, 1 − weight)
     support: float = Field(ge=0.0, le=1.0)  # parent × (0.5 + 0.5 × edge)
+
+
+# --- U7 world state for the GM overlay (domain-entities §4, FR-D4) ----------------- #
+class RegionState(LocusModel):
+    """One region on the GM map: distortion, rumor counts and active events."""
+
+    region_id: str
+    region_name: str
+    distortion: float = Field(ge=0.0, le=1.0)  # stored value, else the default (BR-U7-18)
+    feedback_share: float = Field(default=0.0, ge=0.0, le=1.0)
+    active_rumors: int = Field(default=0, ge=0)  # promoted included
+    promoted_rumors: int = Field(default=0, ge=0)
+    deed_rumors: int = Field(default=0, ge=0)  # origin_kind != "canonical"
+    active_events: int = Field(default=0, ge=0)  # ACTIVE only
+
+
+class WorldState(LocusModel):
+    """The whole map for one session, built on read (never stored)."""
+
+    session_id: str
+    turn: int = Field(ge=0)
+    player_region_id: str | None = None  # None for a GM session without a player
+    regions: list[RegionState] = Field(default_factory=list)  # world regions, snapshot order

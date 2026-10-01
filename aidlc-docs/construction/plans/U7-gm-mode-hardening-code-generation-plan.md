@@ -152,7 +152,7 @@
   - `test_rumor_dynamics.py:39`(기본값)를 0.45로 바꾼다(`# U7 intended change: BR-U7-1`).
 
 ### Step 3 — 모델·저장
-- [ ] 3.1 `locus/play/models.py`
+- [x] 3.1 `locus/play/models.py`
   - `RegionDistortion.feedback_share`
   - `TimelineKind`에 `EVENT_SUGGESTED/APPROVED/DISCARDED`를 끝에 붙인다.
   - `RegenerateResult.deactivated_ids`(was `deleted_ids`)
@@ -160,18 +160,18 @@
   - `AppraisalOutcome`에서 `summary`·`npc_id`를 없앤다(C6). 호출처: `dialogue.py:183/261`, `test_deeds.py:252/278`, `test_dialogue.py:514`
   - `errors.py`에 `LlmCallFailedError`
   - 테스트: `test_models.py`의 종류 순서 테스트(U7 셋이 끝), `RegenerateResult` 테스트(`:225/228`)
-- [ ] 3.2 `locus/play/ports.py`
+- [x] 3.2 `locus/play/ports.py`
   - `set_region_distortion(..., *, feedback_share=None)`
   - `ConversationStore.message_counts`
   - `RumorStore.delete_rumor` 제거
   - `DeedStore.seed_candidates/npc_memories/recent_deeds`, `list_deeds(kind=, npc_id=, limit=)`(C2)
-- [ ] 3.3 어댑터 둘(`memory_repo.py`, `postgres_repo.py`)과 `schema.py`
+- [x] 3.3 어댑터 둘(`memory_repo.py`, `postgres_repo.py`)과 `schema.py`
   - 포트 추가와 어댑터 구현 **사이 구간은 붉다**. 프로토콜 검사 테스트는 3.3 끝에 다시 GREEN이 된다.
   - `feedback_share` 열과 `ADDED_COLUMNS` 한 줄
   - `message_counts`는 LEFT JOIN + GROUP BY다.
   - `delete_rumor` 구현을 지운다. 호출처: `rumor/service.py:151`(6.1에서 바꿈), `test_repository_contract.py:82`, `test_postgres_repo.py:97`
   - C11 헬퍼 하나, C16 `UtcDateTime`과 `_aware` 제거
-- [ ] 3.4 테스트
+- [x] 3.4 테스트
   - 계약(두 어댑터): `message_counts`, `feedback_share` 왕복과 `None` 유지, DeedStore 질의 셋
   - PG: 기존 `region_distortions`에 열 추가(SQLite inspector, 두 번 호출 무해). `UtcDateTime` 왕복은 시간대가 있는 값으로 확인한다.
 

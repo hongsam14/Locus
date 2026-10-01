@@ -309,7 +309,7 @@ def test_ex11_regenerate_keeps_the_deed_rumor_and_ex18_never_seeds_from_it() -> 
     seed.support = 0.9  # well above the canonical re-seed threshold
     repo.upsert_rumors([seed])
     result = gm.rumors.regenerate_region(session.id, "a")
-    assert seed.id in {r.id for r in result.kept} and seed.id not in result.deleted_ids
+    assert seed.id in {r.id for r in result.kept} and seed.id not in result.deactivated_ids
     # EX-18: the paths that do extend existing rumors — GM generate and the turn's
     # canonical drafts — never take a deed rumor as a chain source (BR-U6-35)
     rumor_llm.sources.clear()

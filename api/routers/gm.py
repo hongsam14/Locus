@@ -153,9 +153,9 @@ def regenerate_region(
         result = p.rumors.regenerate_region(session_id, region_id)
     except PLAY_ERRORS as exc:
         raise http_error(exc) from exc
-    # Q4=A: the replaced rumors' translations go with them. The two skip paths delete
-    # nothing, so `deleted_ids` is empty and nothing is purged (BR-U5-23).
-    purge_translations(loc, kind="rumor", ids=result.deleted_ids)
+    # Q4=A: the replaced rumors' translations go with them — deactivated rows are never
+    # shown again (BR-U7-16). The two skip paths touch nothing, so nothing is purged.
+    purge_translations(loc, kind="rumor", ids=result.deactivated_ids)
     return _rumors_out(loc, session_id, result.rumors, enrich=False)
 
 

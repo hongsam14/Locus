@@ -24,6 +24,7 @@ from typing import Any, Callable, TypeVar
 
 from sqlalchemy import (
     delete,
+    func,
     or_,
     select,
     text,
@@ -233,21 +234,22 @@ class _PgStores:
         rows = self._conn.execute(stmt).mappings().all()
         return [_row_to_rumor(r) for r in rows]
 
-    def delete_rumor(self, session_id: str, rumor_id: str) -> None:
-        self._conn.execute(
-            delete(session_rumors).where(
-                session_rumors.c.session_id == session_id,
-                session_rumors.c.id == rumor_id,
-            )
-        )
-
     # -- region distortion ------------------------------------------------ #
-    def set_region_distortion(self, session_id: str, region_id: str, degree: float) -> None:
+    def set_region_distortion(
+        self, session_id: str, region_id: str, degree: float, *, feedback_share: float | None = None
+    ) -> None:
+        values: dict = {
+            "session_id": session_id,
+            "region_id": region_id,
+            "distortion_degree": degree,
+        }
+        if feedback_share is not None:  # None: an update keeps the stored share (U7)
+            values["feedback_share"] = feedback_share
         self._conn.execute(
             upsert_stmt(
                 self._engine,
                 region_distortions,
-                {"session_id": session_id, "region_id": region_id, "distortion_degree": degree},
+                values,
                 index_elements=["session_id", "region_id"],
             )
         )
@@ -275,6 +277,7 @@ class _PgStores:
                 session_id=r["session_id"],
                 region_id=r["region_id"],
                 distortion_degree=r["distortion_degree"],
+                feedback_share=r["feedback_share"],
             )
             for r in rows
         ]
@@ -553,6 +556,17 @@ class _PgStores:
         )
         return [_row_to_conversation(r, []) for r in rows]
 
+    def message_counts(self, session_id: str) -> dict[str, int]:
+        rows = self._conn.execute(
+            select(conversations.c.npc_id, func.count(messages.c.id))
+            .select_from(
+                conversations.outerjoin(messages, messages.c.conversation_id == conversations.c.id)
+            )
+            .where(conversations.c.session_id == session_id)
+            .group_by(conversations.c.npc_id)
+        ).all()
+        return {npc_id: int(n) for npc_id, n in rows}
+
     # -- deeds (U6) ------------------------------------------------------- #
     def record_deed(self, deed: Deed) -> Deed:
         stored = deed.model_copy(update={"created_at": deed.created_at or next_timestamp()})
@@ -570,14 +584,34 @@ class _PgStores:
         return _row_to_deed(row) if row else None
 
     def list_deeds(
-        self, session_id: str, *, region_id: str | None = None, include_voided: bool = True
+        self,
+        session_id: str,
+        *,
+        region_id: str | None = None,
+        include_voided: bool = True,
+        kind: str | None = None,
+        deed_ids: list[str] | None = None,
+        newest_first: bool = False,
+        limit: int | None = None,
     ) -> list[Deed]:
         stmt = select(deeds).where(deeds.c.session_id == session_id)
         if region_id is not None:
             stmt = stmt.where(deeds.c.region_id == region_id)
         if not include_voided:
             stmt = stmt.where(deeds.c.voided.is_(False))
-        rows = self._conn.execute(stmt.order_by(deeds.c.created_at, deeds.c.id)).mappings().all()
+        if kind is not None:
+            stmt = stmt.where(deeds.c.kind == kind)
+        if deed_ids is not None:
+            if not deed_ids:
+                return []
+            stmt = stmt.where(deeds.c.id.in_(deed_ids))
+        if newest_first:
+            stmt = stmt.order_by(deeds.c.created_at.desc(), deeds.c.id.desc())
+        else:
+            stmt = stmt.order_by(deeds.c.created_at, deeds.c.id)
+        if limit is not None:
+            stmt = stmt.limit(limit)
+        rows = self._conn.execute(stmt).mappings().all()
         return [_row_to_deed(r) for r in rows]
 
     def update_deed(self, deed: Deed) -> Deed:
@@ -637,6 +671,31 @@ class _PgStores:
         )
         if res.rowcount == 0:
             raise KeyError(f"appraisal not found: {appraisal_id}")
+
+    def seed_candidates(
+        self, session_id: str, *, min_salience: float
+    ) -> list[tuple[Deed, DeedAppraisal]]:
+        stmt = (
+            select(deed_appraisals)
+            .select_from(deed_appraisals.join(deeds, deeds.c.id == deed_appraisals.c.deed_id))
+            .where(
+                deed_appraisals.c.session_id == session_id,
+                deeds.c.voided.is_(False),
+                deed_appraisals.c.noteworthy.is_(True),
+                deed_appraisals.c.salience >= min_salience,
+                func.trim(deed_appraisals.c.retelling) != "",
+                deed_appraisals.c.seeded_rumor_id.is_(None),
+            )
+            .order_by(
+                deeds.c.created_at, deeds.c.id, deed_appraisals.c.created_at, deed_appraisals.c.id
+            )
+        )
+        found = [_row_to_appraisal(r) for r in self._conn.execute(stmt).mappings().all()]
+        by_id = {
+            d.id: d
+            for d in self.list_deeds(session_id, deed_ids=sorted({a.deed_id for a in found}))
+        }
+        return [(by_id[a.deed_id], a) for a in found]
 
     def delete_by_run(self, session_id: str, run_id: str) -> int:
         ids = list(
@@ -825,12 +884,15 @@ class PostgresPlayRepository:
             lambda s: s.list_rumors(session_id, region_id, include_pruned=include_pruned)
         )
 
-    def delete_rumor(self, session_id: str, rumor_id: str) -> None:
-        self._tx(lambda s: s.delete_rumor(session_id, rumor_id))
-
     # -- region distortion ------------------------------------------------ #
-    def set_region_distortion(self, session_id: str, region_id: str, degree: float) -> None:
-        self._tx(lambda s: s.set_region_distortion(session_id, region_id, degree))
+    def set_region_distortion(
+        self, session_id: str, region_id: str, degree: float, *, feedback_share: float | None = None
+    ) -> None:
+        self._tx(
+            lambda s: s.set_region_distortion(
+                session_id, region_id, degree, feedback_share=feedback_share
+            )
+        )
 
     def get_region_distortion(self, session_id: str, region_id: str) -> float | None:
         return self._tx(lambda s: s.get_region_distortion(session_id, region_id))
@@ -900,6 +962,9 @@ class PostgresPlayRepository:
     def list_conversations(self, session_id: str) -> list[Conversation]:
         return self._tx(lambda s: s.list_conversations(session_id))
 
+    def message_counts(self, session_id: str) -> dict[str, int]:
+        return self._tx(lambda s: s.message_counts(session_id))
+
     # -- deeds (U6) ------------------------------------------------------- #
     def record_deed(self, deed: Deed) -> Deed:
         return self._tx(lambda s: s.record_deed(deed))
@@ -908,10 +973,26 @@ class PostgresPlayRepository:
         return self._tx(lambda s: s.get_deed(session_id, deed_id))
 
     def list_deeds(
-        self, session_id: str, *, region_id: str | None = None, include_voided: bool = True
+        self,
+        session_id: str,
+        *,
+        region_id: str | None = None,
+        include_voided: bool = True,
+        kind: str | None = None,
+        deed_ids: list[str] | None = None,
+        newest_first: bool = False,
+        limit: int | None = None,
     ) -> list[Deed]:
         return self._tx(
-            lambda s: s.list_deeds(session_id, region_id=region_id, include_voided=include_voided)
+            lambda s: s.list_deeds(
+                session_id,
+                region_id=region_id,
+                include_voided=include_voided,
+                kind=kind,
+                deed_ids=deed_ids,
+                newest_first=newest_first,
+                limit=limit,
+            )
         )
 
     def update_deed(self, deed: Deed) -> Deed:
@@ -927,6 +1008,11 @@ class PostgresPlayRepository:
 
     def mark_seeded(self, session_id: str, appraisal_id: str, rumor_id: str) -> None:
         return self._tx(lambda s: s.mark_seeded(session_id, appraisal_id, rumor_id))
+
+    def seed_candidates(
+        self, session_id: str, *, min_salience: float
+    ) -> list[tuple[Deed, DeedAppraisal]]:
+        return self._tx(lambda s: s.seed_candidates(session_id, min_salience=min_salience))
 
     def delete_by_run(self, session_id: str, run_id: str) -> int:
         return self._tx(lambda s: s.delete_by_run(session_id, run_id))
@@ -1084,14 +1170,6 @@ def _row_to_run(row) -> TurnRun:
     )
 
 
-def _aware(value: datetime | None) -> datetime | None:
-    """SQLite (offline tests) drops the zone of a ``DateTime(timezone=True)`` column; a
-    stay boundary or a summary cursor compares these, so read them back as UTC (U6)."""
-    if value is None or value.tzinfo is not None:
-        return value
-    return value.replace(tzinfo=timezone.utc)
-
-
 def _enum_value(v) -> str:
     """Enum field values are already strings (use_enum_values=True), but accept enums too."""
     return v.value if isinstance(v, Enum) else str(v)
@@ -1116,22 +1194,28 @@ def _row_to_message(row) -> Message:
         text=row["text"],
         lang=row["lang"],
         turn=row["turn"],
-        created_at=_aware(row["created_at"]),
+        created_at=row["created_at"],
     )
 
 
-def _is_conversation_unique_violation(exc: IntegrityError) -> bool:
-    """Only the (session_id, npc_id) uniqueness — never an unrelated integrity error.
+def _is_unique_violation(
+    exc: IntegrityError, constraint: str, table: str, cols: tuple[str, ...]
+) -> bool:
+    """Only the named uniqueness — never an unrelated integrity error.
 
     PostgreSQL names the constraint (``diag.constraint_name``); SQLite (offline tests)
-    only names the columns in the message.
+    only names the columns in the message (U6 review C11: one helper for both pairs).
     """
     diag = getattr(getattr(exc, "orig", None), "diag", None)
     name = getattr(diag, "constraint_name", None)
     if name is not None:
-        return name == CONVERSATION_UNIQUE
+        return name == constraint
     text_ = str(getattr(exc, "orig", exc))
-    return "conversations.session_id" in text_ and "conversations.npc_id" in text_
+    return all(f"{table}.{c}" in text_ for c in cols)
+
+
+def _is_conversation_unique_violation(exc: IntegrityError) -> bool:
+    return _is_unique_violation(exc, CONVERSATION_UNIQUE, "conversations", ("session_id", "npc_id"))
 
 
 def _deed_to_values(d: Deed) -> dict:
@@ -1163,12 +1247,12 @@ def _row_to_deed(row) -> Deed:
         kind=row["kind"],
         text=row["text"],
         declaration=row["declaration"],
-        messages_through=_aware(row["messages_through"]),
+        messages_through=row["messages_through"],
         witnessed_npc_ids=list(row["witnessed_npc_ids"] or []),
         voided=row["voided"],
         voided_turn=row["voided_turn"],
         run_id=row["run_id"],
-        created_at=_aware(row["created_at"]),
+        created_at=row["created_at"],
     )
 
 
@@ -1202,15 +1286,11 @@ def _row_to_appraisal(row) -> DeedAppraisal:
         turn=row["turn"],
         seeded_rumor_id=row["seeded_rumor_id"],
         run_id=row["run_id"],
-        created_at=_aware(row["created_at"]),
+        created_at=row["created_at"],
     )
 
 
 def _is_appraisal_unique_violation(exc: IntegrityError) -> bool:
-    """Only the (deed_id, npc_id) uniqueness (same approach as conversations)."""
-    diag = getattr(getattr(exc, "orig", None), "diag", None)
-    name = getattr(diag, "constraint_name", None)
-    if name is not None:
-        return name == DEED_APPRAISAL_UNIQUE
-    text_ = str(getattr(exc, "orig", exc))
-    return "deed_appraisals.deed_id" in text_ and "deed_appraisals.npc_id" in text_
+    return _is_unique_violation(
+        exc, DEED_APPRAISAL_UNIQUE, "deed_appraisals", ("deed_id", "npc_id")
+    )

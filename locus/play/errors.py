@@ -42,3 +42,8 @@ class ConversationExistsError(ValueError):
 class AppraisalExistsError(ValueError):
     """An NPC already judged this deed (``UNIQUE (deed_id, npc_id)``, BR-U6-10). Only a
     write outside the turn guard (CLI, a second worker) can hit it."""
+
+
+class LlmCallFailedError(RuntimeError):
+    """The provider failed a call a request needs right now (U7, BR-U7-27): 503 with a
+    fixed message — the provider's own text never reaches the response."""

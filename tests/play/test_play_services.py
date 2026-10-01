@@ -185,7 +185,7 @@ def test_regenerate_keeps_everything_when_generation_produces_nothing() -> None:
     assert {r.id for r in regen} == {r.id for r in first}
     last = repo.list_timeline(session.id)[-1]
     assert last.kind == TimelineKind.REGENERATE.value
-    assert last.payload["skipped"] is True and last.payload["deleted"] == []
+    assert last.payload["skipped"] is True and last.payload["deactivated"] == []
 
 
 def test_regenerate_swaps_in_one_transaction() -> None:

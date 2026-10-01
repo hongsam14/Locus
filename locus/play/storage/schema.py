@@ -6,6 +6,9 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+from typing import Any
+
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -17,6 +20,7 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    TypeDecorator,
     UniqueConstraint,
     inspect,
     text,
@@ -26,6 +30,24 @@ from sqlalchemy.engine import Engine
 
 # JSONB on PostgreSQL, plain JSON on other dialects (e.g. SQLite for offline tests).
 _JSON = JSON().with_variant(JSONB(), "postgresql")
+
+
+class UtcDateTime(TypeDecorator):
+    """``DateTime(timezone=True)`` that always reads back an aware UTC value.
+
+    SQLite (offline tests) drops the zone; stay boundaries and summary cursors compare
+    these values, so every play timestamp is read as UTC (U6 review C16; replaces the
+    adapter's per-mapper ``_aware``).
+    """
+
+    impl = DateTime(timezone=True)
+    cache_ok = True
+
+    def process_result_value(self, value: datetime | None, dialect: Any) -> datetime | None:
+        if value is None or value.tzinfo is not None:
+            return value
+        return value.replace(tzinfo=timezone.utc)
+
 
 # Max ids per IN() chunk — keeps large reads under the DB bind-parameter limit
 # (SQLite 999 / PostgreSQL cap) (review #7).
@@ -40,8 +62,8 @@ game_sessions = Table(
     Column("world_id", String, nullable=False, index=True),
     Column("status", String, nullable=False),
     Column("turn", Integer, nullable=False, default=0),
-    Column("created_at", DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP")),
-    Column("closed_at", DateTime(timezone=True), nullable=True),
+    Column("created_at", UtcDateTime(), server_default=text("CURRENT_TIMESTAMP")),
+    Column("closed_at", UtcDateTime(), nullable=True),
 )
 
 session_rumors = Table(
@@ -72,6 +94,8 @@ region_distortions = Table(
     Column("session_id", String, primary_key=True),
     Column("region_id", String, primary_key=True),
     Column("distortion_degree", Float, nullable=False),
+    # U7 (Q2=A): the part of the degree that rumor feedback put there
+    Column("feedback_share", Float, nullable=False, default=0.0, server_default=text("0")),
 )
 
 timeline_entries = Table(
@@ -83,7 +107,7 @@ timeline_entries = Table(
     Column("kind", String, nullable=False),
     Column("summary", Text, nullable=False, default=""),
     Column("payload", _JSON, nullable=False, default=dict),
-    Column("created_at", DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP")),
+    Column("created_at", UtcDateTime(), server_default=text("CURRENT_TIMESTAMP")),
 )
 
 # Phase 2 — hybrid: core fields = indexed columns, contributions/provenance = JSON(B).
@@ -113,7 +137,7 @@ players = Table(
     Column("name", String, nullable=False),
     Column("region_id", String, nullable=False),
     Column("turns_spent", Integer, nullable=False, default=0),
-    Column("created_at", DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP")),
+    Column("created_at", UtcDateTime(), server_default=text("CURRENT_TIMESTAMP")),
 )
 
 turn_runs = Table(
@@ -125,8 +149,8 @@ turn_runs = Table(
     Column("action", _JSON, nullable=True),
     Column("cost_turns", Integer, nullable=False, default=1),
     Column("started_turn", Integer, nullable=False, default=0),
-    Column("started_at", DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP")),
-    Column("finished_at", DateTime(timezone=True), nullable=True),
+    Column("started_at", UtcDateTime(), server_default=text("CURRENT_TIMESTAMP")),
+    Column("finished_at", UtcDateTime(), nullable=True),
     Column("result", _JSON, nullable=True),
     Column("error", Text, nullable=True),
     # U6: kept so a background run re-read from the store still has them — before U6 the
@@ -149,7 +173,7 @@ conversations = Table(
     Column("session_id", String, nullable=False, index=True),
     Column("npc_id", String, nullable=False),
     Column("started_turn", Integer, nullable=False, default=0),
-    Column("created_at", DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP")),
+    Column("created_at", UtcDateTime(), server_default=text("CURRENT_TIMESTAMP")),
     UniqueConstraint("session_id", "npc_id", name=CONVERSATION_UNIQUE),
 )
 
@@ -163,7 +187,7 @@ messages = Table(
     Column("lang", String, nullable=False),
     Column("turn", Integer, nullable=False, default=0),
     # stamped by the application (next_timestamp) so order survives one transaction
-    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("created_at", UtcDateTime(), nullable=False),
 )
 
 
@@ -181,13 +205,13 @@ deeds = Table(
     Column("kind", String, nullable=False),
     Column("text", Text, nullable=False),
     Column("declaration", Text, nullable=True),
-    Column("messages_through", DateTime(timezone=True), nullable=True),
+    Column("messages_through", UtcDateTime(), nullable=True),
     Column("witnessed_npc_ids", _JSON, nullable=False),
     Column("voided", Boolean, nullable=False, default=False),
     Column("voided_turn", Integer, nullable=True),
     Column("run_id", String, nullable=True, index=True),
     # stamped by the application (next_timestamp): a stay is ordered by it
-    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("created_at", UtcDateTime(), nullable=False),
 )
 
 deed_appraisals = Table(
@@ -204,7 +228,7 @@ deed_appraisals = Table(
     Column("turn", Integer, nullable=False, default=0),
     Column("seeded_rumor_id", String, nullable=True),
     Column("run_id", String, nullable=True, index=True),
-    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("created_at", UtcDateTime(), nullable=False),
     UniqueConstraint("deed_id", "npc_id", name=DEED_APPRAISAL_UNIQUE),
 )
 
@@ -221,6 +245,7 @@ ADDED_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("turn_runs", "turns_charged", "INTEGER NOT NULL DEFAULT 0"),
     ("turn_runs", "from_region_id", "VARCHAR"),
     ("deed_appraisals", "run_id", "VARCHAR"),
+    ("region_distortions", "feedback_share", "FLOAT NOT NULL DEFAULT 0"),
 )
 ADDED_INDEXES: tuple[tuple[str, str, str], ...] = (
     ("ix_session_rumors_origin_deed_id", "session_rumors", "origin_deed_id"),

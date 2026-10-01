@@ -74,6 +74,7 @@ class InMemoryPlayRepository:
         self._sessions: dict[str, GameSession] = {}
         self._rumors: dict[str, dict[str, SessionRumor]] = {}  # session_id -> {rumor_id: rumor}
         self._distortions: dict[tuple[str, str], float] = {}  # (session_id, region_id) -> degree
+        self._feedback_shares: dict[tuple[str, str], float] = {}  # same key -> share (U7)
         self._timeline: dict[str, list[TimelineEntry]] = {}  # session_id -> entries
         self._events: dict[str, dict[str, SessionEvent]] = {}  # session_id -> {event_id: event}
         self._players: dict[str, Player] = {}  # session_id -> player (U4)
@@ -100,6 +101,7 @@ class InMemoryPlayRepository:
         "_sessions",
         "_rumors",
         "_distortions",
+        "_feedback_shares",
         "_timeline",
         "_events",
         "_players",
@@ -224,15 +226,15 @@ class InMemoryPlayRepository:
         out.sort(key=lambda r: (r.region_id, r.id))
         return out
 
-    @_synchronized
-    def delete_rumor(self, session_id: str, rumor_id: str) -> None:
-        self._rumors.get(session_id, {}).pop(rumor_id, None)
-
     # --- region distortion ---
     @_synchronized
-    def set_region_distortion(self, session_id: str, region_id: str, degree: float) -> None:
+    def set_region_distortion(
+        self, session_id: str, region_id: str, degree: float, *, feedback_share: float | None = None
+    ) -> None:
         self._require_session(session_id)
         self._distortions[(session_id, region_id)] = degree
+        if feedback_share is not None:
+            self._feedback_shares[(session_id, region_id)] = feedback_share
 
     @_synchronized
     def get_region_distortion(self, session_id: str, region_id: str) -> float | None:
@@ -241,7 +243,12 @@ class InMemoryPlayRepository:
     @_synchronized
     def list_region_distortions(self, session_id: str) -> list[RegionDistortion]:
         return [
-            RegionDistortion(session_id=sid, region_id=rid, distortion_degree=deg)
+            RegionDistortion(
+                session_id=sid,
+                region_id=rid,
+                distortion_degree=deg,
+                feedback_share=self._feedback_shares.get((sid, rid), 0.0),
+            )
             for (sid, rid), deg in sorted(self._distortions.items())
             if sid == session_id
         ]
@@ -412,6 +419,13 @@ class InMemoryPlayRepository:
         out.sort(key=lambda c: (c.created_at or datetime.min.replace(tzinfo=timezone.utc), c.id))
         return out
 
+    @_synchronized
+    def message_counts(self, session_id: str) -> dict[str, int]:
+        return {
+            npc_id: len(self._messages.get(conv.id, []))
+            for npc_id, conv in self._conversations.get(session_id, {}).items()
+        }
+
     def _ordered_messages(self, conversation_id: str) -> list[Message]:
         msgs = [deepcopy(m) for m in self._messages.get(conversation_id, [])]
         msgs.sort(key=lambda m: (m.created_at or datetime.min.replace(tzinfo=timezone.utc), m.id))
@@ -434,15 +448,27 @@ class InMemoryPlayRepository:
 
     @_synchronized
     def list_deeds(
-        self, session_id: str, *, region_id: str | None = None, include_voided: bool = True
+        self,
+        session_id: str,
+        *,
+        region_id: str | None = None,
+        include_voided: bool = True,
+        kind: str | None = None,
+        deed_ids: list[str] | None = None,
+        newest_first: bool = False,
+        limit: int | None = None,
     ) -> list[Deed]:
+        wanted = set(deed_ids) if deed_ids is not None else None
         out = [
             deepcopy(d)
             for d in self._deeds.get(session_id, {}).values()
-            if (region_id is None or d.region_id == region_id) and (include_voided or not d.voided)
+            if (region_id is None or d.region_id == region_id)
+            and (include_voided or not d.voided)
+            and (kind is None or d.kind == kind)
+            and (wanted is None or d.id in wanted)
         ]
-        out.sort(key=lambda d: (d.created_at or _EPOCH, d.id))
-        return out
+        out.sort(key=lambda d: (d.created_at or _EPOCH, d.id), reverse=newest_first)
+        return out[:limit] if limit is not None else out
 
     @_synchronized
     def update_deed(self, deed: Deed) -> Deed:
@@ -490,6 +516,26 @@ class InMemoryPlayRepository:
         if appraisal is None:
             raise KeyError(f"appraisal not found: {appraisal_id}")
         appraisal.seeded_rumor_id = rumor_id
+
+    @_synchronized
+    def seed_candidates(
+        self, session_id: str, *, min_salience: float
+    ) -> list[tuple[Deed, DeedAppraisal]]:
+        deeds = self._deeds.get(session_id, {})
+        out = [
+            (deepcopy(deeds[a.deed_id]), deepcopy(a))
+            for a in self._appraisals.get(session_id, {}).values()
+            if a.deed_id in deeds
+            and not deeds[a.deed_id].voided
+            and a.noteworthy
+            and a.salience >= min_salience
+            and a.retelling.strip()
+            and a.seeded_rumor_id is None
+        ]
+        out.sort(
+            key=lambda p: (p[0].created_at or _EPOCH, p[0].id, p[1].created_at or _EPOCH, p[1].id)
+        )
+        return out
 
     @_synchronized
     def delete_by_run(self, session_id: str, run_id: str) -> int:

@@ -937,7 +937,7 @@ def test_regenerate_keeps_everything_when_only_part_of_a_chain_arrives() -> None
 
     gen.short = True  # the provider dies part-way through each chain
     result = svc.regenerate_region(session.id, "a")
-    assert result.deleted_ids == [] and result.skipped_reason == "llm_incomplete"
+    assert result.deactivated_ids == [] and result.skipped_reason == "llm_incomplete"
     kept = result.rumors
 
     assert {r.id for r in repo.list_rumors(session.id, "a")} == {r.id for r in first}

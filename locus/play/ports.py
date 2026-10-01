@@ -53,7 +53,6 @@ class RumorStore(Protocol):
     def list_rumors(
         self, session_id: str, region_id: str | None = None, *, include_pruned: bool = False
     ) -> list[SessionRumor]: ...  # active-only by default (BR-H1-6)
-    def delete_rumor(self, session_id: str, rumor_id: str) -> None: ...
     def list_rumors_by_origin(
         self, session_id: str, *, deed_id: str | None = None, include_inactive: bool = False
     ) -> list[SessionRumor]: ...  # U6: origin_kind == "deed" only, narrowed by deed
@@ -61,7 +60,9 @@ class RumorStore(Protocol):
 
 @runtime_checkable
 class DistortionStore(Protocol):
-    def set_region_distortion(self, session_id: str, region_id: str, degree: float) -> None: ...
+    def set_region_distortion(
+        self, session_id: str, region_id: str, degree: float, *, feedback_share: float | None = None
+    ) -> None: ...  # U7: feedback_share None keeps the stored share (0 for a new row)
     def get_region_distortion(self, session_id: str, region_id: str) -> float | None: ...
     def list_region_distortions(self, session_id: str) -> list[RegionDistortion]: ...
 
@@ -115,6 +116,9 @@ class ConversationStore(Protocol):
     ) -> Conversation | None: ...  # messages filled, ordered by (created_at, id)
     def append_message(self, message: Message) -> Message: ...  # KeyError: no conversation
     def list_conversations(self, session_id: str) -> list[Conversation]: ...  # no messages
+    def message_counts(
+        self, session_id: str
+    ) -> dict[str, int]: ...  # U7 (U5 C1): npc_id -> messages, one query; no talk = no key
 
 
 @runtime_checkable
@@ -124,8 +128,16 @@ class DeedStore(Protocol):
     def record_deed(self, deed: Deed) -> Deed: ...  # created_at = next_timestamp()
     def get_deed(self, session_id: str, deed_id: str) -> Deed | None: ...
     def list_deeds(
-        self, session_id: str, *, region_id: str | None = None, include_voided: bool = True
-    ) -> list[Deed]: ...  # ordered by (created_at, id)
+        self,
+        session_id: str,
+        *,
+        region_id: str | None = None,
+        include_voided: bool = True,
+        kind: str | None = None,
+        deed_ids: list[str] | None = None,
+        newest_first: bool = False,
+        limit: int | None = None,
+    ) -> list[Deed]: ...  # ordered by (created_at, id), reversed when newest_first
     def update_deed(self, deed: Deed) -> Deed: ...  # KeyError when missing
     def save_appraisals(
         self, appraisals: list[DeedAppraisal]
@@ -134,6 +146,12 @@ class DeedStore(Protocol):
         self, session_id: str, *, deed_ids: list[str] | None = None, npc_id: str | None = None
     ) -> list[DeedAppraisal]: ...  # ordered by (created_at, id)
     def mark_seeded(self, session_id: str, appraisal_id: str, rumor_id: str) -> None: ...
+
+    # U7 (U6 review C2): appraisals that may seed now (BR-U6-12) with their deed, oldest
+    # deed first — noteworthy, salience >= min, a retelling, no seed yet, deed not voided.
+    def seed_candidates(
+        self, session_id: str, *, min_salience: float
+    ) -> list[tuple[Deed, DeedAppraisal]]: ...
 
     # The run's deeds, their appraisals and the run's appraisals of earlier deeds;
     # returns the number of deeds removed.

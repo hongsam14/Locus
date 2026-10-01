@@ -180,7 +180,7 @@ class NpcDialogueService(SessionAppService):
         missing judgement in the model's answer is "not noteworthy" (BR-U6-10, review
         R-16), so the same NPC never judges the same deed twice.
         """
-        outcome = AppraisalOutcome(npc_id=npc_id)
+        outcome = AppraisalOutcome()
         if self._deeds is None:
             return outcome
         session = self._require_session(session_id)
@@ -259,8 +259,6 @@ class NpcDialogueService(SessionAppService):
                 update={"noteworthy": False, "salience": 0.0, "slant": "", "retelling": ""}
             )
         return AppraisalOutcome(
-            npc_id=npc_id,
-            summary=summary,
             statement_text=summary or f"{player.name} talked with {npc.name}.",
             appraisals=[judged(ref, deed.id) for ref, deed in refs.items()],
             statement_appraisal=statement,

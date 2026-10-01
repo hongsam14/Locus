@@ -222,10 +222,10 @@ def test_u5_regenerate_result_rumors_is_kept_plus_fresh() -> None:
             id=i, session_id="s", region_id="a", distorted_from_id="k", provenance=_prov()
         )
 
-    res = RegenerateResult(kept=[r("k1")], fresh=[r("f1"), r("f2")], deleted_ids=["d1"])
+    res = RegenerateResult(kept=[r("k1")], fresh=[r("f1"), r("f2")], deactivated_ids=["d1"])
     assert [x.id for x in res.rumors] == ["k1", "f1", "f2"]
     skipped = RegenerateResult(kept=[r("k1")], skipped_reason="llm_incomplete")
-    assert skipped.deleted_ids == [] and [x.id for x in skipped.rumors] == ["k1"]
+    assert skipped.deactivated_ids == [] and [x.id for x in skipped.rumors] == ["k1"]
     with pytest.raises(ValidationError):
         RegenerateResult(skipped_reason="bored")  # type: ignore[arg-type]
 
@@ -245,7 +245,11 @@ def test_u5_npc_talked_is_appended_after_the_u4_kinds() -> None:
         "rumor_spread",
         "deed_voided",
     ]
-    assert kinds[-len(u6) :] == u6 and kinds.index("npc_talked") < kinds.index(u6[0])
+    # U7 intended change: BR-U7-8 — U7 appends its three event kinds after U6's
+    u7 = ["event_suggested", "event_approved", "event_discarded"]
+    assert kinds[-len(u7) :] == u7
+    assert kinds[-len(u6) - len(u7) : -len(u7)] == u6
+    assert kinds.index("npc_talked") < kinds.index(u6[0])
 
 
 # --- U6 models (Step 2.3) ----------------------------------------------------------- #

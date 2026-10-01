@@ -94,8 +94,11 @@ def test_rumor_roundtrip_and_upsert(repo: PostgresPlayRepository) -> None:
     repo.upsert_rumor(r)
     assert repo.get_rumor(s.id, r.id).support == 0.95
     assert repo.get_rumor(s.id, r.id).promoted is True
-    repo.delete_rumor(s.id, r.id)
-    assert repo.get_rumor(s.id, r.id) is None
+    # U7 intended change: BR-U7-16 — no rumor is ever deleted; deactivation keeps the row
+    r.active = False
+    repo.upsert_rumor(r)
+    assert repo.get_rumor(s.id, r.id).active is False and repo.list_rumors(s.id) == []
+    assert not hasattr(repo, "delete_rumor")
 
 
 def test_batch_upsert_and_soft_flag(repo: PostgresPlayRepository) -> None:
@@ -405,3 +408,35 @@ def test_u6_ex15_an_old_schema_gains_the_new_columns_and_keeps_its_rows() -> Non
     }
     old = repo.get_rumor("s1", "r1")
     assert old.origin_kind == "canonical" and old.active is True
+
+
+def test_u7_an_old_distortion_table_gains_feedback_share_and_keeps_rows() -> None:
+    """U7 NFR-9: `region_distortions.feedback_share` reaches an existing database; old rows
+    read back with share 0."""
+    from sqlalchemy import inspect, text
+
+    engine = create_engine("sqlite://", future=True)
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE TABLE region_distortions (session_id VARCHAR NOT NULL, region_id VARCHAR"
+                " NOT NULL, distortion_degree FLOAT NOT NULL, PRIMARY KEY (session_id, region_id))"
+            )
+        )
+        conn.execute(text("INSERT INTO region_distortions VALUES ('s1', 'a', 0.4)"))
+    repo = PostgresPlayRepository(engine=engine)
+    repo.ensure_schema()
+    repo.ensure_schema()  # idempotent
+    assert "feedback_share" in {
+        c["name"] for c in inspect(engine).get_columns("region_distortions")
+    }
+    row = repo.list_region_distortions("s1")[0]
+    assert (row.distortion_degree, row.feedback_share) == (0.4, 0.0)
+
+
+def test_u6_c16_every_play_timestamp_reads_back_as_utc(repo: PostgresPlayRepository) -> None:
+    """U6 review C16: one UTC column type instead of per-mapper fixes."""
+    s = repo.create_session("w")
+    assert s.created_at is None or s.created_at.tzinfo is not None
+    got = repo.get_session(s.id)
+    assert got is not None and got.created_at is not None and got.created_at.tzinfo is not None

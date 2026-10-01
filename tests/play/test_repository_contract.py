@@ -79,8 +79,12 @@ def test_rumor_crud_and_region_filter() -> None:
     r1.support = 0.9
     repo.upsert_rumor(r1)
     assert repo.get_rumor(s.id, r1.id).support == 0.9
-    repo.delete_rumor(s.id, r1.id)
-    assert repo.get_rumor(s.id, r1.id) is None
+    # U7 intended change: BR-U7-16 — no rumor is ever deleted; deactivation keeps the row
+    r1.active = False
+    repo.upsert_rumor(r1)
+    assert repo.get_rumor(s.id, r1.id).active is False
+    assert [r.region_id for r in repo.list_rumors(s.id)] == ["rB"]
+    assert not hasattr(repo, "delete_rumor")
 
 
 def test_batch_upsert_rumors_returns_stored() -> None:
@@ -554,3 +558,79 @@ def test_u6_a_rolled_back_unit_of_work_takes_deeds_and_appraisals_with_it(any_re
             )
             raise RuntimeError("boom")
     assert any_repo.list_deeds(s.id) == [] and any_repo.list_appraisals(s.id) == []
+
+
+# --- U7 storage (Step 3.4): both adapters ------------------------------------------- #
+def test_u7_feedback_share_round_trips_and_none_keeps_it(any_repo) -> None:
+    s = any_repo.create_session("w")
+    any_repo.set_region_distortion(s.id, "a", 0.3)  # a new row starts with no share
+    assert any_repo.list_region_distortions(s.id)[0].feedback_share == 0.0
+    any_repo.set_region_distortion(s.id, "a", 0.4, feedback_share=0.1)
+    any_repo.set_region_distortion(s.id, "a", 0.5)  # an event write keeps the share
+    row = any_repo.list_region_distortions(s.id)[0]
+    assert (row.distortion_degree, row.feedback_share) == (0.5, 0.1)
+    any_repo.set_region_distortion(s.id, "a", 0.2, feedback_share=0.0)  # a GM set clears it
+    assert any_repo.list_region_distortions(s.id)[0].feedback_share == 0.0
+
+
+def test_u7_message_counts_one_read_per_session(any_repo) -> None:
+    """U5 C1 / NFR R-02: npc_id -> messages; a talk with no message counts 0, no talk no key."""
+    from locus.play.models import Conversation, Message
+
+    s = any_repo.create_session("w")
+    other = any_repo.create_session("w")
+    mara = any_repo.create_conversation(Conversation(session_id=s.id, npc_id="n1"))
+    any_repo.create_conversation(Conversation(session_id=s.id, npc_id="n2"))
+    elsewhere = any_repo.create_conversation(Conversation(session_id=other.id, npc_id="n1"))
+    for text in ("hi", "hello"):
+        any_repo.append_message(
+            Message(conversation_id=mara.id, role="player", text=text, lang="ko")
+        )
+    any_repo.append_message(
+        Message(conversation_id=elsewhere.id, role="player", text="x", lang="ko")
+    )
+    assert any_repo.message_counts(s.id) == {"n1": 2, "n2": 0}
+    assert any_repo.message_counts("nope") == {}
+
+
+def test_u7_list_deeds_narrows_by_kind_ids_and_newest_first(any_repo) -> None:
+    s = any_repo.create_session("w")
+    a = any_repo.record_deed(_deed(s.id, text="one"))
+    b = any_repo.record_deed(_deed(s.id, kind="statement", text="two"))
+    c = any_repo.record_deed(_deed(s.id, kind="statement", text="three"))
+    assert [d.id for d in any_repo.list_deeds(s.id, kind="statement")] == [b.id, c.id]
+    newest = any_repo.list_deeds(s.id, newest_first=True, limit=2)
+    assert [d.id for d in newest] == [c.id, b.id]
+    assert [d.id for d in any_repo.list_deeds(s.id, deed_ids=[c.id, a.id])] == [a.id, c.id]
+    assert any_repo.list_deeds(s.id, deed_ids=[]) == []
+
+
+def test_u7_seed_candidates_match_the_seed_rule(any_repo) -> None:
+    """U6 review C2: the BR-U6-12 filter as one read, oldest deed first."""
+    from locus.play.models import DeedAppraisal
+
+    s = any_repo.create_session("w")
+    first = any_repo.record_deed(_deed(s.id, text="first"))
+    second = any_repo.record_deed(_deed(s.id, text="second"))
+    voided = any_repo.record_deed(_deed(s.id, text="voided"))
+    voided.voided = True
+    any_repo.update_deed(voided)
+
+    def ap(deed, npc, **kw):
+        base = {"noteworthy": True, "salience": 0.8, "retelling": "told"}
+        base.update(kw)
+        return DeedAppraisal(session_id=s.id, deed_id=deed.id, npc_id=npc, **base)
+
+    any_repo.save_appraisals(
+        [
+            ap(second, "n1"),
+            ap(first, "n1"),
+            ap(first, "n2", salience=0.2),  # below the bar
+            ap(first, "n3", retelling="   "),  # nothing to tell
+            ap(first, "n4", noteworthy=False),
+            ap(second, "n5", seeded_rumor_id="r1"),  # already seeded
+            ap(voided, "n1"),
+        ]
+    )
+    got = any_repo.seed_candidates(s.id, min_salience=0.5)
+    assert [(d.id, a.npc_id) for d, a in got] == [(first.id, "n1"), (second.id, "n1")]

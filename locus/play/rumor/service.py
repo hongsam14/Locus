@@ -93,8 +93,9 @@ class RumorService(SessionAppService):
         return rumors
 
     def regenerate_region(self, session_id: str, region_id: str) -> RegenerateResult:
-        """Replace the region's non-promoted rumors (U5: returns what was deleted so
-        the API can purge their translations — the two skip paths delete nothing)."""
+        """Replace the region's non-promoted canonical rumors (U5: returns what was
+        replaced so the API can purge their translations — the skip paths touch nothing).
+        U7: the replaced rumors are deactivated, never deleted (BR-U7-16)."""
         self._require_generator()
         session = self._require_open(session_id)
         existing = self._repo.list_rumors(session_id, region_id)
@@ -123,7 +124,7 @@ class RumorService(SessionAppService):
                 f"regenerated {region_id}: generation incomplete, kept everything",
                 {
                     "region_id": region_id,
-                    "deleted": [],
+                    "deactivated": [],
                     "kept": [r.id for r in existing],
                     "rumor_ids": [],
                     "skipped": True,
@@ -138,7 +139,7 @@ class RumorService(SessionAppService):
                 f"regenerated {region_id}: nothing to seed",
                 {
                     "region_id": region_id,
-                    "deleted": [],
+                    "deactivated": [],
                     "kept": [r.id for r in existing],
                     "rumor_ids": [],
                     "skipped": True,
@@ -147,8 +148,12 @@ class RumorService(SessionAppService):
             )
             return RegenerateResult(kept=existing, skipped_reason="no_sources")
         with self._repo.uow() as u:  # swap in one transaction (BR-U4-14)
+            # Deactivated, never deleted: a kept rumor's `distorted_from_id` keeps pointing
+            # at a row, so its chain can still be walked to the root (BR-U7-16, RE C6).
             for r in dropped:
-                u.rumors.delete_rumor(session_id, r.id)
+                r.active = False
+            if dropped:
+                u.rumors.upsert_rumors(dropped)
             saved = u.rumors.upsert_rumors(fresh) if fresh else []
             u.timeline.append_timeline(
                 self._entry(
@@ -157,13 +162,13 @@ class RumorService(SessionAppService):
                     f"regenerated {region_id}",
                     {
                         "region_id": region_id,
-                        "deleted": [r.id for r in dropped],
+                        "deactivated": [r.id for r in dropped],
                         "kept": [r.id for r in kept],
                         "rumor_ids": [r.id for r in saved],
                     },
                 )
             )
-        return RegenerateResult(kept=kept, fresh=saved, deleted_ids=[r.id for r in dropped])
+        return RegenerateResult(kept=kept, fresh=saved, deactivated_ids=[r.id for r in dropped])
 
     def adjust_support(self, session_id: str, rumor_id: str, support: float) -> SessionRumor:
         session = self._require_open(session_id)

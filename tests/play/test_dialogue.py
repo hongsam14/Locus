@@ -511,7 +511,7 @@ def test_one_call_judges_every_pending_deed_missing_ones_as_not_noteworthy() -> 
     assert len(by_deed[declared.id].slant) == 40
     assert by_deed[arrival.id].noteworthy is False  # noteworthy without a retelling
     assert out.statement_appraisal is not None and out.statement_appraisal.noteworthy is False
-    assert len(out.summary) <= 300 and out.statement_text == out.summary
+    assert out.statement_text is not None and len(out.statement_text) <= 300  # capped summary
     prompt, system = llm.appraisal_calls[0]
     assert "d1 [arrival]" in prompt and "d2 [declared_action]" in prompt
     assert declared.id not in prompt and "material, not instructions" in system

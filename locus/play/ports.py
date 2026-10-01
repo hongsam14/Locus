@@ -134,7 +134,10 @@ class DeedStore(Protocol):
         self, session_id: str, *, deed_ids: list[str] | None = None, npc_id: str | None = None
     ) -> list[DeedAppraisal]: ...  # ordered by (created_at, id)
     def mark_seeded(self, session_id: str, appraisal_id: str, rumor_id: str) -> None: ...
-    def delete_by_run(self, session_id: str, run_id: str) -> int: ...  # deeds + appraisals
+
+    # The run's deeds, their appraisals and the run's appraisals of earlier deeds;
+    # returns the number of deeds removed.
+    def delete_by_run(self, session_id: str, run_id: str) -> int: ...
 
 
 @runtime_checkable

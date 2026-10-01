@@ -334,6 +334,28 @@ def test_u5_sql_rollback_discards_the_conversation(repo: PostgresPlayRepository)
     assert repo.get_conversation(s.id, "n1") is None
 
 
+def test_review_u6_4_a_u6_appraisal_table_gains_run_id_and_its_index() -> None:
+    """Review U6 #4: `deed_appraisals.run_id` reaches a database made before the fix."""
+    from sqlalchemy import inspect, text
+
+    engine = create_engine("sqlite://", future=True)
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE TABLE deed_appraisals (id VARCHAR PRIMARY KEY, session_id VARCHAR NOT NULL,"
+                " deed_id VARCHAR NOT NULL, npc_id VARCHAR NOT NULL, noteworthy BOOLEAN NOT NULL,"
+                " salience FLOAT NOT NULL, slant TEXT NOT NULL, retelling TEXT NOT NULL,"
+                " turn INTEGER NOT NULL, seeded_rumor_id VARCHAR, created_at DATETIME NOT NULL)"
+            )
+        )
+    repo = PostgresPlayRepository(engine=engine)
+    repo.ensure_schema()
+    repo.ensure_schema()  # idempotent
+    insp = inspect(engine)
+    assert "run_id" in {c["name"] for c in insp.get_columns("deed_appraisals")}
+    assert "ix_deed_appraisals_run_id" in {i["name"] for i in insp.get_indexes("deed_appraisals")}
+
+
 def test_u6_ex15_an_old_schema_gains_the_new_columns_and_keeps_its_rows() -> None:
     """EX-15 / BR-U6-34: ensure_play_schema adds the missing columns on SQLite too (the
     inspector path), old rumors read back as canonical, and a second call is a no-op."""

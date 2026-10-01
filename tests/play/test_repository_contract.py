@@ -463,6 +463,34 @@ def test_u6_delete_by_run_takes_only_that_runs_deeds_and_their_appraisals(any_re
     assert any_repo.delete_by_run(s.id, "run-none") == 0
 
 
+def test_review_u6_4_delete_by_run_also_takes_the_runs_appraisals_of_earlier_deeds(
+    any_repo,
+) -> None:
+    """Review U6 #4: a failed talk's preparation judged a deed of an earlier run; the
+    appraisal carries the failed run's id and goes with it, the earlier deed stays."""
+    from locus.play.models import DeedAppraisal
+
+    s = any_repo.create_session("w")
+    earlier = any_repo.record_deed(_deed(s.id, run_id="run-a"))
+
+    def judged(npc_id: str, run_id: str | None) -> DeedAppraisal:
+        return DeedAppraisal(
+            session_id=s.id,
+            deed_id=earlier.id,
+            npc_id=npc_id,
+            noteworthy=True,
+            salience=0.9,
+            retelling="told",
+            run_id=run_id,
+        )
+
+    any_repo.save_appraisals([judged("n1", "run-talk"), judged("n2", "run-other")])
+    assert [a.run_id for a in any_repo.list_appraisals(s.id)] == ["run-talk", "run-other"]
+    assert any_repo.delete_by_run(s.id, "run-talk") == 0  # no deed of that run
+    assert [a.npc_id for a in any_repo.list_appraisals(s.id)] == ["n2"]
+    assert [d.id for d in any_repo.list_deeds(s.id)] == [earlier.id]
+
+
 def test_u6_rumor_origin_round_trips_and_filters(any_repo) -> None:
     s = any_repo.create_session("w")
     canon = _rumor(s.id)

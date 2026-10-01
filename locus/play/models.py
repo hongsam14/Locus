@@ -540,6 +540,9 @@ class DeedAppraisal(LocusModel):
     retelling: str = ""  # English; "" when not noteworthy
     turn: int = Field(default=0, ge=0)
     seeded_rumor_id: str | None = None  # at most one seed per appraisal (BR-U6-12)
+    # The turn run whose preparation saved it: a run that never advanced removes its
+    # appraisals too, also those of earlier deeds (U6 code review #4, BR-U6-36).
+    run_id: str | None = None
     created_at: datetime | None = None
 
 

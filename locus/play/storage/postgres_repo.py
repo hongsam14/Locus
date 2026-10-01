@@ -24,6 +24,7 @@ from typing import Any, Callable, TypeVar
 
 from sqlalchemy import (
     delete,
+    or_,
     select,
     text,
     update,
@@ -643,10 +644,15 @@ class _PgStores:
                 select(deeds.c.id).where(deeds.c.session_id == session_id, deeds.c.run_id == run_id)
             ).scalars()
         )
-        if not ids:
-            return 0
-        self._conn.execute(delete(deed_appraisals).where(deed_appraisals.c.deed_id.in_(ids)))
-        self._conn.execute(delete(deeds).where(deeds.c.id.in_(ids)))
+        # The run's appraisals go too, also those of earlier deeds (review U6 #4).
+        self._conn.execute(
+            delete(deed_appraisals).where(
+                deed_appraisals.c.session_id == session_id,
+                or_(deed_appraisals.c.deed_id.in_(ids), deed_appraisals.c.run_id == run_id),
+            )
+        )
+        if ids:
+            self._conn.execute(delete(deeds).where(deeds.c.id.in_(ids)))
         return len(ids)
 
     def list_rumors_by_origin(
@@ -1178,6 +1184,7 @@ def _appraisal_to_values(a: DeedAppraisal) -> dict:
         "retelling": a.retelling,
         "turn": a.turn,
         "seeded_rumor_id": a.seeded_rumor_id,
+        "run_id": a.run_id,
         "created_at": a.created_at,
     }
 
@@ -1194,6 +1201,7 @@ def _row_to_appraisal(row) -> DeedAppraisal:
         retelling=row["retelling"],
         turn=row["turn"],
         seeded_rumor_id=row["seeded_rumor_id"],
+        run_id=row["run_id"],
         created_at=_aware(row["created_at"]),
     )
 

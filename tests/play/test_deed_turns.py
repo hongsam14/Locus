@@ -367,6 +367,42 @@ def test_ex19_a_failed_move_and_a_failed_declaration_leave_no_deeds() -> None:
     assert any(e.kind == "action_declared" for e in repo.list_timeline(session.id))  # audit
 
 
+def test_review_u6_4_a_failed_endtalk_takes_back_its_appraisals_of_earlier_deeds() -> None:
+    """BR-U6-36 + review U6 #4: the EndTalk run's preparation saved Mara's appraisal of
+    the declaration (an earlier deed); the run never advanced, so that appraisal goes too,
+    the declaration is pending for her again and nothing is seeded from the undone talk."""
+    repo, gm, session, _player, voice, *_ = _setup()
+    gm.turns.advance(session.id, DeclareAction(text="도둑을 잡는다"), lang="ko")
+    gm.dialogue.say(session.id, "n1", "I caught a thief!")
+    voice.appraisal = AppraisalDraft(
+        summary="Ari says Ari caught a thief.",
+        appraisals=[
+            AppraisalDraftItem(
+                ref="d2",
+                noteworthy=True,
+                salience=1.0,
+                slant="admiring",
+                retelling="The traveler caught a thief in the square!",
+            )
+        ],
+    )
+    real = gm.turns._one_turn
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("turn failed")
+
+    gm.turns._one_turn = boom  # type: ignore[method-assign]
+    with pytest.raises(RuntimeError):
+        gm.turns.advance(session.id, EndTalkAction(npc_id="n1"))
+    assert repo.list_appraisals(session.id) == []
+    declared = next(d for d in repo.list_deeds(session.id) if d.kind == "declared_action")
+    player = repo.get_player(session.id)
+    assert declared.id in {d.id for d in gm.deeds.pending_for(session.id, player, "n1")}
+    gm.turns._one_turn = real  # type: ignore[method-assign]
+    gm.turns.advance(session.id, WaitAction())
+    assert repo.list_rumors_by_origin(session.id, deed_id=declared.id, include_inactive=True) == []
+
+
 # --- RumorService units (code-plan review R-07) ------------------------------------- #
 def test_seed_spread_and_reserved_units() -> None:
     repo, gm, session, player, *_ = _setup()

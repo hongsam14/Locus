@@ -608,3 +608,47 @@ def test_ex12_an_npc_speaks_from_its_own_memories_only() -> None:
     tom_prompt = llm.calls[-1][0]
     assert "quick as a cat" not in tom_prompt  # Mara's retelling is hers
     assert "Ari caught a thief." in tom_prompt  # Tom saw the deed and has not judged it
+
+
+# --- U6 code review follow-up (#1, #3) ------------------------------------------------ #
+def test_review_u6_1_the_appraisal_hides_a_source_the_npc_only_knows_distorted() -> None:
+    """BR-U5-11 on the appraisal path: Mara knows "The market burned." only through a
+    distorted rumor, so her appraisal prompt must not hand her the original either —
+    a retelling would pass it on undistorted. Another fact stays (positive control)."""
+    repo = InMemoryPlayRepository()
+    llm = AppraisalLLM()
+    gm = compose_play(repo, RumorGenerator(_NoRumors()), _Snap(_world()), dialogue_llm=llm)
+    session = repo.create_session("w")
+    repo.create_player(Player(session_id=session.id, name="Ari", region_id="a"))
+    repo.upsert_rumors([_rumor(session.id, "k-fire", "Rioters set the market alight.")])
+    gm.dialogue.say(session.id, "n1", "What happened to the market?")
+    assert "The market burned." not in llm.calls[-1][0]  # `say` hides it (U5)
+    gm.dialogue.appraise(session.id, "n1", budget=LlmBudget(8))
+    prompt = llm.appraisal_calls[-1][0]
+    assert "The market burned." not in prompt
+    assert "Bread is cheap here." in prompt
+
+
+def test_review_u6_3_a_null_summary_never_makes_the_statement_worth_telling() -> None:
+    """BR-U6-9: summary null -> the statement appraisal is not noteworthy, whatever the
+    model said about "statement", so nothing is seeded from a talk with nothing in it."""
+    _repo, gm, world, llm, session, player, _a, _d = _u6_setup()
+    gm.dialogue.say(session.id, "n1", "Nice weather.")
+    llm.draft = AppraisalDraft(
+        summary=None,
+        appraisals=[
+            AppraisalDraftItem(
+                ref="statement",
+                noteworthy=True,
+                salience=0.9,
+                slant="shocked",
+                retelling="The traveler told me a wild secret!",
+            )
+        ],
+    )
+    out = gm.dialogue.appraise(session.id, "n1", budget=LlmBudget(8))
+    st = out.statement_appraisal
+    assert st is not None
+    assert (st.noteworthy, st.salience, st.slant, st.retelling) == (False, 0.0, "", "")
+    _store(gm, world, session, player, "n1", out)
+    assert gm.deeds.seeds_ready(session.id) == []

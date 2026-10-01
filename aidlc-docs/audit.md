@@ -2824,3 +2824,26 @@ R-09 → Accepted risk
   - U5's "newline forging" backlog item (#6) was missing from the U7 carry list. It will be added to the U7 code plan.
 - The code is approved, so asking the human how to handle the fixes (A mix / B all to U7 / C accept).
 **Context**: CONSTRUCTION / U6 — post-approval code review.
+
+---
+
+## U6 code review — human decision
+**Timestamp**: 2026-10-01T01:56:05Z
+**User Input**: "A. #1~#4 지금 수정, 나머지 U7 (Recommended)"
+**AI Response**: Fixing #1–#4 now as a U6 post-approval follow-up (tests + gates). #5–#15, cleanup C1–C16 and U5's newline-forging item go to the U7 code-plan carry list.
+**Context**: CONSTRUCTION / U6 — post-approval review fixes.
+
+---
+
+## U6 code review — fixes applied (#1–#4)
+**Timestamp**: 2026-10-01T02:01:48Z
+**AI Response**: Fixed U6 review #1–#4 as a post-approval follow-up (human choice A).
+- #1: `appraise` selects its facts with the same source hiding as `say`.
+- #2: the void confirm button is labelled "없던 일로 하기" (`deed.voidConfirmBtn`).
+- #3: a null summary forces the statement appraisal to be not noteworthy.
+- #4: `DeedAppraisal.run_id` plus the `deed_appraisals.run_id` column and index (ADDED_COLUMNS/ADDED_INDEXES). `delete_by_run` also removes the run's appraisals of earlier deeds, in both adapters.
+Tests: `test_review_u6_1/3/4_*` (6 new pytest) plus the vitest void-dialog assertion. Mutation checks caught all five backend mutations and the label revert.
+Gates: pytest 636, vitest 74, ruff/black/tsc clean, mypy baseline 11.
+Docs updated: U6 domain-entities §4.3, BR-U6-36 (marked 〔리뷰 후속 정정〕), operations.md schema, U6 code-summary §8, review record §8, CLAUDE.md test count.
+Carried to the U7 code plan: #5–#15, C1–C16, U5 newline forging, and the scene-shadowing decision.
+**Context**: CONSTRUCTION / U6 — post-approval review fixes done. Next: U7 NFR Requirements (light).

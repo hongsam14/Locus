@@ -172,3 +172,15 @@ curl -s localhost:8000/api/gm/sessions/$S/deeds | jq '.[] | {kind: .deed.kind, r
   - 대화 LLM 실패의 500(U5)을 손본다.
 - **U8(데모·배포·문서)**: Build&Test 라이브 시나리오에 US-6.5를 넣는다(위 명령).
 - **U3(월드 에디터)**: 에디터 삭제가 행적이 참조하는 지역·NPC를 지울 때 GM 보기는 id를 보인다. 정리 방식은 U3에서 정한다.
+
+## 8. 승인 뒤 리뷰 후속 수정 (2026-10-01, `code-review-01` 사람의 선택 A)
+| 리뷰 # | 고친 곳 | 테스트 (변이 확인) |
+|---|---|---|
+| 1 | `npc/dialogue.py` `appraise`: 판단 프롬프트의 사실을 `say`와 같은 가리기로 고른다(`rumors=src.rumors`, `lineage=src.lineage`) | `test_review_u6_1_*` |
+| 2 | `features/gm/DeedPanel.tsx` 확인 버튼 `deed.voidConfirmBtn`("없던 일로 하기"/"Void"). 트리거 라벨 `deed.void`는 그대로 | `deeds.test.tsx`(대화창 안 두 버튼 이름이 다름) |
+| 3 | `appraise`: `summary`가 null이면 발언 판단을 `noteworthy=false, salience=0, slant="", retelling=""`로 고정 | `test_review_u6_3_*` |
+| 4 | `DeedAppraisal.run_id`, `deed_appraisals.run_id`(idx, `ADDED_COLUMNS`·`ADDED_INDEXES`), `DeedService._store_appraisal`이 실행 id를 찍고 `delete_by_run`이 그 실행의 판단도 지운다(두 어댑터) | `test_review_u6_4_*` ×3 (계약 두 어댑터, PG 열 추가, 대화 마침 실패) |
+
+- 게이트: pytest 636, vitest 74, ruff·black·tsc clean, mypy 기준선 11
+- 설계 정정: domain-entities §4.3, BR-U6-36에 〔리뷰 후속 정정〕 표시. operations.md 스키마 절
+- 나머지(#5~#15, 정리 C1~C16, U5 "줄바꿈 위조", #1이 남긴 결정 "GM 서술 장면에도 같은 가리기를 둘지")는 U7 코드 계획의 이월 목록으로 간다(리뷰 기록 §8)

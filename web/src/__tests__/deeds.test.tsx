@@ -1,6 +1,6 @@
 // U6 deeds & spread on screen (Step 8.3; frontend-components §6): the declaration box,
 // the narration card, the deed badge, the player log filter and the GM DeedPanel.
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Mock } from "vitest";
@@ -193,7 +193,14 @@ describe("DeedPanel (US-5.6)", () => {
     render(<DeedPanel sessionId="s1" closed={false} onChanged={onChanged} />);
     fireEvent.click(await screen.findByTestId("void-d1"));
     expect(screen.getByTestId("void-confirm")).toHaveTextContent(t("deed.voidConfirm", { n: 1 }));
-    await act(async () => fireEvent.click(screen.getByText(t("deed.void"), { selector: "button.bg-danger:not([data-testid])" })));
+    // The two dialog buttons never share a name (review U6 #2: both read "취소" in ko).
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getAllByRole("button").map((b) => b.textContent)).toEqual([
+      t("action.cancel"),
+      t("deed.voidConfirmBtn"),
+    ]);
+    expect(t("deed.voidConfirmBtn")).not.toBe(t("action.cancel"));
+    await act(async () => fireEvent.click(dialog.getByRole("button", { name: t("deed.voidConfirmBtn") })));
     await waitFor(() => expect(api.voidDeed).toHaveBeenCalledWith("s1", "d1"));
     expect(onChanged).toHaveBeenCalled();
   });
@@ -205,7 +212,9 @@ describe("DeedPanel (US-5.6)", () => {
     expect(await screen.findByTestId("deed-voided-d2")).toBeInTheDocument();
     expect(screen.queryByTestId("void-d2")).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId("void-d1"));
-    await act(async () => fireEvent.click(screen.getByText(t("deed.void"), { selector: "button.bg-danger:not([data-testid])" })));
+    await act(async () =>
+      fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: t("deed.voidConfirmBtn") })),
+    );
     expect(await screen.findByTestId("deed-notice")).toHaveTextContent(t("play.turnInProgress"));
   });
 });

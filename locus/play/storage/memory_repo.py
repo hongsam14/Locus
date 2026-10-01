@@ -498,7 +498,8 @@ class InMemoryPlayRepository:
         for deed_id in gone:
             del deeds[deed_id]
         appraisals = self._appraisals.get(session_id, {})
-        for aid in [a.id for a in appraisals.values() if a.deed_id in gone]:
+        # The run's appraisals go too, also those of earlier deeds (review U6 #4).
+        for aid in [a.id for a in appraisals.values() if a.deed_id in gone or a.run_id == run_id]:
             del appraisals[aid]
         return len(gone)
 

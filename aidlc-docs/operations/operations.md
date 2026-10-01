@@ -264,6 +264,8 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
     - `session_rumors`: `origin_kind` (default `canonical`), `origin_deed_id` (indexed),
       `origin_appraisal_id`, `spread_from_region_id`
     - `turn_runs`: `lang`, `turns_charged` (default 0), `from_region_id`
+    - `deed_appraisals`: `run_id` (indexed; review fix). A turn run that fails before its
+      first turn removes its appraisals, including those of earlier deeds.
   - **U4 fix**: the PostgreSQL adapter used to drop `turns_charged` and `from_region_id`, so a
     failed run's turn refund and position restore never happened on PostgreSQL. They are stored
     now.

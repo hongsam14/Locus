@@ -64,7 +64,7 @@
 | BR-U6-33 | 행적·판단 번역은 조립 루트(`api/schemas.py`)에서 붙인다(kind `deed`/`text`, `deed_appraisal`/`retelling`). play는 localization을 import하지 않는다 | 경계 규칙 |
 | BR-U6-34 | 기존 테이블의 열 7개(`session_rumors` 4, `turn_runs` 3 — domain-entities §4.3 표)는 `ensure_play_schema`가 inspector로 두 방언(PG·SQLite) 모두에서 빠진 것을 찾아 더한다. 기존 테이블 색인 `ix_session_rumors_origin_deed_id`는 `CREATE INDEX IF NOT EXISTS`다. `deeds.run_id`는 새 테이블 열이라 `create_all`이 만든다. 기존 소문 행은 `origin_kind='canonical'`이다 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-10-01의 이월 결정 반영〕 | A6-12, 검토 1차 R-11, NFR 검토 R-02 |
 | BR-U6-35 | 캐노니컬 소문 체인(턴 초안, GM 수동 생성)의 원천은 캐노니컬 지식과 **캐노니컬 기원** 기존 소문뿐이다. 행적 기원 소문은 원천이 되지 않는다. 행적에서 난 말은 씨앗과 전파로만 퍼지고, 그래서 취소가 그 전부에 닿는다 | FR-D6, US-5.6, 검토 1차 R-02 |
-| BR-U6-36 | 턴이 하나도 진행되지 않은 실패 실행(`advanced == 0`)은 보상할 때 그 실행이 기록한 행적(`run_id`)과 그 판단을 지운다. 대상은 이동의 도착, 선언, 발언이다. 턴이 하나라도 진행됐으면 행적은 남는다 | 검토 1차 R-08 |
+| BR-U6-36 | 턴이 하나도 진행되지 않은 실패 실행(`advanced == 0`)은 보상할 때 그 실행이 기록한 행적(`run_id`)과 그 판단을 지운다. 대상은 이동의 도착, 선언, 발언이다. 그 실행의 준비 단계가 저장한 **이전 행적에 대한 판단**도 판단의 `run_id`로 함께 지운다 〔리뷰 후속 정정 — U6 code-review-01 #4, 사람의 선택 A(2026-10-01)〕. 턴이 하나라도 진행됐으면 행적은 남는다 | 검토 1차 R-08 |
 | BR-U6-37 | `turn_runs`는 `lang`·`turns_charged`·`from_region_id`를 저장한다. 배경 실행이 다시 읽어도 서술 언어가 남고, U4 실패 보상(턴 환불·위치 복원)이 PostgreSQL에서도 동작한다(U4 잠재 결함 수정) | 검토 1차 R-03 |
 
 ## 8. Testable Properties (NFR-2, PBT Partial)

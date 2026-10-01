@@ -140,11 +140,12 @@ export function DeedPanel({
           </Card>
         ))}
       </div>
+      {/* The confirm label is never the Cancel word: both read "취소" in ko (review U6 #2). */}
       <Modal
         open={confirm != null}
         title={t("deed.voidTitle")}
         confirmTone="danger"
-        confirmLabel={t("deed.void")}
+        confirmLabel={t("deed.voidConfirmBtn")}
         cancelLabel={t("action.cancel")}
         onConfirm={() => {
           if (confirm) void voidDeed(confirm);

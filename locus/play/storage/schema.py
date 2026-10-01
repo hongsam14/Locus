@@ -203,6 +203,7 @@ deed_appraisals = Table(
     Column("retelling", Text, nullable=False, default=""),
     Column("turn", Integer, nullable=False, default=0),
     Column("seeded_rumor_id", String, nullable=True),
+    Column("run_id", String, nullable=True, index=True),
     Column("created_at", DateTime(timezone=True), nullable=False),
     UniqueConstraint("deed_id", "npc_id", name=DEED_APPRAISAL_UNIQUE),
 )
@@ -219,9 +220,11 @@ ADDED_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("turn_runs", "lang", "VARCHAR"),
     ("turn_runs", "turns_charged", "INTEGER NOT NULL DEFAULT 0"),
     ("turn_runs", "from_region_id", "VARCHAR"),
+    ("deed_appraisals", "run_id", "VARCHAR"),
 )
 ADDED_INDEXES: tuple[tuple[str, str, str], ...] = (
     ("ix_session_rumors_origin_deed_id", "session_rumors", "origin_deed_id"),
+    ("ix_deed_appraisals_run_id", "deed_appraisals", "run_id"),
 )
 
 

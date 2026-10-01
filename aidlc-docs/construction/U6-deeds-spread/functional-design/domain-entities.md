@@ -158,7 +158,7 @@ def list_rumors_by_origin(self, session_id: str, *, deed_id: str | None = None,
 - `deeds`
   - 열: `id` PK, `session_id` idx, `player_id`, `region_id`, `turn`, `kind`, `text`, `declaration` null, `messages_through` null, `witnessed_npc_ids` JSON, `voided` bool, `voided_turn` null, `run_id` null idx, `created_at` not null(앱이 찍는다)
 - `deed_appraisals`
-  - 열: `id` PK, `session_id` idx, `deed_id` idx, `npc_id`, `noteworthy`, `salience`, `slant`, `retelling`, `turn`, `seeded_rumor_id` null, `created_at` not null
+  - 열: `id` PK, `session_id` idx, `deed_id` idx, `npc_id`, `noteworthy`, `salience`, `slant`, `retelling`, `turn`, `seeded_rumor_id` null, `run_id` null idx 〔리뷰 후속 정정 — U6 code-review-01 #4, 사람의 선택 A(2026-10-01)〕, `created_at` not null
   - 제약: **`UNIQUE (deed_id, npc_id)`** 이름 `uq_deed_appraisals_deed_npc`
 - **기존 테이블 열 추가 표** 〔Step 1.3 정정 — 코드 생성 플랜 승인 2026-10-01의 이월 결정 반영〕
 

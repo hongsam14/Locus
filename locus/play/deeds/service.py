@@ -142,7 +142,8 @@ class DeedService(SessionAppService):
         names = {"npc_id": npc.id, "npc_name": npc.name}
         where = {"region_id": region.id, "region_name": region.name}
         with self._repo.uow() as u:
-            appraisals = list(outcome.appraisals)
+            # stamped with the run, so a run that never advances takes them back (#4)
+            appraisals = [a.model_copy(update={"run_id": run.id}) for a in outcome.appraisals]
             if outcome.statement_text is not None:
                 statement = u.deeds.record_deed(
                     Deed(
@@ -172,7 +173,9 @@ class DeedService(SessionAppService):
                 )
                 if outcome.statement_appraisal is not None:
                     appraisals.append(
-                        outcome.statement_appraisal.model_copy(update={"deed_id": statement.id})
+                        outcome.statement_appraisal.model_copy(
+                            update={"deed_id": statement.id, "run_id": run.id}
+                        )
                     )
             saved = u.deeds.save_appraisals(appraisals) if appraisals else []
             for a in saved:

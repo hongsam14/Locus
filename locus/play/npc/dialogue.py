@@ -210,12 +210,18 @@ class NpcDialogueService(SessionAppService):
         src = self._region_knowledge.region_sources(
             session_id, npc.home_region_id, session=session, snapshot=snapshot
         )
+        # The same source hiding as `say` (BR-U5-11): a fact this NPC only knows through a
+        # distorted rumor stays hidden here too, or a retelling could pass the original on
+        # undistorted (U6 code review #1). Only the facts go into the prompt.
         known = build_context(
             npc=npc,
             facts=src.facts,
-            rumors=[],
+            rumors=src.rumors,
             recent=[],
-            limits=ScopeLimits(facts=APPRAISAL_FACTS, rumors=0, recent_messages=0),
+            limits=ScopeLimits(
+                facts=APPRAISAL_FACTS, rumors=self._tuning.npc_max_rumors, recent_messages=0
+            ),
+            lineage=src.lineage,
         ).facts
         budget.take(1)
         try:
@@ -247,12 +253,17 @@ class NpcDialogueService(SessionAppService):
             )
 
         summary = cap(draft.summary, LINE_MAX) or None
+        statement = judged("statement", "")  # bound to the new deed on save
+        if summary is None:  # nothing worth noting was said: nothing to tell (BR-U6-9, #3)
+            statement = statement.model_copy(
+                update={"noteworthy": False, "salience": 0.0, "slant": "", "retelling": ""}
+            )
         return AppraisalOutcome(
             npc_id=npc_id,
             summary=summary,
             statement_text=summary or f"{player.name} talked with {npc.name}.",
             appraisals=[judged(ref, deed.id) for ref, deed in refs.items()],
-            statement_appraisal=judged("statement", ""),  # bound to the new deed on save
+            statement_appraisal=statement,
             messages_through=max(m.created_at for m in new_lines if m.created_at is not None),
             llm_calls=1,
         )

@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from locus.knowledge.wiring import KnowledgeContainer
+from locus.play.deeds.service import DeedService
 from locus.play.distortion_service import DistortionService
 from locus.play.event.service import EventService
 from locus.play.event.suggester import EventSuggester
@@ -47,6 +48,8 @@ class PlayContainer:
     events: EventService
     # U5 — always assembled; without a provider only `say` answers 503 (BR-U5-29)
     dialogue: NpcDialogueService
+    # U6 — deeds, appraisals and the GM's view; no LLM needed
+    deeds: DeedService
 
 
 def assemble_play(
@@ -90,6 +93,7 @@ def assemble_play(
         store, generator, loader, knowledge.params, birth_support=tuning.birth_support
     )
     feedback = RumorFeedbackService(store, tuning)
+    deeds = DeedService(store, loader, tuning=tuning)  # U6: the one writer of deeds
     turns = TurnAdvancer(store, loader, rumors, feedback, tuning, guard=guard, executor=executor)
     region_knowledge = SessionKnowledgeService(store, loader, knowledge.params)
     container = PlayContainer(
@@ -120,6 +124,8 @@ def assemble_play(
             tuning,
             default_lang=shared.settings.translation_target_lang,
             supported_langs=shared.settings.supported_langs,
+            deeds=deeds,
         ),
+        deeds=deeds,
     )
     return container

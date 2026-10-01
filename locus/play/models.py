@@ -454,6 +454,14 @@ class ScopeLimits(LocusModel):
         )
 
 
+class DeedMemory(LocusModel):
+    """A deed as one NPC remembers it (its own retelling, or what it saw)."""
+
+    deed_id: str
+    text: str
+    slant: str = ""
+
+
 class NpcContext(LocusModel):
     """What one NPC may draw on for one answer (BR-U5-7). No hearsay (deviation 1)."""
 
@@ -461,6 +469,7 @@ class NpcContext(LocusModel):
     facts: list[KnowledgeView] = Field(default_factory=list)
     rumors: list[SessionRumor] = Field(default_factory=list)
     recent: list[Message] = Field(default_factory=list)
+    deeds: list[DeedMemory] = Field(default_factory=list)  # U6: what it knows of the traveler
     allowed_ids: set[str] = Field(default_factory=set)
 
 
@@ -546,14 +555,6 @@ class DeedView(LocusModel):
 class VoidResult(LocusModel):
     deed_id: str
     deactivated_rumor_ids: list[str] = Field(default_factory=list)
-
-
-class DeedMemory(LocusModel):
-    """A deed as one NPC remembers it (its own retelling, or what it saw)."""
-
-    deed_id: str
-    text: str
-    slant: str = ""
 
 
 class SceneBrief(LocusModel):

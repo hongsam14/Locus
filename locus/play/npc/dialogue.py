@@ -19,9 +19,15 @@ from __future__ import annotations
 
 from locus.knowledge.cache import SnapshotSource
 from locus.play.base import SessionAppService, SessionClosedError
+from locus.play.deeds.caps import LINE_MAX, SLANT_MAX, cap
+from locus.play.deeds.service import DeedService
 from locus.play.errors import ConversationExistsError, InvalidActionError, LlmUnavailableError
 from locus.play.models import (
+    AppraisalDraft,
+    AppraisalDraftItem,
+    AppraisalOutcome,
     Conversation,
+    DeedAppraisal,
     GameSession,
     Message,
     NpcReply,
@@ -29,14 +35,25 @@ from locus.play.models import (
     ScopeLimits,
     SessionStatus,
 )
-from locus.play.npc.prompts import fallback_text, system_prompt, user_prompt
+from locus.play.npc.prompts import (
+    appraisal_prompt,
+    appraisal_system_prompt,
+    fallback_text,
+    system_prompt,
+    user_prompt,
+)
 from locus.play.npc.scope import build_context
 from locus.play.player import movement
 from locus.play.ports import PlayRepository
 from locus.play.region_knowledge import SessionKnowledgeService
+from locus.play.turn.budget import LlmBudget
 from locus.shared.config.tuning import PlayTuning
 from locus.shared.llm.base import LLMProvider
 from locus.shared.models import NPC, WorldSnapshot
+from locus.shared.models.util import clamp01
+
+# Facts the NPC weighs a deed against (BLM §3.2: at most 8).
+APPRAISAL_FACTS = 8
 
 
 class NpcDialogueService(SessionAppService):
@@ -50,8 +67,10 @@ class NpcDialogueService(SessionAppService):
         *,
         default_lang: str,
         supported_langs: tuple[str, ...],
+        deeds: DeedService | None = None,
     ) -> None:
         super().__init__(repo)
+        self._deeds = deeds  # U6: deed memories and appraisals; None turns them off
         self._snapshots = snapshots
         self._region_knowledge = region_knowledge
         self._llm = llm  # None without a provider: only `say` refuses (BR-U5-29)
@@ -127,6 +146,7 @@ class NpcDialogueService(SessionAppService):
             recent=conv.messages if conv else [],
             limits=ScopeLimits.from_tuning(self._tuning),
             lineage=src.lineage,
+            deeds=self._deeds.memories(session_id, player, npc_id) if self._deeds else (),
         )
         # exactly one LLM call, outside any transaction (BR-U4-14)
         answer = self._llm.complete(user_prompt(ctx, body, lang), system=system_prompt(npc, lang))
@@ -145,7 +165,96 @@ class NpcDialogueService(SessionAppService):
             message=npc_msg,
             lang=lang,
             llm_calls=1,
-            context_ids=[k.knowledge_id for k in ctx.facts] + [r.id for r in ctx.rumors],
+            context_ids=[k.knowledge_id for k in ctx.facts]
+            + [r.id for r in ctx.rumors]
+            + [d.deed_id for d in ctx.deeds],
+        )
+
+    # -- U6 appraisal (BLM §3.2) ---------------------------------------------
+    def appraise(self, session_id: str, npc_id: str, *, budget: LlmBudget) -> AppraisalOutcome:
+        """What this NPC makes of the traveler's deeds after a talk: at most one LLM
+        call, **no writes** (DeedService stores the outcome, FD deviation 13).
+
+        No judgement at all — no call, nothing recorded — unless the player said something
+        new to this NPC since the last talk ended (BR-U6-7: "talked" means new words). A
+        missing judgement in the model's answer is "not noteworthy" (BR-U6-10, review
+        R-16), so the same NPC never judges the same deed twice.
+        """
+        outcome = AppraisalOutcome(npc_id=npc_id)
+        if self._deeds is None:
+            return outcome
+        session = self._require_session(session_id)
+        player = self._require_player(session_id)
+        snapshot = self._snapshots.get(session.world_id)
+        npc = movement.find_npc(snapshot, npc_id)
+        if npc is None:
+            return outcome
+        conv = self._repo.get_conversation(session_id, npc_id)
+        last = self._deeds.last_statement(session_id, npc_id)
+        cursor = last.messages_through if last is not None else None
+        new_lines = [
+            m
+            for m in (conv.messages if conv else [])
+            if m.role == "player"
+            and m.created_at is not None
+            and (cursor is None or m.created_at > cursor)
+        ]
+        if not new_lines:
+            return outcome
+        if self._llm is None or budget.exhausted:
+            return outcome  # deeds stay pending for a later talk (BR-U6-24, NFR R-04)
+        pending = self._deeds.pending_for(session_id, player, npc_id)
+        refs = {f"d{i + 1}": deed for i, deed in enumerate(pending)}
+        keep = self._tuning.npc_max_recent_messages
+        shown = new_lines[-keep:] if keep else []
+        src = self._region_knowledge.region_sources(
+            session_id, npc.home_region_id, session=session, snapshot=snapshot
+        )
+        known = build_context(
+            npc=npc,
+            facts=src.facts,
+            rumors=[],
+            recent=[],
+            limits=ScopeLimits(facts=APPRAISAL_FACTS, rumors=0, recent_messages=0),
+        ).facts
+        budget.take(1)
+        try:
+            draft = self._llm.structured(
+                appraisal_prompt(known, shown, list(refs.items())),
+                AppraisalDraft,
+                system=appraisal_system_prompt(npc),
+            )
+        except Exception:
+            return outcome.model_copy(update={"llm_calls": 1, "llm_failed": True})
+        items: dict[str, AppraisalDraftItem] = {}
+        for item in draft.appraisals:
+            if item.ref in refs or item.ref == "statement":
+                items.setdefault(item.ref, item)
+
+        def judged(ref: str, deed_id: str) -> DeedAppraisal:
+            item = items.get(ref) or AppraisalDraftItem(ref=ref)
+            retelling = cap(item.retelling, LINE_MAX)
+            noteworthy = bool(item.noteworthy) and bool(retelling)  # BR-U6-11
+            return DeedAppraisal(
+                session_id=session_id,
+                deed_id=deed_id,
+                npc_id=npc_id,
+                noteworthy=noteworthy,
+                salience=clamp01(item.salience),
+                slant=cap(item.slant, SLANT_MAX),
+                retelling=retelling if noteworthy else "",
+                turn=session.turn,
+            )
+
+        summary = cap(draft.summary, LINE_MAX) or None
+        return AppraisalOutcome(
+            npc_id=npc_id,
+            summary=summary,
+            statement_text=summary or f"{player.name} talked with {npc.name}.",
+            appraisals=[judged(ref, deed.id) for ref, deed in refs.items()],
+            statement_appraisal=judged("statement", ""),  # bound to the new deed on save
+            messages_through=max(m.created_at for m in new_lines if m.created_at is not None),
+            llm_calls=1,
         )
 
     # -- helpers ------------------------------------------------------------

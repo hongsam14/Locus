@@ -10,6 +10,7 @@ mutated, NFR-R2). Services are single-responsibility and composed by
 from __future__ import annotations
 
 from locus.play.base import SessionClosedError
+from locus.play.deeds.service import DeedService
 from locus.play.distortion_service import DistortionService
 from locus.play.event import dynamics
 from locus.play.event.service import EventService
@@ -17,6 +18,10 @@ from locus.play.event.suggester import EventDraft, EventSuggester
 from locus.play.models import (
     CATEGORY_DEFAULT_LIFECYCLE,
     DEFAULT_DISTORTION_DEGREE,
+    Deed,
+    DeedAppraisal,
+    DeedKind,
+    DeedView,
     EventCategory,
     EventLifecycle,
     EventStatus,
@@ -51,6 +56,7 @@ from locus.play.rumor.feedback import RumorFeedbackService
 from locus.play.rumor.generator import RumorDraft, RumorGenerator
 from locus.play.rumor.promotion import PromotionResult
 from locus.play.rumor.service import RumorService
+from locus.play.rumor.spread import plan_spread
 from locus.play.session_service import SessionService, WorldNotFoundError
 from locus.play.storage.memory_repo import InMemoryPlayRepository
 from locus.play.storage.postgres_repo import PostgresPlayRepository
@@ -77,6 +83,12 @@ __all__ = [
     "NpcDialogueService",
     "build_context",
     "RegionSources",
+    "Deed",
+    "DeedAppraisal",
+    "DeedKind",
+    "DeedView",
+    "DeedService",
+    "plan_spread",
     # ports + adapters
     "PlayStorage",
     "SessionStore",

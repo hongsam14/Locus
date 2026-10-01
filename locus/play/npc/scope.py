@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 
-from locus.play.models import Message, NpcContext, ScopeLimits, SessionRumor
+from locus.play.models import DeedMemory, Message, NpcContext, ScopeLimits, SessionRumor
 from locus.shared.models import NPC, KnowledgeView
 
 # The only scopes an NPC's own knowledge may come from (BR-U5-7).
@@ -89,7 +89,10 @@ def build_context(
     recent: Sequence[Message],
     limits: ScopeLimits,
     lineage: Sequence[SessionRumor] = (),
+    deeds: Sequence[DeedMemory] = (),
 ) -> NpcContext:
+    """``deeds`` (U6, BR-U6-30) are already this NPC's own memories, bounded by
+    ``npc_max_deeds`` in ``DeedService.memories``; they are carried as given."""
     picked_rumors = pick_rumors(rumors, limits.rumors)
     hidden = shadowed_sources(picked_rumors, [*rumors, *lineage])
     visible = [k for k in facts if is_known_scope(k) and k.knowledge_id not in hidden]
@@ -101,5 +104,8 @@ def build_context(
         facts=picked_facts,
         rumors=picked_rumors,
         recent=picked_recent,
-        allowed_ids={k.knowledge_id for k in picked_facts} | {r.id for r in picked_rumors},
+        deeds=list(deeds),
+        allowed_ids={k.knowledge_id for k in picked_facts}
+        | {r.id for r in picked_rumors}
+        | {d.deed_id for d in deeds},
     )

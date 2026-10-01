@@ -8,6 +8,8 @@ distortion lives in TurnAdvancer; this service is the CRUD/lifecycle boundary.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from locus.knowledge.cache import SnapshotSource
 from locus.play.base import SessionAppService, require_region
 from locus.play.errors import LlmUnavailableError
@@ -17,6 +19,7 @@ from locus.play.models import (
     EventCategory,
     EventLifecycle,
     EventStatus,
+    GameSession,
     SessionEvent,
     TimelineKind,
     default_lifecycle,
@@ -24,6 +27,9 @@ from locus.play.models import (
 from locus.play.ports import PlayRepository
 from locus.shared.models import Provenance, SourceKind
 from locus.shared.models.util import clamp01
+
+if TYPE_CHECKING:  # wired by assemble_play
+    from locus.play.deeds.service import DeedService
 
 
 class EventService(SessionAppService):
@@ -35,9 +41,11 @@ class EventService(SessionAppService):
         snapshots: SnapshotSource,
         *,
         suggester: EventSuggester | None = None,
+        deeds: DeedService | None = None,
     ) -> None:
         super().__init__(repo)
         self._snapshots = snapshots
+        self._deeds = deeds  # U6: recent deeds feed the suggestion context (BR-U6-31)
         self._suggester = suggester  # optional LLM event proposals (BR-P2-16)
 
     @property
@@ -146,6 +154,7 @@ class EventService(SessionAppService):
             region_ids=list(region_ids),
             turn=session.turn,
             n=n,
+            context=self._deed_context(session),
         )
         out: list[SessionEvent] = []
         for d in drafts:
@@ -195,3 +204,18 @@ class EventService(SessionAppService):
         if event is None:
             raise LookupError(f"event not found: {event_id}")
         return event
+
+    def _deed_context(self, session: GameSession) -> str:
+        """Recent deeds for the suggestion prompt (U6 BR-U6-31; FR-D2 보강): what the
+        traveler did lately can give rise to events. Voided deeds are left out."""
+        if self._deeds is None:
+            return ""
+        names = {r.id: r.name for r in self._snapshots.get(session.world_id).topo.regions}
+        lines = []
+        for deed, appraisals in self._deeds.recent(session.id, 5):
+            line = f"- [{names.get(deed.region_id, deed.region_id)}] {deed.text}"
+            told = next((a.retelling for a in appraisals if a.noteworthy and a.retelling), None)
+            if told:
+                line += f" (retold: {told})"
+            lines.append(line)
+        return ("Recent deeds of the traveler:\n" + "\n".join(lines)) if lines else ""

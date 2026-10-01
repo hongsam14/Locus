@@ -23,7 +23,7 @@ Two rules make the unit's core experience hold:
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 
 from locus.play.models import DeedMemory, Message, NpcContext, ScopeLimits, SessionRumor
 from locus.shared.models import NPC, KnowledgeView
@@ -74,6 +74,14 @@ def shadowed_sources(
     return {root for root in roots if root is not None}
 
 
+def pick_facts(
+    facts: Sequence[KnowledgeView], limit: int, *, hidden: Collection[str] = frozenset()
+) -> list[KnowledgeView]:
+    """Known-scope facts not hidden, direct → inherited → global, then by confidence."""
+    visible = [k for k in facts if is_known_scope(k) and k.knowledge_id not in hidden]
+    return sorted(visible, key=_fact_key)[:limit] if limit else []
+
+
 def pick_rumors(rumors: Sequence[SessionRumor], limit: int) -> list[SessionRumor]:
     """Promoted first, then by support (BR-U5-9). A rumor with no words is never
     picked: it would hide its source and leave the NPC with nothing (review U5 #14)."""
@@ -95,8 +103,7 @@ def build_context(
     ``npc_max_deeds`` in ``DeedService.memories``; they are carried as given."""
     picked_rumors = pick_rumors(rumors, limits.rumors)
     hidden = shadowed_sources(picked_rumors, [*rumors, *lineage])
-    visible = [k for k in facts if is_known_scope(k) and k.knowledge_id not in hidden]
-    picked_facts = sorted(visible, key=_fact_key)[: limits.facts] if limits.facts else []
+    picked_facts = pick_facts(facts, limits.facts, hidden=hidden)
     # `recent[-0:]` would return everything: a zero limit means "none".
     picked_recent = list(recent[-limits.recent_messages :]) if limits.recent_messages else []
     return NpcContext(

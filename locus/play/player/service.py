@@ -80,6 +80,7 @@ class PlayService(SessionAppService):
             moves=movement.move_options(snapshot, region.id, self._tuning),
             turn_running=self._guard.is_running(session.id),
             llm_available=self._turns.llm_available,
+            declare_max_chars=self._tuning.declare_max_chars,
         )
 
     def turn_run(self, session_id: str, run_id: str) -> TurnRun:
@@ -99,14 +100,14 @@ class PlayService(SessionAppService):
         return self._repo.list_timeline(session_id)
 
     # -- actions -------------------------------------------------------------
-    def act(self, session_id: str, action: PlayerAction) -> TurnRun:
+    def act(self, session_id: str, action: PlayerAction, *, lang: str | None = None) -> TurnRun:
         """Validate for a friendly 400, then start the run (202). The turn engine
         re-validates under the guard against the fresh position (FD R-10)."""
         session = self._require_open(session_id)
         player = self._require_player(session_id)
         snapshot: WorldSnapshot = self._snapshots.get(session.world_id)
         movement.validate_action(snapshot, player, action, self._tuning)
-        return self._turns.begin(session_id, action)
+        return self._turns.begin(session_id, action, lang=lang)
 
     # -- internals -----------------------------------------------------------
     def _require_player(self, session_id: str) -> Player:

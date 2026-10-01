@@ -13,15 +13,19 @@ from locus.play.base import SessionAppService
 from locus.play.errors import LlmUnavailableError
 from locus.play.models import (
     DEFAULT_DISTORTION_DEGREE,
+    Deed,
+    DeedAppraisal,
     GameSession,
     RegenerateResult,
     SessionRumor,
+    SpreadTarget,
     TimelineKind,
 )
 from locus.play.ports import PlayRepository
 from locus.play.rumor import dynamics as rumor_dynamics
 from locus.play.rumor.generator import RumorGenerator
 from locus.play.turn.budget import LlmBudget
+from locus.shared.models import Provenance, SourceKind
 from locus.shared.models.util import clamp01
 
 # Q1=A: chain degrees = region_distortion * these fractions (region degree = cap).
@@ -96,8 +100,10 @@ class RumorService(SessionAppService):
         existing = self._repo.list_rumors(session_id, region_id)
         # FR-UX2.5 / BR-X3-9 (X3): preserve promoted rumors; drop only the
         # non-promoted ones then regenerate. (Was Q4=A drop-all incl. promoted.)
-        kept = [r for r in existing if r.promoted]
-        dropped = [r for r in existing if not r.promoted]
+        # U6 (BR-U6-29): a player's deed rumors are only undone by a GM void, never by a
+        # regenerate — keep them with the promoted ones and drop canonical rumors only.
+        kept = [r for r in existing if r.promoted or r.origin_kind != "canonical"]
+        dropped = [r for r in existing if not r.promoted and r.origin_kind == "canonical"]
         degrees = self._chain_degrees(session_id, region_id)
         # Draft BEFORE deleting anything. The generator swallows LLM failures and
         # returns an empty chain, so deleting first destroyed the region's rumors
@@ -184,6 +190,7 @@ class RumorService(SessionAppService):
         max_new: int,
         max_active: int,
         min_source_support: float | None = None,
+        reserved: int = 0,
     ) -> tuple[list[SessionRumor], str | None]:
         """Draft this turn's new rumors for one region **without saving** (U4;
         BLM §4.4, BR-U4-17/18/19). The caller persists the drafts inside the turn's
@@ -199,7 +206,9 @@ class RumorService(SessionAppService):
         the LLM failed: the region's remaining drafts are abandoned (``llm_failed``)
         and the caller trips its circuit breaker (NFR R-02)."""
         active = self._repo.list_rumors(session.id, region_id)
-        room = max_active - len(active)
+        # ``reserved``: deed seeds and spread hops this turn already put here, not saved
+        # yet — the active cap counts them too (U6 BR-U6-15, TP-U6-8).
+        room = max_active - len(active) - reserved
         if room <= 0:
             return [], SKIP_CAPPED
         seeded = {r.distorted_from_id for r in active if r.distorted_from_kind == "knowledge"}
@@ -235,6 +244,55 @@ class RumorService(SessionAppService):
                 reason = SKIP_LLM_FAILED
                 break
         return out, reason
+
+    # -- U6 deed rumors -------------------------------------------------------
+    def seed(
+        self, session: GameSession, deed: Deed, appraisal: DeedAppraisal, *, distortion: float
+    ) -> SessionRumor:
+        """A deed rumor born from an NPC's retelling — no LLM call (BR-U6-14, FD
+        deviation 2): the NPC's words already are this region's distortion."""
+        degree = clamp01(distortion)
+        return SessionRumor(
+            session_id=session.id,
+            region_id=deed.region_id,
+            distorted_from_id=deed.id,
+            distorted_from_kind="deed",
+            statement=appraisal.retelling,
+            distortion_degree=degree,
+            support=clamp01(self._birth_support * (1.0 + appraisal.salience)),
+            confidence=clamp01(1.0 - degree),
+            origin_kind="deed",
+            origin_deed_id=deed.id,
+            origin_appraisal_id=appraisal.id,
+            provenance=Provenance(source=SourceKind.SIMULATION, generated_by="deed:appraisal"),
+        )
+
+    def spread(
+        self, session: GameSession, parent: SessionRumor, target: SpreadTarget
+    ) -> SessionRumor | None:
+        """One hop of a deed rumor: the parent's words distorted once more at the
+        target's degree (one LLM call, BR-U6-18). None when the call failed."""
+        chain = self._require_generator().generate_chain(
+            source_text=parent.statement,
+            source_id=parent.id,
+            source_kind="rumor",
+            source_confidence=parent.confidence,
+            region_id=target.region_id,
+            session_id=session.id,
+            degrees=[target.degree],
+            birth_support=target.support,
+        )
+        if not chain:
+            return None
+        return chain[0].model_copy(
+            update={
+                "origin_kind": "deed",
+                "origin_deed_id": parent.origin_deed_id,
+                "origin_appraisal_id": parent.origin_appraisal_id,
+                "spread_from_region_id": target.from_region_id,
+                "provenance": Provenance(source=SourceKind.SIMULATION, generated_by="llm:spread"),
+            }
+        )
 
     # -- internals -----------------------------------------------------------
     def _draft_for_region(
@@ -329,6 +387,10 @@ class RumorService(SessionAppService):
             sources.append((kv.statement, kv.knowledge_id, "knowledge", kv.confidence))
         if include_existing:
             for r in self._repo.list_rumors(session_id, region_id):  # existing rumors (chain)
+                if r.origin_kind != "canonical":
+                    # U6 (BR-U6-35): a deed rumor never seeds a canonical chain, so a void
+                    # reaches everything the deed produced.
+                    continue
                 if min_source_support is not None and not rumor_dynamics.is_eligible_source(
                     r, min_support=min_source_support
                 ):

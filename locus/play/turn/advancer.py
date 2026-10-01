@@ -22,7 +22,9 @@ guard against the player's *current* position (FD R-10).
 from __future__ import annotations
 
 import logging
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 from pydantic import Field
 
@@ -30,15 +32,23 @@ from locus.knowledge.cache import SnapshotSource
 from locus.play.base import SessionAppService, SessionClosedError  # noqa: F401  (re-exported)
 from locus.play.errors import InvalidActionError, TurnInProgressError  # noqa: F401
 from locus.play.event import dynamics
+from locus.play.gm import narrator as gm_narrator
 from locus.play.models import (
     DEFAULT_DISTORTION_DEGREE,
     ActionResult,
+    DeclareAction,
+    DeedAppraisal,
     EndTalkAction,
     EventStatus,
     GameSession,
     MoveAction,
+    Narration,
+    Player,
     PlayerAction,
+    SceneBrief,
     SessionEvent,
+    SessionRumor,
+    SpreadTarget,
     TimelineEntry,
     TimelineKind,
     TurnResult,  # noqa: F401  (re-exported: lives in models since U4)
@@ -46,6 +56,7 @@ from locus.play.models import (
     TurnRunStatus,
     WaitAction,
 )
+from locus.play.npc.scope import pick_facts, pick_rumors
 from locus.play.player import movement
 from locus.play.ports import PlayRepository
 from locus.play.rumor import dynamics as rumor_dynamics
@@ -53,13 +64,21 @@ from locus.play.rumor import promotion
 from locus.play.rumor.dynamics import DEFAULT_RUMOR_DYNAMICS
 from locus.play.rumor.feedback import RumorFeedbackService
 from locus.play.rumor.service import SKIP_BUDGET, SKIP_CAPPED, SKIP_LLM_FAILED, RumorService
+from locus.play.rumor.spread import passable_both_ways, plan_spread
 from locus.play.turn.budget import LlmBudget
 from locus.play.turn.changes import shape_region_changes
 from locus.play.turn.executor import SyncTurnExecutor, TurnExecutor
 from locus.play.turn.guard import TurnGuard
+from locus.play.turn.quota import RegionQuota
 from locus.play.turn.summary import merge_changes, narrate, scope_changes
 from locus.shared.config.tuning import PlayTuning
-from locus.shared.models import LocusModel, WorldSnapshot
+from locus.shared.models import NPC, LocusModel, Region, WorldSnapshot
+
+if TYPE_CHECKING:  # wired by assemble_play; imported for types only (no cycles)
+    from locus.play.deeds.service import DeedService
+    from locus.play.gm.narrator import GmNarrator
+    from locus.play.npc.dialogue import NpcDialogueService
+    from locus.play.region_knowledge import SessionKnowledgeService
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +103,18 @@ class _EventApplication(LocusModel):
     timeline: list[TimelineEntry] = Field(default_factory=list)
 
 
+class _Prep(LocusModel):
+    """What an action's prep step produced before its first turn (U6 BLM §0.1)."""
+
+    declaration: Narration | None = None
+    llm_failed: bool = False
+
+
+# Facts / rumors a narration may look at (BR-U6-26).
+SCENE_FACTS = 8
+SCENE_RUMORS = 5
+
+
 class TurnAdvancer(SessionAppService):
     """Advance a session by composing the rumor / event / distortion steps."""
 
@@ -97,6 +128,11 @@ class TurnAdvancer(SessionAppService):
         *,
         guard: TurnGuard | None = None,
         executor: TurnExecutor | None = None,
+        deeds: DeedService | None = None,
+        dialogue: NpcDialogueService | None = None,
+        narrator: GmNarrator | None = None,
+        region_knowledge: SessionKnowledgeService | None = None,
+        default_lang: str = "ko",
     ) -> None:
         super().__init__(repo)
         self._snapshots = snapshots
@@ -105,6 +141,14 @@ class TurnAdvancer(SessionAppService):
         self._params = params
         self._guard = guard if guard is not None else TurnGuard()
         self._executor = executor if executor is not None else SyncTurnExecutor()
+        # U6 — each optional: None turns its part off (no deeds / no appraisal / the
+        # fallback narration / a scene without facts and rumors), so U4-era callers that
+        # build the engine directly keep working (code-plan review R-07).
+        self._deeds = deeds
+        self._dialogue = dialogue
+        self._narrator = narrator
+        self._region_knowledge = region_knowledge
+        self._default_lang = default_lang
 
     @property
     def llm_available(self) -> bool:
@@ -121,9 +165,10 @@ class TurnAdvancer(SessionAppService):
         action: PlayerAction | None = None,
         *,
         promotion_threshold: float = promotion.DEFAULT_PROMOTION_THRESHOLD,
+        lang: str | None = None,
     ) -> ActionResult:
         """Run the action's turns synchronously (P7). ``None`` = GM manual turn (1)."""
-        run = self._start(session_id, action)
+        run = self._start(session_id, action, lang=lang)
         try:
             result = self._run_turns(run, promotion_threshold=promotion_threshold)
             self._finish(run, result)
@@ -140,9 +185,10 @@ class TurnAdvancer(SessionAppService):
         action: PlayerAction | None,
         *,
         promotion_threshold: float = promotion.DEFAULT_PROMOTION_THRESHOLD,
+        lang: str | None = None,
     ) -> TurnRun:
         """Record the action at once and run its turns in the background (Q4=A)."""
-        run = self._start(session_id, action)
+        run = self._start(session_id, action, lang=lang)
         try:
             self._executor.submit(self._run, run.id, session_id, promotion_threshold)
         except BaseException as exc:  # e.g. executor shut down (FD R-11)
@@ -158,11 +204,15 @@ class TurnAdvancer(SessionAppService):
         return run
 
     # -- run lifecycle -------------------------------------------------------
-    def _start(self, session_id: str, action: PlayerAction | None) -> TurnRun:
+    def _start(
+        self, session_id: str, action: PlayerAction | None, *, lang: str | None = None
+    ) -> TurnRun:
         """Guard + validate against the current position + immediate state (BLM §4.1)."""
         session = self._require_open(session_id)
         snapshot = self._snapshots.get(session.world_id)
         run = TurnRun(session_id=session_id, action=action, started_turn=session.turn)
+        if isinstance(action, DeclareAction):
+            run.lang = lang  # the narration's language (U6, FD review R-17)
         self._guard.acquire(session_id, run.id)  # TurnInProgressError -> 409
         try:
             player = self._repo.get_player(session_id)
@@ -171,6 +221,14 @@ class TurnAdvancer(SessionAppService):
                 if player is None:
                     raise InvalidActionError("session has no player")
                 option = movement.validate_action(snapshot, player, action, self._params)
+                if isinstance(action, DeclareAction):  # BR-U6-5: the service's 400
+                    declared = action.text.strip()
+                    if not declared:
+                        raise InvalidActionError("empty declaration")
+                    if len(declared) > self._params.declare_max_chars:
+                        raise InvalidActionError(
+                            f"declaration too long (max {self._params.declare_max_chars})"
+                        )
             run.cost_turns = movement.action_cost(action, option)
             with self._repo.uow() as u:
                 if player is not None and action is not None:
@@ -185,6 +243,19 @@ class TurnAdvancer(SessionAppService):
                         player.turns_spent += run.cost_turns
                         u.players.update_player(player)
                         names = {r.id: r.name for r in snapshot.topo.regions}
+                        arrival = (  # U6: the arrival is a deed (BR-U6-1); a failed run
+                            # with no turn advanced deletes it again (BR-U6-36)
+                            self._deeds.arrival(
+                                u,
+                                session,
+                                player,
+                                snapshot.regions_by_id[to_id],
+                                snapshot,
+                                run_id=run.id,
+                            )
+                            if self._deeds is not None
+                            else None
+                        )
                         u.timeline.append_timeline(
                             self._entry(
                                 session,
@@ -199,6 +270,7 @@ class TurnAdvancer(SessionAppService):
                                     "region_id": to_id,
                                     "region_name": names.get(to_id, to_id),
                                     "cost_turns": run.cost_turns,
+                                    "deed_id": arrival.id if arrival is not None else None,
                                 },
                             )
                         )
@@ -219,6 +291,10 @@ class TurnAdvancer(SessionAppService):
                                 },
                             )
                         )
+                    elif isinstance(action, DeclareAction):  # U6: narrated in the run
+                        run.turns_charged = 1
+                        player.turns_spent += 1
+                        u.players.update_player(player)
                     elif isinstance(action, EndTalkAction):  # closes a conversation (U5)
                         run.turns_charged = 1
                         player.turns_spent += 1
@@ -282,14 +358,21 @@ class TurnAdvancer(SessionAppService):
     def _run_turns(self, run: TurnRun, *, promotion_threshold: float) -> ActionResult:
         results: list[TurnResult] = []
         used, exhausted, failed = 0, False, False
-        for _ in range(run.cost_turns):
+        prep = _Prep()
+        for i in range(run.cost_turns):
             # Re-check OPEN at every turn boundary: `close_session`'s idle check is a
             # check, not a lock, so a session closed in the gap (or by the CLI, which
             # cannot share this process's guard) must stop the loop instead of writing
             # rumors and turns into a closed session (code review U4-2 #11).
             session = self._require_open(run.session_id)
             budget = LlmBudget(self._params.max_llm_calls_per_turn)
-            tr = self._one_turn(session, budget, promotion_threshold)
+            if i == 0:
+                # U6 (BLM §0.1): narration / appraisal before turn 1, reserved first from
+                # turn 1's budget (Q2=A). A failed prep call trips this turn's breaker.
+                prep = self._prepare(run, session, budget)
+            tr = self._one_turn(
+                session, budget, promotion_threshold, llm_failed=i == 0 and prep.llm_failed
+            )
             results.append(tr)
             used += tr.llm_calls
             exhausted |= tr.budget_exhausted
@@ -308,8 +391,96 @@ class TurnAdvancer(SessionAppService):
             narration=narrate(changes),
             llm_calls=used,
             budget_exhausted=exhausted,
-            llm_failed=failed,
+            llm_failed=failed or prep.llm_failed,
             llm_available=self.llm_available,
+            declaration=prep.declaration,
+        )
+
+    # -- U6 prep step (BLM §0.1, §2.2, §3.2) -----------------------------------
+    def _prepare(self, run: TurnRun, session: GameSession, budget: LlmBudget) -> _Prep:
+        """The LLM work an action needs before its turn, outside any transaction."""
+        action = run.action
+        if not isinstance(action, (DeclareAction, EndTalkAction)):
+            return _Prep()
+        player = self._repo.get_player(session.id)
+        snapshot = self._snapshots.get(session.world_id)
+        region = snapshot.regions_by_id.get(player.region_id) if player is not None else None
+        if player is None or region is None:
+            return _Prep()
+        if isinstance(action, DeclareAction):
+            return self._narrate(run, session, player, region, snapshot, action, budget)
+        if self._dialogue is None or self._deeds is None:
+            return _Prep()
+        npc = movement.find_npc(snapshot, action.npc_id)
+        if npc is None:
+            return _Prep()
+        outcome = self._dialogue.appraise(session.id, npc.id, budget=budget)
+        if outcome.llm_calls and not outcome.llm_failed:
+            self._deeds.record_appraisal(run, session, player, region, npc, outcome)
+        return _Prep(llm_failed=outcome.llm_failed)
+
+    def _narrate(
+        self,
+        run: TurnRun,
+        session: GameSession,
+        player: Player,
+        region: Region,
+        snapshot: WorldSnapshot,
+        action: DeclareAction,
+        budget: LlmBudget,
+    ) -> _Prep:
+        declared = action.text.strip()
+        lang = run.lang or self._default_lang
+        failed = False
+        if self._narrator is None or budget.exhausted:  # no LLM, or a zero budget (R-04)
+            narration = gm_narrator.fallback(
+                declaration=declared, player_name=player.name, lang=lang
+            )
+        else:
+            budget.take(1)
+            try:
+                narration = self._narrator.narrate(
+                    declaration=declared,
+                    scene=self._scene(session, player, region, snapshot),
+                    lang=lang,
+                )
+            except Exception:
+                logger.exception("narration failed for run %s", run.id)
+                narration = gm_narrator.fallback(
+                    declaration=declared, player_name=player.name, lang=lang, llm_calls=1
+                )
+                failed = True
+        if self._deeds is not None:
+            self._deeds.record_declaration(
+                run,
+                session,
+                player,
+                region,
+                movement.npcs_here(snapshot, region.id),
+                narration,
+                declared,
+            )
+        return _Prep(declaration=narration, llm_failed=failed)
+
+    def _scene(
+        self, session: GameSession, player: Player, region: Region, snapshot: WorldSnapshot
+    ) -> SceneBrief:
+        """This region only: name, description, people, a few facts and rumors (BR-U6-26)."""
+        facts: list = []
+        rumors: list[SessionRumor] = []
+        if self._region_knowledge is not None:
+            src = self._region_knowledge.region_sources(
+                session.id, region.id, session=session, snapshot=snapshot
+            )
+            facts = pick_facts(src.facts, SCENE_FACTS)
+            rumors = pick_rumors(src.rumors, SCENE_RUMORS)
+        return SceneBrief(
+            player_name=player.name,
+            region_name=region.name,
+            description=region.description or "",
+            npcs=movement.npcs_here(snapshot, region.id),
+            facts=facts,
+            rumors=rumors,
         )
 
     def _finish(self, run: TurnRun, result: ActionResult) -> None:
@@ -343,6 +514,11 @@ class TurnAdvancer(SessionAppService):
                     if advanced == 0 and run.from_region_id is not None:
                         player.region_id = run.from_region_id  # the move never happened
                     u.players.update_player(player)
+            if advanced == 0 and self._deeds is not None:
+                # U6 (BR-U6-36): the run never happened, so neither did its deeds — the
+                # arrival of an undone move, a declaration, a talk's statement and their
+                # appraisals. Their timeline lines stay as an audit trail (N6-4).
+                u.deeds.delete_by_run(run.session_id, run.id)
             session = u.sessions.get_session(run.session_id)
             if session is not None:
                 u.timeline.append_timeline(
@@ -368,7 +544,12 @@ class TurnAdvancer(SessionAppService):
 
     # -- one turn ------------------------------------------------------------
     def _one_turn(
-        self, session: GameSession, budget: LlmBudget, promotion_threshold: float
+        self,
+        session: GameSession,
+        budget: LlmBudget,
+        promotion_threshold: float,
+        *,
+        llm_failed: bool = False,
     ) -> TurnResult:
         """Compute -> draft -> store (BLM §4.3). Step order inside the store phase is
         the pre-U4 sequence: feedback → reinforce/decay → prune → promotion
@@ -383,8 +564,19 @@ class TurnAdvancer(SessionAppService):
         drafts: dict[str, list] = {}
         skipped: list[str] = []
         capped: list[str] = []
-        llm_failed = False
         rumor_service = self._rumors
+        # One quota for seeds, spread and canonical drafts (U6 BR-U6-15, TP-U6-8).
+        quota = RegionQuota(
+            Counter(r.region_id for r in self._repo.list_rumors(session.id)),
+            self._params.max_active_rumors_per_region,
+        )
+        # (b1) deed seeds — no LLM (BR-U6-14)
+        seeds = self._draft_seeds(session, snapshot, events, quota)
+        # (b2) deed spread — before canonical drafts in the budget (Q2=A, BR-U6-21)
+        spreads, llm_failed = self._draft_spread(
+            session, snapshot, budget, quota, seeds, llm_failed=llm_failed
+        )
+        # (b3) canonical drafts with what is left of the budget
         if rumor_service is not None and rumor_service.llm_available:
             # Q6: without a provider the deterministic steps still run
             for region_id in sorted(events.target_regions):
@@ -408,9 +600,11 @@ class TurnAdvancer(SessionAppService):
                     max_new=self._params.max_new_rumors_per_region_turn,
                     max_active=self._params.max_active_rumors_per_region,
                     min_source_support=self._params.min_source_support,
+                    reserved=quota.reserved(region_id),
                 )
                 if new:
                     drafts[region_id] = new
+                    quota.add(region_id, len(new))
                 if reason == SKIP_CAPPED:
                     capped.append(region_id)
                 elif reason == SKIP_BUDGET:
@@ -440,13 +634,19 @@ class TurnAdvancer(SessionAppService):
             for region_id, new_rumors in drafts.items():
                 u.rumors.upsert_rumors(new_rumors)
                 added_by_region[region_id] = [r.id for r in new_rumors]
+            newborn_deed_ids = self._store_deed_rumors(u, session, snapshot, seeds, spreads)
+            for r in [rumor for _ap, rumor in seeds] + [rumor for rumor, _t in spreads]:
+                added_by_region.setdefault(r.region_id, []).append(r.id)
 
             rumors = u.rumors.list_rumors(session.id)  # ACTIVE only (BR-H1-6/11)
             feedback_deltas = self._feedback.apply_feedback(session, rumors, store=u.distortions)
             reinforced = events.influenced_regions | set(feedback_deltas)  # BR-H1-2
             if events.influenced_regions:
                 dynamics.evolve_support(rumors, events.influenced_regions)
-            rumor_dynamics.decay_support(rumors, reinforced, decay=self._params.support_decay)
+            # newborn deed rumors skip this turn's decay — per rumor, not per region (R-15)
+            rumor_dynamics.decay_support(
+                rumors, reinforced, decay=self._params.support_decay, exempt_ids=newborn_deed_ids
+            )
             survivors, prunable = rumor_dynamics.partition_prunable(
                 rumors, floor=self._params.prune_floor
             )
@@ -521,7 +721,151 @@ class TurnAdvancer(SessionAppService):
             llm_failed=llm_failed,
             rumors_skipped_regions=skipped,
             rumors_capped_regions=capped,
+            seeded_rumor_ids=[r.id for _ap, r in seeds],
+            spread_rumor_ids=[r.id for r, _t in spreads],
         )
+
+    # -- U6 deed rumors (BLM §4) -----------------------------------------------
+    def _draft_seeds(
+        self,
+        session: GameSession,
+        snapshot: WorldSnapshot,
+        events: _EventApplication,
+        quota: RegionQuota,
+    ) -> list[tuple[DeedAppraisal, SessionRumor]]:
+        """(b1) Appraisals ready to seed become rumors in the deed's region — no LLM."""
+        if self._deeds is None or self._rumors is None:
+            return []
+        out: list[tuple[DeedAppraisal, SessionRumor]] = []
+        for deed, appraisal in self._deeds.seeds_ready(session.id):
+            region_id = deed.region_id
+            if region_id not in snapshot.regions_by_id or quota.full(region_id):
+                continue  # edited away, or full: try again next turn (BR-U6-15)
+            distortion = events.distortions.get(region_id)
+            if distortion is None:
+                distortion = self._repo.get_region_distortion(session.id, region_id)
+            if distortion is None:
+                distortion = DEFAULT_DISTORTION_DEGREE
+            out.append(
+                (appraisal, self._rumors.seed(session, deed, appraisal, distortion=distortion))
+            )
+            quota.add(region_id)
+        return out
+
+    def _draft_spread(
+        self,
+        session: GameSession,
+        snapshot: WorldSnapshot,
+        budget: LlmBudget,
+        quota: RegionQuota,
+        seeds: list[tuple[DeedAppraisal, SessionRumor]],
+        *,
+        llm_failed: bool,
+    ) -> tuple[list[tuple[SessionRumor, SpreadTarget]], bool]:
+        """(b2) One hop per deed rumor version per turn (BR-U6-16..22): strongest parent
+        first, at most ``max_spread_per_region_turn`` per region, one LLM call per hop.
+        A failed call trips the breaker for the rest of the turn."""
+        rumor_service = self._rumors
+        if (
+            llm_failed
+            or self._deeds is None
+            or rumor_service is None
+            or not rumor_service.llm_available
+        ):
+            return [], llm_failed
+        parents = sorted(
+            self._repo.list_rumors_by_origin(session.id), key=lambda r: (-r.support, r.id)
+        )
+        if not parents:
+            return [], llm_failed
+        reached: defaultdict[str, set[str]] = defaultdict(set)
+        for r in self._repo.list_rumors_by_origin(session.id, include_inactive=True):
+            reached[r.origin_appraisal_id or ""].add(r.region_id)
+        for appraisal, r in seeds:
+            reached[appraisal.id].add(r.region_id)
+        origin = {d.id: d.region_id for d in self._repo.list_deeds(session.id)}
+        graph = passable_both_ways(snapshot)
+        per_region: Counter[str] = Counter()
+        out: list[tuple[SessionRumor, SpreadTarget]] = []
+        for parent in parents:
+            key = parent.origin_appraisal_id
+            start = origin.get(parent.origin_deed_id or "")
+            if key is None or start is None:
+                continue
+            for target in plan_spread(
+                snapshot,
+                parent,
+                origin_region_id=start,
+                reached=reached[key],
+                tuning=self._params,
+                edges=graph,
+            ):
+                if per_region[target.region_id] >= self._params.max_spread_per_region_turn:
+                    continue
+                if quota.full(target.region_id):
+                    continue
+                if budget.exhausted:
+                    return out, llm_failed
+                budget.take(1)
+                child = rumor_service.spread(session, parent, target)
+                if child is None:  # circuit breaker (NFR R-02, BR-U6-22)
+                    return out, True
+                out.append((child, target))
+                reached[key].add(target.region_id)
+                per_region[target.region_id] += 1
+                quota.add(target.region_id)
+        return out, llm_failed
+
+    def _store_deed_rumors(
+        self,
+        u,
+        session: GameSession,
+        snapshot: WorldSnapshot,
+        seeds: list[tuple[DeedAppraisal, SessionRumor]],
+        spreads: list[tuple[SessionRumor, SpreadTarget]],
+    ) -> set[str]:
+        """(c) Save this turn's seeds and hops with their timeline lines; return their ids
+        (they skip this turn's decay)."""
+        names = {r.id: r.name for r in snapshot.topo.regions}
+        for appraisal, rumor in seeds:
+            u.rumors.upsert_rumors([rumor])
+            u.deeds.mark_seeded(session.id, appraisal.id, rumor.id)
+            teller: NPC | None = movement.find_npc(snapshot, appraisal.npc_id)
+            u.timeline.append_timeline(
+                self._entry(
+                    session,
+                    TimelineKind.DEED_SEEDED,
+                    f"deed rumor born in {names.get(rumor.region_id, rumor.region_id)}",
+                    {
+                        "deed_id": appraisal.deed_id,
+                        "appraisal_id": appraisal.id,
+                        "npc_name": teller.name if teller is not None else appraisal.npc_id,
+                        "rumor_id": rumor.id,
+                        "region_id": rumor.region_id,
+                        "region_name": names.get(rumor.region_id, rumor.region_id),
+                    },
+                )
+            )
+        for rumor, target in spreads:
+            u.rumors.upsert_rumors([rumor])
+            u.timeline.append_timeline(
+                self._entry(
+                    session,
+                    TimelineKind.RUMOR_SPREAD,
+                    f"rumor spread {target.from_region_id} -> {target.region_id}",
+                    {
+                        "deed_id": rumor.origin_deed_id,
+                        "rumor_id": rumor.id,
+                        "from_region_id": target.from_region_id,
+                        "from_region_name": names.get(target.from_region_id, target.from_region_id),
+                        "region_id": target.region_id,
+                        "region_name": names.get(target.region_id, target.region_id),
+                        "weight": round(target.weight, 4),
+                        "degree": round(target.degree, 4),
+                    },
+                )
+            )
+        return {r.id for _ap, r in seeds} | {r.id for r, _t in spreads}
 
     # -- internals -----------------------------------------------------------
     def _compute_events(self, session: GameSession, snapshot: WorldSnapshot) -> _EventApplication:

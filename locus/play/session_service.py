@@ -14,6 +14,8 @@ and writes no timeline entry (code-plan R-09).
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from locus.knowledge.cache import SnapshotSource
 from locus.play.errors import InvalidActionError
 from locus.play.models import (
@@ -29,6 +31,9 @@ from locus.play.ports import PlayRepository
 from locus.play.turn.guard import TurnGuard
 from locus.shared.models import WorldSnapshot
 
+if TYPE_CHECKING:  # wired by assemble_play
+    from locus.play.deeds.service import DeedService
+
 
 class WorldNotFoundError(LookupError):
     """Raised when starting a session for a world with no canonical data."""
@@ -40,10 +45,13 @@ class SessionService:
         repo: PlayRepository,
         snapshots: SnapshotSource,
         guard: TurnGuard | None = None,
+        *,
+        deeds: DeedService | None = None,
     ) -> None:
         self._repo = repo
         self._snapshots = snapshots
         self._guard = guard if guard is not None else TurnGuard()
+        self._deeds = deeds  # U6: the start region's arrival is the first deed (BR-U6-1)
 
     def start_session(self, world_id: str) -> GameSession:
         """GM session without a player (pre-U4 contract; no timeline entry)."""
@@ -70,6 +78,11 @@ class SessionService:
             )
             for r in snapshot.topo.regions:
                 u.distortions.set_region_distortion(session.id, r.id, DEFAULT_DISTORTION_DEGREE)
+            arrival = (
+                self._deeds.arrival(u, session, created, region, snapshot)
+                if self._deeds is not None
+                else None
+            )
             u.timeline.append_timeline(
                 TimelineEntry(
                     session_id=session.id,
@@ -81,6 +94,7 @@ class SessionService:
                         "player_name": created.name,
                         "region_id": region.id,
                         "region_name": region.name,
+                        "deed_id": arrival.id if arrival is not None else None,
                     },
                 )
             )

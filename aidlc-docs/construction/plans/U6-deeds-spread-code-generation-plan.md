@@ -186,7 +186,7 @@
   - 출력 상한 예제
 
 ### Step 6 — 턴 엔진과 조립
-- [ ] 6.1 `TurnAdvancer.__init__(..., *, guard, executor, deeds: DeedService | None = None, dialogue: NpcDialogueService | None = None, narrator: GmNarrator | None = None, region_knowledge: SessionKnowledgeService | None = None)`.
+- [x] 6.1 `TurnAdvancer.__init__(..., *, guard, executor, deeds: DeedService | None = None, dialogue: NpcDialogueService | None = None, narrator: GmNarrator | None = None, region_knowledge: SessionKnowledgeService | None = None)`.
   - `advance(session_id, action=None, *, promotion_threshold, lang=None)`, `begin(..., lang=None)`, `_start(session_id, action, lang)`
   - `_start`
     - `DeclareAction` 검증(BR-U6-5, 400)을 하고, 1턴을 청구하고, `run.lang`을 둔다.
@@ -198,32 +198,32 @@
     - `api/routers/play.py:126`(act)
     - 기본값으로 그대로 도는 곳: 테스트 직접 생성 `test_player_mode.py:425`·`:582`(TurnAdvancer), `test_player_mode.py:641`·`tests/play/test_service.py:26`(SessionService), CLI `locus/__main__.py:83`(SessionService)
     - CLI는 `deeds` 없이 세션을 닫기만 하므로 도착 행적과 무관하다.
-- [ ] 6.2 `TurnAdvancer._prepare(run, budget) -> PrepResult(declaration, llm_failed)`(BLM §0.1)
+- [x] 6.2 `TurnAdvancer._prepare(run, budget) -> PrepResult(declaration, llm_failed)`(BLM §0.1)
   - `_run_turns`가 턴 1의 예산을 루프 전에 만든다.
   - 예산이 0이면 대체 동작이다(R-04).
   - 준비 실패는 그 턴의 `llm_failed`를 세운다(R-01). `_one_turn(..., llm_failed=prep.llm_failed)` 인자로 넘겨 전파와 캐노니컬을 건너뛴다.
   - `ActionResult.declaration`과 `llm_failed`를 합친다.
-- [ ] 6.3 `_fail`: `advanced == 0`이면 같은 UoW에서 `deeds.delete_by_run(session_id, run.id)`를 부른다(BR-U6-36). 타임라인 줄은 남긴다(N6-4).
-- [ ] 6.4 `_one_turn`(BLM §4)
+- [x] 6.3 `_fail`: `advanced == 0`이면 같은 UoW에서 `deeds.delete_by_run(session_id, run.id)`를 부른다(BR-U6-36). 타임라인 줄은 남긴다(N6-4).
+- [x] 6.4 `_one_turn`(BLM §4)
   - `RegionQuota`를 만든다.
   - (b1) 씨앗: `RumorService.seed`를 쓰고 LLM은 0회다.
   - (b2) 전파: 부모 정렬, `plan_spread`, 지역·턴 상한, 할당, 회로 차단을 거친다. `RumorService.spread`는 LLM 1회다.
   - (b3) 캐노니컬: `append_for_turn(..., reserved=quota.reserved(region))`
   - (c) 저장: 씨앗·전파 upsert, `mark_seeded`, `DEED_SEEDED`·`RUMOR_SPREAD`, 새 행적 소문 id를 `exempt_ids`로 넘긴다.
   - `TurnResult`에 id들을 채우고 `rumors_added`에도 넣는다.
-- [ ] 6.5 `RumorService`
+- [x] 6.5 `RumorService`
   - `seed(session, deed, ap, *, distortion)`: 순수 조립이다.
   - `spread(session, parent, target) -> SessionRumor | None`
   - `append_for_turn(..., reserved: int = 0)`: `room = max_active - len(active) - reserved`
   - `_collect_sources`: 기존 소문 가운데 `origin_kind == "canonical"`만 쓴다(BR-U6-35).
   - `regenerate_region`: `dropped`에 `origin_kind == "canonical"` 조건을 더한다(BR-U6-29).
-- [ ] 6.6 `EventService.__init__(..., deeds: DeedService | None = None)`: `suggest_events`가 `recent(…, 5)`로 `context`를 채운다(BR-U6-31). 호출처는 `wiring.py:114`와 `test_player_mode.py:996`(기본값으로 그대로)이다.
-- [ ] 6.7 `locus/play/wiring.py`
+- [x] 6.6 `EventService.__init__(..., deeds: DeedService | None = None)`: `suggest_events`가 `recent(…, 5)`로 `context`를 채운다(BR-U6-31). 호출처는 `wiring.py:114`와 `test_player_mode.py:996`(기본값으로 그대로)이다.
+- [x] 6.7 `locus/play/wiring.py`
   - 조립 순서: `DeedService` → `SessionKnowledgeService` → `NpcDialogueService(deeds=…)` → `GmNarrator`(LLM이 있을 때) → `TurnAdvancer(..., deeds, dialogue, narrator, region_knowledge)` → `SessionService(deeds=…)` → `EventService(deeds=…)`
   - `PlayContainer.deeds`를 더한다.
   - `locus/play/__init__.py`에 공개 이름을 더한다.
   - `tests/play/helpers.py::compose_play`도 같은 단계에서 맞춘다.
-- [ ] 6.8 테스트 `tests/play/test_deed_turns.py`
+- [x] 6.8 테스트 `tests/play/test_deed_turns.py`
   - EX-1(세션 시작·이동 도착 행적), EX-2(선언: 서술 1회·`ACTION_DECLARED`·1턴; LLM 없음 대체)
   - EX-6 통합(US-6.5: A 씨앗 → B → C, 막힌 길 제외, B NPC 컨텍스트에 소문)
   - EX-7(상한), EX-8(예산 2: 전파가 먼저), EX-9(전파 실패 → 캐노니컬 없음)

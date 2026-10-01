@@ -13,6 +13,7 @@ from locus.play.deeds.service import DeedService
 from locus.play.distortion_service import DistortionService
 from locus.play.event.service import EventService
 from locus.play.event.suggester import EventSuggester
+from locus.play.gm.narrator import GmNarrator
 from locus.play.npc.dialogue import NpcDialogueService
 from locus.play.player.service import PlayService
 from locus.play.ports import PlayRepository
@@ -94,11 +95,37 @@ def assemble_play(
     )
     feedback = RumorFeedbackService(store, tuning)
     deeds = DeedService(store, loader, tuning=tuning)  # U6: the one writer of deeds
-    turns = TurnAdvancer(store, loader, rumors, feedback, tuning, guard=guard, executor=executor)
     region_knowledge = SessionKnowledgeService(store, loader, knowledge.params)
+    # One LLM speaks for the NPCs and the GM: dialogue, deed appraisal and narration
+    # (U6 code-plan review R-02 — `dialogue_llm` is the single injection point).
+    voice_llm = dialogue_llm if dialogue_llm is not None else shared.llm
+    dialogue = NpcDialogueService(
+        store,
+        loader,
+        region_knowledge,
+        voice_llm,
+        tuning,
+        default_lang=shared.settings.translation_target_lang,
+        supported_langs=shared.settings.supported_langs,
+        deeds=deeds,
+    )
+    turns = TurnAdvancer(
+        store,
+        loader,
+        rumors,
+        feedback,
+        tuning,
+        guard=guard,
+        executor=executor,
+        deeds=deeds,
+        dialogue=dialogue,
+        narrator=GmNarrator(voice_llm) if voice_llm is not None else None,
+        region_knowledge=region_knowledge,
+        default_lang=shared.settings.translation_target_lang,
+    )
     container = PlayContainer(
         repo=store,
-        sessions=SessionService(store, loader, guard),
+        sessions=SessionService(store, loader, guard, deeds=deeds),
         distortions=DistortionService(store),
         region_knowledge=region_knowledge,
         feedback=feedback,
@@ -115,17 +142,8 @@ def assemble_play(
         guard=guard,
         executor=executor,
         rumors=rumors,
-        events=EventService(store, loader, suggester=suggester),
-        dialogue=NpcDialogueService(
-            store,
-            loader,
-            region_knowledge,
-            dialogue_llm if dialogue_llm is not None else shared.llm,
-            tuning,
-            default_lang=shared.settings.translation_target_lang,
-            supported_langs=shared.settings.supported_langs,
-            deeds=deeds,
-        ),
+        events=EventService(store, loader, suggester=suggester, deeds=deeds),
+        dialogue=dialogue,
         deeds=deeds,
     )
     return container

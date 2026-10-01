@@ -3662,3 +3662,50 @@ Orchestrator evidence for the gate (read-only): `docker compose config` (Compose
 - R-06 → Accepted risk (code: port variables in env.example and the compose header; docs add `--profile tools` to down)
 
 ---
+
+## U8 Code Generation Part 1 — plan and Plan Review request
+**Timestamp**: 2026-10-01T14:03:33Z
+**AI Response**: Wrote `construction/plans/U8-demo-deploy-docs-code-generation-plan.md`: 17 steps.
+- Steps: baseline and corrections; shared seed model and storage; World File event_seeds; region-delete seeds; demo as data (manifest, sources, CLI, check_packaged, package-data, Aldermoor to fixtures); Emberleaf content and tests; SeedService and GM routes; capabilities and the 503 sweep; U3 carry backend; U8 frontend; U3 carry frontend; deploy (compose, images, nginx, env, react-router, CI); metadata; docs; live scenario; verification; gate.
+- Carry tables: FD R-05/R-12/R-13; Infra R-01..R-06; U3 code-review-01 #10, #12–#15, S01–S32, C1–C17, docs and design memos.
+Checked: Neo4j `upsert_edges` merges properties (`SET r += props`), so #13(b) adds a `replace_edges` port.
+Plan Review requested: architecture-reviewer, adversarial, iteration 1 of ≤2.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 1.
+
+---
+
+## U8 Code Generation Part 1 — Plan Review iteration 1 verdict
+**Timestamp**: 2026-10-01T14:07:53Z
+**AI Response**: Reviewer (architecture-reviewer, adversarial, iter 1) returned READY with six open findings (`plans/reviews/U8-demo-deploy-docs-code-generation-plan-review-01.md`):
+- R-01 Major: Aldermoor moves before the manifest swap; the CLI/API tests have no fixture path.
+- R-02 Major: the image check runs from `/app`, which shadows the installed package; the accessor is unnamed.
+- R-03..R-06 Minor: port implementations unlisted; TP-U8-6 scope and leftover names; carry sub-steps too coarse; no react-router fallback.
+Terminal verdict: plan frozen.
+Orchestrator evidence for R-06 (read-only): `npm audit` says both advisories (GHSA-wrjc-x8rr-h8h6 open redirect via backslash in Link/useNavigate; GHSA-337j-9hxr-rhxg SSR hydration) cover >=6.0.0 <7.18.0. The newest 6.x is 6.30.6, so the fix needs react-router(-dom) 7.18.x (semver-major). The app uses only declarative APIs on React 18.3. This becomes a human decision at the gate.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 1, gate next.
+
+---
+
+## U8 Code Generation Part 1 — approval prompt
+**Timestamp**: 2026-10-01T14:08:04Z
+**AI Response**: Asking for approval of `construction/plans/U8-demo-deploy-docs-code-generation-plan.md` (17 steps), with the Review brief (six open findings) and a separate react-router decision (R-06: no fixed 6.x; the fix needs 7.18.x).
+**Context**: CONSTRUCTION / U8 — Code Generation Part 1 gate.
+
+---
+
+## U8 Code Generation Part 1 — approval
+**Timestamp**: 2026-10-01T14:13:15Z
+**User Input**: Gate = "Approve & Continue (Recommended)"; react-router = "A. v7.18로 올린다 (Recommended)"
+**AI Response**: Plan approved. The six open findings are recorded as execution notes in the plan. Next: Code Generation Part 2, Step 1.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 1 complete.
+
+## Plan Review Dispositions — Code Generation Part 1 — U8 데모·배포·문서
+**Timestamp**: 2026-10-01T14:13:15Z
+- R-01 → Accepted risk (execution note: Step 6 before 5.6; fixture injection)
+- R-02 → Accepted risk (execution note: check from the installed copy with `-w /tmp` and `python -I`; `DemoWorlds.problems`)
+- R-03 → Accepted risk (execution note: ports and every implementation listed)
+- R-04 → Accepted risk (execution note: leftover names; search scope)
+- R-05 → Accepted risk (execution note: 9a–9e and 11a–11c commits; call-site counts)
+- R-06 → Accepted risk (the human's decision: react-router-dom 7.18.x)
+
+---

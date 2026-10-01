@@ -286,3 +286,36 @@
     - `gm.test` 2(S13, S14: GmPage를 라우터로 s1→s2)
   - 변이 7건 모두 잡음: S02 둘, S04, S08, S13, S14 둘
   - 게이트: vitest 197, tsc clean
+- **Step 12** (배치, Infra-light)
+  - 12.1 기준선: ruff·black·tsc clean. `npm ci`가 lock 그대로 된다(202 패키지).
+  - 12.2 `docker-compose.yml`
+    - 인프라 포트를 `127.0.0.1:${VAR:-기본값}`으로 연다(`NEO4J_HTTP_PORT`, `NEO4J_BOLT_PORT`, `OPENSEARCH_PORT`, `SESSION_DB_PORT`, `DASHBOARD_PORT`).
+    - dashboard는 `tools` 프로필로 옮겼다.
+    - web healthcheck: `wget -q --spider http://127.0.0.1/`
+    - 머리 주석: 다섯 서비스·세 프로필·준비 명령·멈춤 명령·포트 변수. 키 없이도 뜬다는 문구도 넣었다.
+    - `docker compose config`로 확인했다: 기본 프로필 3, `service`+`tools` 6, 포트 변수 적용.
+  - 12.3 이미지
+    - `.dockerignore`에 `web`·`scripts`
+    - `web/Dockerfile`: `node:22-alpine`, `npm ci`(lock 필수)
+    - `web/.dockerignore`에 `tsconfig*.tsbuildinfo`
+    - `web/nginx.conf`: `client_max_body_size 49m`
+  - 12.4 `env.example`
+    - 머리말 중복을 지우고 필수 두 값을 앞에 적었다. 키는 없어도 된다는 안내를 넣었다.
+    - 포트 변수 주석을 넣었다(호스트 uvicorn이면 URL도 같은 번호로).
+    - `scripts/setup-volumes.sh`의 다음 단계 문구를 실제 프로필과 멈춤 명령으로 고쳤다.
+  - 12.5 react-router
+    - `react-router-dom` 6.30.6 → 7.18.4(사람의 결정 A). 고친 곳은 `package.json`·lock뿐이고, 라우터 밖으로 번진 수정은 없다.
+    - tsc clean, vitest 197. `npm audit --omit=dev`는 0건이다.
+    - 〔관찰〕 전체 `npm audit`에는 dev 의존성 4건(browserslist 등, moderate 3·high 1)이 있다. 게이트(`--omit=dev`, FD Q5=A) 밖이라 이 단계에서는 손대지 않았다.
+  - 12.6 `.github/workflows/ci.yml`
+    - 네 작업: backend, frontend, audit, images
+    - backend는 seed를 찍고 `--hypothesis-seed`로 넘긴다.
+    - npm 캐시는 `cache-dependency-path: web/package-lock.json`이다.
+    - `concurrency`로 같은 ref의 앞선 실행을 취소한다. 권한은 `contents: read`이다.
+    - images 작업은 데모를 설치본에서 확인한다(`-w /tmp`, `python -I`, `site-packages` 단언, `check_packaged()`). `import api.main`은 `/app`에서 따로 본다.
+    - push와 첫 실행 확인은 사람이 한다.
+  - 12.7 로컬 확인
+    - `docker build`(app·web)가 된다.
+    - app 이미지 안: `check_packaged()` 문제 0, `import api.main` 됨
+    - web 이미지: `app` 호스트를 주면 `nginx -t`가 통과한다. 컨테이너 안에서 healthcheck 명령이 성공한다.
+    - 확인용 이미지는 지웠다. 실제 compose 기동은 라이브 시나리오 1단계(운영자, Infra R-01)다.

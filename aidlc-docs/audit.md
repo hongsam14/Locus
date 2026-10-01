@@ -3877,3 +3877,24 @@ Intended test changes: home demo button, `llm-banner`, the dialogue 503 body. 17
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 11c.
 
 ---
+
+## U8 Code Generation Part 2 — Step 12 (deploy)
+**Timestamp**: 2026-10-01T15:48:40Z
+**AI Response**: Changed:
+- Compose: infra ports on 127.0.0.1 with port variables; dashboard in the `tools` profile; web healthcheck on 127.0.0.1; header comment.
+- `.dockerignore` excludes web and scripts. Web image uses node:22-alpine and `npm ci`; nginx 49m.
+- `env.example` and the setup-volumes text fixed.
+- react-router-dom 7.18.4 (choice A); package files only.
+- `npm audit --omit=dev`: 0. Observation: 4 dev-only advisories remain outside the gate.
+- `.github/workflows/ci.yml`: backend, frontend, audit and images jobs.
+
+Checked locally:
+- `docker compose config` resolves the profiles and ports.
+- Both images build.
+- `check_packaged()` reports [] inside the installed app, and `import api.main` works.
+- `nginx -t` passes and the healthcheck command succeeds in the web container.
+
+Live compose up stays with the operator (Infra R-01).
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 12.
+
+---

@@ -6,8 +6,8 @@
 **/__pycache__
 *.pyc
 data
-web/node_modules
-web/dist
+web
+scripts
 aidlc-docs
 tests
 .env

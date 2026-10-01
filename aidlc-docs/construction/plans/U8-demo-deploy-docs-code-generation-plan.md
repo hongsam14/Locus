@@ -202,13 +202,13 @@
 - [x] 11.4 테스트: 항목마다 하나 이상(jsdom이 재현하지 못하는 S23·S24는 핸들러 단위로).
 
 ### Step 12 — 배치 (Infra-light)
-- [ ] 12.1 로컬 기준선: ruff, black --check, tsc, `npm ci`(Infra R-05).
-- [ ] 12.2 `docker-compose.yml`: 인프라 포트 `127.0.0.1:${VAR:-n}`(NEO4J_HTTP_PORT, NEO4J_BOLT_PORT, OPENSEARCH_PORT, SESSION_DB_PORT, DASHBOARD_PORT), dashboard는 `tools` 프로필, web healthcheck `wget -q --spider http://127.0.0.1/`(R-02), 머리 주석(다섯 서비스·세 프로필·준비 명령·포트 변수, R-06). bind mount는 그대로(Q1=B).
-- [ ] 12.3 `.dockerignore`에 `web`, `scripts`. `web/Dockerfile` `node:22-alpine` + `npm ci`. `web/.dockerignore`에 `tsconfig*.tsbuildinfo`(R-05). `web/nginx.conf` `client_max_body_size 49m`(R-03).
-- [ ] 12.4 `env.example`: 머리말 중복 삭제, 포트 변수 주석(R-06). `scripts/setup-volumes.sh` 안내 문구(실제 프로필).
-- [ ] 12.5 react-router를 고친 판으로 올린다. `npm audit --omit=dev` 0건.
-- [ ] 12.6 `.github/workflows/ci.yml`: backend·frontend·audit·images(Infra §5). seed 기록, `cache-dependency-path`, `concurrency`.
-- [ ] 12.7 로컬 확인: `docker build`(app·web)와 이미지 안 `check_packaged()`·`import api.main`(이 호스트에서 빌드는 된다).
+- [x] 12.1 로컬 기준선: ruff, black --check, tsc, `npm ci`(Infra R-05).
+- [x] 12.2 `docker-compose.yml`: 인프라 포트 `127.0.0.1:${VAR:-n}`(NEO4J_HTTP_PORT, NEO4J_BOLT_PORT, OPENSEARCH_PORT, SESSION_DB_PORT, DASHBOARD_PORT), dashboard는 `tools` 프로필, web healthcheck `wget -q --spider http://127.0.0.1/`(R-02), 머리 주석(다섯 서비스·세 프로필·준비 명령·포트 변수, R-06). bind mount는 그대로(Q1=B).
+- [x] 12.3 `.dockerignore`에 `web`, `scripts`. `web/Dockerfile` `node:22-alpine` + `npm ci`. `web/.dockerignore`에 `tsconfig*.tsbuildinfo`(R-05). `web/nginx.conf` `client_max_body_size 49m`(R-03).
+- [x] 12.4 `env.example`: 머리말 중복 삭제, 포트 변수 주석(R-06). `scripts/setup-volumes.sh` 안내 문구(실제 프로필).
+- [x] 12.5 react-router를 고친 판으로 올린다. `npm audit --omit=dev` 0건.
+- [x] 12.6 `.github/workflows/ci.yml`: backend·frontend·audit·images(Infra §5). seed 기록, `cache-dependency-path`, `concurrency`.
+- [x] 12.7 로컬 확인: `docker build`(app·web)와 이미지 안 `check_packaged()`·`import api.main`(이 호스트에서 빌드는 된다).
 
 ### Step 13 — 메타 (BR-U8-29·30·31)
 - [ ] 13.1 `pyproject.toml`: `license = { text = "MIT" }`, 설명(§0 영어판), `[project.urls] Repository`.

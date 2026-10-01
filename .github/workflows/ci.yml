@@ -1,0 +1,91 @@
+# Locus CI (U8 Infra §5): offline backend and frontend checks, the npm audit gate, and
+# the two images with the packaged demo checked inside the installed app. No secrets and
+# no external services: every test mocks its ports.
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Ruff
+        run: ruff check locus api tests
+      - name: Black
+        run: black --check locus api tests
+      - name: Pytest (the hypothesis seed is printed so a failure can be re-run)
+        run: |
+          SEED=$(python -c "import secrets; print(secrets.randbelow(2**32))")
+          echo "hypothesis seed: $SEED  (re-run: pytest --hypothesis-seed=$SEED)"
+          pytest -q -p no:cacheprovider --hypothesis-seed="$SEED"
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install (the lock as committed)
+        run: npm ci
+      - name: Type check
+        run: npx tsc --noEmit
+      - name: Vitest
+        run: npx vitest run
+
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: npm audit (runtime dependencies, moderate and up fail)
+        run: npm audit --omit=dev --audit-level=moderate
+
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the app image
+        run: docker build -t locus-app .
+      - name: Build the web image
+        run: docker build -t locus-web web
+      - name: The packaged demo, checked in the installed package (not the source tree)
+        run: |
+          docker run --rm -w /tmp locus-app python -I -c "
+          import locus
+          assert 'site-packages' in locus.__file__, locus.__file__
+          from locus.world.demo import check_packaged
+          problems = check_packaged()
+          print('packaged demo problems:', problems)
+          raise SystemExit(bool(problems))
+          "
+      - name: The API is in the image
+        run: docker run --rm -w /app locus-app python -c "import api.main"

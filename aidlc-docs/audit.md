@@ -3978,3 +3978,21 @@ The code summary is finalized: results, changed files, TP/EX → tests, where ea
 **Context**: CONSTRUCTION / U8 — post-approval code review decision.
 
 ---
+
+## U8 Code Review — Follow-up fixes (choice A)
+**Timestamp**: 2026-10-01T18:34:19Z
+**AI Response**: Fixed U8 review findings in follow-up commits:
+- #1: first demo load is replace=false.
+- #2: build panel kept while a build runs; one build per world (409).
+- #5(b): a failed held read schedules the next one.
+- #4: edits compared with stored values; the search document is written before the node.
+- #6: idempotent revert resume.
+- #7: one failed wiki lookup per detection.
+- #8: Issue.connection.
+- #3: live scenario ends the talk so the witness appraises; FAIL vs SKIP.
+Commits: 377e80c 6111fd2 2db1856 c2fcf4b e6b4951 54e306c.
+
+The real API with a fake LLM now passes all 15 scenario steps in-process. 30/30 mutations caught (3 after strengthening tests). FD BLM §7 and FC §2.3 corrected; earlier code-summary claims corrected (9b S03, 11c S14, Step 15). #9–#15, §3, the cleanups and the design memos are on the next-cycle list (code-summary §10). Gates: pytest 948, vitest 202, lint/tsc clean, mypy 11, audit 0.
+**Context**: CONSTRUCTION / U8 — post-approval review follow-up. Next: two deploy-facing design decisions (review memos 13 and 11), then Build and Test.
+
+---

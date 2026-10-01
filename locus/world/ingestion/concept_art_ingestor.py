@@ -1,4 +1,4 @@
-"""STATUS: in-progress — concept-art clues stay low-confidence entities and never become knowledge; image transport via API lands in U2.
+"""STATUS: in-progress — concept art: uploads reach the build (U3), but its clues stay low-confidence entities and never become knowledge; the build panel marks the field "in progress". Listed in the README's in-progress table (BR-U8-31).
 
 Concept art ingestion via VLM (US-1.4, P1) — auxiliary low-confidence clues."""
 

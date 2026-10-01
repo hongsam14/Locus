@@ -1,4 +1,4 @@
-"""STATUS: in-progress — cross-world prior search; the `domains` filter path does not match the stored `meta.domains` yet (RE A6, P2).
+"""STATUS: in-progress — cross-world prior search: the `domains` filter path does not match the stored `meta.domains` yet (RE A6, P2). Listed in the README's in-progress table (BR-U8-31).
 
 CrossWorldWikiExplorer — designer-only cross-world prior reference (FR-IM1.4).
 

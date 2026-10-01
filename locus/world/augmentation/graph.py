@@ -1,4 +1,4 @@
-"""STATUS: in-progress — LangGraph view of the detect/ask/apply loop; not wired into any service yet.
+"""STATUS: in-progress — LangGraph wrapper: a view of the detect/ask/apply loop, not wired into any service yet. Listed in the README's in-progress table (BR-U8-31).
 
 LangGraph representation of the augmentation loop (U7, AD-CL1=A).
 

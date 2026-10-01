@@ -1,4 +1,6 @@
-"""PriorDistiller — distill a world's ingestion into WikiPriors (FR-IM1.3).
+"""STATUS: in-progress — the wiki cycle: priors are distilled once per build and read by the build and the augmentation, but nothing flows back to refine them; improving that loop is the next cycle. Listed in the README's in-progress table (BR-U8-31).
+
+PriorDistiller — distill a world's ingestion into WikiPriors (FR-IM1.3).
 
 Generalized from the old real-world-only distiller: applies to any world and
 classifies each prior into the shared ``WikiDomain`` taxonomy in the same call.

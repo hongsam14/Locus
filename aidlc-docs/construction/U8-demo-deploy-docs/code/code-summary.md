@@ -319,3 +319,18 @@
     - app 이미지 안: `check_packaged()` 문제 0, `import api.main` 됨
     - web 이미지: `app` 호스트를 주면 `nginx -t`가 통과한다. 컨테이너 안에서 healthcheck 명령이 성공한다.
     - 확인용 이미지는 지웠다. 실제 compose 기동은 라이브 시나리오 1단계(운영자, Infra R-01)다.
+- **Step 13** (메타, BR-U8-29~31)
+  - `pyproject.toml`
+    - `license = { text = "MIT" }`(`LICENSE`와 같음)
+    - 설명은 목적 문장(요구사항 §0)의 영어판이다.
+    - `[project.urls] Repository`를 더했다.
+  - `requirements.txt`에 빠져 있던 셋(`sqlalchemy`, `psycopg[binary]`, `python-multipart`)을 넣어 `dependencies`와 같게 했다.
+  - `STATUS: in-progress — …` docstring을 진행 중 넷에 맞췄다.
+    - 교차 월드 prior 검색, LangGraph 래퍼: 문구를 맞췄다.
+    - 컨셉 아트: 낡은 "U2에서" 문구를 고쳤다.
+    - wiki 순환 구조(`distiller.py`): 새로 넣었다.
+    - 넷 모두 README 표를 가리킨다.
+  - TP-U8-7 `tests/test_packaging.py` 4: requirements 일치, MIT 둘, 설명과 URL, STATUS 넷
+  - 변이 4건 모두 잡음: 줄 빠짐, 버전 조건 바뀜, 라이선스, STATUS
+  - app 이미지 빌드로 메타데이터를 확인했다(`License: MIT`, `Project-URL`, `check_packaged()` []). 로컬 venv에는 setuptools가 없어 그쪽으로는 보지 못했다.
+  - 게이트: pytest 922, ruff·black clean, mypy 11

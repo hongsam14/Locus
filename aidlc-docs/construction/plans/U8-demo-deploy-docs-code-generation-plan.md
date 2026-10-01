@@ -211,9 +211,9 @@
 - [x] 12.7 로컬 확인: `docker build`(app·web)와 이미지 안 `check_packaged()`·`import api.main`(이 호스트에서 빌드는 된다).
 
 ### Step 13 — 메타 (BR-U8-29·30·31)
-- [ ] 13.1 `pyproject.toml`: `license = { text = "MIT" }`, 설명(§0 영어판), `[project.urls] Repository`.
-- [ ] 13.2 `requirements.txt` = `dependencies`. TP-U8-7(`tests/test_packaging.py`).
-- [ ] 13.3 진행 중 기능 넷의 docstring `STATUS:`: `wiki/cross_world.py`, `ingestion/concept_art_ingestor.py`, `augmentation/graph.py`(이미 있음, 문구 맞춤), `wiki/distiller.py`(wiki 순환 구조 개선 — 다음 사이클).
+- [x] 13.1 `pyproject.toml`: `license = { text = "MIT" }`, 설명(§0 영어판), `[project.urls] Repository`.
+- [x] 13.2 `requirements.txt` = `dependencies`. TP-U8-7(`tests/test_packaging.py`).
+- [x] 13.3 진행 중 기능 넷의 docstring `STATUS:`: `wiki/cross_world.py`, `ingestion/concept_art_ingestor.py`, `augmentation/graph.py`(이미 있음, 문구 맞춤), `wiki/distiller.py`(wiki 순환 구조 개선 — 다음 사이클).
 
 ### Step 14 — 문서 (BLM §5, BR-U8-28·31·32)
 - [ ] 14.1 `README.md` 전면 다시 쓰기(A8-1, Infra 시작 절: 준비 명령 + 기동 명령, 포트 덮어쓰기, `down`, 키 없이 둘러보기, 진행 중 기능 표, 개발·게이트, 디렉터리, MIT·데모 크레딧, CI 배지).

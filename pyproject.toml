@@ -5,10 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "locus"
 version = "0.1.0"
-description = "Spatial Knowledge Graph Builder for Game Worlds — region topology + region-scoped knowledge ontology for NPCs."
+# the purpose statement (requirements §0, FR-H1), in English
+description = "Locus is a solo TRPG: build a world from your setting notes, then live in it — rumors and events spread along the terrain, and the NPCs of each region know different things."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "Proprietary" }
+license = { text = "MIT" }
 authors = [{ name = "Locus" }]
 
 dependencies = [
@@ -27,6 +28,9 @@ dependencies = [
     "psycopg[binary]>=3.1,<4",
     "python-multipart>=0.0.9",
 ]
+
+[project.urls]
+Repository = "https://github.com/hongsam14/Locus"
 
 [project.optional-dependencies]
 dev = [

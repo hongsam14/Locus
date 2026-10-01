@@ -66,7 +66,10 @@ def test_tp_u3_2_delete_leaves_no_reference_and_loses_no_knowledge(
     for child in plan.children:  # children moved up, not lost
         assert after.regions_by_id[child.id].parent_id == region.parent_id
     assert _unscoped(stack) == unscoped_before | {k.id for k in plan.knowledge_to_unscope}
-    assert set(report.deleted_ids) == {region.id, *(n.id for n in plan.npcs)}
+    # U8 intended change: BR-U8-14 — the region's event seeds go with it (TP-U8-3)
+    assert set(report.deleted_ids) == {region.id, *(n.id for n in plan.npcs), *plan.seed_ids}
+    assert all(s.region_id != region.id for s in after.event_seeds)
+    assert report.seeds_deleted == len(plan.seed_ids)
 
 
 # --------------------------------------------------------------------------- #
@@ -210,7 +213,7 @@ def test_ex2_delete_riverton() -> None:
     assert [k.id for k in stack.editors.knowledge.list_unscoped("w")] == [w["k1"].id]
     assert {s.region_id for s in snap.kg.scopes if s.knowledge_id == w["k2"].id} == {w["hollow"].id}
     assert snap.kg.entities[0].located_in is None
-    assert report.model_dump(exclude={"deleted_ids"}) == plan.model_dump()
+    assert report.model_dump(exclude={"deleted_ids", "seeds_deleted"}) == plan.model_dump()
     assert all(("w", n.id) not in stack.search.docs for n in w["npcs"])
 
 
@@ -252,3 +255,32 @@ def test_unknown_region_is_a_lookup_error() -> None:
     stack, _w = _aldermoor()
     with pytest.raises(LookupError):
         stack.editors.regions.plan_region_delete("w", "nope")
+
+
+def test_ex7_a_region_delete_takes_its_seeds() -> None:
+    """EX-7 (BR-U8-14): the plan names the seed, the delete removes it between the
+    scopes (③) and the NPCs (④), and the report counts it."""
+    from locus.shared.models import EventSeed
+
+    stack, w = _aldermoor()
+    seed = EventSeed(
+        id="seed-blight",
+        world_id="w",
+        region_id=w["riverton"].id,
+        title="Blight",
+        category="plague",
+        magnitude=0.5,
+        provenance=_prov(),
+    )
+    keep = seed.model_copy(update={"id": "seed-fair", "region_id": w["hollow"].id})
+    persist_graph(stack.graph, stack.search, None, "w", seeds=[seed, keep])
+    stack.cache.invalidate("w")
+    stack.meter.calls.clear()
+    plan = stack.editors.regions.plan_region_delete("w", w["riverton"].id)
+    assert plan.seed_ids == ["seed-blight"]
+    report = stack.editors.regions.delete_region("w", w["riverton"].id)
+    assert report.seeds_deleted == 1 and "seed-blight" in report.deleted_ids
+    assert [s.id for s in stack.cache.get("w").event_seeds] == ["seed-fair"]
+    calls = stack.meter.calls
+    third = calls.index("delete_edges", calls.index("replace_nodes", 2))  # ③ scopes
+    assert calls[third + 1] == "delete_node" and calls[third + 2] == "delete"  # ③b then ④

@@ -151,9 +151,9 @@
 - [x] 3.3 테스트: TP-U8-1(왕복), TP-U8-2(재매핑), EX-5(옛 파일 → `[]`), EX-6(끊긴 씨앗 → error·`ok=false`). 기존 U2 왕복 PBT가 씨앗과 함께 GREEN.
 
 ### Step 4 — 에디터 지역 삭제의 씨앗 (BR-U8-14, TP-U8-3, EX-7)
-- [ ] 4.1 `editor/regions.py`: 계획에 `seed_ids`, ③ 뒤 ④ 앞에 그 지역 씨앗 삭제(그래프 일괄 하나), 보고 `seeds_deleted`. `editor/models.py`의 `RegionDeletePlan`·`RegionDeleteReport` 필드.
-- [ ] 4.2 U3 생성기(`editable_worlds`)에 씨앗을 더하고 TP-U3-2·2a 신탁이 `EventSeed.region_id`를 센다. 구조 단언(9 + NPC 수)은 +1로 고친다(`# U8 intended change: BR-U8-14`).
-- [ ] 4.3 테스트: TP-U8-3, EX-7, API 삭제 계획·보고 필드.
+- [x] 4.1 `editor/regions.py`: 계획에 `seed_ids`, ③ 뒤 ④ 앞에 그 지역 씨앗 삭제(그래프 일괄 하나), 보고 `seeds_deleted`. `editor/models.py`의 `RegionDeletePlan`·`RegionDeleteReport` 필드.
+- [x] 4.2 U3 생성기(`editable_worlds`)에 씨앗을 더하고 TP-U3-2·2a 신탁이 `EventSeed.region_id`를 센다. 구조 단언(9 + NPC 수)은 +1로 고친다(`# U8 intended change: BR-U8-14`).
+- [x] 4.3 테스트: TP-U8-3, EX-7, API 삭제 계획·보고 필드.
 
 ### Step 5 — 데모는 데이터다 (BLM §1, BR-U8-1~5, TP-U8-6, EX-11)
 - [ ] 5.1 `locus/world/demo/__init__.py`: `DemoSources`, `DemoInfo`(+ `start_region_id`, `credits`, `sources`), 조립 때 한 번 검사·보관(경고 한 번), `list`·`info`·`load`, `build_from_sources`가 항목 소스를 읽는다. 상수(`_DEMO_MEMO`, `_DEMO_MAP`, `_MAP_IMAGE`), `load_demo_world()`, 이름 검사를 지운다. 경로는 매니페스트 폴더 밖 거절. `importer`는 선택 인자(None이면 `load`가 RuntimeError).

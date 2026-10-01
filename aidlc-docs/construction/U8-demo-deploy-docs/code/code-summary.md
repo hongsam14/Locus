@@ -39,3 +39,11 @@
   - 테스트 4: TP-U8-1, TP-U8-2, EX-5, EX-6
   - 변이(모두 잡음): 재매핑에서 `region_id` 빼기 → TP-U8-2 실패, 참조 검사 끄기 → EX-6 실패
   - pytest 865
+- **Step 4** (지역 삭제의 씨앗)
+  - `RegionDeletePlan.seed_ids`, `RegionDeleteReport.seeds_deleted`, `deleted_ids`에 씨앗 포함
+  - 삭제 순서 ③ 스코프 뒤, ④ NPC 앞에 ③b 씨앗 노드 삭제(씨앗마다 한 번, 재시도 계획이 남은 것을 다시 찾는다)
+  - TP-U3-2 신탁(`Stack.dangling`)이 `region_id` 속성을 본다(TP-U8-3). TP-U3-2a가 씨앗과 함께 돈다(생성기가 씨앗을 뽑음).
+  - 구조 단언 "9 + NPC 수"는 씨앗 없는 EX-2 월드라 그대로다. 씨앗이 있으면 씨앗 수만큼 더한다(EX-7이 순서를 본다).
+  - 테스트: TP-U3-2 의도된 변경, EX-7 새로
+  - 변이: 씨앗 삭제를 빼면 3개 실패(잡음)
+  - pytest 866

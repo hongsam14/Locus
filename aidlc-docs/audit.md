@@ -3730,3 +3730,10 @@ Orchestrator evidence for R-06 (read-only): `npm audit` says both advisories (GH
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 3.
 
 ---
+
+## U8 Code Generation Part 2 — Step 4 (region delete takes its seeds)
+**Timestamp**: 2026-10-01T14:22:23Z
+**AI Response**: Region delete plan/report carry seed_ids/seeds_deleted; seeds go between ③ and ④. The TP-U3-2 oracle checks seed region ids (TP-U8-3). EX-7 added; mutation caught. Gates: pytest 866, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 4.
+
+---

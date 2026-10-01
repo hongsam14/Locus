@@ -105,6 +105,8 @@ class RegionEditor:
             scoped = [s.knowledge_id for s in snapshot.kg.scopes if s.region_id == region_id]
             if scoped:  # ③ scopes go, the knowledge stays
                 g.delete_edges(world_id, [_edge("SCOPED_TO", k, region_id) for k in scoped])
+            for sid in plan.seed_ids:  # ③b its event seeds (U8, BR-U8-14); a retry finds the rest
+                g.delete_node(world_id, sid)
             npc_ids = [n.id for n in plan.npcs]
             if npc_ids:  # ④ search documents, then the nodes (DETACH takes LIVES_IN)
                 self._w.unindex(world_id, npc_ids)
@@ -113,7 +115,11 @@ class RegionEditor:
             if plan.connections:  # ⑤ both directions
                 g.delete_edges(world_id, _connection_edges(plan.connections))
             g.delete_node(world_id, region_id)  # ⑥
-        return RegionDeleteReport(**plan.model_dump(), deleted_ids=[region_id, *npc_ids])
+        return RegionDeleteReport(
+            **plan.model_dump(),
+            deleted_ids=[region_id, *npc_ids, *plan.seed_ids],
+            seeds_deleted=len(plan.seed_ids),
+        )
 
     # -- read -------------------------------------------------------------- #
     def editor_view(self, world_id: str, region_id: str) -> EditorRegionView:
@@ -230,4 +236,5 @@ def _plan(snapshot: WorldSnapshot, region_id: str) -> RegionDeletePlan:
         entities_unlocated=[
             NameRef(id=e.id, name=e.name) for e in snapshot.kg.entities if e.located_in == region_id
         ],
+        seed_ids=[s.id for s in snapshot.event_seeds if s.region_id == region_id],
     )

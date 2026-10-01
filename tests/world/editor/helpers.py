@@ -113,7 +113,7 @@ class Stack:
         bad = [
             f"{n.label}.{key}={n.properties[key]}"
             for n in self.graph._nodes.values()
-            for key in ("parent_id", "located_in", "home_region_id")
+            for key in ("parent_id", "located_in", "home_region_id", "region_id")  # +seeds (U8)
             if n.properties.get(key) and n.properties[key] not in ids
         ]
         bad += [

@@ -34,13 +34,15 @@ class RegionDeletePlan(LocusModel):
     knowledge_to_unscope: list[NameRef] = Field(default_factory=list)
     knowledge_scope_removed: list[NameRef] = Field(default_factory=list)
     entities_unlocated: list[NameRef] = Field(default_factory=list)
+    seed_ids: list[str] = Field(default_factory=list)  # U8 (BR-U8-14): its event seeds go too
     blocked_by_sessions: list[str] = Field(default_factory=list)  # Q2=A, filled by the router
 
 
 class RegionDeleteReport(RegionDeletePlan):
-    """The same shape after the delete, plus the node ids removed (region + NPCs)."""
+    """The same shape after the delete, plus the node ids removed (region, NPCs, seeds)."""
 
     deleted_ids: list[str] = Field(default_factory=list)
+    seeds_deleted: int = 0
 
 
 class ConnectionView(LocusModel):

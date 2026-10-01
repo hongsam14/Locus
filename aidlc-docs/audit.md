@@ -3966,3 +3966,15 @@ The code summary is finalized: results, changed files, TP/EX → tests, where ea
 **Context**: CONSTRUCTION / U8 — Code Generation approval gate (Step 17).
 
 ---
+
+## U8 Code Review — Decision
+**Timestamp**: 2026-10-01T18:15:36Z
+**User Input**: "A. 섞는다 (Recommended)"
+**AI Response**: `code/reviews/code-review-01.md`: 15 correctness findings, all reproduced. These are fixed now as U8 follow-up commits before Build & Test (reopening approved code):
+- #1–#3 (medium)
+- #4, #6, #7, #8 (left by this unit's U3 carry fixes)
+- #5(b)
+#9–#15, §3, the cleanups and the design memos go to the next-cycle list. FD BLM §7 step 6 is corrected: appraisal happens at end_talk.
+**Context**: CONSTRUCTION / U8 — post-approval code review decision.
+
+---

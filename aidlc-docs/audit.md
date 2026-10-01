@@ -2724,3 +2724,55 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **User Input**: (continuation of "Continue to Next Stage" — U6 approved; next unit in the order U1→U2→U4→U5→U6→**U7**)
 **AI Response**: `/code-review` of the U6 diff launched in the background. Wrote `construction/plans/U7-gm-mode-hardening-functional-design-plan.md` with a current-state table (verified in code: promoted rumors count as feedback "strong" rumors and so keep their region's decay off; discards leave no timeline line; SUGGESTED events can be resolved; suggestion n has no cap and the prompt sees region ids only; regenerate deletes parents; GM timeline payloads carry no region names; consensus thresholds are not env-overridable; ConsensusParams is already built once), three questions (Q1 GM mode in/out, Q2 feedback restore/cap, Q3 player log scope) and assumptions A7-1..10. Asking Q1·Q2 first.
 **Context**: CONSTRUCTION / U7 — Functional Design Part 1.
+
+---
+
+## U7 Functional Design — answers Q1·Q2
+**Timestamp**: 2026-10-01T00:48:55Z
+**User Input**: FD-U7 Q1 = "B. 두 화면 사이 전환"; FD-U7 Q2 = "A. 복원 + 상한 둘 다 (Recommended)"
+**AI Response**: Recorded in the plan. Q1=B: the play screen's "GM 모드" button goes to `/gm/:sid`, and the GM screen gets "플레이로 돌아가기". The player state stays on the server, and the GM screen shows the player's position and turn so it stays in view. Q2=A: track the feedback share per region, restore it once strong rumors are gone, and cap it. Asking Q3 (player log scope).
+**Context**: CONSTRUCTION / U7 — Functional Design Part 1.
+
+---
+
+## U7 Functional Design — answer Q3
+**Timestamp**: 2026-10-01T01:00:51Z
+**User Input**: FD-U7 Q3 = "A. 내 행동 + 그때 있던 지역의 일 (Recommended)"
+**AI Response**: Recorded. Server-side player log filter: the player's own actions plus changes in the region the player was in on that turn; GM operations and other regions are hidden. Proceeding to FD Part 2 (artifacts).
+**Context**: CONSTRUCTION / U7 — Functional Design Part 2.
+
+---
+
+## U7 Functional Design — follow-up Q4 (feedback rule)
+**Timestamp**: 2026-10-01T01:17:29Z
+**User Input**: FD-U7 Q4 = "A. 승격 제외 + 면제 해제 + 기준 0.45 (Recommended)"
+**AI Response**: Asked a follow-up because the code showed a conflict. The feedback "strong" bar and the promotion bar are both 0.6, so excluding promoted rumors (A7-1) alone switches feedback off. Counting them instead never ends feedback, since promoted rumors do not decay, so the Q2 restore would never run. Recorded Q4=A in the plan:
+- exclude promoted rumors from feedback;
+- feedback regions are no longer exempt from decay (changes Phase 2 BR-H1-2: reinforced = event-influenced only);
+- `high_support_threshold` default 0.6 → 0.45 (env-overridable).
+The H1 tests on reinforcement change as intended.
+**Context**: CONSTRUCTION / U7 — Functional Design Part 2.
+
+---
+
+## U7 Functional Design Part 2 — artifacts written
+**Timestamp**: 2026-10-01T01:24:52Z
+**AI Response**: Wrote `construction/U7-gm-mode-hardening/functional-design/{domain-entities,business-logic-model,business-rules,frontend-components}.md`.
+- Feedback share, cap and restore (Q2=A); promoted rumors are excluded and feedback no longer exempts decay (Q4=A).
+- Event timeline kinds suggested/approved/discarded; a SUGGESTED resolve is 400; suggestion n is 1..5; the suggestion prompt carries region briefs, recent events and deeds.
+- Regenerate deactivates instead of deleting, and `delete_rumor` is removed.
+- The distortion list has one row per world region (read-time default); a set on a missing region is 404.
+- New `GET /state` and `WorldStateService`.
+- `player_log` pure filter (Q3=A); region names in timeline payloads.
+- `WorldTuning` plus env for the consensus, weights, dedup, event and promotion values.
+- Carried U5 C1/C4 and the say 503.
+- Frontend: Q1=B buttons, PlayerStrip, the GmHub split (testids kept), WorldStateOverlay, CommitRange.
+Deviations are listed in domain-entities §7 (A7-1/A7-5 rewritten, U6 frontend §2.5, U4 R-09, the US-5.1 wording, orphan rows).
+**Context**: CONSTRUCTION / U7 — Functional Design Part 2.
+
+---
+
+## Plan Review Requested — Functional Design — U7
+**Timestamp**: 2026-10-01T01:24:52Z
+**AI Response**: Dispatching aidlc-architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/U7-gm-mode-hardening/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/U7-gm-mode-hardening/functional-design/reviews/functional-design-review-01.md`.
+**Context**: CONSTRUCTION / U7 — Functional Design, Plan Review.

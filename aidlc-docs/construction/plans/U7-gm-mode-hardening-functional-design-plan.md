@@ -34,11 +34,11 @@
 
 ## 플랜
 - [x] 상위 산출물·현재 코드 분석(위 표)
-- [ ] 질문(아래 FD-U7 Q1~Q3) 답 수집·분석
-- [ ] `construction/U7-gm-mode-hardening/functional-design/domain-entities.md`
-- [ ] `.../business-logic-model.md`
-- [ ] `.../business-rules.md`(BR-U7-*, TP-U7-*, EX-*)
-- [ ] `.../frontend-components.md`(GM 패널 분할, GM 모드 전환, 세계 상태 오버레이, 슬라이더)
+- [x] 질문(아래 FD-U7 Q1~Q3) 답 수집·분석 — Q1=B, Q2=A, Q3=A, Q4=A(추가 질문)
+- [x] `construction/U7-gm-mode-hardening/functional-design/domain-entities.md`
+- [x] `.../business-logic-model.md`
+- [x] `.../business-rules.md`(BR-U7-*, TP-U7-*, EX-*)
+- [x] `.../frontend-components.md`(GM 패널 분할, GM 모드 전환, 세계 상태 오버레이, 슬라이더)
 - [ ] Plan Review(architecture-reviewer, adversarial ≤ 2) → `construction/U7-gm-mode-hardening/functional-design/reviews/functional-design-review-NN.md`
 - [ ] 완료 메시지 + 승인 게이트 → 다음: U7 NFR(light)
 
@@ -62,7 +62,7 @@
   - 비용: 지도를 크게 보는 GM 화면이 없어지고, U8 데모의 관람자 화면도 다시 생각해야 한다.
 - X. Other (please specify)
 
-[Answer]:
+[Answer]: B. 두 화면 사이 전환
 
 ### FD-U7 Q2 되먹임으로 오른 왜곡도를 어떻게 다스리는가 (US-8.2 둘째, FR-E2)
 배경
@@ -83,7 +83,7 @@
   - 비용: 강한 소문이 오래 버티는 지역은 왜곡도가 끝없이 오를 수 있다(상한이 없다).
 - X. Other (please specify)
 
-[Answer]:
+[Answer]: A. 복원 + 상한 둘 다
 
 ### FD-U7 Q3 플레이어 로그에 무엇을 보이는가 (US-5.4 셋째, FR-C6)
 배경
@@ -103,7 +103,29 @@
   - 결과: 과거에 지나온 지역의 일은 보이지 않는다.
 - X. Other (please specify)
 
-[Answer]:
+[Answer]: A. 내 행동 + 그때 있던 지역의 일
+
+### FD-U7 Q4 되먹임이 승격 소문과 감쇠 면제를 어떻게 다루는가 (US-8.2 첫째, FR-E2) — Q2 뒤 추가
+배경 (Q2 답을 설계로 옮기다 코드에서 확인함)
+- 되먹임의 "강한 소문" 기준(`high_support_threshold`)과 승격 기준이 **둘 다 0.6**이다. 턴 끝 승격 평가가 0.6 이상을 모두 승격하므로, 다음 턴 되먹임 때 0.6 이상인 비승격 소문은 GM이 지지도를 직접 올린 경우에만 있다.
+- 그래서 가정 A7-1(승격 소문 제외)만 적용하면 되먹임이 사실상 꺼진다.
+- 승격 소문은 감쇠되지 않으므로 강등도 되지 않는다. 승격 소문을 계속 세면 그 지역은 영원히 되먹임을 받는다. 그러면 Q2의 "원인이 사라지면 복원"이 일어나지 않는다.
+- 되먹임 지역이 감쇠 면제(BR-H1-2)인 것도 문제다. 강한 소문이 스스로를 붙잡아 되먹임이 끝나지 않는다.
+- 이 답은 BR-H1-2(강화 지역)와 `high_support_threshold` 기본값을 바꾸는지를 정한다.
+
+선택지
+- A. 승격 소문 제외 + 되먹임은 감쇠를 면제하지 않음 + 강한 소문 기준 0.45 — **권장**. 되먹임이 "사건 뒤 남은 소문 열기"로 살아 있다가 잦아들고, 그 뒤 Q2 복원이 실제로 돈다.
+  - 결과: 0.45~0.6 사이의 아직 승격되지 않은 소문이 되먹임을 일으킨다. 그 소문들은 보통처럼 감쇠한다(감쇠 면제는 사건 영향 지역만). 소문이 0.45 아래로 내려가거나 승격되면 되먹임이 멈추고, 그 몫이 복원된다.
+  - 비용: Phase 2 강화 규칙 BR-H1-2와 기본값 하나가 바뀐다. 그 테스트는 의도된 변경으로 고쳐 쓴다. env로 기준을 되돌릴 수 있다.
+- B. 승격 소문 제외만 (나머지 그대로)
+  - 결과: 바꾸는 것이 가장 적다.
+  - 비용: 되먹임은 GM이 지지도를 0.6 이상으로 올린 턴에만 돈다. 사실상 되먹임이 꺼지고, Q2 복원·상한도 거의 쓸 일이 없다.
+- C. 승격 소문은 계속 세되, 되먹임은 감쇠를 면제하지 않음
+  - 결과: 다른 소문의 감쇠는 살아난다(C2의 감쇠 쪽은 고쳐진다).
+  - 비용: 승격 소문이 있는 지역은 왜곡도가 상한(기준 +0.3)에 붙은 채 내려오지 않는다. 승격 소문은 감쇠·강등되지 않기 때문이다.
+- X. Other (please specify)
+
+[Answer]: A. 승격 제외 + 면제 해제 + 기준 0.45
 
 ## 가정 (질문하지 않는 것 — 게이트에서 바꿀 수 있다)
 | # | 가정 | 근거 |

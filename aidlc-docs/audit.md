@@ -2784,3 +2784,43 @@ Deviations are listed in domain-entities §7 (A7-1/A7-5 rewritten, U6 frontend �
 **User Input**: (none)
 **AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 1 Major / 8 Minor; open 9. Record: `aidlc-docs/construction/U7-gm-mode-hardening/functional-design/reviews/functional-design-review-01.md`.
 **Context**: Functional Design — U7 — next: approval gate (artifacts frozen; R-01..R-09 quoted at the gate).
+
+---
+
+## U7 Functional Design — approval gate
+**Timestamp**: 2026-10-01T01:43:37Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: Functional design approved. Gate also announced the assumption changes A7-2 (30 regions / 2 knowledge per region) and A7-4 (`deleted`→`deactivated`) per R-04. Next: U7 NFR Requirements (light). Open findings carried to the code plan (R-01 snapshot injection + wiring, R-02 GM session_started flow, R-03 EX-2 as an input sequence from share 0, R-05 call-site list, R-06 truncation order, R-07 /state consistency wording or one read tx, R-08 listTurnRuns(sid,"running"), R-09 TP-U7-2 tolerance and the EX-8 premise).
+**Context**: CONSTRUCTION / U7 — Functional Design approved.
+
+---
+
+## Plan Review Dispositions — Functional Design — U7
+R-01 → Accepted risk
+R-02 → Accepted risk
+R-03 → Accepted risk
+R-04 → Accepted risk
+R-05 → Accepted risk
+R-06 → Accepted risk
+R-07 → Accepted risk
+R-08 → Accepted risk
+R-09 → Accepted risk
+
+---
+
+## U6 code review (/code-review) — result
+**Timestamp**: 2026-10-01T01:44:05Z
+**User Input**: (none — background review launched after the U6 code gate)
+**AI Response**: Record `aidlc-docs/construction/U6-deeds-spread/code/reviews/code-review-01.md` (scope `git diff 39b9f91~1..d936c7d`). The review found 15 correctness findings, all CONFIRMED by reproduction, plus 16 cleanup findings and 8 dismissed.
+- Top four:
+  - #1 `appraise` builds KNOWN with `rumors=[]`, so the BR-U5-11 shadowing hides nothing and an original can leak into a seeded deed rumor.
+  - #2 both void-confirm buttons read "취소" in ko.
+  - #3 a null summary still yields a noteworthy statement appraisal (BR-U6-9).
+  - #4 failed-run compensation leaves appraisals of earlier deeds made in that run (`DeedAppraisal` has no run_id).
+- Orchestrator spot-check: #1–#4 verified in code (`dialogue.py:213-219`, `:255`, `i18n.ts:100/163`, `advancer.py:517-521` + `memory_repo.delete_by_run`).
+- Gates unchanged (pytest 630, vitest 74, ruff/black/tsc clean).
+- Out-of-scope notes from the reviewer:
+  - U7 FD plan Q3 option C lacked a cost line, and no option stated reversibility (question-rule miss; noted for future questions).
+  - U5's "newline forging" backlog item (#6) was missing from the U7 carry list. It will be added to the U7 code plan.
+- The code is approved, so asking the human how to handle the fixes (A mix / B all to U7 / C accept).
+**Context**: CONSTRUCTION / U6 — post-approval code review.

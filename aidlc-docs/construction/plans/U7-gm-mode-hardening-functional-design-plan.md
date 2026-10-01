@@ -40,7 +40,7 @@
 - [x] `.../business-rules.md`(BR-U7-*, TP-U7-*, EX-*)
 - [x] `.../frontend-components.md`(GM 패널 분할, GM 모드 전환, 세계 상태 오버레이, 슬라이더)
 - [x] Plan Review(architecture-reviewer, adversarial ≤ 2) — iter 1 READY, open 9 → `construction/U7-gm-mode-hardening/functional-design/reviews/functional-design-review-NN.md`
-- [ ] 완료 메시지 + 승인 게이트 → 다음: U7 NFR(light)
+- [x] 완료 메시지 + 승인 게이트 → 승인(Continue to Next Stage) → 다음: U7 NFR(light)
 
 ## 질문 (대화창에서 2개, 1개로 나눠 묻는다)
 

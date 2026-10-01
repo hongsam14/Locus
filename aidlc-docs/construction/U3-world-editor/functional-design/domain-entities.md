@@ -145,10 +145,11 @@ class NpcDraftResult(LocusModel):
 class Issue(_Aug):                     # 필드 추가
     ...
     field: str | None = None           # dangling: 끊긴 속성 이름
+    broken_id: str | None = None       # 〔Step 1.3 정정〕 목록 속성의 끊긴 id 하나 (FD 검토 R-11)
     target_kind: str                   # knowledge | entity | region | connection
     @property
     def key(self) -> str:              # 탐지마다 같은 값 (검토 01 R-03)
-        return f"{self.type}:{self.target_kind}:{'|'.join(self.target_ids)}:{self.field or ''}"
+        return f"{self.type}:{self.target_kind}:{'|'.join(self.target_ids)}:{self.field or ''}:{self.broken_id or ''}"
 
 class QuestionTarget(_Aug):
     kind: Literal["knowledge", "entity", "region", "npc", "connection"]
@@ -157,8 +158,9 @@ class QuestionTarget(_Aug):
     region_id: str | None = None
     region_name: str | None = None
     field: str | None = None           # dangling: 끊긴 속성 이름
+    broken_id: str | None = None       # 〔Step 1.3 정정〕 목록 속성의 끊긴 id (apply가 그 id만 바꾸거나 뺀다)
 
-class AugmentationQuestion(_Aug):      # 필드 추가
+class AugmentationQuestion(_Aug):      # 필드 추가. 〔Step 1.3 정정〕 옛 `options`·`kind`는 없앤다(actions가 대신한다)
     ...
     issue_key: str                     # 이 질문의 이슈 키
     target: QuestionTarget | None      # gap(지역 대상)도 region으로 채운다
@@ -172,7 +174,9 @@ class AugmentationRun(_Aug):           # 필드 추가
     ...
     issues: list[Issue]                # 이번 탐지의 이슈 (지금은 버린다)
     ignored_keys: list[str] = []       # 무시한 이슈 키 (다시 묻지 않는다, BR-U3-28)
-    answers: int = 0                   # 이 run에서 받은 답 수 (지금의 round)
+    answers: int = 0                   # 이 run에서 받은 답 수 (지금의 round). ignore도 센다
+    llm_calls: int = 0                 # 〔Step 1.3 정정〕 이 run의 LLM 호출 수 (NFR 검토 R-03)
+    llm_budget_exhausted: bool = False # 〔Step 1.3 정정〕 60회를 다 썼다 → 템플릿 질문만, 판정 쉼
 ```
 - `AnswerAction` enum은 그대로다: confirm / edit / remove / add / ignore.
 - `target_id`는 질문 대상에서 서버가 채운다. UI는 `question_id`·`action`·편집 값(`statement`·`title`·`confidence`·`region_id`·`ref_id`)만 보낸다.
@@ -183,6 +187,7 @@ class AugmentationRun(_Aug):           # 필드 추가
 class ChangeSet(_Aug):                 # 필드 추가
     id, description, added_ids          # 그대로
     nodes_before: list[NodeSnapshot]    # 바뀌거나 지워진 노드의 이전 상태(속성 전부)
+    nodes_after: list[NodeSnapshot]     # 〔Step 1.3 정정〕 바뀐 노드의 직후 상태. 되돌리기 전에 지금 노드와 비교한다(FD 검토 R-08)
     edges_added: list[EdgeSnapshot]     # 이 답이 만든 엣지
     edges_removed: list[EdgeSnapshot]   # 이 답이 지운 엣지(지운 노드에 붙어 있던 것 포함)
     reverted: bool = False              # 두 번 되돌리지 않는다
@@ -200,7 +205,7 @@ class EdgeSnapshot(_Aug):
 ### 4.4 답의 결과
 ```python
 class AnswerResult(_Aug):
-    change: ChangeSet
+    change: ChangeSet | None           # 〔Step 1.3 정정〕 ignore면 None (기록에 쌓지 않는다)
     run: AugmentationRun               # 다음 질문까지 (UI는 run을 유지한다, B2)
     changed: list[QuestionTarget]      # 무엇이 바뀌었는지 (US-2.6 둘째)
 ```
@@ -229,6 +234,9 @@ class PriorUsage(LocusModel):          # wiki 탭의 한 줄
 | `ValueError` | 경로와 본문의 id·world_id가 다르다(A3-13), 부모 순환, 자기 연결, 연결의 지역이 없다 | 400 |
 | `RegionInUseError` (새, world 경계) | 열린 세션의 플레이어가 서 있는 지역 삭제(Q2=A) | 409, 세션 id 목록 |
 | `ChangeAlreadyRevertedError` (새) | 되돌린 변경을 다시 되돌림 | 409 |
+| `RevertOrderError` (새) 〔Step 1.3 정정〕 | 아직 되돌리지 않은 가장 나중 변경이 아님 | 409 |
+| `RevertConflictError` (새) 〔Step 1.3 정정〕 | 그 변경 뒤에 run 밖에서 대상이 편집됨 | 409 |
+| `RunFinishedError` (새) 〔Step 1.3 정정〕 | converged·stopped run에 답, stopped run에 `unignore` | 409 |
 | `LlmUnavailableError` | NPC 초안·보강 질문 다듬기에 LLM이 없다 | 503(초안), 질문은 템플릿으로 |
 
 ## 7. U7 이월 (Q6=A, 플랜 A3-14·15)
@@ -254,3 +262,7 @@ class PriorUsage(LocusModel):          # wiki 탭의 한 줄
 5. **U7 BR-U7-5**: 사건 기여까지 지운다(Q6=A).
 6. **`TOPOLOGY_DEFAULT_BASE`**: 없앤다(U7에서 더한 env).
 7. **에디터의 NPC 글 번역 없음**: unit-of-work U3의 번역 표시는 캐노니컬 지식만이다. NPC 설명은 원문이다(검토 01 R-02).
+8. **U3 코드 계획에서 더한 계약** 〔Step 1.3 정정〕
+   - 보강: `unignore`(경로·전이), `ChangeSet.nodes_after`, `Issue`·`QuestionTarget.broken_id`, `revert` 응답(200 + run), 되돌리기 409 셋, `AugmentationRun.llm_calls`·`llm_budget_exhausted`
+   - 편집: `Editors` 묶음(`locus/world/editor/bundle.py`, `delete_any`·`prior_ids`·`get_node`), `WorldContainer.editors`·`catalog`(was `editor`)
+   - U7 이월: `WorldState.max_event_suggestions`, `GET …/log?limit=`, `deed_voided.region_names`

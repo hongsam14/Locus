@@ -3288,3 +3288,18 @@ Next: Code Generation Part 2, starting at Step 1.
 R-14 → Accepted risk
 R-15 → Accepted risk
 R-16 → Accepted risk
+
+## U3 Code Generation Part 2 — Step 1 (baseline, skeleton, approved-artifact corrections)
+**Timestamp**: 2026-10-01T09:30:03Z
+**User Input**: (continuing after plan approval "Approve & Continue (Recommended)")
+**AI Response**: Step 1 done.
+- Baseline measured at HEAD 9228861: pytest 735, vitest 94, mypy 11.
+- Skeleton files created. The editor package is deferred to 4.1 so it does not shadow `editor.py`; the two vitest files are deferred to 9.10.
+- Step 1.3 corrections, each marked "〔Step 1.3 정정〕":
+  - FD BLM §1.3 (①②④ order and retry), §4.2 (ignore, broken_id), §4.3 (unignore rows, revert check order), §7 (unignore route, revert 200 + run, LLM-less runs).
+  - domain-entities §4.2–§4.4, §6 (three new 409 errors), §8 item 8.
+  - business-rules BR-U3-8/23/27/28/41, TP-U3-2a (new), TP-U3-4.
+  - nfr-light §6 (new) with markers.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 1.
+
+---

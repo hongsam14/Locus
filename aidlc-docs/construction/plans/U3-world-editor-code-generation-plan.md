@@ -238,8 +238,9 @@
 ## Steps
 
 ### Step 1 — 기준선·뼈대·승인 산출물 정정
-- [ ] 1.1 실측값을 `construction/U3-world-editor/code/code-summary.md` 초안의 기준선으로 적는다. 기대값은 `pytest -q --no-cov` 735, `npx vitest run` 94, `mypy locus api` 11이다.
-- [ ] 1.2 새 파일을 만든다(빈 docstring).
+- [x] 1.1 실측값을 `construction/U3-world-editor/code/code-summary.md` 초안의 기준선으로 적는다. 기대값은 `pytest -q --no-cov` 735, `npx vitest run` 94, `mypy locus api` 11이다.
+- [x] 1.2 새 파일을 만든다(빈 docstring).
+  - 〔실행 메모〕 `locus/world/editor/` 패키지는 4.1에서 만든다(지금 만들면 `editor.py`를 가린다). vitest 파일 둘은 9.10에서 만든다(빈 파일은 실패로 센다).
   - 백엔드
     - `locus/world/editor/`: `__init__.py`, `models.py`, `writes.py`, `regions.py`, `connections.py`, `knowledge.py`, `npcs.py`, `entities.py`, `catalog.py`, `bundle.py`
     - `locus/world/npc_drafts.py`, `api/uploads.py`
@@ -259,7 +260,7 @@
   - 지울 것
     - `locus/world/editor.py`: 4.7
     - `web/src/Toolbar.tsx`, `web/src/AugmentPanel.tsx`, `web/src/RegionPanel.tsx`: 9.8
-- [ ] 1.3 **승인 산출물 정정**: 각 곳에 "〔Step 1.3 정정〕"을 붙이고 audit에 한 줄 남긴다.
+- [x] 1.3 **승인 산출물 정정**: 각 곳에 "〔Step 1.3 정정〕"을 붙이고 audit에 한 줄 남긴다.
   - FD BLM
     - §1.3: ①·②·④ 쓰기 순서와 재시도 원칙(NFR R-01)
     - §4.2: ignore 행(기록 없음, 답으로 셈), dangling 목록 속성은 `broken_id`로

@@ -61,13 +61,14 @@
 1. `region_id in protected`이면 `RegionInUseError`(409)다. 쓰지 않는다.
 2. 계획을 다시 만든다(확인 대화 뒤 바뀌었을 수 있다).
 3. 쓰기 순서(BR-U3-8)
-   1. 자식 지역 다시 붙이기: 각 자식의 `parent_id = new_parent_id`로 `replace_nodes`, 옛 `CONTAINS` 지우기, 새 `CONTAINS` 만들기
-   2. 엔티티의 `located_in = None`(교체)과 `LOCATED_IN` 지우기
+   1. 자식 지역 다시 붙이기 〔Step 1.3 정정〕: 새 `CONTAINS`(새 부모 → 자식) 만들기 → 각 자식의 `parent_id = new_parent_id`로 `replace_nodes` → 옛 `CONTAINS` 지우기
+   2. 엔티티 〔Step 1.3 정정〕: `LOCATED_IN` 지우기 → `located_in = None`(교체)
    3. 이 지역으로 가는 `SCOPED_TO` 지우기. 지식 노드는 그대로다.
-   4. NPC 삭제: 노드, `LIVES_IN`, 검색 문서
+   4. NPC 삭제 〔Step 1.3 정정〕: 검색 문서 → 노드(DETACH라 `LIVES_IN`도 지워진다)
    5. 연결 삭제: 두 방향 모두
    6. 지역 노드 삭제(`delete_node`, DETACH)
 4. 보고를 돌려준다. 지식 노드는 지우지 않으므로 번역 정리는 없다. NPC 글은 번역 캐시가 없다.
+5. **재시도** 〔Step 1.3 정정〕(NFR 검토 R-01): 각 단계 안에서 재시도 계획의 선별 기준(`parent_id`·`located_in`·NPC 노드)이 되는 쓰기를 마지막에 한다. 어느 쓰기 호출 뒤에 끊겨도 지역 노드가 남으므로 끊긴 id 속성이 없다. 같은 요청을 다시 보내면 남은 단계만 한다. ①의 `parent_id` 교체 뒤에 끊기면 옛 `CONTAINS`가 남는데, 재시도 계획은 그것을 찾지 못하고 ⑥의 DETACH가 지운다. 그래서 재시도 완료 뒤 상태는 끊김 없는 삭제와 같다. 종류별 삭제(지식·NPC·엔티티·prior)는 그래프 먼저이고, 노드가 이미 없어도 검색 삭제를 부른 뒤 404다.
 
 ### 1.4 연결 (US-2.2 둘째, B9)
 - **`upsert_connection(conn: ConnectionEdge) -> list[ConnectionEdge]`**
@@ -161,10 +162,10 @@
 | … / remove | 지식·엔티티 삭제. 붙은 엣지를 미리 읽어 둔다 | `nodes_before`, `edges_removed` |
 | orphan / edit(region) | 엔티티 `located_in` + `LOCATED_IN` | `nodes_before`, `edges_added` |
 | dangling / edit(`ref_id`) | 그 속성을 새 id로 바꾸고, 해당 엣지(CONTAINS·LOCATED_IN·ABOUT·DERIVED_FROM)도 다시 쓴다. `ref_id`의 노드가 그 속성에 맞는 종류로 있어야 한다(지역·엔티티·prior). 아니면 400 | `nodes_before`, `edges_*` |
-| dangling / remove | 속성을 비운다(`parent_id`·`located_in`·`wiki_prior_ref`는 None, 목록은 그 id만 뺌) | `nodes_before`, `edges_removed` |
+| dangling / remove | 속성을 비운다(`parent_id`·`located_in`·`wiki_prior_ref`는 None, 목록은 그 id만 뺌). 목록 속성의 "그 id"는 `target.broken_id`다 〔Step 1.3 정정〕 | `nodes_before`, `edges_removed` |
 | unscoped / edit(region) | DIRECT 스코프 하나 | `edges_added` |
 | unscoped / remove | 지식 삭제 | `nodes_before`, `edges_removed` |
-| * / ignore | 쓰지 않는다. 그 이슈는 이 run에서 다시 묻지 않는다 | 빈 변경 |
+| * / ignore | 쓰지 않는다. 그 이슈는 이 run에서 다시 묻지 않는다. 기록(`history`)에 쌓지 않고 답으로는 센다(`answers += 1`). `unignore`로 풀 수 있다 〔Step 1.3 정정〕 | 없음(`AnswerResult.change = None`) |
 
 - 쓰기는 `WorldEditor`의 같은 연산을 쓴다. 검색 색인·캐시 무효화도 같다.
 
@@ -183,9 +184,13 @@
   | open | 답, `answers == 30` | stopped |
   | open·converged·stopped | 되돌리기 | 다시 탐지: 이슈가 있고 `answers < 30`이면 open, 이슈가 없으면 converged, `answers == 30`이면 stopped |
   | converged·stopped | 답 | 409(새 run을 연다) |
+  | open·converged | `unignore` 〔Step 1.3 정정〕 | 다시 탐지: 이슈가 있고 `answers < 30`이면 open, 이슈가 없으면 converged. `answers`는 그대로 |
+  | stopped | `unignore` 〔Step 1.3 정정〕 | 409(새 run을 연다) |
 - **되돌리기**: `revert(run_id, change_id)`
   - 그 run의 기록에서 찾는다. `reverted`면 409다.
   - **나중 것부터**다. 아직 되돌리지 않은 변경 중 가장 나중 것이 아니면 409("먼저 나중 변경을 되돌리세요")다. 그래서 앞선 되돌리기가 나중 변경을 덮어쓰지 않는다.
+  - **검사 순서** 〔Step 1.3 정정〕(FD 검토 R-08): 없는 변경 404 → 이미 되돌림 409(`ChangeAlreadyRevertedError`) → 가장 나중이 아님 409(`RevertOrderError`) → run 밖 편집 409(`RevertConflictError`). run 밖 편집은 지금 노드가 `nodes_after`와 다르거나 `added_ids` 노드가 없는 경우다. 거절이면 아무것도 쓰지 않는다.
+  - 되돌리기와 `unignore`는 `answers`를 바꾸지 않는다. 응답은 다시 탐지한 run이다 〔Step 1.3 정정〕.
   - 순서
     1. `edges_added` 지우기
     2. `added_ids` 노드 지우기
@@ -256,6 +261,8 @@
 | `POST /worlds/{w}/regions/{r}/npc-drafts` | `NpcDraftResult`(저장 없음) |
 | `GET /worlds/{w}/priors` · `GET /worlds/{w}/prior-refs` · `DELETE /worlds/{w}/priors/{p}` | wiki |
 | `POST /worlds/{w}/augmentation/runs` · `GET /augmentation/runs/{id}` · `POST …/answer`(→`AnswerResult`) · `POST …/revert` | 보강 |
+| `POST /augmentation/runs/{id}/unignore` 〔Step 1.3 정정〕 | 본문 `{issue_key}` → run. stopped면 409 |
+| 보강 응답 〔Step 1.3 정정〕 | `POST runs`는 LLM 없이도 200(템플릿 질문, wiki_conflict 없음). `revert`는 200 + 다시 탐지한 run이고 409 사유는 셋이다(§4.3) |
 | `POST /worlds/{w}/build/upload` | `concept_arts` 칸 추가 |
 | `DELETE /worlds/{w}/nodes/{n}` | **없앤다**(이탈 2) |
 

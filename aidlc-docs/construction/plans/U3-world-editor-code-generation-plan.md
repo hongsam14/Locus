@@ -418,7 +418,7 @@
     - 구조 단언 ①: 9 + NPC 수, `_written` 2 따로
 
 ### Step 5 — NPC 초안 (W8, BR-U3-20·21, NFR §1.2)
-- [ ] 5.1 `locus/world/npc_drafts.py` `NpcDraftService(llm, snapshots).suggest(world_id, region_id, *, n=3) -> NpcDraftResult`
+- [x] 5.1 `locus/world/npc_drafts.py` `NpcDraftService(llm, snapshots).suggest(world_id, region_id, *, n=3) -> NpcDraftResult`
   - `n`이 1~3 밖이면 `ValueError`(LLM 0회)
   - 프롬프트
     - 시스템 가드 문장을 둔다.
@@ -426,7 +426,7 @@
     - 모두 `one_line`을 지난다.
   - 출력은 이름 60·역할 60·설명 500·traits 5 × 30으로 자른다. 실패하면 `failed=true`, `drafts=[]`다.
   - `wiring.py`: `WorldContainer.npc_drafts`(LLM이 있을 때만)
-- [ ] 5.2 테스트 `tests/world/test_npc_drafts.py`
+- [x] 5.2 테스트 `tests/world/test_npc_drafts.py`
   - EX-6
   - `n=4` → LLM 0회
   - 모든 글자를 상한까지 채운 자료 → 프롬프트 ≤ 6,000자

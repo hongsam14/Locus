@@ -3335,3 +3335,10 @@ R-16 → Accepted risk
 **Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 4.
 
 ---
+
+## U3 Code Generation Part 2 — Step 5 (NPC drafts)
+**Timestamp**: 2026-10-01T09:51:04Z
+**AI Response**: Added `NpcDraftService` (one structured LLM call, 0–3 drafts, nothing stored; field caps; prompt ≤ 6,000 chars; material guard). It is wired as `WorldContainer.npc_drafts` when an LLM is present. 7 tests. Gates: pytest 785, mypy 11.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 5.
+
+---

@@ -17,6 +17,7 @@ from locus.world.augmentation import AugmentationEngine, AugmentationService
 from locus.world.build import WorldBuilder
 from locus.world.demo import DemoWorlds
 from locus.world.editor import Editors, WorldCatalog
+from locus.world.npc_drafts import NpcDraftService
 from locus.world.wiki import CommonsenseWiki, CrossWorldWikiExplorer, WikiAdmin
 from locus.world.worldfile.export import WorldFileExporter
 from locus.world.worldfile.import_ import WorldFileImporter
@@ -33,6 +34,7 @@ class WorldContainer:
     # LLM-dependent (None without a provider -> their routes answer 503)
     builder: WorldBuilder | None = None
     augmentation: AugmentationService | None = None
+    npc_drafts: NpcDraftService | None = None  # U3 W8: one LLM call per request
     # LLM-free wiki tools (None only in tests that do not wire them)
     wiki_admin: WikiAdmin | None = None
     cross_world: CrossWorldWikiExplorer | None = None
@@ -80,6 +82,7 @@ def assemble_world(shared: SharedContainer, knowledge: KnowledgeContainer) -> Wo
             tuning=shared.settings.world_tuning(),  # U7, FR-A7
         )
         container.builder = builder
+        container.npc_drafts = NpcDraftService(llm, cache)
         container.augmentation = AugmentationService(
             AugmentationEngine(cache, editors, graph, wiki_provider=wiki_for, llm=llm, cache=cache)
         )

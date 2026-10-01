@@ -80,3 +80,13 @@
     - TP-U3-3: 교체를 병합으로 바꿈
     - set_prior_ref: 옛 쌍을 지우지 않음
   - pytest 778
+- **Step 5**
+  - `locus/world/npc_drafts.py`: `NpcDraftService`, `NpcDraft`, `NpcDraftResult`, `draft_prompt`
+  - 상한
+    - 지역: 이름 60, 경로 80, 설명 500
+    - 지식: 상위 8개(신뢰도 순), 제목 60·진술 200
+    - 이름: 30개(그 지역 먼저, 이름순)
+  - `MATERIAL` 시스템 가드를 둔다. 출력은 자른다.
+  - `WorldContainer.npc_drafts`(LLM이 있을 때만)
+  - 테스트 7개: EX-6, 실패, `n`·지역 검사, 6,000자, 주입, 자르기
+  - pytest 785

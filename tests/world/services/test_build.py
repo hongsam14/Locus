@@ -246,3 +246,44 @@ def test_replace_build_drops_prior_refs_into_the_old_world(tmp_path) -> None:  #
     conn = cache.get("w").topo.connections[0]
     assert conn.wiki_prior_ref is None and conn.rationale == "mountains"
     assert any("prior ref belonged" in w.message for w in report.warnings)
+
+
+def test_u8_review_2_one_build_per_world_at_a_time(tmp_path) -> None:
+    """U8 review #2: a second build of the same world while the first is still preparing
+    (a reopened panel, a retry after a proxy timeout) is refused instead of committing a
+    second copy; another world builds alongside; after the first ends, the world builds."""
+    import threading
+
+    from locus.world.build import BuildInProgressError
+
+    started, release = threading.Event(), threading.Event()
+
+    class _Slow(_Ingest):
+        def ingest_all(self, world_id, inputs):
+            if world_id == "w" and not release.is_set():
+                started.set()
+                release.wait(5)
+            return super().ingest_all(world_id, inputs)
+
+    builder, graph, _s, _c = _make(tmp_path, ingest=_Slow())
+    first: dict = {}
+    worker = threading.Thread(target=lambda: first.update(r=builder.build("w", inputs=None)))
+    worker.start()
+    assert started.wait(5)
+    with pytest.raises(BuildInProgressError, match="already running"):
+        builder.build("w", inputs=None)
+    assert builder.build("other", inputs=None).ok  # another world is not held up
+    release.set()
+    worker.join(5)
+    assert first["r"].ok
+    regions = graph.find_nodes("w", "Region")
+    assert len(regions) == 1  # one copy, not two
+    assert builder.build("w", inputs=None).ok  # the world is free again
+
+
+def test_u8_review_2_a_failed_build_frees_its_world(tmp_path) -> None:
+    builder, *_ = _make(tmp_path, ingest=_Ingest(fail=RuntimeError("ingest broke")))
+    with pytest.raises(RuntimeError, match="ingest broke"):
+        builder.build("w", inputs=None)
+    builder._ingestion_factory = lambda llm_, vlm_: _Ingest()  # type: ignore[assignment]
+    assert builder.build("w", inputs=None).ok

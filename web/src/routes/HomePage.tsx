@@ -21,7 +21,6 @@ export function HomePage() {
   const [busy, setBusy] = useState(false);
   const [start, setStart] = useState<{ worldId: string; regions: Region[] } | null>(null);
   const [building, setBuilding] = useState(false);
-  const [buildKey, setBuildKey] = useState(0);
   const caps = useCapabilities();
 
   const loadWorlds = () => api.listWorlds().then(setWorlds).catch((e) => setError(String(e)));
@@ -43,10 +42,8 @@ export function HomePage() {
 
   const openStart = (worldId: string) =>
     run(async () => setStart({ worldId, regions: (await api.exportWorld(worldId)).regions }));
-  const openBuild = () => {
-    setBuildKey((k) => k + 1); // a fresh panel each time: no files left from before (U3 #14)
-    setBuilding(true);
-  };
+  // the panel forgets its files when closed idle and keeps a running build (U8 review #2)
+  const openBuild = () => setBuilding(true);
 
   return (
     <div className="min-h-full">
@@ -106,7 +103,7 @@ export function HomePage() {
             navigate(`/play/${encodeURIComponent(out.session.id)}`);
           })
         } />
-      <BuildPanel key={buildKey} open={building} exists={false} onClose={() => setBuilding(false)}
+      <BuildPanel open={building} exists={false} onClose={() => setBuilding(false)}
         onBuilt={(worldId, report) =>
           // A replace stays on the report (what was replaced, the backup) — U3 review #6
           report.ok && !report.replaced && navigate(`/editor/${encodeURIComponent(worldId)}`)

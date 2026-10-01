@@ -51,6 +51,7 @@ src/ui/InProgressBadge.tsx (새)     "진행 중" 작은 표지(title에 한 줄
 
 - [바로 플레이] 흐름은 business-logic-model §2.2를 따릅니다.
   - 불러오기: `api.loadDemo(worldId, name, { replace: true, confirm })` — 서명은 §3과 같은 `(worldId, name, options)`다. vitest가 인자 순서를 단언한다 〔검토 01 R-08〕
+  - 〔U8 리뷰 01 정정 #1〕 월드가 없다고 보고 하는 첫 불러오기는 `replace: false`다. 목록이 아직 오지 않았거나 실패했거나 낡았을 때 서버의 409 "world already exists"를 "지금 월드로/새로 불러와" 질문(에디터는 그대로 열기)으로 바꾼다. `replace: true`는 사람이 확인한 [새로 불러와]뿐이다.
   - 세션: `api.startSession(worldId, { name: t("demo.playerName"), start_region_id })`
   - 이동: `navigate("/play/" + id)`
 - [에디터에서 보기]: 월드가 있으면 바로 `navigate("/editor/" + id)`, 없으면 불러온 뒤 갑니다.

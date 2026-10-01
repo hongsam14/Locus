@@ -28,11 +28,17 @@ export function DemoCard({
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [startMissing, setStartMissing] = useState(false);
+  // the server said the world is there although the list did not (the list was still on
+  // its way, failed, or is stale): from then on this card treats it as there
+  const [foundThere, setFoundThere] = useState(false);
+  const there = exists || foundThere;
 
-  /** Load the demo; false (and the card says why) when it did not load cleanly. */
-  async function load(confirm: boolean, after: "play" | "edit"): Promise<boolean> {
+  /** Load the demo; false (and the card says why) when it did not load cleanly. Only a
+   * [load fresh] the designer confirmed replaces: a first load sends replace=false, so a
+   * world the screen did not know about is never replaced unasked (U8 review #1). */
+  async function load(confirm: boolean, after: "play" | "edit", fresh: boolean): Promise<boolean> {
     try {
-      const report = await api.loadDemo(worldId, demo.name, { replace: true, confirm });
+      const report = await api.loadDemo(worldId, demo.name, { replace: fresh, confirm });
       if (!report.ok) {
         const errs = report.warnings.filter((w) => w.severity === "error").map((w) => w.message);
         setWarnings([...errs.slice(0, 3), ...(report.backup_path ? [t("demo.backup", { path: report.backup_path })] : [])]);
@@ -44,7 +50,11 @@ export function DemoCard({
     } catch (e) {
       if (openSessionsOf(e)?.busy) setError(t("demo.busy")); // mid-turn: no question
       else if (replace.sessionsAsked(e, confirm)) setAfter(after);
-      else setError(String(e));
+      else if (!fresh && statusOf(e) === 409) {
+        setFoundThere(true); // "world already exists": ask, or open it as it is
+        if (after === "play") setAskExisting(true);
+        else navigate(`/editor/${encodeURIComponent(worldId)}`); // never reloads (BR-U8-21)
+      } else setError(String(e));
       return false;
     }
   }
@@ -60,7 +70,7 @@ export function DemoCard({
     setWarnings([]);
     setStartMissing(false);
     try {
-      if ((!exists || reload) && !(await load(confirm, "play"))) return;
+      if ((!there || reload) && !(await load(confirm, "play", reload))) return;
       try {
         const out = await api.startSession(worldId, {
           name: t("demo.playerName"),
@@ -69,7 +79,7 @@ export function DemoCard({
         navigate(`/play/${encodeURIComponent(out.session.id)}`);
       } catch (e) {
         // an edited world may have lost the demo's start region (FD R-03)
-        if (exists && !reload && [400, 404].includes(statusOf(e) ?? 0)) setStartMissing(true);
+        if (there && !reload && [400, 404].includes(statusOf(e) ?? 0)) setStartMissing(true);
         else setError(String(e));
       }
     } finally {
@@ -78,14 +88,14 @@ export function DemoCard({
   }
 
   async function edit(confirm = false) {
-    if (exists) {
+    if (there) {
       navigate(`/editor/${encodeURIComponent(worldId)}`); // never reloads (BR-U8-21)
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      if (await load(confirm, "edit")) navigate(`/editor/${encodeURIComponent(worldId)}`);
+      if (await load(confirm, "edit", false)) navigate(`/editor/${encodeURIComponent(worldId)}`);
     } finally {
       setBusy(false);
     }
@@ -95,13 +105,13 @@ export function DemoCard({
     <Card data-testid={`demo-card-${demo.name}`} className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-baseline gap-2">
         <strong className="font-display text-lg">{demo.title}</strong>
-        {exists && <span className="text-xs text-ink-soft">{t("demo.loaded")}</span>}
+        {there && <span className="text-xs text-ink-soft">{t("demo.loaded")}</span>}
       </div>
       {demo.description && <p className="text-sm">{demo.description}</p>}
       {demo.credits && <p className="text-xs text-ink-soft" data-testid={`demo-credits-${demo.name}`}>{demo.credits}</p>}
       <div className="flex flex-wrap gap-2">
         <Button variant="primary" data-testid={`demo-play-${demo.name}`} disabled={busy}
-          onClick={() => (exists ? setAskExisting(true) : play(false))}>
+          onClick={() => (there ? setAskExisting(true) : play(false))}>
           {t("demo.play")}
         </Button>
         <Button data-testid={`demo-edit-${demo.name}`} disabled={busy} onClick={() => edit()}>

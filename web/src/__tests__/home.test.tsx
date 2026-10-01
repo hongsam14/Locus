@@ -133,7 +133,8 @@ describe("U8 demo cards", () => {
     await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("/play/s1"));
     expect(api.loadDemo).toHaveBeenCalledTimes(1);
     // (worldId, name, options): a demo loads into its own name (FD review 01 R-08)
-    expect(api.loadDemo).toHaveBeenCalledWith("emberleaf", "emberleaf", { replace: true, confirm: false });
+    // U8 intended change: U8 review #1 — a first load never replaces (replace=false)
+    expect(api.loadDemo).toHaveBeenCalledWith("emberleaf", "emberleaf", { replace: false, confirm: false });
     expect(api.startSession).toHaveBeenCalledWith("emberleaf", { name: "여행자", start_region_id: "region-saltwake" });
   });
 
@@ -185,23 +186,40 @@ describe("U8 demo cards", () => {
     renderHome();
     fireEvent.click(await screen.findByTestId("demo-edit-emberleaf"));
     await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("/editor/emberleaf"));
-    expect(api.loadDemo).toHaveBeenCalledWith("emberleaf", "emberleaf", { replace: true, confirm: false });
+    // U8 intended change: U8 review #1 — a first load never replaces (replace=false)
+    expect(api.loadDemo).toHaveBeenCalledWith("emberleaf", "emberleaf", { replace: false, confirm: false });
     expect(api.startSession).not.toHaveBeenCalled();
   });
 
-  it("no world — an editor load that meets open sessions asks, then opens the editor", async () => {
-    (api.listWorlds as Mock).mockResolvedValue([]);
+  // U8 intended change: U8 review #1 — "no world + open sessions" cannot happen (a first
+  // load is replace=false, which skips the session gate); the real case is a world the
+  // list did not show yet, below
+  it("U8 review #1: before the list arrives, a world already there is asked about, not replaced", async () => {
+    let answer: (v: unknown) => void = () => {};
+    (api.listWorlds as Mock).mockImplementation(() => new Promise((r) => (answer = r)));
     (api.listDemos as Mock).mockResolvedValue([EMBER]);
-    (api.loadDemo as Mock)
-      .mockRejectedValueOnce(conflict({ message: "open sessions", open_sessions: 1, session_ids: ["a"] }))
-      .mockResolvedValueOnce(OK);
+    (api.loadDemo as Mock).mockRejectedValue(new HttpError(409, "Conflict", '{"detail":"world already exists: emberleaf"}'));
+    renderHome();
+    fireEvent.click(await screen.findByTestId("demo-play-emberleaf"));
+    expect(await screen.findByTestId("demo-ask")).toHaveTextContent("Emberleaf Isle");
+    expect(api.loadDemo).toHaveBeenCalledTimes(1);
+    expect((api.loadDemo as Mock).mock.calls[0][2]).toEqual({ replace: false, confirm: false });
+    expect(api.startSession).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("demo-keep")); // play the world as it is: no load
+    await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("/play/s1"));
+    expect(api.loadDemo).toHaveBeenCalledTimes(1);
+    answer([]);
+  });
+
+  it("U8 review #1: with the list failed, [view in editor] opens a world that is there", async () => {
+    (api.listWorlds as Mock).mockRejectedValue(new HttpError(500, "Server Error", "list failed"));
+    (api.listDemos as Mock).mockResolvedValue([EMBER]);
+    (api.loadDemo as Mock).mockRejectedValue(new HttpError(409, "Conflict", '{"detail":"world already exists: emberleaf"}'));
     renderHome();
     fireEvent.click(await screen.findByTestId("demo-edit-emberleaf"));
-    await waitFor(() => expect(screen.getByTestId("demo-confirm")).toHaveTextContent(t("demo.closeSessions", { n: 1 })));
-    confirmModal();
     await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("/editor/emberleaf"));
-    expect((api.loadDemo as Mock).mock.calls[1][2]).toEqual({ replace: true, confirm: true });
-    expect(api.startSession).not.toHaveBeenCalled();
+    expect(api.loadDemo).toHaveBeenCalledTimes(1);
+    expect((api.loadDemo as Mock).mock.calls[0][2]).toEqual({ replace: false, confirm: false });
   });
 
   it("EX-12: a load with ok=false shows its errors and backup and starts no session", async () => {

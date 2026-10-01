@@ -40,7 +40,7 @@ from locus.world.augmentation.types import (
     AugmentationConflict,
     AugmentationRun,
 )
-from locus.world.build import WorldExistsError
+from locus.world.build import BuildInProgressError, WorldExistsError
 from locus.world.ingestion.service import WorldInputs
 from locus.world.wiring import WorldContainer
 from locus.world.worldfile import UnsupportedWorldFile, WorldFile, to_json_bytes
@@ -156,7 +156,7 @@ def build_world(
     open_ids = _open_sessions(world_id, confirm, play) if replace else []
     try:
         report = builder.build(world_id, inputs, replace=replace)
-    except WorldExistsError as exc:
+    except (WorldExistsError, BuildInProgressError) as exc:
         raise http_error(exc) from exc
     _after_replace(report, open_ids, play, loc, world_id)
     return report
@@ -220,7 +220,7 @@ def build_world_upload(
     )
     try:
         report = builder.build(world_id, inputs, replace=replace)
-    except WorldExistsError as exc:
+    except (WorldExistsError, BuildInProgressError) as exc:
         raise http_error(exc) from exc
     _after_replace(report, open_ids, play, loc, world_id)
     return report
@@ -409,7 +409,7 @@ def build_demo_world_from_sources(
     open_ids = _open_sessions(world_id, confirm, play) if replace else []
     try:
         report = demo.build_from_sources(name, world_id, replace=replace, include_map=with_map)
-    except (LookupError, WorldExistsError) as exc:
+    except (LookupError, WorldExistsError, BuildInProgressError) as exc:
         raise http_error(exc) from exc
     _after_replace(report, open_ids, play, loc, world_id)
     return report

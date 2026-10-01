@@ -1,6 +1,7 @@
 // U4 player screen tests (Step 9.5): EX-13 load, EX-7 move -> 202 -> poll -> toast,
 // 409 toast, EX-16 banner, TP-U4-2 blocked option, NewSessionForm (US-3.1).
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { HttpError } from "../api/http";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Mock } from "vitest";
@@ -219,6 +220,21 @@ describe("PlayPage", () => {
     await new Promise((r) => setTimeout(r, 60));
     expect(api.getRegion).toHaveBeenCalledTimes(7); // mount + stale-flag read + 5
     expect(screen.getByTestId("wait-btn")).toBeDisabled();
+  });
+
+  it("U8 review #5(b): a failed held read still schedules the next one", async () => {
+    (api.getRegion as Mock)
+      .mockImplementationOnce(async () => view({ turn_running: true }))
+      .mockImplementationOnce(async () => view({ turn_running: true }))
+      .mockRejectedValueOnce(new HttpError(502, "Bad Gateway", "proxy"))
+      .mockImplementation(async () => view({ turn_running: false }));
+    render(
+      <MemoryRouter initialEntries={["/play/s1"]}>
+        <Routes><Route path="/play/:sessionId?" element={<PlayPage pollMs={5} heldRetryMs={5} />} /></Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId("wait-btn")).toBeEnabled());
+    expect(api.getRegion).toHaveBeenCalledTimes(4); // mount, stale-flag read, the 502, then free
   });
 
   it("U3 (U7 review #7): the declaration box takes text while a turn runs", async () => {

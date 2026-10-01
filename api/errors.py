@@ -21,7 +21,7 @@ from locus.play.errors import (
     TurnInProgressError,
 )
 from locus.world.augmentation.types import AugmentationConflict
-from locus.world.build import WorldExistsError
+from locus.world.build import BuildInProgressError, WorldExistsError
 from locus.world.worldfile.schema import UnsupportedWorldFile
 
 # Every service error a play / gm route turns into an HTTP status (U4).
@@ -45,6 +45,7 @@ def http_error(exc: Exception) -> HTTPException:
         (
             SessionClosedError,
             WorldExistsError,
+            BuildInProgressError,
             TurnInProgressError,
             AugmentationConflict,
             SeedAlreadyRunningError,

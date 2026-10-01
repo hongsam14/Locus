@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -53,6 +54,11 @@ logger = logging.getLogger(__name__)
 
 class WorldExistsError(RuntimeError):
     """The world already exists and ``replace`` was not requested (409 / exit 1)."""
+
+
+class BuildInProgressError(RuntimeError):
+    """A build of this world is already running in this process (409; U8 review #2). A
+    second one would race the first past the existence check and commit a second copy."""
 
 
 class TopologyBuilderLike(Protocol):
@@ -117,6 +123,8 @@ class WorldBuilder:
         exporter: ExporterLike | None = None,
         backup_dir: Path | None = None,
     ) -> None:
+        self._building: set[str] = set()  # world ids with a build running
+        self._building_lock = threading.Lock()
         self._graph = graph_repo
         self._search = search_repo
         self._cache = cache
@@ -168,6 +176,20 @@ class WorldBuilder:
 
     # ------------------------------------------------------------------ #
     def build(self, world_id: str, inputs: WorldInputs, *, replace: bool = True) -> BuildReport:
+        """One build per world at a time (U8 review #2): a build takes minutes of LLM work
+        before it writes, so a second request for the same world — a reopened panel, a
+        retry after a proxy timeout — is refused instead of committing a second copy."""
+        with self._building_lock:
+            if world_id in self._building:
+                raise BuildInProgressError(f"a build of world {world_id!r} is already running")
+            self._building.add(world_id)
+        try:
+            return self._build(world_id, inputs, replace=replace)
+        finally:
+            with self._building_lock:
+                self._building.discard(world_id)
+
+    def _build(self, world_id: str, inputs: WorldInputs, *, replace: bool) -> BuildReport:
         counter = LLMCallCounter()
         llm = counter.wrap_llm(self._providers.llm)
         vlm = counter.wrap_vlm(self._providers.vlm)

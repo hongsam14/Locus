@@ -33,7 +33,6 @@ export function EditorPage() {
   const [tab, setTab] = useState<Tab>("region");
   const [rev, setRev] = useState(0);
   const [building, setBuilding] = useState(false);
-  const [buildKey, setBuildKey] = useState(0); // a fresh panel per opening (U3 #14)
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -120,10 +119,8 @@ export function EditorPage() {
       : { world_id: worldId, source_region_id: a, target_region_id: b, kind, weight, provenance: PROV }));
   };
 
-  const openBuild = () => {
-    setBuildKey((k) => k + 1); // no files or report left from the last opening (U3 #14)
-    setBuilding(true);
-  };
+  // the panel forgets its files when closed idle and keeps a running build (U8 review #2)
+  const openBuild = () => setBuilding(true);
 
   const noLlm = llmOff(caps);
   const regions = data?.regions ?? [];
@@ -195,7 +192,7 @@ export function EditorPage() {
           {tab === "wiki" && <WikiPanel worldId={worldId} regions={regions} reloadKey={rev} />}
         </div>
       </div>
-      <BuildPanel key={buildKey} open={building} worldId={worldId} exists={data != null}
+      <BuildPanel open={building} worldId={worldId} exists={data != null}
         onClose={() => setBuilding(false)} onBuilt={() => reloadAll()} />
     </div>
   );

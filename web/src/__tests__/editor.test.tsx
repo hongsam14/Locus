@@ -804,3 +804,79 @@ describe("U3 review carry: the augmentation screen", () => {
     await waitFor(() => expect(screen.getAllByTestId("augment-statement")[1]).toHaveValue("Wells run dry"));
   });
 });
+
+
+// --------------------------------------------------------------------------- //
+// U8 code-review-01 #2: a build panel closed mid-build keeps the build; closed idle, it
+// forgets its input (U3 #14)
+// --------------------------------------------------------------------------- //
+describe("U8 review #2: the build panel across a close", () => {
+  beforeEach(() => {
+    resetCapabilities();
+    (api.capabilities as Mock).mockResolvedValue({ llm: true, vlm: true, embedding: true });
+  });
+  afterEach(() => resetCapabilities());
+
+  function Harness({ onBuilt = () => {} }: { onBuilt?: () => void }) {
+    const [open, setOpen] = useState(true);
+    return (
+      <MemoryRouter>
+        <button data-testid="reopen" onClick={() => setOpen(true)}>open</button>
+        <BuildPanel open={open} worldId="w" exists={false} onClose={() => setOpen(false)} onBuilt={onBuilt} />
+      </MemoryRouter>
+    );
+  }
+  const REPORT = { world_id: "w", regions_created: 2, connections_created: 1, entities_created: 0,
+    knowledge_created: 1, corroborations_created: 0, warnings: [], unscoped_knowledge_ids: [],
+    llm_calls: 3, embedding_calls: 1, replaced: false, closed_session_ids: [], priors_created: 0, ok: true };
+
+  it("reopened mid-build it still runs: no second build, then its report", async () => {
+    let finish: (v: unknown) => void = () => {};
+    (api.uploadBuild as Mock).mockImplementation(() => new Promise((r) => (finish = r)));
+    render(<Harness />);
+    fireEvent.change(screen.getByTestId("build-memo"), { target: { value: "a river town" } });
+    fireEvent.click(screen.getByTestId("build-submit"));
+    await waitFor(() => expect(screen.getByTestId("build-working")).toBeInTheDocument());
+    fireEvent.click(screen.getByText(t("action.close")));
+    expect(screen.queryByTestId("build-panel")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("reopen"));
+    expect(screen.getByTestId("build-working")).toBeInTheDocument();
+    expect(screen.getByTestId("build-memo")).toHaveValue("a river town"); // what is being built
+    expect(screen.getByTestId("build-submit")).toBeDisabled();
+    await act(async () => finish(REPORT));
+    expect(screen.getByTestId("build-report")).toBeInTheDocument();
+    expect(api.uploadBuild).toHaveBeenCalledTimes(1);
+  });
+
+  it("files picked before a mid-build close do not ride along on the next build", async () => {
+    let finish: (v: unknown) => void = () => {};
+    (api.uploadBuild as Mock).mockImplementationOnce(() => new Promise((r) => (finish = r)))
+      .mockResolvedValueOnce(REPORT);
+    render(<Harness />);
+    const old = new File(["png"], "old-map.png", { type: "image/png" });
+    fireEvent.change(screen.getByTestId("build-images"), { target: { files: [old] } });
+    fireEvent.click(screen.getByTestId("build-submit"));
+    await waitFor(() => expect(screen.getByTestId("build-working")).toBeInTheDocument());
+    fireEvent.click(screen.getByText(t("action.close")));
+    fireEvent.click(screen.getByTestId("reopen"));
+    await act(async () => finish(REPORT));
+    fireEvent.change(screen.getByTestId("build-memo"), { target: { value: "only a note" } });
+    fireEvent.click(screen.getByTestId("build-submit"));
+    await waitFor(() => expect(api.uploadBuild).toHaveBeenCalledTimes(2));
+    const second = (api.uploadBuild as Mock).mock.calls[1][1] as FormData;
+    expect(second.getAll("images")).toHaveLength(0);
+  });
+
+  it("closed idle it forgets its input and report (U3 #14)", async () => {
+    (api.uploadBuild as Mock).mockResolvedValue(REPORT);
+    render(<Harness />);
+    fireEvent.change(screen.getByTestId("build-memo"), { target: { value: "a river town" } });
+    fireEvent.click(screen.getByTestId("build-submit"));
+    await waitFor(() => expect(screen.getByTestId("build-report")).toBeInTheDocument());
+    fireEvent.click(screen.getByText(t("action.close")));
+    fireEvent.click(screen.getByTestId("reopen"));
+    expect(screen.getByTestId("build-memo")).toHaveValue("");
+    expect(screen.queryByTestId("build-report")).not.toBeInTheDocument();
+    expect(screen.getByTestId("build-submit")).toBeDisabled();
+  });
+});

@@ -207,19 +207,21 @@ export function PlayPage({ pollMs = 700, heldRetryMs = 1000 }: { pollMs?: number
   // `turn_running` with no run in flight: a GM write (generate, suggest) or an editor
   // lease holds the session, and no poll will clear the flag. Read again every second,
   // at most five times, so the buttons come back when it lets go (U3 review S02).
-  const heldTries = useRef(0);
+  // The count is state, not a ref: each read bumps it and so schedules the next one even
+  // when the read failed and the view did not change (U8 review #5(b)).
+  const [heldReads, setHeldReads] = useState(0);
   useEffect(() => {
     if (!view?.turn_running || run) {
-      heldTries.current = 0;
+      setHeldReads(0);
       return;
     }
-    if (heldTries.current >= HELD_RETRIES) return;
+    if (heldReads >= HELD_RETRIES) return;
     const timer = setTimeout(() => {
-      heldTries.current += 1;
+      setHeldReads((n) => n + 1);
       void refresh();
     }, heldRetryMs);
     return () => clearTimeout(timer);
-  }, [view, run, refresh, heldRetryMs]);
+  }, [view, run, refresh, heldRetryMs, heldReads]);
 
   /** Start an action; true when the server accepted it (202). U6: the declaration box
    * restores its text on false (400 shown as an error, 409 as a notice). */

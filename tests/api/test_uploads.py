@@ -190,3 +190,18 @@ def test_c15_open_sessions_are_checked_before_the_files_are_read() -> None:
     r = client.post("/api/world/worlds/w/build/upload", files=bad)
     assert r.status_code == 409 and r.json()["detail"]["open_sessions"] == 1
     assert builder.calls == []
+
+
+def test_u8_review_2_a_build_already_running_is_a_409() -> None:
+    from locus.world.build import BuildInProgressError
+
+    client, builder = _client()
+
+    def busy(world_id, inputs, *, replace=True):
+        raise BuildInProgressError(f"a build of world {world_id!r} is already running")
+
+    builder.build = busy  # type: ignore[method-assign]
+    r = client.post("/api/world/worlds/w/build/upload", files=_files("memos", 1, b"a note"))
+    assert r.status_code == 409 and "already running" in r.json()["detail"]
+    r = client.post("/api/world/worlds/w/build", json={"memos": ["a note"]})
+    assert r.status_code == 409

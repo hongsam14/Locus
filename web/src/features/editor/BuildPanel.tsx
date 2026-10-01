@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { api } from "../../api";
 import { needsLlm, openSessionsOf, statusOf, useReplaceConfirm } from "../../api/http";
 import { llmOff, useCapabilities } from "../../capabilities";
@@ -43,6 +43,7 @@ export function BuildPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<BuildReport | null>(null);
+  const closedMidBuild = useRef(false);
   if (!open) return null;
   const id = (fixedId ?? worldId).trim();
   const hasInput = memo.trim() || Object.values(files).some((f) => f.length);
@@ -67,7 +68,28 @@ export function BuildPanel({
       else setError(needsLlm(e) ? t("llm.required") : String(e)); // BR-U8-27
     } finally {
       setBusy(false);
+      // the file boxes were unmounted while it ran: their files are not shown any more,
+      // so they must not ride along on a next [build] (U3 #14)
+      if (closedMidBuild.current) setFiles({});
+      closedMidBuild.current = false;
     }
+  }
+
+  /** Closing an idle panel forgets its input and report, so the next opening starts clean
+   * (U3 #14). Closing it while a build runs keeps everything: reopening shows the build
+   * still running, then its report, and no second build can start (U8 review #2). */
+  function close() {
+    if (busy) closedMidBuild.current = true;
+    else {
+      if (fixedId == null) setWorldId("");
+      setName("");
+      setDescription("");
+      setMemo("");
+      setFiles({});
+      setReport(null);
+      setError(null);
+    }
+    onClose();
   }
 
   return (
@@ -102,7 +124,7 @@ export function BuildPanel({
         {report && <BuildReportPanel report={report} />}
         <div className="flex items-center justify-end gap-2">
           {noLlm && <span className="text-xs text-ink-soft" data-testid="llm-required">{t("llm.required")}</span>}
-          <Button size="sm" onClick={onClose}>{t("action.close")}</Button>
+          <Button size="sm" onClick={close}>{t("action.close")}</Button>
           <Button size="sm" variant="primary" data-testid="build-submit"
             disabled={busy || !id || !hasInput || noLlm} title={noLlm ? t("llm.required") : undefined}
             onClick={() => (exists ? replaceQ.askReplace() : send(false, false))}>

@@ -3211,3 +3211,63 @@ R-05 → Accepted risk
 R-06 → Accepted risk
 R-07 → Accepted risk
 R-08 → Accepted risk
+
+## U3 Code Generation Part 1 — plan written
+**Timestamp**: 2026-10-01T09:06:23Z
+**User Input**: (continuing after NFR approval "Continue to Next Stage (Recommended)")
+**AI Response**: Wrote `construction/plans/U3-world-editor-code-generation-plan.md`:
+- 13 steps: baseline/corrections, storage ports, editor package, NPC drafts, augmentation, wiki evidence, U7 carry (backend), API, frontend editor, U7 carry (frontend), docs, verification, gate.
+- The carry tables close FD R-08/R-11, NFR R-01..R-08, U7 code-review-01 §1 #6–#10/#12–#15, §2 C1–C19, §3 (12) and §5 doc notes, plus Q6=A/A3-14/A3-15.
+- Step 1.3 lists the approved-artifact corrections (FD BLM §1.3 ①/④ order; augmentation model additions; nfr-light fixes).
+**Context**: CONSTRUCTION / U3 — Code Generation Part 1.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — U3
+**Timestamp**: 2026-10-01T09:06:23Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching aidlc-architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/U3-world-editor-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/U3-world-editor-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — U3 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — U3
+**Timestamp**: 2026-10-01T09:14:53Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 1 Critical / 5 Major / 7 Minor; open 13. Record: `aidlc-docs/construction/plans/reviews/U3-world-editor-code-generation-plan-review-01.md`. Iteration 1 < 2: fixing the plan and re-dispatching.
+**Context**: Code Generation Part 1 — U3 — fix loop.
+
+---
+
+## U3 Code Generation Part 1 — plan revised after review 01
+**Timestamp**: 2026-10-01T09:19:37Z
+**User Input**: (none)
+**AI Response**: Revised the plan for R-01..R-13.
+- Steps renumbered so that wiki (3) precedes the editor package (4), NPC drafts (5) and augmentation (6).
+- 4.7 closes every `WorldEditor` call site, including the `Editors` bundle with `delete_any`, router edits, and the test fixtures in `test_world_api` and `test_augment_api`.
+- Step 9 declares a red interval from 9.2 to 9.8, makes HttpError the standalone first sub-step with its fixtures listed, and moves HomePage after BuildPanel.
+- New FD R-08a transition rows: unignore, ignore counts as an answer, and the revert check order.
+- `QuestionTarget.broken_id`, the Editors-based apply/revert signatures, and LLM-less `wiki_conflict` returns empty.
+- The region-delete within-step order, the TP-U3-2a fake semantics, and single deletes cleaning search docs on retry.
+- Known limitation added for session start and GM writes during region delete.
+- Per-path upload limits, constraint translation for `replace_nodes`, and updated line references.
+- Model locations (`reports.py`, `play/models.py:641`), RegionInspector sub-components, and the U7 code-summary correction.
+**Context**: Code Generation Part 1 — U3 — fix loop.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — U3
+**Timestamp**: 2026-10-01T09:19:37Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching aidlc-architecture-reviewer (class adversarial, iteration 2) on `aidlc-docs/construction/plans/U3-world-editor-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/U3-world-editor-code-generation-plan-review-02.md`.
+**Context**: Code Generation Part 1 — U3 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — U3
+**Timestamp**: 2026-10-01T09:22:05Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY** (terminal; max iterations reached). R-01..R-13 Resolved. New: 0 Critical / 2 Major (R-14, R-15) / 1 Minor (R-16); open 3. Record: `aidlc-docs/construction/plans/reviews/U3-world-editor-code-generation-plan-review-02.md`. Artifacts frozen until the gate answer.
+**Context**: Code Generation Part 1 — U3 — next: approval gate.
+
+---

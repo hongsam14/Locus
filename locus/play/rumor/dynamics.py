@@ -14,7 +14,10 @@ FR-H4 / FR-A7) and are passed as function arguments so the maths stays determini
 
 from __future__ import annotations
 
-from locus.play.models import SessionRumor
+from collections.abc import Mapping
+from dataclasses import dataclass
+
+from locus.play.models import DEFAULT_DISTORTION_DEGREE, SessionRumor
 from locus.shared.config.tuning import PlayTuning
 from locus.shared.models.util import clamp01
 
@@ -92,10 +95,16 @@ def region_feedback(
     with ``support >= high_support_threshold`` in the region. Density (0..1) keeps
     the delta scale stable regardless of how many rumors a region holds. Regions
     with no strong rumors get no entry. Pure; callers pass ACTIVE rumors only.
+
+    U7 (BR-U7-1, FD-U7 Q4=A): promoted rumors are the region's accepted facts, not
+    rumors, so they count neither as strong nor in the total. One promoted rumor no
+    longer keeps a region's feedback — and so its distortion — going for ever.
     """
     totals: dict[str, int] = {}
     strong: dict[str, int] = {}
     for r in rumors:
+        if r.promoted:
+            continue
         totals[r.region_id] = totals.get(r.region_id, 0) + 1
         if r.support >= high_support_threshold:
             strong[r.region_id] = strong.get(r.region_id, 0) + 1
@@ -104,4 +113,60 @@ def region_feedback(
         if n_strong <= 0:
             continue
         out[region_id] = weight * (n_strong / totals[region_id])
+    return out
+
+
+# --- U7 feedback share: cap and restore (FD-U7 Q2=A, BR-U7-2/3) ----------------------- #
+@dataclass(frozen=True)
+class FeedbackState:
+    """One region before this turn's feedback step."""
+
+    degree: float  # current distortion
+    share: float  # the part of ``degree`` feedback put there
+
+
+@dataclass(frozen=True)
+class FeedbackStep:
+    """One region after the step."""
+
+    degree: float
+    share: float
+    raised: float  # what feedback added this turn (after the cap and the clamp), >= 0
+    restored: float  # what was given back this turn, >= 0
+
+
+def step_feedback(
+    states: Mapping[str, FeedbackState],
+    deltas: Mapping[str, float],
+    *,
+    cap: float,
+    restore: float,
+) -> dict[str, FeedbackStep]:
+    """One turn of feedback for every region that has a delta or a share (BLM §1.3).
+
+    A region with a delta is raised by ``min(delta, cap - share)``; only the increase
+    that survives the [0, 1] clamp joins its share. A region with no delta and a share
+    gives ``min(share, restore)`` back: the degree falls (never below 0) and the share
+    falls by the full amount, so it always reaches 0. Other regions are left out. Pure.
+    """
+    out: dict[str, FeedbackStep] = {}
+    for rid in sorted(set(deltas) | {r for r, s in states.items() if s.share > 0}):
+        state = states.get(rid, FeedbackState(degree=DEFAULT_DISTORTION_DEGREE, share=0.0))
+        delta = deltas.get(rid, 0.0)
+        if delta > 0:
+            add = min(delta, max(0.0, cap - state.share))
+            degree = clamp01(state.degree + add)
+            raised = max(0.0, degree - state.degree)
+            out[rid] = FeedbackStep(
+                degree=degree, share=min(1.0, state.share + raised), raised=raised, restored=0.0
+            )
+        elif state.share > 0:
+            back = min(state.share, restore)
+            degree = clamp01(state.degree - back)
+            out[rid] = FeedbackStep(
+                degree=degree,
+                share=max(0.0, state.share - back),
+                raised=0.0,
+                restored=max(0.0, state.degree - degree),
+            )
     return out

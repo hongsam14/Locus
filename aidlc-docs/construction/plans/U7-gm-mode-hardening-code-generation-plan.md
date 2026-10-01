@@ -176,19 +176,19 @@
   - PG: 기존 `region_distortions`에 열 추가(SQLite inspector, 두 번 호출 무해). `UtcDateTime` 왕복은 시간대가 있는 값으로 확인한다.
 
 ### Step 4 — 순수 계산
-- [ ] 4.1 `locus/shared/text.py::one_line(text, max_chars) -> str`(NFR R-03)
+- [x] 4.1 `locus/shared/text.py::one_line(text, max_chars) -> str`(NFR R-03)
   - 테스트: `\n`, `\r\n`, U+2028, `\x85`, `\x00`, 탭 유지, 상한, 빈 값, 이미 한 줄인 글은 그대로
-- [ ] 4.2 `locus/play/rumor/dynamics.py`
+- [x] 4.2 `locus/play/rumor/dynamics.py`
   - `region_feedback`는 승격 소문을 빼고, 분모도 비승격 소문으로 센다.
   - `FeedbackState/FeedbackStep`, `step_feedback(states, deltas, *, cap, restore)`
-- [ ] 4.3 `locus/play/player/log.py`: `OWN_KINDS`, `REGION_KINDS`, `HIDDEN_KINDS`, `player_log(entries)`
-- [ ] 4.4 `locus/play/world_state.py::summarize_state(regions, distortions, rumors, events) -> list[RegionState]`
-- [ ] 4.5 `locus/play/event/suggest_context.py::pick_brief_regions(briefs, *, player_region_id, event_regions, rumor_counts, limit)`(FD R-06)과 `suggestion_context(...) -> str`(머리말과 상한, NFR R-01). 순수다.
-- [ ] 4.6 `tests/play/strategies.py`를 넓힌다.
+- [x] 4.3 `locus/play/player/log.py`: `OWN_KINDS`, `REGION_KINDS`, `HIDDEN_KINDS`, `player_log(entries)`
+- [x] 4.4 `locus/play/world_state.py::summarize_state(regions, distortions, rumors, events) -> list[RegionState]`
+- [x] 4.5 `locus/play/event/suggest_context.py::pick_brief_regions(briefs, *, player_region_id, event_regions, rumor_counts, limit)`(FD R-06)과 `suggestion_context(...) -> str`(머리말과 상한, NFR R-01). 순수다.
+- [x] 4.6 `tests/play/strategies.py`를 넓힌다.
   - 지역별 `(degree, share)` 상태와 delta 열
   - 이동·지역 일·GM 일이 섞인 타임라인 열
   - 소문·사건이 섞인 세션 상태
-- [ ] 4.7 테스트
+- [x] 4.7 테스트
   - `test_feedback.py`: TP-U7-1~4, EX-2·EX-3
   - `test_player_log.py`: TP-U7-6, EX-10
   - `test_world_state.py`: TP-U7-7

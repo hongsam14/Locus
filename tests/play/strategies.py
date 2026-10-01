@@ -292,3 +292,65 @@ def deed_rumor(
     if rumor_id is not None:
         r.id = rumor_id
     return r
+
+
+# --- U7 (Step 4.6): feedback states, player timelines, session state --------------- #
+_unit = st.floats(min_value=0.0, max_value=1.0, allow_nan=False)
+
+
+@st.composite
+def feedback_inputs(draw, max_regions: int = 6):
+    """Per-region ``(degree, share)`` with share <= cap and a delta map over some of them
+    (U7 TP-U7-1..3). Returns ``(states, deltas, cap, restore)``."""
+    from locus.play.rumor.dynamics import FeedbackState
+
+    cap = draw(st.floats(min_value=0.0, max_value=0.5, allow_nan=False))
+    restore = draw(st.floats(min_value=0.001, max_value=0.2, allow_nan=False))
+    ids = [f"r{i}" for i in range(draw(st.integers(min_value=0, max_value=max_regions)))]
+    states = {}
+    for rid in ids:
+        degree = draw(_unit)
+        share = draw(st.floats(min_value=0.0, max_value=min(cap, degree), allow_nan=False))
+        states[rid] = FeedbackState(degree=degree, share=share)
+    extra = [f"new{i}" for i in range(draw(st.integers(min_value=0, max_value=2)))]
+    deltas = (
+        {
+            rid: draw(st.floats(min_value=0.0001, max_value=0.2, allow_nan=False))
+            for rid in draw(st.lists(st.sampled_from(ids + extra), unique=True))
+        }
+        if ids + extra
+        else {}
+    )
+    return states, deltas, cap, restore
+
+
+@st.composite
+def player_timelines(draw, regions: tuple[str, ...] = ("a", "b", "c"), max_len: int = 30):
+    """A session timeline mixing the player's moves, region changes, GM work and NPC
+    judgements in order (U7 TP-U7-6). Some region lines carry no ``region_id`` (pre-U7)."""
+    from locus.play.models import TimelineEntry, TimelineKind
+
+    kinds = [k.value for k in TimelineKind]
+    entries = [
+        TimelineEntry(
+            session_id="s",
+            turn=0,
+            kind=TimelineKind.SESSION_STARTED,
+            summary="start",
+            payload={"region_id": draw(st.sampled_from(regions))},
+        )
+    ]
+    for i in range(draw(st.integers(min_value=0, max_value=max_len))):
+        kind = draw(st.sampled_from(kinds))
+        payload: dict = {}
+        if kind == TimelineKind.PLAYER_MOVED.value:
+            to = draw(st.sampled_from(regions))
+            payload = {"to_region_id": to, "region_id": to}
+        elif draw(st.booleans()):
+            payload["region_id"] = draw(st.sampled_from(regions))
+        if kind == TimelineKind.EVENT_APPLIED.value:
+            payload["event_id"] = draw(st.sampled_from(["e1", "e2"]))
+        entries.append(
+            TimelineEntry(session_id="s", turn=i // 3, kind=kind, summary=kind, payload=payload)
+        )
+    return entries

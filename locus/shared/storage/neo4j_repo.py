@@ -63,7 +63,7 @@ class Neo4jGraphRepository(GraphRepository):
             return [record.data() for record in result]
 
     # -- schema ----------------------------------------------------------- #
-    NODE_LABELS = ("Region", "Entity", "Knowledge", "WikiPrior", "NPC", "WorldMeta")
+    NODE_LABELS = ("Region", "Entity", "Knowledge", "WikiPrior", "NPC", "EventSeed", "WorldMeta")
 
     def ensure_schema(self) -> None:
         """Create uniqueness constraints + world_id indexes (idempotent).

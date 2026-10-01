@@ -3716,3 +3716,10 @@ Orchestrator evidence for R-06 (read-only): `npm audit` says both advisories (GH
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 1.
 
 ---
+
+## U8 Code Generation Part 2 — Step 2 (shared seed model and storage)
+**Timestamp**: 2026-10-01T14:17:36Z
+**AI Response**: Moved the event vocabulary to shared (play re-exports). Added EventSeed, WorldSnapshot.event_seeds, the seed mapping, persist_graph(seeds=), the Neo4j label, and loader support (dangling seeds dropped with a warning). 4 tests. Gates: pytest 861, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 2.
+
+---

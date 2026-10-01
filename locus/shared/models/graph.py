@@ -20,6 +20,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from locus.shared.models.enums import (
     ConnectionKind,
     EntityType,
+    EventCategory,
+    EventLifecycle,
     PriorType,
     RegionLevel,
     ScopeType,
@@ -224,4 +226,23 @@ class NPC(LocusModel):
     description: str
     home_region_id: str  # LIVES_IN target (BR-U2-12)
     traits: list[str] = Field(default_factory=list)  # short English tags (Q7)
+    provenance: Provenance
+
+
+class EventSeed(LocusModel):
+    """A world's "event that could happen" (U8, FD domain-entities §2, Q2=A).
+
+    World data: saved with the world (World File ``event_seeds``, an ``EventSeed`` graph
+    node), and started by the GM in a session as an ACTIVE event without an LLM. The
+    region is referenced by id; a region delete removes its seeds (BR-U8-14).
+    """
+
+    id: str = Field(default_factory=new_id)
+    world_id: str
+    region_id: str
+    title: str = Field(min_length=1, max_length=80)
+    description: str = Field(default="", max_length=500)
+    category: EventCategory
+    magnitude: float = Field(ge=0.0, le=1.0)
+    lifecycle: EventLifecycle | None = None  # None: the category default at start
     provenance: Provenance

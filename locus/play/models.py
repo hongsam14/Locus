@@ -18,6 +18,12 @@ from pydantic import Field, field_validator
 
 from locus.shared.config.tuning import PlayTuning
 from locus.shared.models import NPC, KnowledgeView, LocusModel, Provenance, new_id
+from locus.shared.models.enums import (  # re-exported: moved to shared in U8 (event seeds)
+    CATEGORY_DEFAULT_LIFECYCLE as CATEGORY_DEFAULT_LIFECYCLE,
+)
+from locus.shared.models.enums import EventCategory as EventCategory
+from locus.shared.models.enums import EventLifecycle as EventLifecycle
+from locus.shared.models.enums import default_lifecycle as default_lifecycle
 
 # Default per-region distortion when a session is started (FD-S1 Q1=B / BR-S1-3).
 DEFAULT_DISTORTION_DEGREE = 0.3
@@ -135,46 +141,12 @@ class TimelineEntry(LocusModel):
 # --------------------------------------------------------------------------- #
 # Phase 2 — Event + dynamic distortion (P1 Event Foundation)
 # --------------------------------------------------------------------------- #
-class EventCategory(str, Enum):
-    """Pre-defined classification of a SessionEvent (FD-P1 Q1=A)."""
-
-    WAR = "war"
-    PLAGUE = "plague"
-    POLITICS = "politics"
-    DISASTER = "disaster"
-    FESTIVAL = "festival"
-    DISCOVERY = "discovery"
-
-
-class EventLifecycle(str, Enum):
-    """Whether an event applies once or persists each turn until resolved (CL1)."""
-
-    ONE_SHOT = "one_shot"
-    PERSISTENT = "persistent"
-
-
 class EventStatus(str, Enum):
     """Lifecycle state of a SessionEvent (AD-P Q4=A)."""
 
     SUGGESTED = "suggested"  # LLM proposal awaiting approval (P2)
     ACTIVE = "active"  # in effect (manual create = active directly)
     RESOLVED = "resolved"
-
-
-# category -> default lifecycle (BR-P1-3 / CL1.3). Overridable at creation.
-CATEGORY_DEFAULT_LIFECYCLE: dict[EventCategory, EventLifecycle] = {
-    EventCategory.WAR: EventLifecycle.PERSISTENT,
-    EventCategory.PLAGUE: EventLifecycle.PERSISTENT,
-    EventCategory.POLITICS: EventLifecycle.PERSISTENT,
-    EventCategory.DISASTER: EventLifecycle.ONE_SHOT,
-    EventCategory.FESTIVAL: EventLifecycle.ONE_SHOT,
-    EventCategory.DISCOVERY: EventLifecycle.ONE_SHOT,
-}
-
-
-def default_lifecycle(category: EventCategory) -> EventLifecycle:
-    """Default lifecycle for a category (pure; BR-P1-3). PERSISTENT if unmapped."""
-    return CATEGORY_DEFAULT_LIFECYCLE.get(EventCategory(category), EventLifecycle.PERSISTENT)
 
 
 class SessionEvent(LocusModel):

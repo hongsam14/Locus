@@ -5,6 +5,8 @@ from __future__ import annotations
 from locus.shared.models.enums import (
     ConnectionKind,
     EntityType,
+    EventCategory,
+    EventLifecycle,
     PriorType,
     RegionLevel,
     ScopeType,
@@ -16,6 +18,7 @@ from locus.shared.models.graph import (
     ConnectionEdge,
     Coord,
     Entity,
+    EventSeed,
     Knowledge,
     LocusModel,
     Provenance,
@@ -47,6 +50,8 @@ __all__ = [
     # enums
     "ConnectionKind",
     "EntityType",
+    "EventCategory",
+    "EventLifecycle",
     "PriorType",
     "RegionLevel",
     "ScopeType",
@@ -57,6 +62,7 @@ __all__ = [
     "ConnectionEdge",
     "Coord",
     "Entity",
+    "EventSeed",
     "Knowledge",
     "LocusModel",
     "Provenance",

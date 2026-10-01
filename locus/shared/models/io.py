@@ -8,6 +8,7 @@ from locus.shared.models.graph import (
     NPC,
     ConnectionEdge,
     Entity,
+    EventSeed,
     Knowledge,
     LocusModel,
     Region,
@@ -72,6 +73,7 @@ class WorldSnapshot(LocusModel):
     kg: KnowledgeGraph
     topo: RegionTopology
     npcs: list[NPC] = Field(default_factory=list)
+    event_seeds: list[EventSeed] = Field(default_factory=list)  # U8 (BR-U8-12)
     load_warnings: list[BuildWarning] = Field(default_factory=list)  # skipped nodes (BR-U2-16)
 
     _regions_by_id: dict[str, Region] = PrivateAttr(default_factory=dict)

@@ -14,6 +14,7 @@ from locus.shared.models import (
     NPC,
     ConnectionEdge,
     Entity,
+    EventSeed,
     Knowledge,
     Provenance,
     Region,
@@ -75,6 +76,12 @@ def wikiprior_to_node(p: WikiPrior) -> Node:
 
 def npc_to_node(n: NPC) -> Node:
     return Node(id=n.id, label="NPC", world_id=n.world_id, properties=_flatten(n.model_dump()))
+
+
+def seed_to_node(s: EventSeed) -> Node:
+    return Node(
+        id=s.id, label="EventSeed", world_id=s.world_id, properties=_flatten(s.model_dump())
+    )
 
 
 def worldmeta_to_node(m: WorldMeta) -> Node:
@@ -333,6 +340,21 @@ def node_to_npc(node: Node) -> NPC:
         description=p.get("description", ""),
         home_region_id=p["home_region_id"],
         traits=list(p.get("traits", []) or []),
+        provenance=_provenance(p),
+    )
+
+
+def node_to_seed(node: Node) -> EventSeed:
+    p = node.properties
+    return EventSeed(
+        id=p["id"],
+        world_id=node.world_id,
+        region_id=p["region_id"],
+        title=p["title"],
+        description=p.get("description", ""),
+        category=p["category"],
+        magnitude=p["magnitude"],
+        lifecycle=p.get("lifecycle"),
         provenance=_provenance(p),
     )
 

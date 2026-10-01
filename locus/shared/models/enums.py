@@ -114,3 +114,43 @@ _LEGACY_SOURCE_KINDS: dict[str, SourceKind] = {
     "session-rumor": SourceKind.SIMULATION,
     "session-event": SourceKind.SIMULATION,
 }
+
+
+# --------------------------------------------------------------------------- #
+# Event vocabulary (U8, FD domain-entities §2). Moved here from ``play/models.py``:
+# an event seed is world data that the World File (world boundary) validates, and the
+# world boundary may not import play. This is an intended exception to FR-A2's "shared
+# vocabulary knows no boundary's concepts"; ``locus.play.models`` re-exports the names.
+# --------------------------------------------------------------------------- #
+class EventCategory(str, Enum):
+    """Pre-defined classification of a SessionEvent (FD-P1 Q1=A)."""
+
+    WAR = "war"
+    PLAGUE = "plague"
+    POLITICS = "politics"
+    DISASTER = "disaster"
+    FESTIVAL = "festival"
+    DISCOVERY = "discovery"
+
+
+class EventLifecycle(str, Enum):
+    """Whether an event applies once or persists each turn until resolved (CL1)."""
+
+    ONE_SHOT = "one_shot"
+    PERSISTENT = "persistent"
+
+
+# category -> default lifecycle (BR-P1-3 / CL1.3). Overridable at creation.
+CATEGORY_DEFAULT_LIFECYCLE: dict[EventCategory, EventLifecycle] = {
+    EventCategory.WAR: EventLifecycle.PERSISTENT,
+    EventCategory.PLAGUE: EventLifecycle.PERSISTENT,
+    EventCategory.POLITICS: EventLifecycle.PERSISTENT,
+    EventCategory.DISASTER: EventLifecycle.ONE_SHOT,
+    EventCategory.FESTIVAL: EventLifecycle.ONE_SHOT,
+    EventCategory.DISCOVERY: EventLifecycle.ONE_SHOT,
+}
+
+
+def default_lifecycle(category: EventCategory) -> EventLifecycle:
+    """Default lifecycle for a category (pure; BR-P1-3). PERSISTENT if unmapped."""
+    return CATEGORY_DEFAULT_LIFECYCLE.get(EventCategory(category), EventLifecycle.PERSISTENT)

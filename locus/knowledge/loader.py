@@ -54,6 +54,7 @@ class WorldLoader:
         knowledge = nodes("Knowledge", gm.node_to_knowledge)
         priors = nodes("WikiPrior", gm.node_to_wikiprior)
         npcs: list[NPC] = nodes("NPC", gm.node_to_npc)
+        seeds = nodes("EventSeed", gm.node_to_seed)
         metas: list[WorldMeta] = nodes("WorldMeta", gm.node_to_worldmeta)
 
         edges = self._g.get_edges(world_id)
@@ -117,6 +118,11 @@ class WorldLoader:
             lambda n: n.home_region_id in region_ids,
             lambda n: dangling("NPC home region", n.id),
         )
+        seeds = _keep(  # U8: a seed whose region is gone never reaches a session
+            seeds,
+            lambda s: s.region_id in region_ids,
+            lambda s: dangling("EventSeed region", s.id),
+        )
 
         scoped = {s.knowledge_id for s in scopes}
         unscoped = [k.id for k in knowledge if not k.is_global and k.id not in scoped]
@@ -137,6 +143,7 @@ class WorldLoader:
             kg=kg,
             topo=topo,
             npcs=npcs,
+            event_seeds=seeds,
             load_warnings=warnings,
         )
 

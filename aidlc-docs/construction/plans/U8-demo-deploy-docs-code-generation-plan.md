@@ -140,10 +140,10 @@
 - [x] 1.3 code-summary 초안(`construction/U8-demo-deploy-docs/code/code-summary.md`)에 기준선을 적는다.
 
 ### Step 2 — shared: 씨앗 모델과 저장 (domain-entities §2·§3)
-- [ ] 2.1 `locus/shared/models/enums.py`에 `EventCategory`·`EventLifecycle`·`CATEGORY_DEFAULT_LIFECYCLE`(+ `default_lifecycle`)를 옮긴다. docstring에 FR-A2 예외 한 줄. `locus/play/models.py`는 같은 이름을 다시 내보낸다(호출처 무변경).
-- [ ] 2.2 `EventSeed`(`shared/models/graph.py`, 필드·제약은 domain-entities §2), `WorldSnapshot.event_seeds: list[EventSeed]`.
-- [ ] 2.3 저장: `neo4j_repo.NODE_LABELS`에 `EventSeed`, `graph_mapping.seed_to_node`·`node_to_seed`, `persist_graph(…, seeds=)`, 로더가 라벨을 읽는다(`knowledge/loader.py`). 가짜는 라벨 목록이 없어 그대로.
-- [ ] 2.4 테스트: 매핑 왕복, 로더가 씨앗을 싣는다, 경계 테스트 GREEN.
+- [x] 2.1 `locus/shared/models/enums.py`에 `EventCategory`·`EventLifecycle`·`CATEGORY_DEFAULT_LIFECYCLE`(+ `default_lifecycle`)를 옮긴다. docstring에 FR-A2 예외 한 줄. `locus/play/models.py`는 같은 이름을 다시 내보낸다(호출처 무변경).
+- [x] 2.2 `EventSeed`(`shared/models/graph.py`, 필드·제약은 domain-entities §2), `WorldSnapshot.event_seeds: list[EventSeed]`.
+- [x] 2.3 저장: `neo4j_repo.NODE_LABELS`에 `EventSeed`, `graph_mapping.seed_to_node`·`node_to_seed`, `persist_graph(…, seeds=)`, 로더가 라벨을 읽는다(`knowledge/loader.py`). 가짜는 라벨 목록이 없어 그대로.
+- [x] 2.4 테스트: 매핑 왕복, 로더가 씨앗을 싣는다, 경계 테스트 GREEN.
 
 ### Step 3 — World File의 `event_seeds` (BR-U8-12·13, TP-U8-1·2, EX-5·6)
 - [ ] 3.1 `worldfile/schema.py`: `SECTIONS`·`WorldFile.event_seeds`. `remap.py`: `file_ids`·`set_world_id`·재매핑(씨앗 id·`region_id`)·`validate_references`(지역 없으면 빼고 error). `export.py`: 스냅샷의 씨앗, `sort_sections`. `import_.py`: 쓰기.

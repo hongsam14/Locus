@@ -15,6 +15,7 @@ from locus.shared.models import (
     BuildWarning,
     ConnectionEdge,
     Entity,
+    EventSeed,
     Knowledge,
     Region,
     Relation,
@@ -42,6 +43,7 @@ def persist_graph(
     scopes: list[ScopeLink] | None = None,
     relations: list[Relation] | None = None,
     npcs: list[NPC] | None = None,
+    seeds: list[EventSeed] | None = None,
     meta: WorldMeta | None = None,
     warnings: list[BuildWarning] | None = None,
 ) -> list[BuildWarning]:
@@ -54,6 +56,7 @@ def persist_graph(
     scopes = scopes or []
     relations = relations or []
     npcs = npcs or []
+    seeds = seeds or []
     warnings = warnings if warnings is not None else []
 
     nodes = (
@@ -62,6 +65,7 @@ def persist_graph(
         + [gm.knowledge_to_node(k) for k in knowledge]
         + [gm.wikiprior_to_node(p) for p in priors]
         + [gm.npc_to_node(n) for n in npcs]
+        + [gm.seed_to_node(s) for s in seeds]
         + ([gm.worldmeta_to_node(meta)] if meta is not None else [])
     )
     edges = (

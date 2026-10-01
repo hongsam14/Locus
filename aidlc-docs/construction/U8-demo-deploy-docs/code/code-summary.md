@@ -24,3 +24,10 @@
     - FD domain-entities §5.2·BR-U8-11: Ironcrag 전해 들음 목록(R-13).
     - FD BR-U8-35: react-router 7.18.x(사람의 결정).
     - Infra §1 web healthcheck 127.0.0.1(R-02), §3.1 package-data(R-04a), §3.2 nginx 49m(R-03), §5 설치본에서 확인(코드 플랜 R-02).
+- **Step 2** (shared: 씨앗 모델과 저장)
+  - `EventCategory`·`EventLifecycle`·`CATEGORY_DEFAULT_LIFECYCLE`·`default_lifecycle`을 `shared/models/enums.py`로 옮겼다(FR-A2 예외를 주석으로 남김). `play/models.py`는 같은 이름을 다시 내보낸다(호출처 무변경).
+  - `EventSeed`(`shared/models/graph.py`), `WorldSnapshot.event_seeds`
+  - 저장: `NODE_LABELS`에 `EventSeed`, `graph_mapping.seed_to_node`·`node_to_seed`, `persist_graph(seeds=)`
+  - 로더가 씨앗을 싣고, 지역이 없는 씨앗은 dangling 경고와 함께 뺀다(NPC 집과 같은 규칙).
+  - 테스트 `tests/shared/test_event_seed.py` 4개: 매핑 왕복, 범위, 로더, 재내보내기
+  - pytest 861

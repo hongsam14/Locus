@@ -2716,3 +2716,11 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **User Input**: "Continue to Next Stage (Recommended)"
 **AI Response**: U6 code approved with the generation-time decisions as presented (code-summary §5). Next: `/code-review` of the U6 diff (39b9f91~1..HEAD), then U7 GM 모드·안정화.
 **Context**: CONSTRUCTION / U6 — Code Generation approved.
+
+---
+
+## U7 Functional Design Part 1 — plan and questions
+**Timestamp**: 2026-10-01T00:44:54Z
+**User Input**: (continuation of "Continue to Next Stage" — U6 approved; next unit in the order U1→U2→U4→U5→U6→**U7**)
+**AI Response**: `/code-review` of the U6 diff launched in the background. Wrote `construction/plans/U7-gm-mode-hardening-functional-design-plan.md` with a current-state table (verified in code: promoted rumors count as feedback "strong" rumors and so keep their region's decay off; discards leave no timeline line; SUGGESTED events can be resolved; suggestion n has no cap and the prompt sees region ids only; regenerate deletes parents; GM timeline payloads carry no region names; consensus thresholds are not env-overridable; ConsensusParams is already built once), three questions (Q1 GM mode in/out, Q2 feedback restore/cap, Q3 player log scope) and assumptions A7-1..10. Asking Q1·Q2 first.
+**Context**: CONSTRUCTION / U7 — Functional Design Part 1.

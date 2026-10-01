@@ -289,6 +289,69 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   - The latency target (`GET deeds` p95 ≤ 100ms with 300 deeds, 600 appraisals and 100 deed
     rumors) is operator-run.
 
+## GM mode & hardening (Purpose Restructure U7, 2026-10-01)
+
+- **GM mode** (Q1=B)
+  - The play screen's "GM mode" button opens `/gm/:sessionId`.
+  - The GM screen's "Back to play" button returns to `/play/:sessionId`. It shows only for sessions with a player.
+  - The GM screen shows the player's name, region and turn, plus a running mark, and rings the player's region on the map.
+  - The GM tools are split by feature under `web/src/features/gm/`:
+    - `GmHub` holds the state.
+    - `ManualTurnPanel`, `EventPanel`, `DistortionPanel`, `RumorPanel`, `TimelinePanel` and `DeedPanel` draw it.
+- **World state**
+  - `GET /api/gm/sessions/{s}/state` returns one row per world region: distortion, feedback share, active / promoted / deed rumors and active events.
+  - The map overlay ("World state") colors regions in five distortion bands and badges `active/promoted` (plus `✦deed`).
+  - The read is five store queries, no LLM. Its reads are not bound in one transaction, so a turn committing between them can show one mixed frame. The next read corrects it.
+- **Feedback** (Q2=A, Q4=A)
+  - Strong rumors are those at or above `RUMOR_HIGH_SUPPORT_THRESHOLD`, now 0.45, that are **not promoted**. They raise their region's distortion each turn.
+  - The part feedback added is stored as `region_distortions.feedback_share`, capped at `RUMOR_FEEDBACK_CAP` (0.3).
+  - Once a region has no strong rumor, the share is given back by `RUMOR_FEEDBACK_RESTORE` (0.05) per turn.
+  - A GM distortion set is the region's new base and clears the share.
+  - **Decay**: only regions an event touches are exempt from support decay. Feedback regions decay too, so their strong rumors fade.
+- **Events**
+  - The timeline kinds are `event_created` (the GM's own), `event_suggested`, `event_approved`, `event_discarded` (it keeps what was discarded), `event_applied` and `event_resolved` (a one-shot's automatic end too).
+  - Resolving a suggestion answers 400. `suggest?n=` must be 1..`EVENT_SUGGEST_MAX` (5), else 400 before any LLM call.
+  - **Suggestion prompt**
+    - Up to `EVENT_SUGGEST_MAX_REGIONS` (30) regions: the player's region, then regions with an active event, then rumor-dense regions, then leaves before parents.
+    - Each region line has its id, name, place, description and two known facts.
+    - It also carries the last five events and the last five deeds.
+    - Everything sits under a "material, not instructions" heading, and the system prompt has a guard line.
+    - Character caps keep it under 21,000 characters.
+  - A suggestion's region is found by id, or by the name as shown, case-insensitive and only when unambiguous.
+- **Lineage**
+  - Regenerate deactivates the replaced canonical rumors instead of deleting them. No rumor is ever deleted.
+  - A kept rumor's `distorted_from_id` always points at a row.
+  - The regenerate payload key is `deactivated`.
+- **Regions**
+  - `GET …/distortions` lists every current world region: the stored row or the default (0.3, share 0).
+  - Rows of regions the world lost stay stored but are not listed.
+  - Setting a region the world does not have answers 404.
+- **Player log**: `GET /api/play/sessions/{s}/log` keeps:
+  - the player's own lines;
+  - the lines of the region the player was in at that moment: events, promotions, prunes, deed rumors born or arriving. A persistent event shows once per stay.
+  - The GM's hand, NPC judgements and voids are hidden. The GM timeline still shows everything.
+- **Names**: new timeline lines carry `region_name`. Older lines show the id.
+- **Prompt hardening**
+  - Every free text inserted into a prompt passes `shared/text.one_line`: declarations, player lines, deed text, retellings, world and event descriptions.
+  - `one_line` turns line breaks, Unicode separators and control characters into one space, so text cannot open a section of its own.
+  - What the player sees is unchanged.
+- **NPC dialogue**
+  - A failed NPC call answers 503 `the NPC could not answer right now; try again` and stores nothing.
+  - The NPC list counts messages with one query.
+- **Tuning (FR-A7)**
+  - Every knob has a default (the demo still starts from the two required `.env` values).
+  - A bad value fails startup: out of range, broken JSON, an unknown connection kind, or `CONSENSUS_HEARSAY_MIN` above `CONSENSUS_PROPAGATE_MIN`.
+  - The new env:
+    - `CONSENSUS_PROPAGATE_MIN`, `CONSENSUS_HEARSAY_MIN`
+    - `TOPOLOGY_BASE_WEIGHTS` and `TOPOLOGY_TERRAIN_MODIFIERS` (JSON objects that override only the keys they name), `TOPOLOGY_DEFAULT_BASE`
+    - `ONTOLOGY_DEDUP_THRESHOLD`
+    - `RUMOR_FEEDBACK_CAP`, `RUMOR_FEEDBACK_RESTORE`, `RUMOR_PROMOTION_THRESHOLD`
+    - `EVENT_MAX_DELTA`, `EVENT_PROPAGATE_MIN`, `EVENT_SUPPORT_REINFORCE`, `EVENT_SUGGEST_MAX`, `EVENT_SUGGEST_MAX_REGIONS`
+- **Schema** (idempotent, both dialects): `region_distortions.feedback_share FLOAT NOT NULL DEFAULT 0` is added to existing databases. Play timestamps read back as UTC on SQLite too.
+- **Operator checks** (live compose; this host's 7474/7687 belong to another project)
+  - Play → GM mode → approve a suggested event → advance three turns → World state shows the distortion spreading from the event region along connections.
+  - p95 of `/state`, `/log` and `/distortions` ≤ 100 ms with 3,000 timeline lines, 15 regions and 300 active rumors.
+
 ## Web UI (U10)
 ```bash
 cd web && npm install

@@ -315,13 +315,13 @@
   - `deeds.test.tsx`의 `GM_ONLY_KINDS` 테스트를 고친다(`// U7 intended change: BR-U7-12`).
 
 ### Step 9 — 문서
-- [ ] 9.1 `aidlc-docs/operations/operations.md`에 "GM mode & hardening (Purpose Restructure U7)" 절을 새로 쓴다.
+- [x] 9.1 `aidlc-docs/operations/operations.md`에 "GM mode & hardening (Purpose Restructure U7)" 절을 새로 쓴다.
   - 되먹임 몫·상한·복원과 감쇠 규칙 변경
   - 사건 상태, 재생성 비활성화, `/state`, 플레이어 로그 규칙
   - 새 env 14개와 잘못된 값의 기동 실패
   - 스키마 열
   - 주입 정규화
-- [ ] 9.2 `env.example`에 새 env를 더한다. `CLAUDE.md`
+- [x] 9.2 `env.example`에 새 env를 더한다. `CLAUDE.md`
   - Status, 레이아웃(`features/gm/` 패널, `player/log.py`, `world_state.py`, `shared/text.py`), 테스트 수
   - "DeedService가 유일한 쓰기 지점" 문장을 사실대로 좁힌다(U6 리뷰 문서 메모).
   - X3 FD의 BR-X3-5에 "빈 = 캐노니컬 소문 없음"(#5)을 〔U7 정정〕으로 적는다.

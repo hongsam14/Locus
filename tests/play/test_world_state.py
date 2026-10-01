@@ -71,3 +71,36 @@ def test_br_u7_18_a_region_without_a_row_shows_the_default() -> None:
     assert (rows["a"].distortion, rows["a"].feedback_share) == (0.7, 0.1)
     assert (rows["c"].distortion, rows["c"].feedback_share) == (0.3, 0.0)
     assert rows["a"].region_name == "Riverton"
+
+
+# --- the service (Step 6.10): structure of the read (NFR-3) and a real session ------- #
+def test_nfr3_state_is_five_store_reads_and_one_snapshot_read_whatever_the_regions() -> None:
+    from locus.play import InMemoryPlayRepository
+    from locus.play.models import Player
+    from locus.play.world_state import WorldStateService
+    from tests.play.strategies import build_snapshot
+    from tests.shared.snapshots import StaticSnapshots
+
+    repo = InMemoryPlayRepository()
+    session = repo.create_session("w")
+    repo.create_player(Player(session_id=session.id, name="Ari", region_id="r3"))
+    calls: dict[str, int] = {}
+    for name in (
+        "get_session",
+        "get_player",
+        "list_region_distortions",
+        "list_rumors",
+        "list_events",
+    ):
+        real = getattr(repo, name)
+
+        def counted(*a, _real=real, _name=name, **kw):
+            calls[_name] = calls.get(_name, 0) + 1
+            return _real(*a, **kw)
+
+        setattr(repo, name, counted)
+    snaps = StaticSnapshots(build_snapshot([f"r{i}" for i in range(12)], []))
+    state = WorldStateService(repo, snaps).state(session.id)
+    assert sum(calls.values()) == 5 and set(calls.values()) == {1}
+    assert snaps.calls == 1
+    assert len(state.regions) == 12 and state.player_region_id == "r3"

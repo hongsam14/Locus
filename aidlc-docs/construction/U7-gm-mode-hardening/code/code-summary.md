@@ -21,8 +21,15 @@
 - **5.4 C4**: `spread.neighbour_map(edges)`를 새로 두고, `plan_spread`가 `reach`·`neighbours`를 선택 인자로 받는다(엔진이 원점별로 메모).
 - **5.4 C7**: 청구는 갈래 앞 한 곳에서 `run.cost_turns`로 한다. 대기·선언·대화 마침의 비용은 `action_cost`가 이미 1이다.
 
+- **Step 6으로 당긴 것 (플랜 R-01)**: `LlmCallFailedError` → 503 매핑(7.1)과 NPC 목록 라우터의 개수 형태(7.3)를 대화 서비스 변경과 같은 단계에서 고쳤다.
+- **6.7 C5 (플랜 검토 R-02)**: `appraise(session, player, npc, snapshot, *, budget)`. 테스트 13곳은 헬퍼 `_appraise(gm, session_id, npc_id, budget=)` 하나로 모았다.
+- **6.7 `npcs_here` 반환형**: `(NPC, Conversation | None)` 대신 `(NPC, int | None)`(메시지 수, 대화 없으면 None). 라우터 응답 모양은 그대로다.
+- **6.7·6.8 정규화 범위**: NPC 대화·판단 프롬프트, 서술 프롬프트·폴백 기록, 소문 왜곡 프롬프트(`rumor/generator.py`)의 모든 삽입 글이 `one_line`을 지난다.
+- **6.2 제안기 시그니처**: `EventSuggester.suggest(*, context, turn, n)`. 지역 목록은 컨텍스트 안에 있다.
+
 ## 6. 변이 확인 (진행 중)
 | 단계 | 변이 | 결과 |
 |---|---|---|
 | 4 | 상한 무시, 몫에 delta 기록, 복원이 덜 빠짐, 승격 소문 셈, 로그가 지역 무시, 사건 줄 중복, 비활성 소문 셈, 플레이어 지역 우선 없음, 모호한 이름 매칭 | 9/9 잡음 |
 | 5 | #8 다시 읽기 없음, #9 장면이 try 안, #14 규칙이 validate_action 밖, 장면 가리기 없음, 되먹임 지역 면제, 몫 미기록, GM 설정이 몫 유지, one_shot 해소 줄 없음 | 8/8 잡음 |
+| 6 | SUGGESTED 해소 허용, 폐기 줄 없음, n 검사 없음, 이름 매칭 없음, 승인을 created로, 재생성 비활성화 없음, 목록이 저장 행만, 없는 지역 설정 허용, NPC 목록이 대화 읽기, 대화 실패 누출, 질문·최근 줄·판단·서술 줄바꿈 유지, GM 시작 기록 없음, 로그 필터 없음, dedup 기준 무시 | 17/17 잡음(둘은 테스트를 조인 뒤) |

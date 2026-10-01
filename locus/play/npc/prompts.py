@@ -14,6 +14,7 @@ from collections.abc import Sequence
 
 from locus.play.models import Deed, Message, NpcContext, SessionRumor
 from locus.shared.models import NPC, KnowledgeView
+from locus.shared.text import one_line
 
 LANG_NAMES = {"ko": "Korean", "en": "English"}
 
@@ -43,10 +44,18 @@ def lang_name(lang: str) -> str:
     return LANG_NAMES.get(lang, lang)
 
 
-def system_prompt(npc: NPC, lang: str) -> str:
-    persona = f"You are {npc.name}, {npc.role}."
+def _persona(npc: NPC, *, traits: bool = False) -> str:
+    """Who the NPC is, on one line per field (world text, NFR R-03)."""
+    persona = f"You are {one_line(npc.name)}, {one_line(npc.role)}."
     if npc.description:
-        persona += f" {npc.description}"
+        persona += f" {one_line(npc.description)}"
+    if traits and npc.traits:
+        persona += f" Traits: {', '.join(one_line(t) for t in npc.traits)}."
+    return persona
+
+
+def system_prompt(npc: NPC, lang: str) -> str:
+    persona = _persona(npc)
     return (
         f"{persona}\n"
         f"Speak in {lang_name(lang)} only, in character, in 1-3 sentences.\n"
@@ -63,18 +72,22 @@ def system_prompt(npc: NPC, lang: str) -> str:
 
 def user_prompt(ctx: NpcContext, question: str, lang: str) -> str:
     lines = ["CONTEXT", "FACTS:"]
-    lines += [f"- {k.statement}" for k in ctx.facts] or ["- (nothing in particular)"]
+    lines += [f"- {one_line(k.statement)}" for k in ctx.facts] or ["- (nothing in particular)"]
     lines.append("RUMORS:")
-    lines += [f"- [{rumor_tone(r)}] {r.statement}" for r in ctx.rumors] or ["- (none)"]
+    lines += [f"- [{rumor_tone(r)}] {one_line(r.statement)}" for r in ctx.rumors] or ["- (none)"]
     if ctx.deeds:  # U6: what this NPC saw or made of the traveler (BR-U6-30)
         lines.append(f"WHAT YOU SAW OR HEARD OF THE TRAVELER ({MATERIAL}):")
-        lines += [f"- {d.text}" + (f" ({d.slant})" if d.slant else "") for d in ctx.deeds]
+        lines += [
+            f"- {one_line(d.text)}" + (f" ({one_line(d.slant)})" if d.slant else "")
+            for d in ctx.deeds
+        ]
     if ctx.recent:
         lines.append("RECENT CONVERSATION:")
+        speaker = one_line(ctx.npc.name)
         lines += [
-            f"{'Player' if m.role == 'player' else ctx.npc.name}: {m.text}" for m in ctx.recent
+            f"{'Player' if m.role == 'player' else speaker}: {one_line(m.text)}" for m in ctx.recent
         ]
-    lines.append(f"QUESTION ({lang_name(lang)}): {question}")
+    lines.append(f"QUESTION ({lang_name(lang)}): {one_line(question)}")
     return "\n".join(lines)
 
 
@@ -85,11 +98,7 @@ def fallback_text(lang: str) -> str:
 
 # --- U6 appraisal (BLM §3.2) ---------------------------------------------------------- #
 def appraisal_system_prompt(npc: NPC) -> str:
-    persona = f"You are {npc.name}, {npc.role}."
-    if npc.description:
-        persona += f" {npc.description}"
-    if npc.traits:
-        persona += f" Traits: {', '.join(npc.traits)}."
+    persona = _persona(npc, traits=True)
     return (
         f"{persona}\n"
         "The traveler has just finished talking with you. Decide, in character, which of "
@@ -109,9 +118,9 @@ def appraisal_prompt(
     facts: Sequence[KnowledgeView], new_lines: Sequence[Message], deeds: Sequence[tuple[str, Deed]]
 ) -> str:
     lines = ["WHAT YOU KNOW:"]
-    lines += [f"- {k.statement}" for k in facts] or ["- (nothing in particular)"]
+    lines += [f"- {one_line(k.statement)}" for k in facts] or ["- (nothing in particular)"]
     lines.append(f"WHAT THE TRAVELER SAID TO YOU ({MATERIAL}):")
-    lines += [f"- {m.text}" for m in new_lines] or ["- (nothing)"]
+    lines += [f"- {one_line(m.text)}" for m in new_lines] or ["- (nothing)"]
     lines.append(f"DEEDS ({MATERIAL}):")
-    lines += [f"- {ref} [{deed.kind}] {deed.text}" for ref, deed in deeds] or ["- (none)"]
+    lines += [f"- {ref} [{deed.kind}] {one_line(deed.text)}" for ref, deed in deeds] or ["- (none)"]
     return "\n".join(lines)

@@ -17,11 +17,18 @@ of work, so the loser's answer is not lost (plan review R-03).
 
 from __future__ import annotations
 
+import logging
+
 from locus.knowledge.cache import SnapshotSource
 from locus.play.base import SessionAppService, SessionClosedError
 from locus.play.deeds.caps import LINE_MAX, SLANT_MAX, cap
 from locus.play.deeds.service import DeedService
-from locus.play.errors import ConversationExistsError, InvalidActionError, LlmUnavailableError
+from locus.play.errors import (
+    ConversationExistsError,
+    InvalidActionError,
+    LlmCallFailedError,
+    LlmUnavailableError,
+)
 from locus.play.models import (
     AppraisalDraft,
     AppraisalDraftItem,
@@ -54,6 +61,11 @@ from locus.shared.models.util import clamp01
 
 # Facts the NPC weighs a deed against (BLM §3.2: at most 8).
 APPRAISAL_FACTS = 8
+# What the player is told when the NPC's LLM call fails (BR-U7-27): fixed, so the
+# provider's own error text never reaches the response.
+NPC_UNAVAILABLE = "the NPC could not answer right now; try again"
+
+logger = logging.getLogger(__name__)
 
 
 class NpcDialogueService(SessionAppService):
@@ -83,13 +95,16 @@ class NpcDialogueService(SessionAppService):
         return self._llm is not None
 
     # -- reads ---------------------------------------------------------------
-    def npcs_here(self, session_id: str) -> list[tuple[NPC, Conversation | None]]:
-        """The people of the player's current region, with their conversation if any."""
+    def npcs_here(self, session_id: str) -> list[tuple[NPC, int | None]]:
+        """The people of the player's current region, each with its message count —
+        ``None`` when there is no conversation yet. One count query for the region
+        instead of one conversation read per NPC (U5 review C1, BR-U7-26)."""
         session = self._require_session(session_id)
         player = self._require_player(session_id)
         snapshot = self._snapshots.get(session.world_id)
         here = snapshot.npcs_by_region.get(player.region_id, [])
-        return [(npc, self._repo.get_conversation(session_id, npc.id)) for npc in here]
+        counts = self._repo.message_counts(session_id)
+        return [(npc, counts.get(npc.id)) for npc in here]
 
     def history(self, session_id: str, npc_id: str) -> Conversation:
         """The whole conversation (closed sessions allowed, no LLM; BR-U5-4)."""
@@ -149,7 +164,13 @@ class NpcDialogueService(SessionAppService):
             deeds=self._deeds.memories(session_id, player, npc_id) if self._deeds else (),
         )
         # exactly one LLM call, outside any transaction (BR-U4-14)
-        answer = self._llm.complete(user_prompt(ctx, body, lang), system=system_prompt(npc, lang))
+        try:
+            answer = self._llm.complete(
+                user_prompt(ctx, body, lang), system=system_prompt(npc, lang)
+            )
+        except Exception as exc:  # BR-U7-27: 503, nothing stored, no provider text out
+            logger.exception("npc dialogue call failed for %s/%s", session_id, npc_id)
+            raise LlmCallFailedError(NPC_UNAVAILABLE) from exc
         answer = (answer or "").strip() or fallback_text(lang)  # never break the conversation
 
         try:
@@ -171,9 +192,18 @@ class NpcDialogueService(SessionAppService):
         )
 
     # -- U6 appraisal (BLM §3.2) ---------------------------------------------
-    def appraise(self, session_id: str, npc_id: str, *, budget: LlmBudget) -> AppraisalOutcome:
+    def appraise(
+        self,
+        session: GameSession,
+        player: Player,
+        npc: NPC,
+        snapshot: WorldSnapshot,
+        *,
+        budget: LlmBudget,
+    ) -> AppraisalOutcome:
         """What this NPC makes of the traveler's deeds after a talk: at most one LLM
-        call, **no writes** (DeedService stores the outcome, FD deviation 13).
+        call, **no writes** (DeedService stores the outcome, FD deviation 13). The caller
+        hands over what it already read (U6 review C5).
 
         No judgement at all — no call, nothing recorded — unless the player said something
         new to this NPC since the last talk ended (BR-U6-7: "talked" means new words). A
@@ -183,12 +213,7 @@ class NpcDialogueService(SessionAppService):
         outcome = AppraisalOutcome()
         if self._deeds is None:
             return outcome
-        session = self._require_session(session_id)
-        player = self._require_player(session_id)
-        snapshot = self._snapshots.get(session.world_id)
-        npc = movement.find_npc(snapshot, npc_id)
-        if npc is None:
-            return outcome
+        session_id, npc_id = session.id, npc.id
         conv = self._repo.get_conversation(session_id, npc_id)
         last = self._deeds.last_statement(session_id, npc_id)
         cursor = last.messages_through if last is not None else None

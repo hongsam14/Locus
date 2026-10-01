@@ -157,3 +157,19 @@ def test_topology_build_carries_hierarchy_and_hint_warnings() -> None:
     messages = [w.message for w in result.warnings]
     assert any("Nowhere" in m for m in messages) and any("Ghost" in m for m in messages)
     assert all(w.severity == "warning" and w.stage == "topology" for w in result.warnings)
+
+
+# --- U7 (FR-A7, US-8.5): the weight table is a tuning, not a constant --------------- #
+def test_u7_compute_weight_reads_the_given_tuning() -> None:
+    from types import MappingProxyType
+
+    from locus.shared.config.tuning import WorldTuning
+
+    tuned = WorldTuning(
+        base_weights=MappingProxyType({"route": 0.9}),
+        default_base=0.1,
+        terrain_modifiers=MappingProxyType({"swamp": 0.5}),
+    )
+    assert compute_weight("route", ["swamp"], tuning=tuned) == 0.45
+    assert compute_weight("river", [], tuning=tuned) == 0.1  # missing kind -> default_base
+    assert compute_weight("route", ["swamp"]) == 0.6  # defaults: no swamp modifier

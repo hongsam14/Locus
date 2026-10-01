@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Protocol
 
 from locus.knowledge.cache import SnapshotCache
+from locus.shared.config.tuning import WorldTuning
 from locus.shared.llm.base import EmbeddingProvider, LLMProvider, VLMProvider
 from locus.shared.llm.counting import LLMCallCounter
 from locus.shared.llm.factory import ProviderFactory
@@ -139,7 +140,9 @@ class WorldBuilder:
         cache: SnapshotCache,
         exporter: ExporterLike | None = None,
         backup_dir: Path | None = None,
+        tuning: WorldTuning | None = None,
     ) -> WorldBuilder:
+        tuning = tuning or WorldTuning()  # the weight table and the dedup bar (U7, FR-A7)
         providers = BuildProviders(
             llm=factory.llm(), vlm=factory.vlm(), embedding=factory.embedding()
         )
@@ -149,9 +152,9 @@ class WorldBuilder:
             cache,
             providers=providers,
             ingestion_factory=lambda llm, vlm: IngestionService.from_providers(llm, vlm),  # type: ignore[arg-type]
-            topology_factory=lambda wiki: TopologyBuilder(wiki=wiki),
+            topology_factory=lambda wiki: TopologyBuilder(wiki=wiki, tuning=tuning),
             ontology_factory=lambda llm, emb, wiki: OntologyBuilder(
-                llm=llm, embedding=emb, wiki=wiki
+                llm=llm, embedding=emb, wiki=wiki, dedup_threshold=tuning.dedup_threshold
             ),
             wiki_factory=lambda world_id, llm, emb: CommonsenseWiki(
                 search_repo, llm, emb, world_id=world_id  # type: ignore[arg-type]

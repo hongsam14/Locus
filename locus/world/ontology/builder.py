@@ -16,7 +16,7 @@ from locus.shared.models import (
     ScopeType,
 )
 from locus.world.ontology.corroboration import CorroborationGenerator
-from locus.world.ontology.dedup import Deduplicator
+from locus.world.ontology.dedup import DEFAULT_SIM_THRESHOLD, Deduplicator
 from locus.world.ontology.reconciler import EntityReconciler
 from locus.world.topology.naming import index_by_name, resolve_region
 from locus.world.wiki.base import CommonsenseWiki
@@ -91,11 +91,13 @@ class OntologyBuilder:
         wiki: CommonsenseWiki | None = None,
         *,
         max_corroborations_per_region: int = 2,
+        dedup_threshold: float = DEFAULT_SIM_THRESHOLD,
     ) -> None:
         self._llm = llm
         self._embedding = embedding
         self._wiki = wiki
         self._max_corr = max_corroborations_per_region
+        self._dedup_threshold = dedup_threshold  # U7, FR-A7 (ONTOLOGY_DEDUP_THRESHOLD)
 
     def set_wiki(self, wiki: CommonsenseWiki | None) -> None:
         """Inject the world-scoped wiki at build time (single-world, BR-A9)."""
@@ -119,7 +121,7 @@ class OntologyBuilder:
         scopes = input_scopes + corr_scopes
 
         # 3. semantic dedup (CL2=C) over the full knowledge set
-        deduper = Deduplicator(self._embedding, self._llm)
+        deduper = Deduplicator(self._embedding, self._llm, threshold=self._dedup_threshold)
         deduped, remap = deduper.dedupe(knowledge)
         scopes = remap_scopes(scopes, remap)
         kept = {k.id for k in deduped}

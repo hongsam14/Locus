@@ -205,3 +205,48 @@ def test_regenerate_swaps_in_one_transaction() -> None:
 
     assert {r.id for r in repo.list_rumors(session.id, loader.region.id)} == {r.id for r in first}
     assert repo.list_timeline(session.id)[-1].kind != TimelineKind.REGENERATE.value
+
+
+# --- U7 Step 6.10: lineage kept (EX-8, TP-U7-5), new regions (EX-9), 404 (BR-U7-6) ---- #
+def test_ex8_tp_u7_5_regenerate_deactivates_so_every_kept_chain_still_resolves() -> None:
+    repo, loader, gm, session = _setup()
+    chain = gm.rumors.generate_rumors(session.id, loader.region.id)
+    assert len(chain) >= 2 and chain[1].distorted_from_id == chain[0].id
+    tip = chain[-1].model_copy(update={"promoted": True})  # b: promoted, so it is kept
+    repo.upsert_rumor(tip)
+    result = gm.rumors.regenerate_region(session.id, loader.region.id)
+    assert set(result.deactivated_ids) == {r.id for r in chain[:-1]}
+    every = {r.id: r for r in repo.list_rumors(session.id, include_pruned=True)}
+    for kept in repo.list_rumors(session.id):  # TP-U7-5: each parent row still exists
+        if kept.distorted_from_kind == "rumor":
+            assert kept.distorted_from_id in every
+    assert every[chain[0].id].active is False
+    assert chain[0].id not in {r.id for r in repo.list_rumors(session.id)}
+    assert repo.list_timeline(session.id)[-1].payload["deactivated"] == result.deactivated_ids
+
+
+def test_ex9_a_region_added_after_the_start_is_listed_with_the_default() -> None:
+    repo, loader, gm, session = _setup()
+    late = Region(world_id="w", name="Late", level=RegionLevel.TOWN, provenance=_prov())
+    loader._topo = RegionTopology(world_id="w", regions=[loader.region, late])
+    rows = {r.region_id: r for r in gm.distortions.list_distortions(session.id)}
+    assert set(rows) == {loader.region.id, late.id}
+    assert (rows[late.id].distortion_degree, rows[late.id].feedback_share) == (0.3, 0.0)
+    assert repo.get_region_distortion(session.id, late.id) is None  # nothing was written
+
+
+def test_br_u7_18_a_row_for_a_region_the_world_lost_is_not_listed() -> None:
+    repo, loader, gm, session = _setup()
+    repo.set_region_distortion(session.id, "gone", 0.9)
+    assert [r.region_id for r in gm.distortions.list_distortions(session.id)] == [loader.region.id]
+    assert repo.get_region_distortion(session.id, "gone") == 0.9  # kept in the store
+
+
+def test_br_u7_6_setting_a_region_the_world_does_not_have_is_404() -> None:
+    repo, loader, gm, session = _setup()
+    with pytest.raises(LookupError, match="region not found: nowhere"):
+        gm.distortions.set_region_distortion(session.id, "nowhere", 0.5)
+    assert repo.get_region_distortion(session.id, "nowhere") is None
+    gm.distortions.set_region_distortion(session.id, loader.region.id, 0.5)
+    line = repo.list_timeline(session.id)[-1]
+    assert (line.payload["region_name"], line.summary) == ("Town", "distortion of Town -> 0.50")

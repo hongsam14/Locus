@@ -14,6 +14,7 @@ from fastapi import HTTPException
 from locus.play.base import SessionClosedError
 from locus.play.errors import (
     ExecutorShutdownError,
+    LlmCallFailedError,
     LlmUnavailableError,
     TurnInProgressError,
 )
@@ -27,12 +28,13 @@ PLAY_ERRORS: tuple[type[Exception], ...] = (
     TurnInProgressError,
     ExecutorShutdownError,
     LlmUnavailableError,
+    LlmCallFailedError,
     ValueError,
 )
 
 
 def http_error(exc: Exception) -> HTTPException:
-    if isinstance(exc, (ExecutorShutdownError, LlmUnavailableError)):
+    if isinstance(exc, (ExecutorShutdownError, LlmUnavailableError, LlmCallFailedError)):
         return HTTPException(status_code=503, detail=str(exc))
     if isinstance(exc, (SessionClosedError, WorldExistsError, TurnInProgressError)):
         return HTTPException(status_code=409, detail=str(exc))

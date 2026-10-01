@@ -69,7 +69,13 @@ def assemble_world(shared: SharedContainer, knowledge: KnowledgeContainer) -> Wo
             return CommonsenseWiki(search, llm, embedding, world_id=world_id)
 
         builder = WorldBuilder.from_factory(
-            shared.factory, graph, search, cache=cache, exporter=exporter, backup_dir=backup_dir
+            shared.factory,
+            graph,
+            search,
+            cache=cache,
+            exporter=exporter,
+            backup_dir=backup_dir,
+            tuning=shared.settings.world_tuning(),  # U7, FR-A7
         )
         container.builder = builder
         container.augmentation = AugmentationService(

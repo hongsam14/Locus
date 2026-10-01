@@ -13,6 +13,7 @@ from locus.play.models import SessionRumor
 from locus.shared.llm.base import LLMProvider
 from locus.shared.models import LocusModel, Provenance, SourceKind
 from locus.shared.models.util import clamp01
+from locus.shared.text import one_line
 
 _SYSTEM = (
     "You distort a statement into a rumor. You are given the current text and a "
@@ -85,4 +86,5 @@ class RumorGenerator:
 
     @staticmethod
     def _prompt(text: str, degree: float) -> str:
-        return f"Distortion strength: {degree:.2f}\nText: {text}\n\nDistorted statement:"
+        # the text may be a deed retelling: one line, so it cannot add lines (NFR R-03)
+        return f"Distortion strength: {degree:.2f}\nText: {one_line(text)}\n\nDistorted statement:"

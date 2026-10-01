@@ -12,6 +12,7 @@ from locus.play.deeds.caps import LINE_MAX, NARRATION_MAX, cap
 from locus.play.models import Narration, NarrationDraft, SceneBrief
 from locus.play.npc.prompts import MATERIAL, lang_name
 from locus.shared.llm.base import LLMProvider
+from locus.shared.text import one_line
 
 _FALLBACK = {
     "ko": "당신의 행동이 기록되었습니다. (서술을 만들지 못했습니다)",
@@ -27,7 +28,8 @@ def fallback(*, declaration: str, player_name: str, lang: str, llm_calls: int = 
     and the player's own words as the record (BR-U6-24)."""
     return Narration(
         text=_FALLBACK.get(lang, _FALLBACK["en"]),
-        record=cap(f"{player_name} declared: {declaration}", LINE_MAX),
+        # one line: the record becomes deed text and enters other prompts (NFR R-03)
+        record=cap(one_line(f"{player_name} declared: {declaration}"), LINE_MAX),
         lang=lang,
         llm_calls=llm_calls,
     )
@@ -47,17 +49,20 @@ def system_prompt(lang: str) -> str:
 
 
 def user_prompt(scene: SceneBrief, declaration: str) -> str:
-    lines = [
-        f"SCENE: {scene.region_name}" + (f" — {scene.description}" if scene.description else "")
-    ]
+    """Every inserted text is on one line, so a declaration (or any world text) cannot
+    open a section of its own (U6 review #6, NFR R-03)."""
+    description = one_line(scene.description)
+    lines = [f"SCENE: {one_line(scene.region_name)}" + (f" — {description}" if description else "")]
     lines.append("PEOPLE HERE:")
-    lines += [f"- {n.name} ({n.role})" for n in scene.npcs] or ["- (no one)"]
+    lines += [f"- {one_line(n.name)} ({one_line(n.role)})" for n in scene.npcs] or ["- (no one)"]
     lines.append("KNOWN HERE:")
-    lines += [f"- {k.statement}" for k in scene.facts[:FACTS_MAX]] or ["- (nothing in particular)"]
+    lines += [f"- {one_line(k.statement)}" for k in scene.facts[:FACTS_MAX]] or [
+        "- (nothing in particular)"
+    ]
     lines.append("RUMORS HERE:")
-    lines += [f"- {r.statement}" for r in scene.rumors[:RUMORS_MAX]] or ["- (none)"]
-    lines.append(f"TRAVELER: {scene.player_name}")
-    lines.append(f"DECLARATION ({MATERIAL}): {declaration}")
+    lines += [f"- {one_line(r.statement)}" for r in scene.rumors[:RUMORS_MAX]] or ["- (none)"]
+    lines.append(f"TRAVELER: {one_line(scene.player_name)}")
+    lines.append(f"DECLARATION ({MATERIAL}): {one_line(declaration)}")
     return "\n".join(lines)
 
 
@@ -70,8 +75,7 @@ class GmNarrator:
         draft = self._llm.structured(
             user_prompt(scene, declaration), NarrationDraft, system=system_prompt(lang)
         )
-        text = cap(draft.narration, NARRATION_MAX) or _FALLBACK.get(lang, _FALLBACK["en"])
-        record = cap(draft.record, LINE_MAX) or cap(
-            f"{scene.player_name} declared: {declaration}", LINE_MAX
-        )
+        fb = fallback(declaration=declaration, player_name=scene.player_name, lang=lang)
+        text = cap(draft.narration, NARRATION_MAX) or fb.text  # empty parts: U6 review C14
+        record = cap(one_line(draft.record), LINE_MAX) or fb.record
         return Narration(text=text, record=record, lang=lang, llm_calls=1)

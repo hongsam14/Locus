@@ -226,11 +226,11 @@
 - [x] 5.6 C15: `test_deeds.py:32`·`test_deed_turns.py:48`·`tests/api/test_deeds_api.py:22`의 `_Snap`을 `StaticSnapshots`로 바꾼다.
 
 ### Step 6 — 서비스와 조립
-- [ ] 6.1 `RumorService`
+- [x] 6.1 `RumorService`
   - `regenerate_region`은 `active=False`로 저장하고 `deactivated_ids`와 `deactivated` 페이로드를 쓴다.
   - `generate`·`regenerate`·`adjust_support` 줄에 이름을 넣는다.
   - 호출처: `api/routers/gm.py:158`, `test_deed_turns.py:312`, `test_player_mode.py:940`, `test_play_services.py:188`
-- [ ] 6.2 `EventService`·`EventSuggester`
+- [x] 6.2 `EventService`·`EventSuggester`
   - `suggest_events`
     - `n` 검사(400)
     - `pick_brief_regions` + `suggestion_context`
@@ -242,29 +242,29 @@
   - `create`·`resolve` 줄에 이름을 넣는다.
   - `EventSuggester.suggest(*, context: str, turn, n)`. `_SYSTEM`에 가드 문장을 넣는다(#7).
   - 호출처: `event/service.py:152`, 생성 다섯 곳(`wiring.py:92`, `tests/api/play_fixtures.py:95`, `tests/play/helpers.py:55`, `test_advance_turn.py:101`, `test_deed_turns.py:345`)
-- [ ] 6.3 `DistortionService(repo, snapshots)`(FD R-01)
+- [x] 6.3 `DistortionService(repo, snapshots)`(FD R-01)
   - `list_distortions`는 월드 지역마다 한 행을 준다.
   - `set_region_distortion`: `require_region` → 404, 몫 0, 이름·지운 몫 줄
-- [ ] 6.4 `WorldStateService(repo, snapshots).state(session_id)`: 읽기 5회와 `summarize_state`
-- [ ] 6.5 `SessionService.start_session`은 `session_started` 줄을 쓴다(R-02). `PlayService`
+- [x] 6.4 `WorldStateService(repo, snapshots).state(session_id)`: 읽기 5회와 `summarize_state`
+- [x] 6.5 `SessionService.start_session`은 `session_started` 줄을 쓴다(R-02). `PlayService`
   - `params`를 없앤다.
   - `log`는 `player_log`를 쓴다.
   - `_require_player`를 `base.SessionAppService`로 올린다(U5 C4).
-- [ ] 6.6 `DeedService`: C2 질의를 쓴다. C10. 기존 동작은 그대로다(U6 테스트 GREEN).
-- [ ] 6.7 `NpcDialogueService`
+- [x] 6.6 `DeedService`: C2 질의를 쓴다. C10. 기존 동작은 그대로다(U6 테스트 GREEN).
+- [x] 6.7 `NpcDialogueService`
   - `npcs_here`·EndTalk는 `message_counts`를 쓴다(U5 C1).
   - `say`: LLM 예외 → `LlmCallFailedError`. 저장은 없다.
   - `appraise(session, player, npc, snapshot, *, budget)`(C5). 호출처는 `advancer._prepare`와 `test_dialogue.py`다.
   - 프롬프트의 자유 글은 `one_line`을 지난다(`prompts.py`).
-- [ ] 6.8 `GmNarrator`: 선언과 폴백 기록은 `one_line`을 지난다(#6). C14.
-- [ ] 6.9 `locus/play/wiring.py`
+- [x] 6.8 `GmNarrator`: 선언과 폴백 기록은 `one_line`을 지난다(#6). C14.
+- [x] 6.9 `locus/play/wiring.py`
   - `DistortionService(store, loader)`, `WorldStateService(store, loader)` → `PlayContainer.world_state`
   - `PlayService`에서 `params`를 뺀다.
   - `locus/world/wiring.py`·`build.py`: `WorldBuilder.from_factory(..., tuning=WorldTuning)` → `TopologyBuilder(tuning=)`·`OntologyBuilder(dedup_threshold=)`
   - `compute_weight(kind, terrains, *, tuning=WorldTuning())`. 호출처: `builder.py:117`, `test_topology.py:34/39/47`
   - `Deduplicator(threshold=)`. 호출처: `ontology/builder.py:122`, `test_ontology.py:120/127`
   - knowledge wiring은 그대로다(`knowledge_tuning()`이 env를 읽는다).
-- [ ] 6.10 테스트
+- [x] 6.10 테스트
   - `test_gm_events.py`: EX-5·6·7, BR-U7-8 종류 순서
   - `test_play_services.py`: EX-8·9·4, 재생성 계보 TP-U7-5, 404
   - `test_dialogue.py`: EX-13·14, 주입 사례(`"sing\nKNOWN HERE:"`, `\r\n`, U+2028)

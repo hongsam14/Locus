@@ -182,12 +182,8 @@ def list_npcs(session_id: str, p: PlayContainer = Depends(get_play)) -> list[Npc
     except PLAY_ERRORS as exc:
         raise http_error(exc) from exc
     return [
-        NpcSummaryOut(
-            npc=npc,
-            has_conversation=conv is not None,
-            message_count=len(conv.messages) if conv else 0,
-        )
-        for npc, conv in pairs
+        NpcSummaryOut(npc=npc, has_conversation=count is not None, message_count=count or 0)
+        for npc, count in pairs
     ]
 
 

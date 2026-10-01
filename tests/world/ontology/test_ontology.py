@@ -216,3 +216,25 @@ def test_unscoped_ids_are_canonical_after_dedup() -> None:
     assert set(result.kg.unscoped_knowledge_ids) <= kept
     assert len(result.kg.unscoped_knowledge_ids) == len(kept)  # every kept item is unscoped
     assert any("Nowhere" in w.message for w in result.warnings)
+
+
+def test_u7_the_ontology_builder_hands_its_dedup_bar_to_the_deduplicator(monkeypatch) -> None:
+    """FR-A7: ONTOLOGY_DEDUP_THRESHOLD reaches the dedup step (world_tuning -> builder)."""
+    from locus.world.ontology import builder as ob
+
+    seen = {}
+
+    class Spy:
+        def __init__(self, embedding, llm, *, threshold):
+            seen["threshold"] = threshold
+
+        def dedupe(self, knowledge):
+            return knowledge, {}
+
+    monkeypatch.setattr(ob, "Deduplicator", Spy)
+    from locus.shared.models import IngestionResult, RegionTopology
+
+    ob.OntologyBuilder(dedup_threshold=0.91).build(
+        IngestionResult(world_id="w"), RegionTopology(world_id="w"), world_id="w"
+    )
+    assert seen["threshold"] == 0.91

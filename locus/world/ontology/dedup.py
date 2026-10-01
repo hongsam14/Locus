@@ -9,13 +9,14 @@ Falls back to exact normalized-statement merge if embedding/LLM is unavailable.
 
 from __future__ import annotations
 
+from locus.shared.config.tuning import WorldTuning
 from locus.shared.llm.base import EmbeddingProvider, LLMProvider
 from locus.shared.models import Knowledge
 from locus.shared.models.util import normalize_name
 from locus.world.ontology.schemas import DuplicateVerdict
 from locus.world.ontology.similarity import candidate_pairs
 
-DEFAULT_SIM_THRESHOLD = 0.86
+DEFAULT_SIM_THRESHOLD = WorldTuning().dedup_threshold  # default; env via world_tuning (U7)
 
 
 class _UnionFind:

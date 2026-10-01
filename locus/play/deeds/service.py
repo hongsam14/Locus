@@ -202,8 +202,9 @@ class DeedService(SessionAppService):
         latest arrival here **voided or not**, so voiding it never revives an old stay.
         A session from before U6 has no arrival: then every deed here counts."""
         here = self._repo.list_deeds(session_id, region_id=player.region_id, include_voided=True)
-        arrivals = [d for d in here if d.kind == DeedKind.ARRIVAL.value]
-        start = len(here) - 1 - here[::-1].index(arrivals[-1]) if arrivals else 0
+        start = max(  # the latest arrival here (U6 review C10)
+            (i for i, d in enumerate(here) if d.kind == DeedKind.ARRIVAL.value), default=0
+        )
         return [d for d in here[start:] if not d.voided]
 
     def pending_for(self, session_id: str, player: Player, npc_id: str) -> list[Deed]:
@@ -225,30 +226,18 @@ class DeedService(SessionAppService):
     def last_statement(self, session_id: str, npc_id: str) -> Deed | None:
         """The latest statement made to this NPC, voided or not — the summary cursor
         (BR-U6-6)."""
-        said = [
-            d
-            for d in self._repo.list_deeds(session_id)
-            if d.kind == DeedKind.STATEMENT.value and d.witnessed_npc_ids == [npc_id]
-        ]
-        return said[-1] if said else None
+        # statements only, newest first; the listener filter is a JSON column, so it is
+        # applied here (U6 review C2)
+        said = self._repo.list_deeds(session_id, kind=DeedKind.STATEMENT.value, newest_first=True)
+        return next((d for d in said if d.witnessed_npc_ids == [npc_id]), None)
 
     def seeds_ready(self, session_id: str) -> list[tuple[Deed, DeedAppraisal]]:
         """Appraisals that may seed a rumor now (BR-U6-12), oldest deed first."""
-        deeds = {d.id: d for d in self._repo.list_deeds(session_id)}
-        out: list[tuple[Deed, DeedAppraisal]] = []
-        for a in self._repo.list_appraisals(session_id):
-            deed = deeds.get(a.deed_id)
-            if (
-                deed is not None
-                and not deed.voided
-                and a.noteworthy
-                and a.salience >= self._tuning.deed_seed_min_salience
-                and a.retelling.strip()
-                and a.seeded_rumor_id is None
-            ):
-                out.append((deed, a))
-        out.sort(key=lambda pair: (pair[0].created_at or 0, pair[1].created_at or 0, pair[1].id))
-        return out
+        # one store read with the BR-U6-12 filter (U6 review C2: was every deed and
+        # appraisal of the session, every turn)
+        return self._repo.seed_candidates(
+            session_id, min_salience=self._tuning.deed_seed_min_salience
+        )
 
     def memories(self, session_id: str, player: Player, npc_id: str) -> list[DeedMemory]:
         """What this NPC knows of the traveler (BR-U6-30): deeds it judged (its own
@@ -257,10 +246,16 @@ class DeedService(SessionAppService):
         limit = self._tuning.npc_max_deeds
         if not limit:
             return []
-        deeds = {d.id: d for d in self._repo.list_deeds(session_id, include_voided=False)}
-        mine = [
-            a for a in self._repo.list_appraisals(session_id, npc_id=npc_id) if a.deed_id in deeds
-        ]
+        judged_by_me = self._repo.list_appraisals(session_id, npc_id=npc_id)
+        deeds = {
+            d.id: d
+            for d in self._repo.list_deeds(
+                session_id,
+                include_voided=False,
+                deed_ids=sorted({a.deed_id for a in judged_by_me}),
+            )
+        }
+        mine = [a for a in judged_by_me if a.deed_id in deeds]
         out = [
             (
                 deeds[a.deed_id],
@@ -279,7 +274,7 @@ class DeedService(SessionAppService):
 
     def recent(self, session_id: str, n: int = 5) -> list[tuple[Deed, list[DeedAppraisal]]]:
         """The latest ``n`` deeds that were not voided, newest first (event suggestion)."""
-        deeds = self._repo.list_deeds(session_id, include_voided=False)[::-1][:n]
+        deeds = self._repo.list_deeds(session_id, include_voided=False, newest_first=True, limit=n)
         by_deed: dict[str, list[DeedAppraisal]] = {d.id: [] for d in deeds}
         if deeds:
             for a in self._repo.list_appraisals(session_id, deed_ids=list(by_deed)):

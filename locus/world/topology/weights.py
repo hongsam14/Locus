@@ -7,44 +7,30 @@ separately), not the numeric value — so weights are reproducible/testable.
 
 from __future__ import annotations
 
-from locus.shared.models import ConnectionKind
+from locus.shared.config.tuning import WorldTuning
 from locus.shared.models.util import clamp01
 
-BASE_WEIGHT: dict[str, float] = {
-    ConnectionKind.ADJACENT.value: 0.8,
-    ConnectionKind.ROUTE.value: 0.6,
-    ConnectionKind.RIVER.value: 0.5,
-    ConnectionKind.BLOCKED.value: 0.2,
-}
-DEFAULT_BASE = 0.5
-
-# terrain feature kind -> multiplicative modifier on connection weight
-TERRAIN_MODIFIER: dict[str, float] = {
-    "mountain": 0.4,
-    "range": 0.4,
-    "mountains": 0.4,
-    "desert": 0.5,
-    "river": 0.8,
-    "sea": 0.3,
-    "ocean": 0.3,
-    "road": 1.2,
-    "route": 1.2,
-    "bridge": 1.2,
-}
+# The tables live in ``WorldTuning`` (U7, FR-A7: env-tunable); these are its defaults.
+_DEFAULTS = WorldTuning()
+BASE_WEIGHT = _DEFAULTS.base_weights
+DEFAULT_BASE = _DEFAULTS.default_base
+TERRAIN_MODIFIER = _DEFAULTS.terrain_modifiers  # terrain kind -> multiplicative modifier
 DEFAULT_MODIFIER = 1.0
 
 
-def base_weight(kind: str) -> float:
-    return BASE_WEIGHT.get(str(kind), DEFAULT_BASE)
+def base_weight(kind: str, tuning: WorldTuning = _DEFAULTS) -> float:
+    return tuning.base_weights.get(str(kind), tuning.default_base)
 
 
-def terrain_modifier(terrain_kind: str) -> float:
-    return TERRAIN_MODIFIER.get(str(terrain_kind).strip().lower(), DEFAULT_MODIFIER)
+def terrain_modifier(terrain_kind: str, tuning: WorldTuning = _DEFAULTS) -> float:
+    return tuning.terrain_modifiers.get(str(terrain_kind).strip().lower(), DEFAULT_MODIFIER)
 
 
-def compute_weight(kind: str, terrain_kinds: list[str] | None = None) -> float:
+def compute_weight(
+    kind: str, terrain_kinds: list[str] | None = None, *, tuning: WorldTuning = _DEFAULTS
+) -> float:
     """weight = clamp01(base[kind] * product(terrain modifiers))."""
-    weight = base_weight(kind)
+    weight = base_weight(kind, tuning)
     for tk in terrain_kinds or []:
-        weight *= terrain_modifier(tk)
+        weight *= terrain_modifier(tk, tuning)
     return clamp01(weight)

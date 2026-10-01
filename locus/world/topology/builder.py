@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from locus.shared.config.tuning import WorldTuning
 from locus.shared.models import (
     BuildWarning,
     ConnectionEdge,
@@ -99,8 +100,11 @@ def _stronger(a: str, b: str) -> str:
 
 
 class TopologyBuilder:
-    def __init__(self, wiki: CommonsenseWiki | None = None) -> None:
+    def __init__(
+        self, wiki: CommonsenseWiki | None = None, *, tuning: WorldTuning | None = None
+    ) -> None:
         self._wiki = wiki
+        self._tuning = tuning or WorldTuning()  # the weight table (U7, FR-A7)
 
     def set_wiki(self, wiki: CommonsenseWiki | None) -> None:
         """Inject the world-scoped wiki at build time (single-world, BR-A9)."""
@@ -114,7 +118,7 @@ class TopologyBuilder:
 
         connections: list[ConnectionEdge] = []
         for cand in candidates:
-            weight = compute_weight(cand["kind"], cand["terrain_kinds"])
+            weight = compute_weight(cand["kind"], cand["terrain_kinds"], tuning=self._tuning)
             rationale, prior_ref, used_wiki = self._wiki_rationale(cand["terrain_kinds"])
             source = SourceKind.INFERRED if used_wiki else SourceKind.INPUT
             prov = Provenance(source=source, generated_by="topology", note=rationale)

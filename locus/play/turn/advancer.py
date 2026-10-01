@@ -410,7 +410,7 @@ class TurnAdvancer(SessionAppService):
         npc = movement.find_npc(snapshot, action.npc_id)
         if npc is None:
             return _Prep()
-        outcome = self._dialogue.appraise(session.id, npc.id, budget=budget)
+        outcome = self._dialogue.appraise(session, player, npc, snapshot, budget=budget)
         if outcome.llm_calls and not outcome.llm_failed:
             self._deeds.record_appraisal(run, session, player, region, npc, outcome)
         return _Prep(llm_failed=outcome.llm_failed)

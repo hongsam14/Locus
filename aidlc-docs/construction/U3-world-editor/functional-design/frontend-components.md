@@ -29,7 +29,7 @@
 ### 2.1 `HomePage` (BR-U3-34)
 - `api.listWorlds()`로 줄마다 이름·지역 수·마지막 수정(상대 시각)·열린 세션 수를 보인다.
 - [편집]은 `/editor/:id`로 간다.
-- [세션 시작]은 `NewSessionForm`(U4)을 그 월드로 열고, 시작하면 `/play/:sid`로 간다.
+- [세션 시작]은 누를 때 `api.exportWorld(w)`로 지역을 읽어 `NewSessionForm`(U4, `regions` prop)에 넘긴다. 시작은 `api.startSession(w, {name, start_region_id})`(U4의 `POST /api/play/worlds/{w}/sessions`, 본문 있으면 201 `SessionStartOut`)이고, 그 뒤 `/play/:sid`로 간다(검토 01 R-10).
 - 빈 목록이면 [데모 불러오기](`api.loadDemo("aldermoor", ...)` → `/editor/aldermoor`)와 [자료로 만들기](새 world id 입력 → BuildPanel)를 보인다.
 - `App.tsx`에서 `/`와 `*`의 넘김을 없앤다. `*`는 `/`로 간다.
 
@@ -46,6 +46,7 @@
   - 저장하면 `PUT connections`다. 같은 지역을 두 번 누르면 취소다.
 - 선은 지금처럼 종류·가중치로 모양이 정해진다(`edgeStyle`).
 - 선을 누르면 연결을 선택하고, 인스펙터가 연결 상세(근거·prior, 편집·삭제)를 보인다.
+- 연결의 종류를 바꾸면 `saveConnection({..., previous_kind})` 한 번이다. 서버가 가중치·근거·prior를 옮긴다(BR-U3-11).
 - `MapOverlay`에 선택 콜백 `onSelectConnection`과 빈 곳 콜백 `onBackground`를 더한다. 끌기 판정은 거리 임계로 한다(4px).
 
 ### 2.3 `RegionInspector` (US-2.2·2.3·2.4·2.5)
@@ -62,7 +63,7 @@
   - [삭제]는 확인을 거쳐 `DELETE knowledge`다.
   - [지식 추가]는 제목·진술 → `POST regions/{r}/knowledge`다.
 - **NPC 목록**
-  - 이름·역할·설명(번역 + 원문)과 [편집]·[삭제](확인)
+  - 이름·역할·설명(원문, 번역 없음 — BR-U3-37)과 [편집]·[삭제](확인)
   - [NPC 추가]는 이름·역할·설명·traits 폼이다.
   - [NPC 제안]은 `POST npc-drafts`다.
     - 초안 카드 0~3장마다 [받아들이기]를 둔다. 누르면 `POST npcs`이고, 그 카드는 사라진다.
@@ -79,11 +80,12 @@
   - 선택지는 서버가 준 `actions`만 버튼으로 보인다(문구는 i18n `augment.action.*`).
   - edit·add는 필요한 입력을 받는다: 진술·제목·신뢰도, 지역 선택(orphan·unscoped·dangling-지역), 대상 id 선택(dangling-prior).
 - 답하면 `POST answer` → `AnswerResult`다. 같은 run의 다음 질문으로 바꾸고, "바뀐 것" 목록에 `changed`와 [되돌리기]를 쌓는다.
-- [되돌리기]는 `POST revert`다. 이미 되돌린 것은 버튼을 끈다. 409면 안내한다.
+- [되돌리기]는 `POST revert`다. 아직 되돌리지 않은 **가장 나중** 변경에만 버튼이 켜진다(BR-U3-27). 이미 되돌린 것은 "되돌림"으로 보인다. 409면 안내한다.
+- run을 다시 읽다가 404(서버 재시작)면 "보강 기록이 사라졌어요" 안내와 [새로 찾기]를 보인다(BR-U3-42).
 - run이 converged·stopped이면 그렇다고 보이고 [다시 찾기]를 둔다.
 
 ### 2.6 `WikiPanel` (BR-U3-31)
-- `GET priors` + `GET prior-usage`
+- `GET priors` + `GET prior-refs`
   - 표: 조건 → 효과, 도메인 칩, 신뢰도, 참조 수(펼치면 연결 "A–B route"·지식 제목)
 - "저장되지 않은 근거" 절: 끊긴 참조의 목록과 그 연결·지식
 - prior 삭제는 확인을 거친다(P2 편집은 범위 밖).
@@ -118,7 +120,7 @@
   - `saveConnection`, `deleteConnection`
   - `createKnowledge`, `updateKnowledge`, `setScopes`, `deleteKnowledge`, `listUnscoped`
   - `createNpc`, `updateNpc`, `deleteNpc`, `draftNpcs`
-  - `listPriors`, `priorUsage`, `deletePrior`
+  - `listPriors`, `priorRefs`, `deletePrior`
   - `getRun`, `answer`(→ `AnswerResult`), `revert`
   - `buildUpload`(concept arts 포함)
 - **없앨 것**: `deleteNode`
@@ -149,12 +151,12 @@ RegionInspector [삭제] → GET delete-plan → ConfirmDelete(수와 이름, bl
 ## 6. 테스트 (vitest)
 | 테스트 | 확인 |
 |---|---|
-| HomePage | 줄의 수·이름·열린 세션, [편집] → `/editor/w`, 빈 목록 → 데모·만들기 버튼 |
+| HomePage | 줄의 수·이름·열린 세션, [편집] → `/editor/w`, [세션 시작] → `exportWorld` → 폼 → `startSession(w, body)` → `/play/sid`, 빈 목록 → 데모·만들기 버튼 |
 | MapCanvas 도구 | 선택 모드 클릭 → `updateRegion` 0회, 10px 끌기 → 1회(EX-11). 지역 추가 모드 빈 곳 → 폼. 연결 모드 A·B → 연결 폼 → `saveConnection` |
 | RegionInspector | 지식 추가 → `createKnowledge(region)`. 스코프 지정 → `setScopes`. NPC 제안 → 카드 3장, 하나 받아들이기 → `createNpc` 1회. `failed` → 안내 |
 | ConfirmDelete | 계획의 수를 보인다. `blocked_by_sessions`면 확인 꺼짐. 확인 → `deleteRegion` |
 | UnscopedPanel | 지정 → `setScopes`, 목록에서 빠짐 |
-| AugmentPanel | 대상 이름 보임. 서버 `actions`만 버튼. 답 → 같은 run 유지(`startRun` 1회). 되돌리기 → `revert(run, change)`. 두 번 → 버튼 꺼짐 |
+| AugmentPanel | 대상 이름 보임. 서버 `actions`만 버튼. 답 → 같은 run 유지(`startRun` 1회). 되돌리기는 가장 나중 변경에만 켜짐 → `revert(run, change)`. 되돌린 뒤 꺼짐. run 404 → 새로 찾기 안내 |
 | WikiPanel | prior 줄, 참조 펼침, 끊긴 근거 절 |
 | BuildPanel | 파일들이 FormData로, 409 → 확인 → `confirm=true` 재요청, 리포트 표시 |
 | WorldFileBar | 저장 → 내려받기 링크. 불러오기 409 → 확인 → 재요청 |

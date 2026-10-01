@@ -3098,3 +3098,34 @@ Carried to U3: #6–#10, #12–#15, §3 (12), cleanup (19), and two design memos
 **Timestamp**: 2026-10-01T06:59:49Z
 **AI Response**: Dispatching aidlc-architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/U3-world-editor/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/U3-world-editor/functional-design/reviews/functional-design-review-01.md`.
 **Context**: CONSTRUCTION / U3 — Functional Design, Plan Review.
+
+---
+
+## Plan Review Completed — Functional Design — U3 (iteration 1)
+**Timestamp**: 2026-10-01T07:06:38Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 4 Major / 6 Minor; open 10. Record: `aidlc-docs/construction/U3-world-editor/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — U3 — next: builder fix + re-review (iteration 2).
+
+---
+
+## U3 FD — builder fix after review 01
+**Timestamp**: 2026-10-01T07:09:11Z
+**AI Response**: Revised the U3 FD artifacts for R-01..R-10.
+- R-01: fallback priors are deduped by query and capped at 40 per build; persisted in two batches (topology batch before ontology, ontology batch before knowledge); ref filter uses distilled ∪ created.
+- R-02: NPC text is not translated; BR-U3-3/19/37 aligned.
+- R-03: `AugmentationAnswer.ref_id`; stable `Issue.key` (type+target+field); `AugmentationRun.issues/ignored_keys/answers`; dedup on key.
+- R-04: max 30 answers per run, with a status table including revert.
+- R-05: BR-U3-41 LLM call caps and per-run caches.
+- R-06: NPC removed from dangling; dead relation branch removed.
+- R-07: component-methods differences listed in deviation 0, and the reviewer's suggestion adopted (WorldEditor split into seven classes).
+- R-08: LIFO revert; TP-U3-4 widened; BR-U3-42 run lifetime.
+- R-09: GM leases held over the delete check; turn running → 409; single `change_connection_kind` op.
+- R-10: HomePage session start via `exportWorld` + `startSession(w, body)`.
+
+---
+
+## Plan Review Requested — Functional Design — U3 (iteration 2)
+**Timestamp**: 2026-10-01T07:09:11Z
+**AI Response**: Dispatching aidlc-architecture-reviewer (class adversarial, iteration 2) on `aidlc-docs/construction/U3-world-editor/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/U3-world-editor/functional-design/reviews/functional-design-review-02.md`.
+**Context**: CONSTRUCTION / U3 — Functional Design, Plan Review.

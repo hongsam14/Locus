@@ -13,8 +13,8 @@
 ## 0. 한눈에
 | 흐름 | 주인 | 스토리 |
 |---|---|---|
-| 지역·연결·지식·스코프·NPC 편집 | `WorldEditor`(`locus/world/editor.py`) | US-2.2·2.3·2.4 |
-| 지역 삭제 정리 | `WorldEditor.plan_region_delete` / `delete_region` | US-2.2 넷째 |
+| 지역·연결·지식·스코프·NPC 편집 | `RegionEditor`·`ConnectionEditor`·`KnowledgeEditor`·`NpcEditor`·`EntityEditor`·`WorldCatalog`(`locus/world/editor/`, domain-entities §2.0) | US-2.2·2.3·2.4 |
+| 지역 삭제 정리 | `RegionEditor.plan_region_delete` / `delete_region` | US-2.2 넷째 |
 | 열린 세션 확인 | `api/routers/world.py` + `SessionService.open_player_regions` | Q2=A |
 | NPC 초안 | `NpcDraftService`(`locus/world/npc_drafts.py`) | US-2.5 |
 | 보강 Q&A | `AugmentationService`·`detectors`·`apply`(`locus/world/augmentation/`) | US-2.6 |
@@ -23,6 +23,7 @@
 | U7 이월 | `DistortionService.set_region_distortion` | Q6=A |
 
 ## 1. 편집 연산 (W7)
+아래 절의 연산은 domain-entities §2.0의 클래스에 나뉜다(1.2·1.3 = `RegionEditor`, 1.4 = `ConnectionEditor`, 1.5 = `KnowledgeEditor`, 1.6 = `NpcEditor`, 1.7 = `EntityEditor`, 1.8 = `WorldCatalog`). 공통 쓰기는 `EditorWrites`가 한다.
 
 ### 1.1 공통
 - **쓰기**
@@ -66,13 +67,17 @@
    4. NPC 삭제: 노드, `LIVES_IN`, 검색 문서
    5. 연결 삭제: 두 방향 모두
    6. 지역 노드 삭제(`delete_node`, DETACH)
-4. 보고를 돌려준다. 라우터는 지운 NPC·지식 번역을 정리한다(U5 `purge_translations`).
+4. 보고를 돌려준다. 지식 노드는 지우지 않으므로 번역 정리는 없다. NPC 글은 번역 캐시가 없다.
 
 ### 1.4 연결 (US-2.2 둘째, B9)
 - **`upsert_connection(conn: ConnectionEdge) -> list[ConnectionEdge]`**
   - 두 지역이 있어야 하고 서로 달라야 한다. 가중치는 [0,1]이다.
   - 같은 키(두 지역 + 종류)의 엣지 두 개를 지운 뒤, a→b와 b→a를 같은 종류·가중치·근거로 만든다(BR-U3-10).
   - 종류를 바꾸는 편집은 화면이 "옛 키 삭제 + 새 키 추가"로 보낸다.
+- **`change_connection_kind(key: ConnectionKey, new_kind) -> list[ConnectionEdge]`** (검토 01 R-09)
+  - 한 연산이다. 옛 쌍을 읽어 가중치·근거(`rationale`)·`wiki_prior_ref`·`provenance`를 그대로 옮긴 새 쌍을 쓰고, 옛 쌍을 지운다(새 쌍 먼저).
+  - 같은 두 지역에 새 종류의 쌍이 이미 있으면 400이다.
+  - `PUT connections` 본문에 `previous_kind`가 있으면 이 연산이다.
 - **`delete_connection(key: ConnectionKey) -> int`**: 두 방향을 지운다. 없으면 404다.
 - 연결은 검색 문서가 없다. 캐시 무효화만 한다.
 
@@ -93,7 +98,7 @@
 - **`upsert_npc(npc)`**
   - `home_region_id`의 지역이 있어야 한다.
   - 노드를 교체하고, `LIVES_IN`은 옛 것을 지우고 새것을 만든다. 검색 문서도 다시 색인한다.
-- **`delete_npc(world_id, npc_id)`**: 노드, `LIVES_IN`, 검색 문서를 지운다. 라우터는 번역을 정리한다.
+- **`delete_npc(world_id, npc_id)`**: 노드, `LIVES_IN`, 검색 문서를 지운다. NPC 글은 번역 캐시가 없다(검토 01 R-02).
   - 세션에 그 NPC와의 대화가 있어도 지울 수 있다(Q2=A는 지역 삭제만 막는다). 플레이 화면은 그 NPC를 더는 보이지 않고, 대화 기록은 세션에 남는다.
 
 ### 1.7 엔티티 (보강 대상, B3)
@@ -107,16 +112,17 @@
 
 ## 2. 열린 세션 확인 (Q2=A)
 - `SessionService.open_player_regions(world_id) -> dict[str, list[str]]`(play, 새로)는 열린 세션마다 플레이어의 `region_id`를 모은다. 결과는 `region_id → [session_id]`다.
-- `DELETE /api/world/worlds/{w}/regions/{r}`
-  1. 라우터가 위 함수로 `protected = {r} ∩ keys`를 만든다.
-  2. `editor.delete_region(..., protected=...)`를 부른다.
-  3. 409면 본문에 세션 id 목록을 싣는다.
-  - play가 조립되지 않았으면(세션 DB 없음) 빈 보호 집합이다.
+- `DELETE /api/world/worlds/{w}/regions/{r}` (검토 01 R-09: 확인과 삭제 사이의 경합)
+  1. 라우터가 그 월드의 열린 세션마다 GM 리스(`play.guard.hold`)를 잡는다. 턴이 돌고 있는 세션이 있으면 409("turn in progress")이고 아무것도 지우지 않는다(교체 경로의 사전 확인과 같다).
+  2. 리스를 쥔 채로 `open_player_regions`를 읽어 `protected = {r} ∩ keys`를 만든다. 리스가 이동(턴)을 막으므로, 확인과 삭제 사이에 플레이어가 그 지역에 들어올 수 없다.
+  3. `RegionEditor.delete_region(..., protected=...)`를 부르고 리스를 놓는다.
+  4. 409면 본문에 세션 id 목록을 싣는다.
+  - play가 조립되지 않았으면(세션 DB 없음) 빈 보호 집합이고 리스도 없다.
 - `GET .../regions/{r}/delete-plan`은 같은 함수로 `blocked_by_sessions`를 채운다. 그러면 확인 대화가 "지울 수 없음"을 미리 보인다.
 - 그 밖의 편집은 열린 세션과 상관없이 된다. 에디터는 `GET /worlds`의 `open_sessions`로 "열린 세션 N개" 띠를 보인다(BR-U3-15).
 
 ## 3. NPC 초안 (W8, US-2.5)
-`NpcDraftService(llm, snapshots).draft(world_id, region_id, n=3) -> NpcDraftResult`
+`NpcDraftService(llm, snapshots).suggest(world_id, region_id, *, n=3) -> NpcDraftResult`
 1. 지역이 있어야 한다(404).
 2. 프롬프트에 넣는 것
    - 지역 이름·계층·설명
@@ -139,8 +145,12 @@
 | `unscoped` | 전역이 아니고 스코프가 없는 지식 | knowledge | edit(지역 지정) / remove(지식 지우기) / ignore |
 
 - 질문 텍스트는 템플릿으로 만들고, LLM이 있으면 다듬는다. 선택지(`actions`)는 바꾸지 않는다(B4).
-- 같은 대상이 여러 이슈에 걸리면 한 질문으로 묶지 않는다. 이슈마다 하나다.
-- 한 run의 질문은 최대 20개다(심각도 순).
+- 이슈 키(유형 + 대상 + 속성)가 같으면 같은 이슈다. 한 노드의 끊긴 속성 둘은 이슈 둘이다(검토 01 R-03).
+- 한 탐지의 질문은 최대 20개다(심각도 순). `ignored_keys`에 있는 이슈는 뺀다.
+- **LLM 호출 상한** (검토 01 R-05, BR-U3-41)
+  - 질문 다듬기: 탐지마다 아직 다듬지 않은 질문 5개까지만 다듬는다. 다듬은 문장은 run 안에 이슈 키로 보관하고 다시 쓴다.
+  - wiki_conflict 판정: 탐지마다 20개 지식까지만 보고, 판정 결과를 run 안에 `(지식 id, 지역 terrain_kind)`로 보관한다. 편집으로 바뀐 지식은 다시 본다.
+  - 그래서 답·되돌리기마다 다시 탐지해도 새로 바뀐 것만 LLM을 부른다.
 
 ### 4.2 답 적용 (`apply_answer`) — 대상은 서버가 질문에서 읽는다(B1)
 | 이슈 / 선택 | 쓰기 | `ChangeSet`에 남는 것 |
@@ -150,23 +160,32 @@
 | … / edit | 지식이면 진술·제목·신뢰도, 엔티티면 설명·신뢰도 | `nodes_before` |
 | … / remove | 지식·엔티티 삭제. 붙은 엣지를 미리 읽어 둔다 | `nodes_before`, `edges_removed` |
 | orphan / edit(region) | 엔티티 `located_in` + `LOCATED_IN` | `nodes_before`, `edges_added` |
-| dangling / edit(ref) | 그 속성을 새 id로 바꾸고, 해당 엣지(CONTAINS·LIVES_IN·LOCATED_IN)도 다시 쓴다. 새 id가 없으면 400 | `nodes_before`, `edges_*` |
-| dangling / remove | 속성을 비운다(`parent_id`·`located_in`·`wiki_prior_ref`는 None, 목록은 그 id만 뺌). `home_region_id`는 비울 수 없어 NPC를 지운다 | `nodes_before`, `edges_removed` |
+| dangling / edit(`ref_id`) | 그 속성을 새 id로 바꾸고, 해당 엣지(CONTAINS·LOCATED_IN·ABOUT·DERIVED_FROM)도 다시 쓴다. `ref_id`의 노드가 그 속성에 맞는 종류로 있어야 한다(지역·엔티티·prior). 아니면 400 | `nodes_before`, `edges_*` |
+| dangling / remove | 속성을 비운다(`parent_id`·`located_in`·`wiki_prior_ref`는 None, 목록은 그 id만 뺌) | `nodes_before`, `edges_removed` |
 | unscoped / edit(region) | DIRECT 스코프 하나 | `edges_added` |
 | unscoped / remove | 지식 삭제 | `nodes_before`, `edges_removed` |
 | * / ignore | 쓰지 않는다. 그 이슈는 이 run에서 다시 묻지 않는다 | 빈 변경 |
 
 - 쓰기는 `WorldEditor`의 같은 연산을 쓴다. 검색 색인·캐시 무효화도 같다.
 
-### 4.3 run
+### 4.3 run (검토 01 R-04·R-08)
 - **시작**: `start_run(world_id)`은 탐지와 질문으로 run을 만든다. 이슈는 run 안에 둔다(지금은 버린다).
 - **답**: `answer(run_id, answer) -> AnswerResult`
   - 질문이 그 run에 있어야 하고 run이 열려 있어야 한다. 아니면 404·409다.
-  - 적용 → 다시 탐지 → 다음 질문 순서다. 무시한 이슈는 빼고 묻는다.
-  - 최대 5라운드다(그대로).
+  - 적용 → `answers += 1` → 다시 탐지 → 다음 질문 순서다. ignore는 그 이슈 키를 `ignored_keys`에 넣는다.
+  - 한 run의 답은 최대 30개다(`MAX_ANSWERS`). 지금의 "5라운드"는 답 5개였는데, run을 유지하면 질문 20개 중 5개밖에 답할 수 없어서 넓힌다.
   - 화면은 run을 유지한다(B2).
+- **상태 전이**
+  | 지금 | 사건 | 다음 |
+  |---|---|---|
+  | open | 답, 남은 이슈 있음, `answers < 30` | open |
+  | open | 답, 남은 이슈 없음 | converged |
+  | open | 답, `answers == 30` | stopped |
+  | open·converged·stopped | 되돌리기 | 다시 탐지: 이슈가 있고 `answers < 30`이면 open, 이슈가 없으면 converged, `answers == 30`이면 stopped |
+  | converged·stopped | 답 | 409(새 run을 연다) |
 - **되돌리기**: `revert(run_id, change_id)`
   - 그 run의 기록에서 찾는다. `reverted`면 409다.
+  - **나중 것부터**다. 아직 되돌리지 않은 변경 중 가장 나중 것이 아니면 409("먼저 나중 변경을 되돌리세요")다. 그래서 앞선 되돌리기가 나중 변경을 덮어쓰지 않는다.
   - 순서
     1. `edges_added` 지우기
     2. `added_ids` 노드 지우기
@@ -175,19 +194,29 @@
     5. 검색 문서 다시 색인(지운 것은 다시 만들고 추가한 것은 지운다)
   - 다시 탐지해 질문을 고친다.
 - `GET /augmentation/runs/{id}`: run을 다시 읽는다(화면 새로고침용).
+- **run 수명**: run은 프로세스 메모리에만 있다(`InMemoryRunStore`). 서버를 다시 켜면 사라지고, 화면은 404를 받으면 "새로 찾기"를 보인다. 월드마다 최근 20개만 두고 오래된 것부터 버린다(BR-U3-42).
 
 ## 5. wiki 근거 (Q4=A, US-2.8)
 
-### 5.1 빌드가 근거를 저장한다
-1. `CommonsenseWiki`가 이번 빌드에서 LLM 폴백으로 만든 prior를 `created_priors`에 모은다(A9).
-2. `WorldBuilder.build`
-   - 토폴로지·온톨로지 단계가 쓴 wiki 인스턴스의 `created_priors`를 증류 prior 목록에 더한다.
-   - 참조 버리기는 "옛 월드의 prior(교체로 지워질 것)"에만 한다. 이번 빌드가 만든 prior를 가리키는 참조는 남는다.
-3. 저장되는 prior가 늘어난다. 빌드 리포트에 `priors_created`를 더한다.
+### 5.1 빌드가 근거를 저장한다 (검토 01 R-01)
+빌드는 준비 단계(그래프를 건드리지 않음)와 커밋 단계로 나뉜다. 토폴로지는 준비 단계에서, 온톨로지(보강·dedup)는 커밋 단계에서 wiki를 찾는다. 그래서 폴백 prior는 두 번에 나눠 저장한다.
+
+1. **만들기**: `CommonsenseWiki`(한 빌드에 인스턴스 하나)가 검색에서 못 찾아 LLM으로 만든 prior를 `created_priors`에 모은다.
+   - **중복 키**: 정규화한 질의(`casefold` + 공백 접기)다. 같은 질의는 LLM을 다시 부르지 않고 처음 만든 prior를 돌려준다. 연결 후보마다 새 prior가 생기던 문제를 막는다.
+   - **상한**: 빌드당 폴백 prior 40개(`WIKI_FALLBACK_MAX`, 상수)다. 넘으면 LLM을 부르지 않고 빈 결과를 돌려준다. 그 연결은 근거 문구 없이 계산 가중치만 갖는다. 리포트에 경고 한 줄을 남긴다.
+2. **참조 정리** (커밋 전): 연결의 `wiki_prior_ref`는 `증류 prior id ∪ created id`에 있을 때만 남긴다. 그 밖(검색이 찾은 옛 월드의 prior, 교체로 지워질 것)은 지금처럼 버리고 경고한다.
+3. **커밋 순서**
+   1. 옛 월드 삭제
+   2. 증류 prior + 토폴로지 단계의 `created_priors` 저장
+   3. 온톨로지(보강이 더 만들 수 있다)
+   4. 온톨로지 단계에서 새로 생긴 `created_priors` 저장
+   5. 나머지(지식과 `DERIVED_FROM` 엣지 포함) 저장
+   - 그래서 `DERIVED_FROM`의 MATCH가 늘 끝점을 찾는다.
+4. 리포트에 `priors_created`(증류 + 폴백)를 더한다.
 
 ### 5.2 읽기
 - `WikiAdmin.list_priors(world_id) -> list[WikiPrior]`
-- `WikiAdmin.prior_usage(world_id) -> list[PriorUsage]`: 스냅샷의 연결(`wiki_prior_ref`)과 지식(`derived_from_prior_ids`)을 prior별로 묶는다.
+- `WikiAdmin.prior_refs(world_id) -> list[PriorUsage]`: 스냅샷의 연결(`wiki_prior_ref`)과 지식(`derived_from_prior_ids`)을 prior별로 묶는다.
 - 끊긴 참조는 `broken_refs`로 따로 준다. 연결 상세의 `PriorRefView.broken`도 같은 계산이다.
 - `delete_prior(world_id, prior_id)`: 노드와 검색 문서를 지운다. 참조하는 연결·지식은 그대로 두고, 이후 DANGLING이 찾는다.
 
@@ -202,7 +231,11 @@
   - 지원하지 않는 버전은 422 문구를 그대로 보인다.
 - **월드 목록(US-6.4)**
   - `/`는 `GET /worlds`의 이름·지역 수·마지막 수정·열린 세션 수를 보인다.
-  - 각 줄의 [편집]은 `/editor/:w`, [세션 시작]은 세션 시작 폼을 연다.
+  - 각 줄의 [편집]은 `/editor/:w`다.
+  - [세션 시작] (검토 01 R-10)
+    1. `GET /api/world/worlds/{w}/export`로 지역 목록을 읽는다(누를 때 한 번).
+    2. `NewSessionForm`(U4)에 그 지역을 넘긴다.
+    3. 시작은 U4의 `POST /api/play/worlds/{w}/sessions`(본문 이름·시작 지역) → `/play/:sid`다.
 
 ## 7. API (A4, `/api/world`)
 | 메서드·경로 | 동작 |
@@ -212,7 +245,7 @@
 | `POST /worlds/{w}/regions` | 지역 추가 |
 | `GET /worlds/{w}/regions/{r}/delete-plan` | `RegionDeletePlan`(+ `blocked_by_sessions`) |
 | `DELETE /worlds/{w}/regions/{r}` | `RegionDeleteReport` / 409 |
-| `PUT /worlds/{w}/connections` | 본문 `ConnectionEdge` → 두 방향 |
+| `PUT /worlds/{w}/connections` | 본문 `ConnectionEdge`(+ 선택 `previous_kind`) → 두 방향 저장 또는 종류 바꾸기 |
 | `DELETE /worlds/{w}/connections?a=&b=&kind=` | 두 방향 삭제 |
 | `POST /worlds/{w}/regions/{r}/knowledge` | 지식 추가 + DIRECT 스코프 |
 | `PUT /worlds/{w}/knowledge/{k}` | 지식 교체(스코프 유지) |
@@ -221,7 +254,7 @@
 | `GET /worlds/{w}/knowledge/unscoped` | 스코프 없는 지식 목록 |
 | `POST /worlds/{w}/npcs` · `PUT …/npcs/{n}` · `DELETE …/npcs/{n}` | NPC |
 | `POST /worlds/{w}/regions/{r}/npc-drafts` | `NpcDraftResult`(저장 없음) |
-| `GET /worlds/{w}/priors` · `GET /worlds/{w}/prior-usage` · `DELETE /worlds/{w}/priors/{p}` | wiki |
+| `GET /worlds/{w}/priors` · `GET /worlds/{w}/prior-refs` · `DELETE /worlds/{w}/priors/{p}` | wiki |
 | `POST /worlds/{w}/augmentation/runs` · `GET /augmentation/runs/{id}` · `POST …/answer`(→`AnswerResult`) · `POST …/revert` | 보강 |
 | `POST /worlds/{w}/build/upload` | `concept_arts` 칸 추가 |
 | `DELETE /worlds/{w}/nodes/{n}` | **없앤다**(이탈 2) |

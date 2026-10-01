@@ -11,19 +11,13 @@ from locus.play.models import AppraisalDraft, AppraisalDraftItem, NarrationDraft
 from locus.play.rumor.generator import RumorDraft, RumorGenerator
 from tests.play.helpers import compose_play
 from tests.play.strategies import build_snapshot, edge, npc
+from tests.shared.snapshots import StaticSnapshots
 
 WORLD = build_snapshot(
     ["a", "b"],
     [edge("a", "b", weight=0.6)],
     npcs=[npc("n1", "a", name="Mara"), npc("n2", "b", name="Bo")],
 )
-
-
-class _Snap:
-    def get(self, world_id):
-        if world_id != "w":
-            raise LookupError(f"world not found: {world_id}")
-        return WORLD
 
 
 class _Voice:
@@ -62,7 +56,7 @@ def _app(*, voice: bool = True):
     play = compose_play(
         InMemoryPlayRepository(),
         RumorGenerator(_Rumor()),
-        _Snap(),
+        StaticSnapshots(WORLD),
         dialogue_llm=_Voice() if voice else None,
     )
     client = TestClient(create_app(play=play))

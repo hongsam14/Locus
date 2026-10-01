@@ -16,17 +16,20 @@ from __future__ import annotations
 
 from locus.knowledge.propagation import best_path_weights
 from locus.play.models import DEFAULT_DISTORTION_DEGREE, SessionRumor
+from locus.shared.config.tuning import PlayTuning
 from locus.shared.models import ConnectionEdge
 from locus.shared.models.util import clamp01
 
-MAX_EVENT_DELTA = 0.3  # FD-P2 Q1: magnitude=1.0 -> +0.3 distortion in one turn
-PROPAGATE_MIN_WEIGHT = 0.15  # FD-P2 Q2: matches consensus rumor_min
-SUPPORT_REINFORCE = 0.1  # FD-P2 Q4: support gain on event-influenced regions
+# Defaults only; the engine passes the env-tunable ``PlayTuning`` values (U7, FR-A7).
+_DEFAULTS = PlayTuning()
+MAX_EVENT_DELTA = _DEFAULTS.event_max_delta  # FD-P2 Q1: magnitude=1.0 -> +0.3 in one turn
+PROPAGATE_MIN_WEIGHT = _DEFAULTS.event_propagate_min  # FD-P2 Q2: matches consensus rumor_min
+SUPPORT_REINFORCE = _DEFAULTS.event_support_reinforce  # FD-P2 Q4: support gain on influence
 
 
-def distortion_delta(magnitude: float) -> float:
+def distortion_delta(magnitude: float, *, max_delta: float = MAX_EVENT_DELTA) -> float:
     """Distortion increase a single event applies at its target (BR-P2-1)."""
-    return clamp01(magnitude) * MAX_EVENT_DELTA
+    return clamp01(magnitude) * max_delta
 
 
 def propagate_delta(

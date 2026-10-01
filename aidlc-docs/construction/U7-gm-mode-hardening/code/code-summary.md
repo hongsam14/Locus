@@ -15,7 +15,14 @@
 - **`one_line`과 탭 (4.1)**: 플랜 이월 표는 "탭 제외"였으나 탭도 공백 하나로 접는다. 탭은 프롬프트 구역을 열지 못하지만, 공백 접기(`str.split`)가 이미 탭을 공백으로 다루므로 규칙을 하나로 둔다.
 - **`region_feedback`의 분모 (4.2)**: 승격 소문은 강한 소문에서도, 밀도의 분모에서도 뺀다(FD BLM §1.2 그대로).
 
+- **Step 5로 당긴 것**: GM 왜곡도 설정이 몫을 0으로 하고 `feedback_share_cleared`를 남기는 부분(6.3의 일부, BR-U7-5). 몫 통합 테스트와 같은 단계에서 GREEN이 되게 했다. 지역 확인(404)과 생성자 주입은 6.3에 남는다.
+- **5.2 (플랜 검토 R-04)**: 새 키워드 인자는 `distortion_delta(max_delta=)` 하나다. `propagate_delta(min_weight=)`·`evolve_support(reinforce=)`는 이미 있었고 엔진이 tuning 값을 넘긴다.
+- **5.4 장면 가리기 (플랜 검토 R-05)**: `pick_rumors` → `shadowed_sources(picked, [*src.rumors, *src.lineage])` → `pick_facts(hidden=)`.
+- **5.4 C4**: `spread.neighbour_map(edges)`를 새로 두고, `plan_spread`가 `reach`·`neighbours`를 선택 인자로 받는다(엔진이 원점별로 메모).
+- **5.4 C7**: 청구는 갈래 앞 한 곳에서 `run.cost_turns`로 한다. 대기·선언·대화 마침의 비용은 `action_cost`가 이미 1이다.
+
 ## 6. 변이 확인 (진행 중)
 | 단계 | 변이 | 결과 |
 |---|---|---|
 | 4 | 상한 무시, 몫에 delta 기록, 복원이 덜 빠짐, 승격 소문 셈, 로그가 지역 무시, 사건 줄 중복, 비활성 소문 셈, 플레이어 지역 우선 없음, 모호한 이름 매칭 | 9/9 잡음 |
+| 5 | #8 다시 읽기 없음, #9 장면이 try 안, #14 규칙이 validate_action 밖, 장면 가리기 없음, 되먹임 지역 면제, 몫 미기록, GM 설정이 몫 유지, one_shot 해소 줄 없음 | 8/8 잡음 |

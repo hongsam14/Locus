@@ -21,12 +21,22 @@ class DistortionService(SessionAppService):
         return self._repo.list_region_distortions(session_id)
 
     def set_region_distortion(self, session_id: str, region_id: str, degree: float) -> None:
+        """The GM's value is the region's new base: the feedback share is cleared and
+        what was cleared is recorded (U7 BR-U7-5)."""
         session = self._require_open(session_id)
         degree = clamp01(degree)
-        self._repo.set_region_distortion(session_id, region_id, degree)
+        cleared = next(
+            (
+                row.feedback_share
+                for row in self._repo.list_region_distortions(session_id)
+                if row.region_id == region_id
+            ),
+            0.0,
+        )
+        self._repo.set_region_distortion(session_id, region_id, degree, feedback_share=0.0)
         self._timeline(
             session,
             TimelineKind.SET_DISTORTION,
             f"distortion of {region_id} -> {degree:.2f}",
-            {"region_id": region_id, "degree": degree},
+            {"region_id": region_id, "degree": degree, "feedback_share_cleared": cleared},
         )

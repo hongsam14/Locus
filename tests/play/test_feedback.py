@@ -110,3 +110,80 @@ def test_br_u7_1_only_unpromoted_rumors_at_the_bar_are_strong() -> None:
     ]
     out = region_feedback(rumors, weight=0.1, high_support_threshold=0.45)
     assert out == {"a": 0.1 * 1 / 2}  # b: promoted only -> no feedback
+
+
+# --- the turn engine (Step 5.5): EX-1, the share restored over turns ------------------- #
+from locus.play import InMemoryPlayRepository  # noqa: E402
+from locus.play.models import TimelineKind  # noqa: E402
+from locus.play.rumor.generator import RumorDraft, RumorGenerator  # noqa: E402
+from tests.play.helpers import compose_play  # noqa: E402
+from tests.play.strategies import build_snapshot, edge  # noqa: E402
+from tests.shared.snapshots import StaticSnapshots  # noqa: E402
+
+
+class _NoLLM:
+    def structured(self, prompt, schema, *, system=None):  # pragma: no cover
+        return RumorDraft(statement="unused")
+
+    def complete(self, prompt, *, system=None):  # pragma: no cover
+        return ""
+
+
+def _engine():
+    repo = InMemoryPlayRepository()
+    world = build_snapshot(["a", "b"], [edge("a", "b", weight=0.6)])
+    gm = compose_play(repo, RumorGenerator(_NoLLM()), StaticSnapshots(world))
+    session = repo.create_session("w")
+    repo.set_region_distortion(session.id, "a", 0.3)
+    return repo, gm, session
+
+
+def _put(repo, session, supports, *, promoted=()):
+    rumors = [_rumor("a", s).model_copy(update={"session_id": session.id}) for s in supports]
+    rumors += [
+        _rumor("a", s, promoted=True).model_copy(update={"session_id": session.id})
+        for s in promoted
+    ]
+    repo.upsert_rumors(rumors)
+    return rumors
+
+
+def test_ex1_one_promoted_rumor_no_longer_stops_the_regions_decay() -> None:
+    """US-8.2 first: the event is over; a promoted rumor stays, the others fade."""
+    repo, gm, session = _engine()
+    _put(repo, session, [0.4, 0.4, 0.4], promoted=[0.7])
+    result = gm.turns.advance(session.id).turns[-1]
+    supports = sorted(round(r.support, 6) for r in repo.list_rumors(session.id, "a"))
+    assert supports == [0.35, 0.35, 0.35, 0.7] and result.feedback_regions == []
+    for _ in range(7):
+        gm.turns.advance(session.id)
+    left = repo.list_rumors(session.id, "a")
+    assert [r.promoted for r in left] == [True]  # the rest were pruned
+
+
+def test_br_u7_2_3_the_feedback_share_comes_back_once_the_rumors_fade() -> None:
+    """US-8.2 second: strong rumors raise the region, decay (no exemption), and the share
+    is given back turn by turn until the region is where it started."""
+    repo, gm, session = _engine()
+    _put(repo, session, [0.5, 0.5, 0.5, 0.3])
+    seen = []
+    for _ in range(5):
+        gm.turns.advance(session.id)
+        row = next(r for r in repo.list_region_distortions(session.id) if r.region_id == "a")
+        seen.append((round(row.distortion_degree, 6), round(row.feedback_share, 6)))
+    assert seen == [(0.375, 0.075), (0.45, 0.15), (0.4, 0.1), (0.35, 0.05), (0.3, 0.0)]
+    restored = [
+        e.payload["feedback_restored_regions"]
+        for e in repo.list_timeline(session.id)
+        if e.kind == TimelineKind.ADVANCE_TURN.value
+    ]
+    assert restored == [[], [], ["a"], ["a"], ["a"]]
+
+
+def test_br_u7_5_a_gm_set_is_the_new_base() -> None:
+    repo, gm, session = _engine()
+    _put(repo, session, [0.5, 0.5, 0.5, 0.3])
+    gm.turns.advance(session.id)
+    gm.distortions.set_region_distortion(session.id, "a", 0.5)
+    row = next(r for r in repo.list_region_distortions(session.id) if r.region_id == "a")
+    assert (row.distortion_degree, row.feedback_share) == (0.5, 0.0)

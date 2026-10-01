@@ -331,14 +331,16 @@ def test_feedback_writes_through_the_given_store() -> None:
     class Store:
         def __init__(self) -> None:
             self.values: dict[tuple[str, str], float] = {}
+            self.shares: dict[tuple[str, str], float | None] = {}
 
         def get_region_distortion(self, sid, rid):
             return self.values.get((sid, rid))
 
-        def set_region_distortion(self, sid, rid, degree):
+        def set_region_distortion(self, sid, rid, degree, *, feedback_share=None):
             self.values[(sid, rid)] = degree
+            self.shares[(sid, rid)] = feedback_share
 
-        def list_region_distortions(self, sid):  # pragma: no cover
+        def list_region_distortions(self, sid):
             return []
 
     repo = InMemoryPlayRepository()
@@ -355,8 +357,11 @@ def test_feedback_writes_through_the_given_store() -> None:
         for _ in range(3)
     ]
     store = Store()
-    deltas = RumorFeedbackService(repo, PlayTuning()).apply_feedback(session, strong, store=store)
-    assert deltas and ("a" in deltas) and store.values  # written to the UoW store ...
+    # U7 intended change: BR-U7-2 — the outcome names what was raised, and the share
+    # is written with the degree
+    out = RumorFeedbackService(repo, PlayTuning()).apply_feedback(session, strong, store=store)
+    assert "a" in out.raised and "a" in out.strong_regions and store.values
+    assert store.shares[(session.id, "a")] == out.raised["a"]  # the share is what was raised
     assert repo.get_region_distortion(session.id, "a") is None  # ... not to the repository
 
 

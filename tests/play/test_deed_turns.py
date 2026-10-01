@@ -28,6 +28,7 @@ from locus.shared.config.tuning import PlayTuning
 from locus.shared.models import ConnectionKind
 from tests.play.helpers import compose_play
 from tests.play.strategies import build_snapshot, deed_rumor, edge, npc
+from tests.shared.snapshots import StaticSnapshots
 
 WORLD = build_snapshot(
     ["a", "b", "c"],
@@ -43,13 +44,6 @@ WORLD = build_snapshot(
         npc("n4", "c", name="Cid"),
     ],
 )
-
-
-class _Snap:
-    def get(self, world_id):
-        if world_id != "w":
-            raise LookupError(world_id)
-        return WORLD
 
 
 class _Watch:
@@ -113,7 +107,7 @@ def _setup(tuning: PlayTuning | None = None, *, voice: bool = True):
     gm = compose_play(
         repo,
         RumorGenerator(rumor_llm),
-        _Snap(),
+        StaticSnapshots(WORLD),
         dialogue_llm=voice_llm,
         tuning=tuning or PlayTuning(),
     )
@@ -456,3 +450,114 @@ def test_endtalk_without_new_words_judges_nothing() -> None:
     gm.turns.advance(session.id, EndTalkAction(npc_id="n1"))
     assert voice.structured_calls == [] and repo.list_appraisals(session.id) == []
     assert DeedKind.STATEMENT.value not in {d.kind for d in repo.list_deeds(session.id)}
+
+
+# --- U7 Step 5.5: U6 review #8, #9, #14 and the scene's source hiding -------------- #
+def test_review_u6_14_an_empty_declaration_is_400_even_while_a_turn_runs() -> None:
+    """BR-U6-5: the rule lives in validate_action, so `act` answers 400 before the guard."""
+    _repo, gm, session, _player, *_ = _setup()
+    gm.guard.acquire(session.id, "someone-else")
+    try:
+        with pytest.raises(InvalidActionError):
+            gm.play.act(session.id, DeclareAction(text="   "))
+        with pytest.raises(InvalidActionError):
+            gm.play.act(session.id, DeclareAction(text="x" * 301))
+    finally:
+        gm.guard.release(session.id)
+
+
+def test_review_u6_8_a_turn_committed_before_the_guard_is_not_counted_as_ours() -> None:
+    """The run's start turn is read under the guard: a GM turn that lands between the
+    first read and the acquire must not shorten the refund of a run that then fails."""
+    repo, gm, session, _player, *_ = _setup()
+    real_acquire = gm.guard.acquire
+
+    def acquire_after_a_gm_turn(session_id, run_id):
+        repo.bump_turn(session_id)  # another run committed a turn in the gap
+        return real_acquire(session_id, run_id)
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("turn failed")
+
+    gm.guard.acquire = acquire_after_a_gm_turn  # type: ignore[method-assign]
+    gm.turns._one_turn = boom  # type: ignore[method-assign]
+    with pytest.raises(RuntimeError):
+        gm.turns.advance(session.id, MoveAction(to_region_id="b"))
+    player = repo.get_player(session.id)
+    assert (player.region_id, player.turns_spent) == ("a", 0)  # full refund, put back
+    assert [d.region_id for d in repo.list_deeds(session.id)] == ["a"]  # arrival undone
+
+
+def test_review_u6_9_a_scene_read_error_fails_the_run_not_the_llm() -> None:
+    repo, gm, session, _player, voice, *_ = _setup()
+
+    def down(*args, **kwargs):
+        raise RuntimeError("storage down")
+
+    gm.turns._region_knowledge.region_sources = down  # type: ignore[union-attr]
+    with pytest.raises(RuntimeError, match="storage down"):
+        gm.turns.advance(session.id, DeclareAction(text="sing"), lang="ko")
+    assert voice.structured_calls == []  # no narration call was booked
+    assert repo.get_player(session.id).turns_spent == 0  # refunded: the run failed
+    assert not [d for d in repo.list_deeds(session.id) if d.kind == "declared_action"]
+
+
+def test_review_u6_1_the_narration_scene_hides_a_source_the_region_knows_distorted() -> None:
+    """The narration record becomes deed text, so its scene follows BR-U5-11 too."""
+    from locus.play.models import SessionRumor
+    from locus.shared.models import (
+        Knowledge,
+        KnowledgeGraph,
+        Provenance,
+        ScopeLink,
+        ScopeType,
+        SourceKind,
+    )
+
+    ks, scopes = [], []
+    for kid, text in (("k-fire", "The market burned."), ("k-bread", "Bread is cheap here.")):
+        k = Knowledge(
+            world_id="w", statement=text, title=kid, provenance=Provenance(source=SourceKind.INPUT)
+        )
+        k.id = kid
+        ks.append(k)
+        scopes.append(
+            ScopeLink(world_id="w", knowledge_id=kid, region_id="a", scope_type=ScopeType.DIRECT)
+        )
+    world = build_snapshot(
+        ["a", "b"],
+        [edge("a", "b", weight=0.6)],
+        npcs=[npc("n1", "a", name="Mara")],
+        kg=KnowledgeGraph(world_id="w", knowledge=ks, scopes=scopes),
+    )
+    prompts: list[str] = []
+
+    class Voice(VoiceLLM):
+        def structured(self, prompt, schema, *, system=None):
+            prompts.append(prompt)
+            return super().structured(prompt, schema, system=system)
+
+    repo = InMemoryPlayRepository()
+    watch = _Watch()
+    gm = compose_play(
+        repo, RumorGenerator(RumorLLM(watch)), StaticSnapshots(world), dialogue_llm=Voice(watch)
+    )
+    session, _p = gm.sessions.start("w", PlayerCreate(name="Ari", start_region_id="a"))
+    repo.upsert_rumors(
+        [
+            SessionRumor(
+                session_id=session.id,
+                region_id="a",
+                distorted_from_id="k-fire",
+                distorted_from_kind="knowledge",
+                statement="Rioters set the market alight.",
+                distortion_degree=0.6,
+                support=0.5,
+                provenance=Provenance(source=SourceKind.SIMULATION),
+            )
+        ]
+    )
+    gm.turns.advance(session.id, DeclareAction(text="sing"), lang="ko")
+    scene = prompts[0]
+    assert "Rioters set the market alight." in scene and "Bread is cheap here." in scene
+    assert "The market burned." not in scene

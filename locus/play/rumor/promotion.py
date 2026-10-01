@@ -11,9 +11,11 @@ from __future__ import annotations
 from pydantic import Field
 
 from locus.play.models import SessionRumor
+from locus.shared.config.tuning import PlayTuning
 from locus.shared.models import LocusModel
 
-DEFAULT_PROMOTION_THRESHOLD = 0.6
+# Default only; the engine passes ``PlayTuning.promotion_threshold`` (U7, FR-A7).
+DEFAULT_PROMOTION_THRESHOLD = PlayTuning().promotion_threshold
 
 
 class PromotionResult(LocusModel):

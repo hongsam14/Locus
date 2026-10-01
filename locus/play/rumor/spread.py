@@ -10,7 +10,7 @@ canonical knowledge between regions.
 
 from __future__ import annotations
 
-from collections.abc import Collection, Sequence
+from collections.abc import Collection, Mapping, Sequence
 
 from locus.knowledge.propagation import best_path_weights
 from locus.play.models import SessionRumor, SpreadTarget
@@ -47,6 +47,16 @@ def _neighbour_weights(edges: Sequence[ConnectionEdge], region_id: str) -> dict[
     return out
 
 
+def neighbour_map(edges: Sequence[ConnectionEdge]) -> dict[str, dict[str, float]]:
+    """Every region's strongest connection to each neighbour, built once."""
+    out: dict[str, dict[str, float]] = {}
+    for c in edges:
+        if c.target_region_id != c.source_region_id:
+            near = out.setdefault(c.source_region_id, {})
+            near[c.target_region_id] = max(near.get(c.target_region_id, 0.0), c.weight)
+    return out
+
+
 def plan_spread(
     snapshot: WorldSnapshot,
     rumor: SessionRumor,
@@ -55,17 +65,22 @@ def plan_spread(
     reached: Collection[str],
     tuning: PlayTuning,
     edges: Sequence[ConnectionEdge] | None = None,
+    reach: Mapping[str, float] | None = None,
+    neighbours: Mapping[str, Mapping[str, float]] | None = None,
 ) -> list[SpreadTarget]:
     """The hops ``rumor`` may take this turn, strongest first (ties by region id).
 
     ``reached`` is every region this rumor's version (its appraisal) has ever reached,
     inactive or pruned ones included (BR-U6-19). ``edges`` lets a caller compute the
-    passable graph once per turn.
+    passable graph once per turn; ``reach`` (``best_path_weights`` from the origin) and
+    ``neighbours`` (``neighbour_map(edges)``) let it reuse them across parents (U6
+    review C4). Each must have been computed from the same ``edges``.
     """
     if not is_session_origin(rumor):
         return []
     graph = list(edges) if edges is not None else passable_both_ways(snapshot)
-    reach = best_path_weights(origin_region_id, graph)
+    if reach is None:
+        reach = best_path_weights(origin_region_id, graph)
     here = rumor.region_id
     w_here = reach.get(here, 0.0)
     if w_here <= 0.0:
@@ -73,7 +88,8 @@ def plan_spread(
     # Below this a rumor would be pruned by the next turn's decay: spend no LLM call on it.
     floor = tuning.prune_floor + tuning.support_decay
     out: list[SpreadTarget] = []
-    for target, edge_w in _neighbour_weights(graph, here).items():
+    near = neighbours.get(here, {}) if neighbours is not None else _neighbour_weights(graph, here)
+    for target, edge_w in near.items():
         if target in reached or target not in snapshot.regions_by_id:
             continue
         weight = w_here * edge_w

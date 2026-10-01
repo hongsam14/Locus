@@ -1,21 +1,31 @@
-"""RumorFeedbackService — rumor→region distortion feedback (U-H1, FR-H3).
+"""RumorFeedbackService — rumor→region distortion feedback (U-H1, FR-H3; U7 FR-E2).
 
-The deferred Phase 3 feedback loop: high-support rumor density in a region feeds
-back into that region's distortion each turn, so strong rumors keep a region
-dynamic even without events. Pure aggregation lives in
-``rumor_dynamics.region_feedback`` (BR-H1-9); this service owns only the
-side effect — reading/writing session ``region_distortions`` (SRP, AD-H Q4=B).
-Canonical layer is never touched (NFR-H2).
+Strong, not-yet-accepted rumors in a region feed back into its distortion each turn.
+U7 (FD-U7 Q2=A, Q4=A): promoted rumors no longer count, the part of the distortion
+feedback put there (``feedback_share``) is capped, and it is given back once the region
+has no strong rumor — so a region does not only ever climb. The maths is pure
+(``rumor_dynamics.region_feedback`` / ``step_feedback``); this service reads and writes
+the session ``region_distortions`` (SRP, AD-H Q4=B). The canonical layer is never touched.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+
 from locus.play.models import DEFAULT_DISTORTION_DEGREE, GameSession, SessionRumor
 from locus.play.ports import DistortionStore
 from locus.play.rumor import dynamics as rumor_dynamics
-from locus.play.rumor.dynamics import DEFAULT_RUMOR_DYNAMICS
+from locus.play.rumor.dynamics import DEFAULT_RUMOR_DYNAMICS, FeedbackState
 from locus.shared.config.tuning import PlayTuning
-from locus.shared.models.util import clamp01
+
+
+@dataclass(frozen=True)
+class FeedbackOutcome:
+    """One turn's feedback: what it raised, what it gave back, where strong rumors are."""
+
+    raised: dict[str, float] = field(default_factory=dict)
+    restored: dict[str, float] = field(default_factory=dict)
+    strong_regions: frozenset[str] = frozenset()
 
 
 class RumorFeedbackService:
@@ -37,16 +47,12 @@ class RumorFeedbackService:
         active_rumors: list[SessionRumor],
         *,
         store: DistortionStore | None = None,
-    ) -> dict[str, float]:
-        """Feed high-support rumor density back into region distortion (BR-H1-9/10).
-
-        Computes per-region deltas from the ACTIVE rumors (pure), adds each to the
-        region's current distortion (clamped), and returns the delta map — its keys
-        are the regions the turn should treat as reinforced (BR-H1-2).
+    ) -> FeedbackOutcome:
+        """Raise regions with strong rumors (capped) and give back the share of regions
+        without them (BLM §1.2). Only changed rows are written.
 
         ``store`` (U4, BR-U4-14): inside a turn's unit of work the caller passes the
-        UoW's ``DistortionStore`` so the write joins that transaction; the default
-        keeps the repository (manual / legacy paths).
+        UoW's ``DistortionStore`` so the write joins that transaction.
         """
         target = store if store is not None else self._repo
         deltas = rumor_dynamics.region_feedback(
@@ -54,9 +60,28 @@ class RumorFeedbackService:
             weight=self._params.feedback_weight,
             high_support_threshold=self._params.high_support_threshold,
         )
-        for region_id, delta in deltas.items():
-            current = target.get_region_distortion(session.id, region_id)
-            if current is None:
-                current = DEFAULT_DISTORTION_DEGREE
-            target.set_region_distortion(session.id, region_id, clamp01(current + delta))
-        return deltas
+        states = {
+            row.region_id: FeedbackState(degree=row.distortion_degree, share=row.feedback_share)
+            for row in target.list_region_distortions(session.id)
+        }
+        for rid in deltas:
+            states.setdefault(rid, FeedbackState(degree=DEFAULT_DISTORTION_DEGREE, share=0.0))
+        steps = rumor_dynamics.step_feedback(
+            states,
+            deltas,
+            cap=self._params.feedback_cap,
+            restore=self._params.feedback_restore,
+        )
+        raised: dict[str, float] = {}
+        restored: dict[str, float] = {}
+        for rid, step in steps.items():
+            before = states[rid]
+            if step.degree != before.degree or step.share != before.share:
+                target.set_region_distortion(
+                    session.id, rid, step.degree, feedback_share=step.share
+                )
+            if step.raised > 0:
+                raised[rid] = step.raised
+            if step.restored > 0 or step.share < before.share:
+                restored[rid] = step.restored
+        return FeedbackOutcome(raised=raised, restored=restored, strong_regions=frozenset(deltas))

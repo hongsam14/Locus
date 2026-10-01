@@ -21,6 +21,7 @@ from locus.play.models import (
 )
 from locus.shared.config.tuning import PlayTuning
 from tests.play.strategies import build_snapshot, deed_rumor, edge, npc
+from tests.shared.snapshots import StaticSnapshots
 
 WORLD = build_snapshot(
     ["a", "b"],
@@ -29,14 +30,9 @@ WORLD = build_snapshot(
 )
 
 
-class _Snap:
-    def get(self, world_id):
-        return WORLD
-
-
 def _setup(tuning: PlayTuning | None = None):
     repo = InMemoryPlayRepository()
-    deeds = DeedService(repo, _Snap(), tuning=tuning or PlayTuning())
+    deeds = DeedService(repo, StaticSnapshots(WORLD), tuning=tuning or PlayTuning())
     session = repo.create_session("w")
     player = repo.create_player(Player(session_id=session.id, name="Ari", region_id="a"))
     return repo, deeds, session, player

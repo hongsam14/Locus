@@ -185,9 +185,13 @@ def test_empty_turn_promoted_rumor_exempt_from_decay() -> None:
     r = gm.rumors.generate_rumors(session.id, "r1")[0]
     gm.rumors.adjust_support(session.id, r.id, 0.7)
     gm.turns.advance(session.id).turns[-1]  # promotes r (>=0.6)
-    assert repo.get_rumor(session.id, r.id).promoted is True
+    promoted = repo.get_rumor(session.id, r.id)
+    assert promoted.promoted is True
+    # U7 intended change: BR-U7-4 — a feedback region is no longer exempt, so r decayed
+    # once (0.7 -> 0.65) on the turn it was still a strong, unpromoted rumor
+    assert abs(promoted.support - 0.65) < 1e-9
     gm.turns.advance(session.id).turns[-1]  # empty turn: promoted -> support untouched
-    assert abs(repo.get_rumor(session.id, r.id).support - 0.7) < 1e-9
+    assert abs(repo.get_rumor(session.id, r.id).support - promoted.support) < 1e-9
 
 
 # --- U-H1: decay / prune / gate / feedback ---------------------------------- #
@@ -336,3 +340,25 @@ def test_lifecycle_value_is_string() -> None:
     _repo, _loader, gm, session = _setup()
     ev = gm.events.create_event(session.id, "r1", category=EventCategory.WAR, magnitude=0.5)
     assert ev.lifecycle == EventLifecycle.PERSISTENT.value
+
+
+# --- U7 Step 5.5: names on turn lines (FR-D3, EX-11) and the one_shot end (BR-U7-8) -- #
+def test_ex11_turn_lines_carry_the_region_name_and_a_one_shot_end_is_recorded() -> None:
+    from locus.play.models import EventLifecycle
+
+    repo, _loader, gm, session = _setup()
+    gm.events.create_event(
+        session.id,
+        "r1",
+        category=EventCategory.FESTIVAL,
+        magnitude=0.5,
+        lifecycle=EventLifecycle.ONE_SHOT,
+    )
+    r = gm.rumors.generate_rumors(session.id, "r1")[0]
+    gm.rumors.adjust_support(session.id, r.id, 0.7)
+    gm.turns.advance(session.id)
+    lines = {e.kind: e for e in repo.list_timeline(session.id)}
+    for kind in ("event_applied", "event_resolved", "promote"):
+        assert lines[kind].payload["region_id"] == "r1", kind
+        assert lines[kind].payload["region_name"] == "R1", kind
+    assert lines["promote"].summary == "promoted a rumor in R1"

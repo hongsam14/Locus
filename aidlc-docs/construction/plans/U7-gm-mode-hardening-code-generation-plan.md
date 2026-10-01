@@ -196,20 +196,20 @@
   - 기존 `test_rumor_dynamics.py:102/108/140`에 승격 소문 경우를 더한다.
 
 ### Step 5 — 턴 엔진
-- [ ] 5.1 `locus/play/rumor/feedback.py::apply_feedback(session, rumors, *, store=None) -> FeedbackOutcome(raised, restored, strong_regions)`(BLM §1.2)
+- [x] 5.1 `locus/play/rumor/feedback.py::apply_feedback(session, rumors, *, store=None) -> FeedbackOutcome(raised, restored, strong_regions)`(BLM §1.2)
   - 호출처: `advancer.py:642`, `test_player_mode.py:358`
-- [ ] 5.2 `locus/play/event/dynamics.py`
+- [x] 5.2 `locus/play/event/dynamics.py`
   - `distortion_delta(m, *, max_delta)`, `propagate_delta(..., min_weight)`, `evolve_support(..., reinforce)`. 기본값은 `PlayTuning()`이다.
   - 호출처: `advancer.py:645/886/887`, `test_dynamics.py:39-100`(기본값으로 그대로)
   - 모듈 상수는 기본값과 같은 값으로 남긴다.
-- [ ] 5.3 `locus/play/turn/advancer.py::_one_turn`(BLM §1.1)
+- [x] 5.3 `locus/play/turn/advancer.py::_one_turn`(BLM §1.1)
   - `reinforced = events.influenced_regions`(BR-U7-4)
   - `promotion_threshold`의 기본값은 `None`이고, 그러면 `params.promotion_threshold`다. 호출처는 `advancer.py:167/187`이다.
   - 사건 함수에는 tuning 값을 넘긴다.
   - `promote`·`demote`·`prune`·`event_applied` 줄에 `region_id`·`region_name`을 넣는다.
   - one_shot 자동 해소는 `event_resolved` 줄을 남긴다(BR-U7-8).
   - `advance_turn` 페이로드에 `feedback_restored_regions`를 넣는다.
-- [ ] 5.4 `advancer.py` 정리와 U6 리뷰 이월
+- [x] 5.4 `advancer.py` 정리와 U6 리뷰 이월
   - #8: 가드를 잡은 뒤 `started_turn`을 정한다.
   - #9: 장면을 `try` 밖에서 만든다.
   - #14: 선언 검사를 `movement.validate_action`으로 옮기고, `_start`가 다시 검사한다.
@@ -218,12 +218,12 @@
   - C8: 한도 하나
   - C9: 씨앗 왜곡도
   - #1 남은 결정: `_scene`도 원본 가리기를 쓴다.
-- [ ] 5.5 테스트 `tests/play/test_advance_turn.py`·`test_feedback.py`
+- [x] 5.5 테스트 `tests/play/test_advance_turn.py`·`test_feedback.py`
   - EX-1(승격 1 + 비승격 감쇠), 몫 복원 통합(LLM 없는 3턴)
   - 기존 되먹임·강화 테스트(`test_advance_turn.py:171/230/237/277`)를 새 규칙으로 고친다(`# U7 intended change: BR-U7-4`).
   - #8·#9·#14 예제
   - 장면 가리기: 원문 K와 왜곡 R이 있는 지역에서 서술 프롬프트에 K가 없다.
-- [ ] 5.6 C15: `test_deeds.py:32`·`test_deed_turns.py:48`·`tests/api/test_deeds_api.py:22`의 `_Snap`을 `StaticSnapshots`로 바꾼다.
+- [x] 5.6 C15: `test_deeds.py:32`·`test_deed_turns.py:48`·`tests/api/test_deeds_api.py:22`의 `_Snap`을 `StaticSnapshots`로 바꾼다.
 
 ### Step 6 — 서비스와 조립
 - [ ] 6.1 `RumorService`

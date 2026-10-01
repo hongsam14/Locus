@@ -10,7 +10,14 @@ from __future__ import annotations
 import math
 
 from locus.play.errors import InvalidActionError
-from locus.play.models import EndTalkAction, MoveAction, MoveOption, Player, PlayerAction
+from locus.play.models import (
+    DeclareAction,
+    EndTalkAction,
+    MoveAction,
+    MoveOption,
+    Player,
+    PlayerAction,
+)
 from locus.shared.config.tuning import PlayTuning
 from locus.shared.models import NPC, ConnectionEdge, ConnectionKind, WorldSnapshot
 
@@ -118,6 +125,12 @@ def validate_action(
         here = {n.id for n in npcs_here(snapshot, player.region_id)}
         if action.npc_id not in here:
             raise InvalidActionError(f"npc not here: {action.npc_id}")
+    if isinstance(action, DeclareAction):  # BR-U6-5: a 400 before the guard (U6 review #14)
+        declared = action.text.strip()
+        if not declared:
+            raise InvalidActionError("empty declaration")
+        if len(declared) > tuning.declare_max_chars:
+            raise InvalidActionError(f"declaration too long (max {tuning.declare_max_chars})")
     return None
 
 

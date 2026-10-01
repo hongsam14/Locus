@@ -140,9 +140,10 @@ class WorldBuilder:
         cache: SnapshotCache,
         exporter: ExporterLike | None = None,
         backup_dir: Path | None = None,
-        tuning: WorldTuning | None = None,
+        tuning: WorldTuning,
     ) -> WorldBuilder:
-        tuning = tuning or WorldTuning()  # the weight table and the dedup bar (U7, FR-A7)
+        # The weight table and the dedup bar (U7, FR-A7). Required: a composition root
+        # that forgot it silently built with the defaults (U7 review #3).
         providers = BuildProviders(
             llm=factory.llm(), vlm=factory.vlm(), embedding=factory.embedding()
         )

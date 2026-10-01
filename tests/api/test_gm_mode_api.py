@@ -143,3 +143,72 @@ def test_nfr_r05_log_and_distortions_read_the_store_twice() -> None:
     calls.update(dict.fromkeys(calls, 0))
     client.get(f"/api/gm/sessions/{sid}/distortions")
     assert (calls["get_session"], calls["list_region_distortions"]) == (1, 1)
+
+
+def test_u7_review_2_five_concurrent_gm_writes_all_succeed() -> None:
+    """Bulk generate sends five writes at once (U7 frontend §2.2); GM writes share the
+    session, so none of them answers 409 — each LLM call waits at a barrier that only
+    opens when all five are inside their writes at the same time."""
+    import threading
+
+    from locus.play import InMemoryPlayRepository
+    from locus.play.rumor.generator import RumorDraft, RumorGenerator
+    from locus.play.turn.executor import SyncTurnExecutor
+    from locus.shared.models import (
+        Knowledge,
+        KnowledgeGraph,
+        Provenance,
+        ScopeLink,
+        ScopeType,
+        SourceKind,
+    )
+    from tests.play.helpers import compose_play
+    from tests.play.strategies import build_snapshot
+    from tests.shared.snapshots import StaticSnapshots
+
+    ids = [f"r{i}" for i in range(5)]
+    ks, scopes = [], []
+    for rid in ids:
+        k = Knowledge(
+            world_id="w",
+            statement=f"fact of {rid}",
+            title=rid,
+            provenance=Provenance(source=SourceKind.INPUT),
+        )
+        ks.append(k)
+        scopes.append(
+            ScopeLink(world_id="w", knowledge_id=k.id, region_id=rid, scope_type=ScopeType.DIRECT)
+        )
+    world = build_snapshot(ids, [], kg=KnowledgeGraph(world_id="w", knowledge=ks, scopes=scopes))
+    barrier = threading.Barrier(5, timeout=5)
+
+    class Together:
+        def structured(self, prompt, schema, *, system=None):
+            barrier.wait()  # raises BrokenBarrierError unless all five writes overlap
+            return RumorDraft(statement="twisted")
+
+        def complete(self, prompt, *, system=None):  # pragma: no cover
+            return ""
+
+    p = compose_play(
+        InMemoryPlayRepository(),
+        RumorGenerator(Together()),
+        StaticSnapshots(world),
+        executor=SyncTurnExecutor(),
+    )
+    client = TestClient(create_app(play=p))
+    sid = client.post("/api/play/worlds/w/sessions").json()["id"]
+    codes: list[int] = []
+    lock = threading.Lock()
+
+    def generate(rid: str) -> None:
+        r = client.post(f"/api/gm/sessions/{sid}/regions/{rid}/rumors", params={"degrees": "0.5"})
+        with lock:
+            codes.append(r.status_code)
+
+    threads = [threading.Thread(target=generate, args=(rid,)) for rid in ids]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=10)
+    assert sorted(codes) == [200] * 5

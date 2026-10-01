@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../api";
+import { conflictKind } from "../../api/http";
 import { t, useRequestLang } from "../../i18n";
 import type { GameSession, SessionEvent, SessionRumor, TimelineEntry, TurnResult } from "../../types";
 import { Modal, NotificationCenter, Panel } from "../../ui";
@@ -79,14 +80,19 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
     refresh();
   }, [refresh]);
 
-  async function run(fn: () => Promise<unknown>) {
+  /** A GM write, then a re-read; true when it was saved. A 409 for a closed session
+   * tells the page, which re-reads the session and locks the controls (U7 review #11). */
+  async function run(fn: () => Promise<unknown>): Promise<boolean> {
     setError(null);
     try {
       await fn();
       await refresh();
       onChanged?.();
+      return true;
     } catch (e) {
       setError(String(e));
+      if (conflictKind(e) === "closed") onChanged?.();
+      return false;
     }
   }
 
@@ -103,6 +109,7 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
       onChanged?.();
     } catch (e) {
       setError(String(e));
+      if (conflictKind(e) === "closed") onChanged?.();
     }
   }
 
@@ -202,6 +209,7 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
       {regionId && (
         <div data-testid="gm-region" className="mt-3 flex flex-col gap-2">
           <DistortionPanel
+            key={regionId} // a region's slider state never carries over (U7 review #4)
             regionName={regionNames[regionId] ?? regionId}
             value={here?.degree ?? 0.3}
             share={here?.share ?? 0}

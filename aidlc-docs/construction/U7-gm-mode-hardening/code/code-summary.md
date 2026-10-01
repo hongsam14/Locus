@@ -128,6 +128,21 @@
 | 8 | CommitRange 중복 저장·키 저장 없음, 제안에 해소 버튼, 전체 생성이 행적 소문 셈, 선언 상자 미잠금, UTF-16 세기, 닫힘을 진행 중으로, 모달 busy 없음, 대화 뒤 목록 재조회, 닫힌 세션 미잠금, 지역 이름 없음, 상태 미조회, 띠가 전체 실행 조회 | 13/14 잡음(재진입 가드는 모달과 이중 방어라 겉으로 같음) |
 
 
+## 9. 승인 뒤 리뷰 후속 수정 (2026-10-01, `code-review-01` 사람의 선택 A)
+| 리뷰 # | 고친 곳 | 테스트 (변이 확인) |
+|---|---|---|
+| 1 | `ui/CommitRange.tsx`: 사용자가 움직였을 때(`onChange`)만 저장한다 | `gm.test.tsx` "#1" (반올림된 값으로 blur·pointerUp·Tab) |
+| 2 | `play/turn/guard.py`: GM 쓰기는 서로 세션을 나눈다(보유자 수). 턴만 모두를 막는다 | `test_turn_guard.py::test_u7_review_2_*`, `test_gm_mode_api.py::test_u7_review_2_*`(다섯 쓰기가 barrier에서 만나야 통과) |
+| 3 | `locus/__main__.py`가 `tuning=settings.world_tuning()`을 넘긴다. `WorldBuilder.from_factory`의 `tuning`을 필수로 바꿨다 | `test_cli.py::test_u7_review_3_*` |
+| 4 | `CommitRange`는 저장이 성공했을 때만 `saved`를 옮긴다(거절하면 손잡이를 되돌린다). `GmHub.run`이 성공 여부를 돌려준다. `DistortionPanel`에 `key={regionId}`를 준다 | `gm.test.tsx` "#4" |
+| 5 | `_fail`이 `restored_region_id`를 싣고 `player_log`가 그 줄로 위치를 되돌린다. BR-U7-13을 〔리뷰 후속 정정〕으로 고쳤다. PBT 생성기에 실패 복원 줄을 넣었다 | `test_player_log.py::test_review_u7_5_*` ×2 |
+| 11 | `GmPage.onDeedChanged`가 세션을 다시 읽는다. `GmHub.run`·`advance`는 닫힌 세션 409에서 `onChanged`를 부른다 | `gm.test.tsx` "#11" ×2 (GmHub, GmPage) |
+
+- 게이트: pytest 735, vitest 94, ruff·black·tsc clean, mypy 11
+- 의도된 변경: `test_deeds_api.py`(GM 리스 공유), `test_player_mode.py`(`restored_region_id` 페이로드)
+- 변이 확인: 8건(배타 리스, CLI 기본 조정값, 복원 무시, 변화 없는 저장, 거절도 저장, 닫힘 미통지 ×2, 페이지 미재조회) 모두 잡음
+- 나머지(#6~#10, #12~#15, §3 12건, 정리 19건, 설계 메모 둘: GM 설정과 ACTIVE 사건 기여, `TOPOLOGY_DEFAULT_BASE`)는 U3 FD 이월 목록으로 간다(리뷰 기록 §8)
+
 ## 7. 운영자 실행으로 남긴 것
 이 호스트의 7474/7687은 다른 프로젝트가 쓴다. 그래서 compose를 띄우는 라이브 확인은 운영자가 돌린다.
 ```bash

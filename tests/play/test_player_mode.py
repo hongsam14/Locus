@@ -540,6 +540,8 @@ def test_ex9_failure_in_the_second_turn_keeps_the_first_and_records_only_the_typ
         "error_type": "RuntimeError",
         "turns_advanced": 1,  # the first turn committed
         "turns_refunded": 1,  # the second never ran, so its charge is given back (#5)
+        # U7 intended change: review #5 — a turn advanced, so the player was not put back
+        "restored_region_id": None,
     }
     assert "secret" not in str(failed[0].payload)
     player = repo.get_player(session.id)

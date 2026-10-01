@@ -4,6 +4,11 @@ Process-local (the API runs one worker, see operations.md). ``acquire`` never
 waits: a second caller gets ``TurnInProgressError`` (409) at once. GM writes
 that touch session state call ``assert_idle`` so a turn's computed values never
 overwrite a concurrent GM edit (FD R-06).
+
+U7 review #2: a turn excludes everything, but GM writes only exclude turns — they
+share the session with each other (``hold`` counts holders), so a GM's bulk generate
+over five regions runs five writes at once as designed (U7 frontend §2.2) instead of
+four of them answering 409.
 """
 
 from __future__ import annotations
@@ -19,11 +24,15 @@ from locus.play.errors import TurnInProgressError
 class TurnGuard:
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._running: dict[str, str] = {}  # session_id -> run_id
+        self._running: dict[str, str] = {}  # session_id -> run_id (a turn)
+        self._gm: dict[str, int] = {}  # session_id -> GM writes in progress
 
     def acquire(self, session_id: str, run_id: str) -> None:
+        """A turn: refused while another turn or any GM write holds the session."""
         with self._lock:
             current = self._running.get(session_id)
+            if current is None and self._gm.get(session_id, 0):
+                current = "gm"
             if current is not None:
                 raise TurnInProgressError(f"turn in progress: {session_id} (run {current})")
             self._running[session_id] = run_id
@@ -33,12 +42,15 @@ class TurnGuard:
             self._running.pop(session_id, None)
 
     def is_running(self, session_id: str) -> bool:
+        """A turn or a GM write holds the session (the player's actions wait)."""
         with self._lock:
-            return session_id in self._running
+            return session_id in self._running or self._gm.get(session_id, 0) > 0
 
     def running_run_id(self, session_id: str) -> str | None:
         with self._lock:
-            return self._running.get(session_id)
+            if session_id in self._running:
+                return self._running[session_id]
+            return "gm" if self._gm.get(session_id, 0) else None
 
     def assert_idle(self, session_id: str) -> None:
         """Raise ``TurnInProgressError`` when a turn run holds this session.
@@ -62,8 +74,17 @@ class TurnGuard:
         view (code review U4-2 #7). Never waits: a busy session raises at once (409).
         """
         token = f"{label}:{uuid4().hex[:8]}"
-        self.acquire(session_id, token)
+        with self._lock:
+            current = self._running.get(session_id)
+            if current is not None:  # only a turn excludes a GM write (U7 review #2)
+                raise TurnInProgressError(f"turn in progress: {session_id} (run {current})")
+            self._gm[session_id] = self._gm.get(session_id, 0) + 1
         try:
             yield token
         finally:
-            self.release(session_id)
+            with self._lock:
+                left = self._gm.get(session_id, 0) - 1
+                if left > 0:
+                    self._gm[session_id] = left
+                else:
+                    self._gm.pop(session_id, None)

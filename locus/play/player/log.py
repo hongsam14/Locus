@@ -65,7 +65,9 @@ HIDDEN_KINDS: frozenset[str] = frozenset(
 def player_log(entries: Sequence[TimelineEntry]) -> list[TimelineEntry]:
     """The entries the player may see, in their original order (BR-U7-12..15).
 
-    ``entries`` must be in timeline order (``turn``, then ``created_at``). A region entry
+    ``entries`` must be in timeline order (``turn``, then ``created_at``). A failed move's
+    ``turn_run_failed`` line carries ``restored_region_id`` and puts the player back there.
+    A region entry
     is kept when its ``region_id`` is the player's region at that point; a persistent
     event's ``event_applied`` is kept once per stay (BR-U7-14). Region entries written
     before U7 carry no ``region_id`` and stay hidden (BR-U7-15).
@@ -80,6 +82,11 @@ def player_log(entries: Sequence[TimelineEntry]) -> list[TimelineEntry]:
             seen_events = set()
         elif kind == K.PLAYER_MOVED.value:
             here = e.payload.get("to_region_id") or e.payload.get("region_id")
+            seen_events = set()
+        elif kind == K.TURN_RUN_FAILED.value and e.payload.get("restored_region_id"):
+            # a move that never happened: the player is back where the run started
+            # (U7 review #5)
+            here = e.payload["restored_region_id"]
             seen_events = set()
         if kind in OWN_KINDS:
             out.append(e)

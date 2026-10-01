@@ -346,6 +346,8 @@ def player_timelines(draw, regions: tuple[str, ...] = ("a", "b", "c"), max_len: 
         if kind == TimelineKind.PLAYER_MOVED.value:
             to = draw(st.sampled_from(regions))
             payload = {"to_region_id": to, "region_id": to}
+        elif kind == TimelineKind.TURN_RUN_FAILED.value and draw(st.booleans()):
+            payload = {"restored_region_id": draw(st.sampled_from(regions))}  # a failed move
         elif draw(st.booleans()):
             payload["region_id"] = draw(st.sampled_from(regions))
         if kind == TimelineKind.EVENT_APPLIED.value:

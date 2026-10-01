@@ -101,3 +101,31 @@ def test_open_sessions_need_force(fake_env, capsys) -> None:
     assert cli.main(["world", "demo", "--name", "aldermoor", "--world", "w", "--force"]) == 0
     assert state["sessions"].closed == ["s1"]
     assert json.loads(capsys.readouterr().out)["closed_session_ids"] == ["s1"]
+
+
+def test_u7_review_3_the_cli_builder_uses_the_world_tuning(monkeypatch) -> None:
+    """BR-U7-19: `locus world build` reads the same env knobs as the API build."""
+    monkeypatch.setenv("TOPOLOGY_BASE_WEIGHTS", '{"route": 0.35}')
+    monkeypatch.setenv("ONTOLOGY_DEDUP_THRESHOLD", "0.95")
+    settings = Settings(_env_file=None)  # type: ignore[call-arg]
+
+    class Factory:
+        def llm(self):
+            return None
+
+        def vlm(self):
+            return None
+
+        def embedding(self):
+            return None
+
+    shared = SharedContainer(
+        settings=settings,
+        graph=InMemoryGraphRepository(),
+        search=InMemorySearchRepository(),
+        factory=Factory(),  # type: ignore[arg-type]
+    )
+    _exporter, _importer, _demo, builder = cli._world_services(shared, settings, with_builder=True)
+    assert builder is not None
+    assert builder._topology_factory(None)._tuning.base_weights["route"] == 0.35
+    assert builder._ontology_factory(None, None, None)._dedup_threshold == 0.95

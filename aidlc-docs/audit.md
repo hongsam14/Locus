@@ -3037,3 +3037,28 @@ Q5 is pending.
 - Orchestrator spot-check: #1 and #2 verified in code (`CommitRange.tsx:23-27`, `gm.py:42-55` + routes 122/140 with `_idle`).
 - The code is approved, so asking the human how to handle the fixes (A mix / B all to U3 / C accept), together with U3 Q5.
 **Context**: CONSTRUCTION / U7 post-approval review; U3 FD Part 1 in progress.
+
+---
+
+## U7 code review — human decision; U3 Q5
+**Timestamp**: 2026-10-01T06:43:11Z
+**User Input**: U7 review = "A. #1~#5·#11 지금 수정, 나머지 U3 (Recommended)"; FD-U3 Q5 = "A. 도구 모드 버튼 (Recommended)"
+**AI Response**: Fixing U7 review #1–#5 and #11 now as a U7 post-approval follow-up. The other findings (#6–#10, #12–#15, §3, cleanup, and the two design memos) go to the U3 carry list. U3 Q5 recorded: tool-mode buttons (select/move, add region, draw connection); a position is saved only after a real drag.
+**Context**: CONSTRUCTION / U7 post-approval fixes, then U3 FD Part 2.
+
+---
+
+## U7 code review — fixes applied (#1–#5, #11)
+**Timestamp**: 2026-10-01T06:50:47Z
+**AI Response**: Fixed U7 review #1–#5 and #11 as a post-approval follow-up (human choice A).
+- #1: CommitRange saves only values the user moved to.
+- #2: TurnGuard lets GM writes share the session (holder count); turns stay exclusive.
+- #3: the CLI passes `world_tuning()`; `from_factory(tuning=)` is now required.
+- #4: CommitRange marks a value saved only on success; `GmHub.run` returns a boolean; DistortionPanel is keyed per region.
+- #5: `restored_region_id` is on the turn_run_failed line and `player_log` follows it; BR-U7-13 marked 〔리뷰 후속 정정〕.
+- #11: GmPage re-reads the session after a void is refused; GmHub reports a closed session.
+Tests: +4 pytest, +4 vitest; 8 mutations caught.
+Gates: pytest 735, vitest 94, ruff/black/tsc clean, mypy 11.
+Docs: BR-U7-24 annotated, operations.md, code-summary §9, review record §8, CLAUDE.md (829).
+Carried to U3: #6–#10, #12–#15, §3 (12), cleanup (19), and two design memos.
+**Context**: U7 post-approval fixes done; back to U3 FD Part 2.

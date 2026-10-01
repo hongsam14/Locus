@@ -70,6 +70,7 @@ def _world_services(shared: SharedContainer, settings: Settings, *, with_builder
             cache=cache,
             exporter=exporter,
             backup_dir=settings.backup_dir,
+            tuning=settings.world_tuning(),  # U7 review #3: the CLI builds with the env knobs too
         )
     return exporter, importer, DemoWorlds(importer, builder), builder
 

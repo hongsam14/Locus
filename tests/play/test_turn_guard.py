@@ -92,3 +92,29 @@ def test_thread_executor_survives_a_raising_task() -> None:
     ex.submit(ran.set)
     assert ran.wait(timeout=5)
     ex.shutdown(timeout=2.0)
+
+
+def test_u7_review_2_gm_writes_share_the_session_and_only_turns_exclude() -> None:
+    """Five GM writes at once (a bulk generate) all hold; a turn waits for none of them
+    to start but is refused while any is running; a GM write is refused during a turn."""
+    guard = TurnGuard()
+    holds = [guard.hold("s") for _ in range(5)]
+    for h in holds:
+        h.__enter__()
+    assert guard.is_running("s") and guard.running_run_id("s") == "gm"
+    with pytest.raises(TurnInProgressError):
+        guard.acquire("s", "run-1")
+    for h in holds[:4]:
+        h.__exit__(None, None, None)
+    with pytest.raises(TurnInProgressError):  # one GM write is still in progress
+        guard.acquire("s", "run-1")
+    holds[4].__exit__(None, None, None)
+    assert not guard.is_running("s")
+    guard.acquire("s", "run-1")
+    try:
+        with pytest.raises(TurnInProgressError):
+            with guard.hold("s"):
+                pass
+    finally:
+        guard.release("s")
+    assert not guard.is_running("s")

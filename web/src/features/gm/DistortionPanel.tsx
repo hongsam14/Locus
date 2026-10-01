@@ -14,7 +14,7 @@ export function DistortionPanel({
   value: number;
   share: number;
   closed: boolean;
-  onCommit: (v: number) => void;
+  onCommit: (v: number) => Promise<boolean> | boolean | void;
 }) {
   return (
     <>

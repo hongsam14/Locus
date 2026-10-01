@@ -505,12 +505,14 @@ class TurnAdvancer(SessionAppService):
             run.finished_at = datetime.now(timezone.utc)
             u.runs.update_run(run)
             player = u.players.get_player(run.session_id)
+            restored_region_id: str | None = None
             if player is not None and run.turns_charged:
                 refund = max(0, run.turns_charged - advanced)
                 if refund:
                     player.turns_spent = max(0, player.turns_spent - refund)
                     if advanced == 0 and run.from_region_id is not None:
                         player.region_id = run.from_region_id  # the move never happened
+                        restored_region_id = player.region_id
                     u.players.update_player(player)
             if advanced == 0 and self._deeds is not None:
                 # U6 (BR-U6-36): the run never happened, so neither did its deeds — the
@@ -529,6 +531,9 @@ class TurnAdvancer(SessionAppService):
                             "error_type": type(exc).__name__,
                             "turns_advanced": advanced,
                             "turns_refunded": max(0, run.turns_charged - advanced),
+                            # where the player stands again — the player log follows it
+                            # (U7 review #5, BR-U7-13)
+                            "restored_region_id": restored_region_id,
                         },
                     )
                 )

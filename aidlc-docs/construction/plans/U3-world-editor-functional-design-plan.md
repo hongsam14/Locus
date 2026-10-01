@@ -39,7 +39,7 @@
 
 ## 플랜
 - [x] 상위 산출물·현재 코드 분석(위 표)
-- [ ] 질문(아래 FD-U3 Q1~Q5) 답 수집·분석
+- [x] 질문(아래 FD-U3 Q1~Q5) 답 수집·분석 — Q1=A, Q2=A, Q3=A, Q4=A, Q5=A
 - [ ] `construction/U3-world-editor/functional-design/domain-entities.md`
 - [ ] `.../business-logic-model.md`
 - [ ] `.../business-rules.md`(BR-U3-*, TP-U3-*, EX-*)
@@ -158,7 +158,7 @@
   - 비용: 무엇을 해야 하는지 보이지 않고, 터치 기기에서 Shift를 쓸 수 없다.
 - X. Other (please specify)
 
-[Answer]:
+[Answer]: A. 도구 모드 버튼
 
 ## 가정 (질문하지 않는 것 — 게이트에서 바꿀 수 있다)
 | # | 가정 | 근거 |

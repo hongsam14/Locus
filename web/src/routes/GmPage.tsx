@@ -91,6 +91,7 @@ export function GmPage() {
   // panel already re-read itself, so it is not keyed on this: U6 review C1).
   function onDeedChanged() {
     setDeedRev((n) => n + 1);
+    void loadSession(); // a 409 "session is closed" from a void must lock the page (#11)
   }
 
   // Switching sessions in the bar changes the route (same-session events, e.g.

@@ -15,6 +15,7 @@ import { GmHub } from "../features/gm/GmHub";
 import { PlayerStrip } from "../features/gm/PlayerStrip";
 import { WorldStateOverlay, overlayOf, useWorldState } from "../features/gm/WorldStateOverlay";
 import { t, timelineText } from "../i18n";
+import { GmPage } from "../routes/GmPage";
 import { PlayPage } from "../routes/PlayPage";
 import type { GameSession, Region, SessionEvent, WorldState } from "../types";
 import { CommitRange } from "../ui";
@@ -38,6 +39,10 @@ vi.mock("../api", () => ({
     listDeeds: vi.fn(),
     voidDeed: vi.fn(),
     startDialogue: vi.fn(),
+    setDistortion: vi.fn(),
+    advanceTurn: vi.fn(),
+    exportWorld: vi.fn(),
+    listSessions: vi.fn(),
     dialogueHistory: vi.fn(),
     say: vi.fn(),
   },
@@ -377,4 +382,77 @@ describe("PlayPage after U7", () => {
       expect(screen.getByTestId("npc-n1-talked")).toHaveTextContent(t("dialogue.has", { n: 2 })),
     );
   });
+});
+
+
+// --- U7 code review follow-ups (#1, #4, #11) ------------------------------------------ //
+describe("U7 review follow-ups", () => {
+  it("#1: tabbing past or clicking a slider never saves the browser's snapped value", () => {
+    const onCommit = vi.fn();
+    render(<CommitRange data-testid="r" min={0} max={1} step={0.05} value={0.375} onCommit={onCommit} />);
+    const r = screen.getByTestId("r");
+    // a real browser shows 0.375 as 0.4 (step); no change event was ever fired
+    fireEvent.blur(r, { target: { value: "0.4" } });
+    fireEvent.pointerUp(r, { target: { value: "0.4" } });
+    fireEvent.keyUp(r, { key: "Tab", target: { value: "0.4" } });
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it("#4: a refused save puts the thumb back and the same value can be sent again", async () => {
+    const onCommit = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    render(<CommitRange data-testid="r" min={0} max={1} step={0.05} value={0.3} onCommit={onCommit} />);
+    const r = screen.getByTestId("r") as HTMLInputElement;
+    fireEvent.change(r, { target: { value: "0.5" } });
+    await act(async () => fireEvent.pointerUp(r));
+    expect(r.value).toBe("0.3"); // refused: back to the server's value
+    fireEvent.change(r, { target: { value: "0.5" } });
+    await act(async () => fireEvent.pointerUp(r));
+    expect(onCommit.mock.calls.map((c) => c[0])).toEqual([0.5, 0.5]);
+  });
+
+  it("#11: a GM write refused because the session closed tells the page", async () => {
+    (api.getTimeline as Mock).mockResolvedValue([]);
+    (api.listEvents as Mock).mockResolvedValue([]);
+    (api.listDistortions as Mock).mockResolvedValue([{ session_id: "s1", region_id: "a", distortion_degree: 0.3 }]);
+    (api.listRumors as Mock).mockResolvedValue([]);
+    (api.advanceTurn as Mock).mockRejectedValue(new Error("409 Conflict: session is closed: s1"));
+    const onChanged = vi.fn();
+    render(<GmHub session={OPEN} regionId={null} onChanged={onChanged} />);
+    await act(async () => fireEvent.click(await screen.findByTestId("advance-turn-btn")));
+    await waitFor(() => expect(onChanged).toHaveBeenCalled());
+  });
+});
+
+
+it("#11 (page): a void refused because the session closed re-reads the session", async () => {
+  (api.getSession as Mock).mockResolvedValue(OPEN);
+  (api.exportWorld as Mock).mockResolvedValue({ world_id: "w", regions: [], connections: [], entities: [], knowledge: [] });
+  (api.listSessions as Mock).mockResolvedValue([OPEN]);
+  (api.getPlayer as Mock).mockRejectedValue(new Error("404"));
+  (api.listTurnRuns as Mock).mockResolvedValue([]);
+  (api.getTimeline as Mock).mockResolvedValue([]);
+  (api.listEvents as Mock).mockResolvedValue([]);
+  (api.listDistortions as Mock).mockResolvedValue([]);
+  (api.listRumors as Mock).mockResolvedValue([]);
+  (api.listDeeds as Mock).mockResolvedValue([
+    {
+      deed: { id: "d1", session_id: "s1", player_id: "p", region_id: "a", turn: 0, kind: "arrival", text: "Ari came.", witnessed_npc_ids: [], voided: false, region_name: "A", witness_names: [] },
+      appraisals: [], rumors: [], reached_region_ids: [], reached_region_names: [],
+    },
+  ]);
+  (api.voidDeed as Mock).mockRejectedValue(new Error("409 Conflict: session is closed: s1"));
+  render(
+    <MemoryRouter initialEntries={["/gm/s1"]}>
+      <Routes>
+        <Route path="/gm/:sessionId" element={<GmPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByTestId("void-d1"));
+  const before = (api.getSession as Mock).mock.calls.length;
+  await act(async () =>
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: t("deed.voidConfirmBtn") })),
+  );
+  await waitFor(() => expect((api.getSession as Mock).mock.calls.length).toBeGreaterThan(before));
+  expect(screen.getByTestId("deed-notice")).toHaveTextContent(t("play.sessionClosed"));
 });

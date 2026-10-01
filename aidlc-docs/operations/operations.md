@@ -348,6 +348,11 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
     - `RUMOR_FEEDBACK_CAP`, `RUMOR_FEEDBACK_RESTORE`, `RUMOR_PROMOTION_THRESHOLD`
     - `EVENT_MAX_DELTA`, `EVENT_PROPAGATE_MIN`, `EVENT_SUPPORT_REINFORCE`, `EVENT_SUGGEST_MAX`, `EVENT_SUGGEST_MAX_REGIONS`
 - **Schema** (idempotent, both dialects): `region_distortions.feedback_share FLOAT NOT NULL DEFAULT 0` is added to existing databases. Play timestamps read back as UTC on SQLite too.
+- **Review fixes** (U7 code review 01, choice A)
+  - GM writes now **share** the session with each other: bulk generate/regenerate runs five at once again. A turn still excludes every GM write, and a GM write still waits for no turn (409 during a turn).
+  - `locus world build` builds with the same WorldTuning env as the API.
+  - GM sliders save only a value the GM moved to; a refused save can be sent again.
+  - A failed move's `turn_run_failed` line carries `restored_region_id`, and the player log follows it.
 - **Operator checks** (live compose; this host's 7474/7687 belong to another project)
   - Play → GM mode → approve a suggested event → advance three turns → World state shows the distortion spreading from the event region along connections.
   - p95 of `/state`, `/log` and `/distortions` ≤ 100 ms with 3,000 timeline lines, 15 regions and 300 active rumors.

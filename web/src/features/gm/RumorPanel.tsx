@@ -17,7 +17,7 @@ export function RumorPanel({
   busy: boolean;
   onGenerate: () => void;
   onRegen: () => void;
-  onSupport: (rumorId: string, v: number) => void;
+  onSupport: (rumorId: string, v: number) => Promise<boolean> | boolean | void;
 }) {
   return (
     <>

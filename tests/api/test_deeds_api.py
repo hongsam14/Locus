@@ -119,8 +119,12 @@ def test_void_is_idempotent_404_for_a_stranger_and_409_while_a_turn_holds_the_se
     _told(client, sid)
     deeds = client.get(f"/api/gm/sessions/{sid}/deeds").json()
     deed_id = next(v["deed"]["id"] for v in deeds if v["deed"]["kind"] == "declared_action")
-    with play.guard.hold(sid):
+    # U7 intended change: review #2 — GM writes share the session; only a turn excludes
+    play.guard.acquire(sid, "run-x")
+    try:
         assert client.post(f"/api/gm/sessions/{sid}/deeds/{deed_id}/void").status_code == 409
+    finally:
+        play.guard.release(sid)
     first = client.post(f"/api/gm/sessions/{sid}/deeds/{deed_id}/void")
     assert first.status_code == 200 and len(first.json()["deactivated_rumor_ids"]) == 2
     again = client.post(f"/api/gm/sessions/{sid}/deeds/{deed_id}/void")

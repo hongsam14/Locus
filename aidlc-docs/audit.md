@@ -3137,3 +3137,20 @@ Carried to U3: #6–#10, #12–#15, §3 (12), cleanup (19), and two design memos
 **User Input**: (none)
 **AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: 0 Critical / 0 Major / 2 Minor open (R-08 Unresolved, R-11 New); R-01..R-07, R-09, R-10 Resolved. Record: `aidlc-docs/construction/U3-world-editor/functional-design/reviews/functional-design-review-02.md`.
 **Context**: Functional Design — U3 — next: approval gate (artifacts frozen).
+
+---
+
+## U3 Functional Design — approval gate
+**Timestamp**: 2026-10-01T08:23:37Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U3 FD approved. Open findings carried to the code plan:
+- R-08: ignore is outside LIFO and separately undoable; a revert is refused (409) when the target was edited outside the run; TP-U3-4 widened.
+- R-11: one issue per broken id in list attributes; connection-ref edits apply to both directions; parent edits run the BR-U3-7 cycle check.
+Next: U3 NFR Requirements (light).
+**Context**: CONSTRUCTION / U3 — FD approved.
+
+---
+
+## Plan Review Dispositions — Functional Design — U3
+R-08 → Accepted risk
+R-11 → Accepted risk

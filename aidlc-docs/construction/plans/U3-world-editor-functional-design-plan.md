@@ -45,7 +45,7 @@
 - [x] `.../business-rules.md`(BR-U3-*, TP-U3-*, EX-*)
 - [x] `.../frontend-components.md`(`features/editor/`, `/` 목록, 지도 편집 모드, 패널들)
 - [x] Plan Review(architecture-reviewer, adversarial ≤ 2) — iter 1 NOT-READY → fix → iter 2 READY, open 2 → `construction/U3-world-editor/functional-design/reviews/functional-design-review-NN.md`
-- [ ] 완료 메시지 + 승인 게이트 → 다음: U3 NFR(light)
+- [x] 완료 메시지 + 승인 게이트 → 승인(Continue to Next Stage) → 다음: U3 NFR(light)
 
 ## 질문 (대화창에서 2개씩 묻는다)
 

@@ -146,9 +146,9 @@
 - [x] 2.4 테스트: 매핑 왕복, 로더가 씨앗을 싣는다, 경계 테스트 GREEN.
 
 ### Step 3 — World File의 `event_seeds` (BR-U8-12·13, TP-U8-1·2, EX-5·6)
-- [ ] 3.1 `worldfile/schema.py`: `SECTIONS`·`WorldFile.event_seeds`. `remap.py`: `file_ids`·`set_world_id`·재매핑(씨앗 id·`region_id`)·`validate_references`(지역 없으면 빼고 error). `export.py`: 스냅샷의 씨앗, `sort_sections`. `import_.py`: 쓰기.
-- [ ] 3.2 `tests/world/strategies.py`의 World File 생성기에 씨앗을 더한다(지역 id에서 뽑음).
-- [ ] 3.3 테스트: TP-U8-1(왕복), TP-U8-2(재매핑), EX-5(옛 파일 → `[]`), EX-6(끊긴 씨앗 → error·`ok=false`). 기존 U2 왕복 PBT가 씨앗과 함께 GREEN.
+- [x] 3.1 `worldfile/schema.py`: `SECTIONS`·`WorldFile.event_seeds`. `remap.py`: `file_ids`·`set_world_id`·재매핑(씨앗 id·`region_id`)·`validate_references`(지역 없으면 빼고 error). `export.py`: 스냅샷의 씨앗, `sort_sections`. `import_.py`: 쓰기.
+- [x] 3.2 `tests/world/strategies.py`의 World File 생성기에 씨앗을 더한다(지역 id에서 뽑음).
+- [x] 3.3 테스트: TP-U8-1(왕복), TP-U8-2(재매핑), EX-5(옛 파일 → `[]`), EX-6(끊긴 씨앗 → error·`ok=false`). 기존 U2 왕복 PBT가 씨앗과 함께 GREEN.
 
 ### Step 4 — 에디터 지역 삭제의 씨앗 (BR-U8-14, TP-U8-3, EX-7)
 - [ ] 4.1 `editor/regions.py`: 계획에 `seed_ids`, ③ 뒤 ④ 앞에 그 지역 씨앗 삭제(그래프 일괄 하나), 보고 `seeds_deleted`. `editor/models.py`의 `RegionDeletePlan`·`RegionDeleteReport` 필드.

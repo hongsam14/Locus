@@ -124,6 +124,9 @@ from locus.shared.models import (  # noqa: E402
     ConnectionEdge,
     ConnectionKind,
     Coord,
+    EventCategory,
+    EventLifecycle,
+    EventSeed,
     PriorType,
     ScopeLink,
     ScopeType,
@@ -295,6 +298,20 @@ def world_files(draw, world_id: str = "src") -> WorldFile:
         )
         for i in range(draw(st.integers(min_value=0, max_value=2)))
     ]
+    event_seeds = [  # U8 (TP-U8-1/2): a seed sits in one of the file's regions
+        EventSeed(
+            id=f"seed-{i}",
+            world_id=world_id,
+            region_id=draw(st.sampled_from(region_ids)),
+            title=draw(_text),
+            description=draw(st.sampled_from(["", "it spreads"])),
+            category=draw(st.sampled_from(list(EventCategory))),
+            magnitude=draw(_unit),
+            lifecycle=draw(st.sampled_from([None, *EventLifecycle])),
+            provenance=prov([]),
+        )
+        for i in range(draw(st.integers(min_value=0, max_value=2)))
+    ]
     return WorldFile(
         format_version=FORMAT_VERSION,
         world=WorldFileMeta(
@@ -309,6 +326,7 @@ def world_files(draw, world_id: str = "src") -> WorldFile:
         priors=priors,
         prior_links=prior_links,
         npcs=npcs,
+        event_seeds=event_seeds,
     )
 
 

@@ -3723,3 +3723,10 @@ Orchestrator evidence for R-06 (read-only): `npm audit` says both advisories (GH
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 2.
 
 ---
+
+## U8 Code Generation Part 2 — Step 3 (World File event_seeds)
+**Timestamp**: 2026-10-01T14:20:28Z
+**AI Response**: Added the optional `event_seeds` section across schema, remap, validate_references, export and import (format_version stays 1). The World File generator draws seeds. Tests: TP-U8-1, TP-U8-2, EX-5, EX-6; mutations caught. Gates: pytest 865, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 3.
+
+---

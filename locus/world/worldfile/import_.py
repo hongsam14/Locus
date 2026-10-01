@@ -84,6 +84,7 @@ class WorldFileImporter:
                 scopes=file.scopes,
                 relations=file.relations,
                 npcs=file.npcs,
+                seeds=file.event_seeds,
                 meta=WorldMeta(
                     id=world_id,
                     name=file.world.name,

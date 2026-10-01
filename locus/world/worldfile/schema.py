@@ -20,6 +20,7 @@ from locus.shared.models import (
     NPC,
     ConnectionEdge,
     Entity,
+    EventSeed,
     Knowledge,
     Provenance,
     Region,
@@ -44,6 +45,7 @@ SECTIONS: dict[str, type[BaseModel]] = {
     "priors": WikiPrior,
     "prior_links": WikiPriorLink,
     "npcs": NPC,
+    "event_seeds": EventSeed,  # U8 (BR-U8-12): optional; an older file reads as []
 }
 LEGACY_SECTIONS = ("regions", "connections", "entities", "knowledge", "scopes")
 
@@ -75,6 +77,7 @@ class WorldFile(BaseModel):
     priors: list[WikiPrior] = Field(default_factory=list)
     prior_links: list[WikiPriorLink] = Field(default_factory=list)
     npcs: list[NPC] = Field(default_factory=list)
+    event_seeds: list[EventSeed] = Field(default_factory=list)
 
     # -- parsing ---------------------------------------------------------- #
     @classmethod

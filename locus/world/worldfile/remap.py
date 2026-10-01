@@ -17,7 +17,15 @@ from locus.world.worldfile.schema import NAMESPACE_LOCUS, WorldFile, WorldFileMe
 
 def file_ids(file: WorldFile) -> set[str]:
     ids: set[str] = set()
-    for section in ("regions", "entities", "relations", "knowledge", "priors", "npcs"):
+    for section in (
+        "regions",
+        "entities",
+        "relations",
+        "knowledge",
+        "priors",
+        "npcs",
+        "event_seeds",
+    ):
         ids.update(item.id for item in getattr(file, section))
     return ids
 
@@ -89,6 +97,9 @@ def remap_ids(file: WorldFile, target_world_id: str) -> WorldFile:
                 for link in file.prior_links
             ],
             "npcs": [upd(n, id=new(n.id), home_region_id=new(n.home_region_id)) for n in file.npcs],
+            "event_seeds": [  # U8: a seed follows its region (TP-U8-2)
+                upd(s, id=new(s.id), region_id=new(s.region_id)) for s in file.event_seeds
+            ],
         }
     )
 
@@ -117,6 +128,7 @@ def set_world_id(file: WorldFile, world_id: str) -> WorldFile:
                     "priors",
                     "prior_links",
                     "npcs",
+                    "event_seeds",
                 )
             },
         }
@@ -177,6 +189,9 @@ def validate_references(file: WorldFile) -> tuple[WorldFile, list[BuildWarning]]
         lambda link: f"{link.source_id}->{link.target_id}",
     )
     npcs = keep(file.npcs, lambda n: n.home_region_id in region_ids, "npc", lambda n: n.id)
+    seeds = keep(  # U8 (BR-U8-13): a seed in a region the file lacks is dropped, an error
+        file.event_seeds, lambda s: s.region_id in region_ids, "event_seed", lambda s: s.id
+    )
 
     def soft(message: str, item_id: str) -> None:  # optional refs: clear, warn (not an error)
         warnings.append(BuildWarning(stage="import", item_id=item_id, message=message))
@@ -212,6 +227,7 @@ def validate_references(file: WorldFile) -> tuple[WorldFile, list[BuildWarning]]
                 "scopes": scopes,
                 "prior_links": prior_links,
                 "npcs": npcs,
+                "event_seeds": seeds,
             }
         ),
         warnings,

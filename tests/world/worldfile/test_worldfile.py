@@ -278,3 +278,65 @@ def test_parse_rejects_non_list_sections_and_strips_position_keys() -> None:
         ],
     }
     assert WorldFile.parse(raw).regions[0].position is not None
+
+
+# --------------------------------------------------------------------------- #
+# U8 event seeds (BR-U8-12·13, TP-U8-1/2, EX-5/6)
+# --------------------------------------------------------------------------- #
+@settings(max_examples=30, deadline=None, suppress_health_check=[HealthCheck.too_slow])
+@given(world_files())
+def test_tp_u8_1_seeds_survive_the_round_trip(file: WorldFile) -> None:
+    """TP-U8-1: a World File with event seeds saves, loads and saves the same (the
+    TP-U2-1 property above draws seeds too; this one checks the section itself)."""
+    _g, _s, _c, exporter, importer = _stack()
+    assert importer.import_("src", file).ok
+    out = exporter.export("src")
+    assert [s.model_dump() for s in out.event_seeds] == [
+        s.model_dump() for s in sorted(file.event_seeds, key=lambda s: s.id)
+    ]
+
+
+@settings(max_examples=30, deadline=None, suppress_health_check=[HealthCheck.too_slow])
+@given(world_files())
+def test_tp_u8_2_a_remapped_seed_points_at_its_remapped_region(file: WorldFile) -> None:
+    """TP-U8-2: after id remapping each seed still names the same region."""
+    once = remap_ids(file, "dst")
+    old_names = {r.id: r.name for r in file.regions}
+    new_names = {r.id: r.name for r in once.regions}
+    for before, after in zip(file.event_seeds, once.event_seeds, strict=True):
+        assert after.id != before.id and after.world_id == "dst"
+        assert new_names[after.region_id] == old_names[before.region_id]
+
+
+def test_ex5_a_file_without_seeds_reads_as_none_and_exports_an_empty_section() -> None:
+    """EX-5: a v1 file written before U8 has no ``event_seeds``; it still loads."""
+    raw = _demo_file("w").model_dump(mode="json")
+    raw.pop("event_seeds")
+    file = WorldFile.parse(raw)
+    assert file.event_seeds == []
+    _g, _s, _c, exporter, importer = _stack()
+    assert importer.import_("w", file).ok
+    assert exporter.export("w").model_dump(mode="json")["event_seeds"] == []
+
+
+def test_ex6_a_seed_in_a_region_the_file_lacks_is_dropped_as_an_error() -> None:
+    """EX-6 (BR-U8-13): only that seed goes; the import reports it and is not ok."""
+    from locus.shared.models import EventSeed, Provenance, SourceKind
+
+    file = _demo_file("w")
+    good = EventSeed(
+        id="seed-ok",
+        world_id="w",
+        region_id=file.regions[0].id,
+        title="Fair",
+        category="festival",
+        magnitude=0.3,
+        provenance=Provenance(source=SourceKind.INPUT),
+    )
+    lost = good.model_copy(update={"id": "seed-lost", "region_id": "region-nowhere"})
+    file = file.model_copy(update={"event_seeds": [good, lost]})
+    _g, _s, _c, exporter, importer = _stack()
+    report = importer.import_("w", file)
+    assert not report.ok
+    assert any(w.item_id == "seed-lost" and w.severity == "error" for w in report.warnings)
+    assert [s.id for s in exporter.export("w").event_seeds] == ["seed-ok"]

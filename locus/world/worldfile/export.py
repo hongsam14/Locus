@@ -27,6 +27,7 @@ def sort_sections(file: WorldFile) -> WorldFile:
                 file.prior_links, key=lambda link: (link.source_id, link.target_id, link.relation)
             ),
             "npcs": sorted(file.npcs, key=lambda n: n.id),
+            "event_seeds": sorted(file.event_seeds, key=lambda s: s.id),
         }
     )
 
@@ -56,6 +57,7 @@ class WorldFileExporter:
                 priors=s.kg.priors,
                 prior_links=s.kg.prior_links,
                 npcs=s.npcs,
+                event_seeds=s.event_seeds,
             )
         )
 

@@ -241,3 +241,54 @@ def chain_roots(picked: list[SessionRumor], every: list[SessionRumor]) -> set[st
         if node is not None and node.distorted_from_kind == "knowledge":
             roots.add(node.distorted_from_id)
     return roots
+
+
+# --- U6 deeds & spread (PBT-07; TP-U6-1/2/8) ---------------------------------------- #
+@st.composite
+def spread_worlds(draw, max_regions: int = 8) -> WorldSnapshot:
+    """Regions r0..rn with random connections: some one-way only (spread reads them both
+    ways, like movement), some blocked, weights across the whole range."""
+    n = draw(st.integers(min_value=2, max_value=max_regions))
+    ids = [f"r{i}" for i in range(n)]
+    edges: list[ConnectionEdge] = []
+    for i in range(n):
+        for j in range(i + 1, n):
+            if not draw(st.booleans()):
+                continue
+            kind = draw(
+                st.sampled_from(
+                    [ConnectionKind.ROUTE, ConnectionKind.ROUTE, ConnectionKind.BLOCKED]
+                )
+            )
+            w = draw(weights)
+            edges.append(edge(ids[i], ids[j], weight=w, kind=kind))
+            if draw(st.booleans()):
+                edges.append(edge(ids[j], ids[i], weight=w, kind=kind))
+    return build_snapshot(ids, edges)
+
+
+def deed_rumor(
+    region_id: str,
+    *,
+    appraisal_id: str = "ap1",
+    deed_id: str = "d1",
+    support: float = 0.3,
+    degree: float = 0.3,
+    rumor_id: str | None = None,
+) -> SessionRumor:
+    r = SessionRumor(
+        session_id="s",
+        region_id=region_id,
+        distorted_from_id=deed_id,
+        distorted_from_kind="deed",
+        statement=f"the traveler did something ({region_id})",
+        distortion_degree=degree,
+        support=support,
+        origin_kind="deed",
+        origin_deed_id=deed_id,
+        origin_appraisal_id=appraisal_id,
+        provenance=Provenance(source=SourceKind.SIMULATION),
+    )
+    if rumor_id is not None:
+        r.id = rumor_id
+    return r

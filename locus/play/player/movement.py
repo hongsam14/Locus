@@ -12,7 +12,7 @@ import math
 from locus.play.errors import InvalidActionError
 from locus.play.models import EndTalkAction, MoveAction, MoveOption, Player, PlayerAction
 from locus.shared.config.tuning import PlayTuning
-from locus.shared.models import ConnectionEdge, ConnectionKind, WorldSnapshot
+from locus.shared.models import NPC, ConnectionEdge, ConnectionKind, WorldSnapshot
 
 
 def is_passable(edge: ConnectionEdge) -> bool:
@@ -44,6 +44,17 @@ def _other_end(edge: ConnectionEdge, region_id: str) -> str | None:
     if edge.target_region_id == region_id:
         return edge.source_region_id
     return None
+
+
+def npcs_here(snapshot: WorldSnapshot, region_id: str) -> list[NPC]:
+    """The NPCs living in ``region_id`` (one rule for every caller, U5 review C4)."""
+    return list(snapshot.npcs_by_region.get(region_id, []))
+
+
+def find_npc(snapshot: WorldSnapshot, npc_id: str) -> NPC | None:
+    """The NPC anywhere in this world, or None. Callers keep their own status codes:
+    dialogue answers 404 for an unknown NPC, an action answers 400 (BR-U5-28)."""
+    return next((n for n in snapshot.npcs if n.id == npc_id), None)
 
 
 def neighbours(snapshot: WorldSnapshot, region_id: str) -> set[str]:
@@ -104,7 +115,7 @@ def validate_action(
                 return opt
         raise InvalidActionError(f"not connected: {action.to_region_id}")
     if isinstance(action, EndTalkAction):
-        here = {n.id for n in snapshot.npcs_by_region.get(player.region_id, [])}
+        here = {n.id for n in npcs_here(snapshot, player.region_id)}
         if action.npc_id not in here:
             raise InvalidActionError(f"npc not here: {action.npc_id}")
     return None

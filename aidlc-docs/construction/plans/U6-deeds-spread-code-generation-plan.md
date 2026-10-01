@@ -146,14 +146,14 @@
     - 두 번 불러도 같다(멱등).
 
 ### Step 4 — 순수 계산
-- [ ] 4.1 `locus/play/rumor/spread.py`
+- [x] 4.1 `locus/play/rumor/spread.py`
   - `is_session_origin`, `reversed_edge`(내부)
   - `plan_spread(snapshot, rumor, *, origin_region_id, reached, tuning)`. BLM §4.2 그대로, `weight = w(X) × edge(X,Y)`, 지지도 바닥 `prune_floor + support_decay`.
-- [ ] 4.2 `locus/play/rumor/dynamics.py::decay_support`에 `exempt_ids`를 더한다(R-15). 기존 호출처 `advancer.py:450`과 테스트 다섯 곳(`test_rumor_dynamics.py:45/51/57/63/123`)은 기본값으로 그대로 돈다.
-- [ ] 4.3 `locus/play/player/movement.py`에 `npcs_here(snapshot, region_id) -> list[NPC]`와 `find_npc(snapshot, npc_id) -> NPC | None`을 둔다(U5 C4). 호출처 셋을 이것으로 바꾼다. `validate_action`의 EndTalk 분기, `NpcDialogueService._require_npc_here`, `TurnAdvancer._start`의 EndTalk 분기다.
-- [ ] 4.4 `locus/play/turn/quota.py`: `RegionQuota(active: dict[str,int], cap: int)`와 `full(region)`·`add(region)`·`reserved(region)`. 순수다.
-- [ ] 4.5 `tests/play/strategies.py`를 넓힌다. 지역 그래프(막힌 길·가중치·양방향 섞음), 행적·판단 생성기(noteworthy·salience·seeded·voided 섞음), 행적 기원 소문(원점·전파).
-- [ ] 4.6 테스트 `tests/play/test_spread.py`
+- [x] 4.2 `locus/play/rumor/dynamics.py::decay_support`에 `exempt_ids`를 더한다(R-15). 기존 호출처 `advancer.py:450`과 테스트 다섯 곳(`test_rumor_dynamics.py:45/51/57/63/123`)은 기본값으로 그대로 돈다.
+- [x] 4.3 `locus/play/player/movement.py`에 `npcs_here(snapshot, region_id) -> list[NPC]`와 `find_npc(snapshot, npc_id) -> NPC | None`을 둔다(U5 C4). 호출처 셋을 이것으로 바꾼다. `validate_action`의 EndTalk 분기, `NpcDialogueService._require_npc_here`, `TurnAdvancer._start`의 EndTalk 분기다.
+- [x] 4.4 `locus/play/turn/quota.py`: `RegionQuota(active: dict[str,int], cap: int)`와 `full(region)`·`add(region)`·`reserved(region)`. 순수다.
+- [x] 4.5 `tests/play/strategies.py`를 넓힌다. 지역 그래프(막힌 길·가중치·양방향 섞음), 행적·판단 생성기(noteworthy·salience·seeded·voided 섞음), 행적 기원 소문(원점·전파).
+- [x] 4.6 테스트 `tests/play/test_spread.py`
   - TP-U6-1(대상 불변식, 캐노니컬이면 빈 결과, `weight ≤ best_path_weights(origin)[y]`)
   - TP-U6-2: 순수 전파 시뮬레이션에서 `(origin_appraisal_id, region)` 중복이 없고, 지역·턴당 ≤ 상한이며, 경로를 따라 왜곡도가 줄지 않는다.
   - TP-U6-8: `RegionQuota`로 씨앗·전파·캐노니컬 합이 상한 이하

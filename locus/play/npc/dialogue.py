@@ -31,6 +31,7 @@ from locus.play.models import (
 )
 from locus.play.npc.prompts import fallback_text, system_prompt, user_prompt
 from locus.play.npc.scope import build_context
+from locus.play.player import movement
 from locus.play.ports import PlayRepository
 from locus.play.region_knowledge import SessionKnowledgeService
 from locus.shared.config.tuning import PlayTuning
@@ -200,7 +201,7 @@ class NpcDialogueService(SessionAppService):
     @staticmethod
     def _require_npc_here(snapshot: WorldSnapshot, player: Player, npc_id: str) -> NPC:
         """404 when the NPC is not in this world; 400 when it lives elsewhere (BR-U5-28)."""
-        npc = next((n for n in snapshot.npcs if n.id == npc_id), None)
+        npc = movement.find_npc(snapshot, npc_id)
         if npc is None:
             raise LookupError(f"npc not found: {npc_id}")
         if npc.home_region_id != player.region_id:

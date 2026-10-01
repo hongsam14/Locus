@@ -224,15 +224,14 @@ class TurnAdvancer(SessionAppService):
                         player.turns_spent += 1
                         u.players.update_player(player)
                         region = snapshot.regions_by_id[player.region_id]
+                        # validate_action above (under the guard) guaranteed the NPC is
+                        # here, so there is no fallback name (U5 review C4)
                         npc = next(
-                            (
-                                n
-                                for n in snapshot.npcs_by_region.get(region.id, [])
-                                if n.id == action.npc_id
-                            ),
-                            None,
-                        )  # validate_action already guaranteed the NPC is here
-                        npc_name = npc.name if npc is not None else action.npc_id
+                            n
+                            for n in movement.npcs_here(snapshot, region.id)
+                            if n.id == action.npc_id
+                        )
+                        npc_name = npc.name
                         conv = u.conversations.get_conversation(session_id, action.npc_id)
                         u.timeline.append_timeline(
                             self._entry(

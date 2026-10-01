@@ -26,17 +26,20 @@ def decay_support(
     reinforced_region_ids: set[str],
     *,
     decay: float = DEFAULT_RUMOR_DYNAMICS.support_decay,
+    exempt_ids: frozenset[str] | set[str] = frozenset(),
 ) -> list[SessionRumor]:
     """Decay support of unreinforced, non-promoted rumors in place (BR-H1-1/2/3).
 
     Runs every turn (incl. empty turns, FD-H Q1=A). A rumor is exempt when it is
-    promoted (합의된 사실 보호, Q6=A) or sits in a region reinforced this turn
-    (event-influenced ∪ feedback regions, Q2=A). Returns the same (mutated) list
-    for convenient persistence by the caller. Callers pass ACTIVE rumors only
-    (BR-H1-11).
+    promoted (합의된 사실 보호, Q6=A), sits in a region reinforced this turn
+    (event-influenced ∪ feedback regions, Q2=A), or is listed in ``exempt_ids`` — U6
+    passes the deed rumors born this turn, so a far hop is not pruned at birth while
+    its neighbours still decay (rumor-level, FD review R-15). Returns the same
+    (mutated) list for convenient persistence by the caller. Callers pass ACTIVE
+    rumors only (BR-H1-11).
     """
     for r in rumors:
-        if r.promoted or r.region_id in reinforced_region_ids:
+        if r.promoted or r.region_id in reinforced_region_ids or r.id in exempt_ids:
             continue
         r.support = clamp01(r.support - decay)
     return rumors

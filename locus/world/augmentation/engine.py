@@ -89,13 +89,17 @@ class AugmentationEngine:
         wiki = self._wiki_provider(world_id)
         out: list[Issue] = []
         judged = 0
+        search_down = False  # one failed lookup ends this detection's lookups (U8 #7)
         for k, terrain, region in conflict_pairs(snapshot):
             key = (k.id, k.statement, terrain)
             verdict = state.verdicts.get(key)
             if key not in state.verdicts:
-                if judged >= JUDGE_MAX:
+                if judged >= JUDGE_MAX or search_down:
                     continue
                 priors = self._lookup(wiki, terrain, region, state)
+                if priors is None:  # the search failed: the next detection tries again
+                    search_down = True
+                    continue
                 if not priors:  # nothing to judge against: no call
                     continue
                 if not take():  # budget spent: judge no more, but keep the cached verdicts
@@ -118,15 +122,20 @@ class AugmentationEngine:
         return out
 
     @staticmethod
-    def _lookup(wiki, terrain: str, region: Region, state: RunState) -> list:
+    def _lookup(wiki, terrain: str, region: Region, state: RunState) -> list | None:
+        """The priors for a (terrain, region), cached for the run; None when the search
+        failed. A failure is not cached — the next detection tries again (U3 S09) — but
+        the caller stops looking for the rest of this detection: with the search down,
+        every pair would fail the same way, each after its retries, under the run lock
+        (U8 review #7)."""
         key = (terrain, region.name)
         if key not in state.lookups:
             try:  # search only: the Q&A never makes priors (NFR R-03)
                 state.lookups[key] = wiki.lookup_similar(
                     f"{terrain} {region.name}", k=2, fallback=False
                 )
-            except Exception:  # a failed search is tried again next detection (U3 S09)
-                return []
+            except Exception:
+                return None
         return state.lookups[key]
 
     def _judge(self, k: Knowledge, terrain: str, region: Region, priors: list):

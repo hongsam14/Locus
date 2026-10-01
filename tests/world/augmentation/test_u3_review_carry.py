@@ -261,3 +261,37 @@ def test_u8_6_an_outside_edit_still_blocks_a_resumed_revert() -> None:
     stack.cache.invalidate("w")
     with pytest.raises(Exception, match="edited after"):
         svc.revert(run_id, change_id)
+
+
+def test_u8_7_with_the_search_down_one_lookup_per_detection() -> None:
+    """U8 review #7: three (knowledge, terrain) pairs over two lookup keys; the search
+    fails every time. Each detection makes one failed lookup, not one per pair, and the
+    next detection still tries again (S09)."""
+    from locus.shared.models import Region, RegionLevel
+
+    stack, w = _seeded()
+    peak = Region(
+        world_id="w",
+        name="Peak",
+        level=RegionLevel.TOWN,
+        attributes={"terrain_kind": "mountain"},
+        provenance=_prov(),
+    )
+    stack.editors.regions.create_region(peak)
+    stack.editors.knowledge.set_scopes("w", w["lore"].id, [w["riverton"].id, peak.id])
+
+    class _DownWiki:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def lookup_similar(self, query, k=5, *, fallback=True):
+            self.calls += 1
+            raise TimeoutError("search timed out")
+
+    wiki, llm = _DownWiki(), _LLM()
+    engine = AugmentationEngine(stack.editors, llm=llm, wiki_provider=lambda wid: wiki)
+    state = RunState(run=AugmentationRun(world_id="w"))
+    engine.detect("w", state, lambda: True)
+    assert wiki.calls == 1
+    engine.detect("w", state, lambda: True)
+    assert wiki.calls == 2 and "_Verdict" not in llm.calls

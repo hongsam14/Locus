@@ -51,3 +51,27 @@ def test_in_progress_modules_say_so() -> None:
     for name in IN_PROGRESS:
         doc = importlib.import_module(name).__doc__ or ""
         assert doc.startswith("STATUS: in-progress — "), name
+
+
+# --------------------------------------------------------------------------- #
+# BR-U8-28 / FR-H1: the purpose statement opens the README and CLAUDE.md, and the
+# README names only profiles the compose file has
+# --------------------------------------------------------------------------- #
+PURPOSE = (
+    "Locus는 세계관 자료로 월드를 만들고, 그 월드 안에서 소문과 사건이 지형을 따라 퍼지며 "
+    "지역마다 NPC가 다르게 아는 것을 직접 겪는 솔로 TRPG다."
+)
+
+
+def test_the_readme_opens_with_the_purpose_statement() -> None:
+    first = (ROOT / "README.md").read_text(encoding="utf-8").splitlines()[0]
+    assert first.strip("* ") == PURPOSE
+    assert PURPOSE in (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+
+
+def test_the_readme_names_only_compose_profiles_that_exist() -> None:
+    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    declared = set(re.findall(r"^\s+profiles:\n\s+- (\w+)", compose, re.MULTILINE))
+    named = set(re.findall(r"--profile (\w+)", (ROOT / "README.md").read_text(encoding="utf-8")))
+    assert declared == {"service", "tools"}
+    assert named and named <= declared

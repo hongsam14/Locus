@@ -334,3 +334,40 @@
   - 변이 4건 모두 잡음: 줄 빠짐, 버전 조건 바뀜, 라이선스, STATUS
   - app 이미지 빌드로 메타데이터를 확인했다(`License: MIT`, `Project-URL`, `check_packaged()` []). 로컬 venv에는 setuptools가 없어 그쪽으로는 보지 못했다.
   - 게이트: pytest 922, ruff·black clean, mypy 11
+- **Step 14** (문서, BLM §5, BR-U8-28·31·32)
+  - 14.1 `README.md`를 새로 썼다(한국어).
+    - 첫 줄이 목적 문장이다. CI 배지를 단다.
+    - 이어서 6단계 흐름, 스크린샷 자리, 시작하기가 온다.
+      - 시작하기 명령 셋: 준비 명령, `.env` 두 값, `--profile service up -d --build`. 그 뒤 :3000에서 [바로 플레이]를 누른다.
+      - 포트 덮어쓰기, 127.0.0.1 바인딩, Dashboards, 멈춤, 상태 보기도 여기에 적었다.
+    - 다음 절: 키 없이 둘러보기(되는 것·꺼지는 것·켜는 법), 데모 월드, 진행 중 기능 표(넷), 개발(호스트 흐름·검사), 디렉터리, MIT와 데모 크레딧(참고한 인벤 글 링크)
+  - 14.2 `CLAUDE.md`
+    - Project Overview를 목적 문장으로 바꾸고, 영어 한 단락을 덧붙였다.
+    - Status에 U8 진행을 넣었다.
+    - 레이아웃에 홈·데모 카드·SeedPanel·LlmNotice·`useReplaceConfirm`을 넣었다.
+    - CLI 줄을 emberleaf와 `world build --demo`로 바꿨다.
+    - Build/Run을 `npm ci`, 준비 명령, 프로필, `--workers 1`로 바꿨다. 게이트·CI·포트 줄을 더했다.
+  - 14.3 `operations.md`
+    - Run 절: 키 선택, `service` 기동 먼저, `tools`는 dashboard만, 멈춤 명령
+    - 낡은 줄을 고쳤다.
+      - aldermoor 명령 둘, 데모 버튼
+      - 키 없음 문장 〔U8 정정〕: `/health`는 `ok`. 503 경로를 정확히 적었다.
+      - 홈 화면 줄
+      - 지식 삭제·번역: 보강 지우기·되돌리기 포함(S10)
+      - "Web UI (U10)" → "Web UI": `npm ci`, nginx
+      - `--legacy-peer-deps`
+      - Future Operations
+    - 보강 절에 #12 동작과 S16 알려진 한계 한 줄을 더했다.
+    - U8 절을 새로 썼다: 데모는 데이터(매니페스트·`check_packaged`·데모 더하기·옛 명령 대응·[바로 플레이]), 씨앗(파일·API·409·`init-schema --world`), 키 없음, 포트·프로필, CI(seed 재현), CLI 교체의 번역 공백(A8-10), 라이선스.
+    - 라이브 시나리오 줄은 스크립트가 생기는 Step 15에서 더한다.
+  - 14.4 `web/README.md`
+    - 홈 데모 카드, 키 없음, GM 씨앗 패널, 세션 띠, 연결 도구 고치기, 컨셉 아트 배지, `npm ci`
+    - 〔U8 정정〕 둘
+      - U3 BLM §1.4: 종류 바꾸기는 `previous_kind` PUT 하나다.
+      - U3 nfr-light §3: compose web(nginx)은 리버스 프록시이고 49m이다.
+  - 〔기록〕 키 없음 안내 문구(`llm.offNotice`)에 ".env에 OPENAI_API_KEY를 넣고 다시 띄우면 켜집니다"를 더했다. BLM §4.2는 무엇이 꺼졌는지와 켜는 법을 적으라고 한다. Step 10 문구에 켜는 법이 빠져 있었다. 테스트는 `t()`로 비교하므로 그대로다.
+  - 테스트 2(`tests/test_packaging.py`)
+    - README 첫 줄과 CLAUDE.md에 목적 문장이 있다.
+    - README의 `--profile` 값이 compose에 있는 프로필이다.
+    - 변이 2건 모두 잡음
+  - 게이트: pytest 924, vitest 197, ruff·black clean

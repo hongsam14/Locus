@@ -74,7 +74,7 @@
 - **`upsert_connection(conn: ConnectionEdge) -> list[ConnectionEdge]`**
   - 두 지역이 있어야 하고 서로 달라야 한다. 가중치는 [0,1]이다.
   - 같은 키(두 지역 + 종류)의 엣지 두 개를 지운 뒤, a→b와 b→a를 같은 종류·가중치·근거로 만든다(BR-U3-10).
-  - 종류를 바꾸는 편집은 화면이 "옛 키 삭제 + 새 키 추가"로 보낸다.
+  - 종류를 바꾸는 편집은 화면이 "옛 키 삭제 + 새 키 추가"로 보낸다. 〔U8 정정〕 화면은 `previous_kind`를 실은 PUT 하나를 보내고, 라우터가 아래 `change_connection_kind`를 부른다(U3 리뷰 #3 후속 수정). 그래서 쌍의 가중치·근거·prior·출처가 남는다.
 - **`change_connection_kind(key: ConnectionKey, new_kind) -> list[ConnectionEdge]`** (검토 01 R-09)
   - 한 연산이다. 옛 쌍을 읽어 가중치·근거(`rationale`)·`wiki_prior_ref`·`provenance`를 그대로 옮긴 새 쌍을 쓰고, 옛 쌍을 지운다(새 쌍 먼저).
   - 같은 두 지역에 새 종류의 쌍이 이미 있으면 400이다.

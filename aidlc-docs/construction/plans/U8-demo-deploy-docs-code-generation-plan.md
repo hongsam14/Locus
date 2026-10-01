@@ -216,10 +216,10 @@
 - [x] 13.3 진행 중 기능 넷의 docstring `STATUS:`: `wiki/cross_world.py`, `ingestion/concept_art_ingestor.py`, `augmentation/graph.py`(이미 있음, 문구 맞춤), `wiki/distiller.py`(wiki 순환 구조 개선 — 다음 사이클).
 
 ### Step 14 — 문서 (BLM §5, BR-U8-28·31·32)
-- [ ] 14.1 `README.md` 전면 다시 쓰기(A8-1, Infra 시작 절: 준비 명령 + 기동 명령, 포트 덮어쓰기, `down`, 키 없이 둘러보기, 진행 중 기능 표, 개발·게이트, 디렉터리, MIT·데모 크레딧, CI 배지).
-- [ ] 14.2 `CLAUDE.md`: Project Overview(§0), Status(U8), Build/Run 명령(`emberleaf`, 프로필), 레이아웃(데모 폴더, `features/home/`, `SeedPanel`, CI).
-- [ ] 14.3 `operations.md`: U8 절(데모 데이터, 씨앗, capabilities, 프로필·포트, init-schema 다시 돌리기, CI, 라이브 시나리오), 낡은 줄(Web UI (U10), 데모 버튼, `/health`, `--legacy-peer-deps`, 503 문장, 지식 삭제·번역 문장), `aldermoor` → `emberleaf` 대응 한 줄, CLI 교체의 번역 공백(A8-10).
-- [ ] 14.4 `web/README.md`(데모 카드, 씨앗 패널, 키 없음 안내). 〔U8 정정〕: U3 BLM §1.4:77, U3 nfr-light §3 리버스 프록시 문장.
+- [x] 14.1 `README.md` 전면 다시 쓰기(A8-1, Infra 시작 절: 준비 명령 + 기동 명령, 포트 덮어쓰기, `down`, 키 없이 둘러보기, 진행 중 기능 표, 개발·게이트, 디렉터리, MIT·데모 크레딧, CI 배지).
+- [x] 14.2 `CLAUDE.md`: Project Overview(§0), Status(U8), Build/Run 명령(`emberleaf`, 프로필), 레이아웃(데모 폴더, `features/home/`, `SeedPanel`, CI).
+- [x] 14.3 `operations.md`: U8 절(데모 데이터, 씨앗, capabilities, 프로필·포트, init-schema 다시 돌리기, CI, 라이브 시나리오), 낡은 줄(Web UI (U10), 데모 버튼, `/health`, `--legacy-peer-deps`, 503 문장, 지식 삭제·번역 문장), `aldermoor` → `emberleaf` 대응 한 줄, CLI 교체의 번역 공백(A8-10).
+- [x] 14.4 `web/README.md`(데모 카드, 씨앗 패널, 키 없음 안내). 〔U8 정정〕: U3 BLM §1.4:77, U3 nfr-light §3 리버스 프록시 문장.
 
 ### Step 15 — 라이브 시나리오 (BLM §7, BR-U8-36)
 - [ ] 15.1 `scripts/live_scenario.py`(표준 라이브러리 `urllib`): 단계 1~12와 R-05의 기다리기, PASS·FAIL·SKIP, 키 없으면 LLM 단계 SKIP, FAIL이면 종료 코드 1. `--base http://localhost:8000`, `--world emberleaf`.

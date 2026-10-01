@@ -79,7 +79,7 @@
 | 지역 삭제 원자성 | 순서 규칙 + 멱등 재시도 | 그래프 포트에 트랜잭션(UoW)을 두면 포트·Neo4j·가짜·계약 테스트를 모두 바꾼다. 남는 끊김은 DANGLING이 찾는다 |
 | 속성 교체 | 새 포트 메서드 `replace_nodes`(`SET n = $props`, id·라벨·world_id 유지) | `upsert_nodes(..., replace=True)` 플래그는 빌드의 병합 경로와 한 메서드에 섞인다 |
 | 엣지·문서 삭제 〔Step 1.3 정정 → §6-6〕 | `delete_edges(world_id, list[EdgeKey])`, `SearchRepository.delete(world_id, doc_ids)` | 노드 DETACH로만 지우면 연결·스코프만 지울 수 없다 |
-| 업로드 상한 | ASGI 미들웨어(요청 전체) + 라우터 상수(칸별) | 리버스 프록시 설정은 로컬 데모에 없다. 값마다 env를 두면 env가 는다 |
+| 업로드 상한 | ASGI 미들웨어(요청 전체) + 라우터 상수(칸별) | 리버스 프록시 설정은 로컬 데모에 없다 〔U8 정정: compose의 web(nginx)이 `/api`를 app으로 넘기는 리버스 프록시다. U8 Infra §3.2가 `client_max_body_size 49m`을 두어, 상한 판정과 JSON 413은 앱이 한다〕. 값마다 env를 두면 env가 는다 |
 | 보강 run 저장 | 프로세스 메모리 + run별 잠금 | DB 테이블은 스키마와 정리 작업이 는다. run은 짧게 쓰고 버린다(BR-U3-42) |
 | 보강 LLM 예산 | run 카운터(60) | 전역 레이트 리미터는 데모에 과하다 |
 | 프롬프트 머리말 〔Step 1.3 정정 → §6-7〕 | `MATERIAL`을 `shared/text.py`로 옮긴다 | world는 play를 import할 수 없다(경계 테스트). 두 곳에 같은 문자열을 두면 갈라진다 |

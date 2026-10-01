@@ -3909,3 +3909,17 @@ TP-U8-7 adds 4 tests; 4/4 mutations caught. Metadata confirmed through the app i
 **Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 13.
 
 ---
+
+## U8 Code Generation Part 2 — Step 14 (docs)
+**Timestamp**: 2026-10-01T15:56:39Z
+**AI Response**:
+- README rewritten in Korean: purpose statement on the first line, flow, start commands, keyless tour, demo, in-progress table, development, directory, MIT and demo credits, CI badge.
+- CLAUDE.md: overview, status, layout, commands.
+- operations.md: stale lines fixed (demo button, aldermoor, keyless/health sentence, Web UI, legacy-peer-deps, knowledge-delete translations); a U8 section added; the S16 known limit noted.
+- web/README.md updated.
+- 〔U8 정정〕 notes on U3 BLM §1.4 and U3 nfr-light §3.
+- Recorded: the keyless notice now says how to turn the LLM on (BLM §4.2).
+- 2 tests (purpose sentence; README profiles exist); mutations caught. Gates: pytest 924, vitest 197.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 14.
+
+---

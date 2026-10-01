@@ -4,22 +4,23 @@ AI-DLC Operations is a **placeholder** stage. For the MVP, operation is local vi
 
 ## Run (local)
 ```bash
-./scripts/setup-volumes.sh     # create ./data bind-mount dirs (first run)
-cp env.example .env            # set OPENAI_API_KEY + REQUIRED passwords:
-                               #   NEO4J_PASSWORD, SESSION_DB_PASSWORD (no insecure defaults;
-                               #   compose fails fast if unset)
+./scripts/setup-volumes.sh     # create ./data bind-mount dirs (first run; safe to rerun)
+cp env.example .env            # REQUIRED passwords: NEO4J_PASSWORD, SESSION_DB_PASSWORD
+                               #   (no insecure defaults; compose fails fast if unset)
+                               #   OPENAI_API_KEY is optional (see "Without OPENAI_API_KEY")
 
-docker compose up -d                            # infra: neo4j + opensearch + postgres (bind-mounted ./data)
-docker compose --profile tools up -d            # + OpenSearch Dashboards (:5601)
-docker compose --profile service up -d --build  # + app (uvicorn :8000, runs init-schema then serves) + web (:3000)
+docker compose --profile service up -d --build  # infra + app (uvicorn :8000, runs init-schema then serves) + web (:3000)
+docker compose up -d                            # or infra only: neo4j + opensearch + postgres (bind-mounted ./data)
+docker compose --profile tools up -d dashboard  # + OpenSearch Dashboards (:5601)
+docker compose --profile service --profile tools down   # stop everything
 ```
-- Profiles: default=infra (neo4j + opensearch + **postgres**), `service`=app+web, `tools`=dashboard. `app` needs `OPENAI_API_KEY` and waits for postgres healthy.
+- Profiles (U8): default=infra (neo4j + opensearch + postgres), `service`=app+web, `tools`=dashboard. `app` waits for the three infra services to be healthy, `web` for `app`.
 - Host dev (no app container): `docker compose up -d` then `uvicorn api.main:app --port 8000` + `cd web && npm run dev`.
 - `SESSION_DB_URL` (PostgreSQL) configures the game-session layer; on host use `localhost:5432`, in compose `postgres:5432` (auto-overridden for `app`).
 
 ## Typical workflow
 1. `locus init-schema` (idempotent).
-2. `locus world build --world <id> --inputs <file>` (or `locus world demo --name aldermoor --world <id>` for the LLM-free demo) — a build also distills that world's own
+2. `locus world build --world <id> --inputs <file>` (or `locus world demo --name emberleaf --world <id>` for the LLM-free demo) — a build also distills that world's own
    Common-sense Wiki priors + links (no separate `build-wiki` step since the 2026-06-09 MVP-improvement cycle).
 3. Query: `GET /api/knowledge/worlds/{world_id}/regions/{id}?include_hearsay=true` ; author: `/api/world/*` (U1 route prefixes).
 4. Designer cross-world reference: `GET /api/world/worlds/{id}/related-priors` — priors from OTHER
@@ -89,11 +90,11 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
 
 ## World File · demo · backups (Purpose Restructure U2, 2026-09-30)
 - **Save / load a world (World File v1)** — `locus world export --world <id> --out <id>.world.json`, `locus world import --world <id> --file <file> [--replace/--no-replace] [--remap] [--force]`. API: `GET /api/world/worlds/{id}/file` (download), `POST /api/world/worlds/{id}/file?replace=&confirm=&remap=` (JSON body) or `POST .../file/upload` (multipart). Legacy export JSON (no `format_version`) is accepted as v0; other versions → 422. Loading a file into a different world id remaps every id deterministically (`uuid5`); `remap=true` / `--remap` forces it (recovery from an `id collision with another world` error).
-- **Demo world without an LLM** — `locus world demo --list`, `locus world demo --name aldermoor --world <id>`; API `GET /api/world/demos`, `POST /api/world/worlds/{id}/demo/aldermoor`. The packaged World File loads with **0 LLM calls**; the editor's "Load demo world" button uses it. The source-based build (`locus world build --world <id> --demo-sources`, `POST .../demo/aldermoor/build`) still needs `OPENAI_API_KEY`.
+- **Demo world without an LLM** — `locus world demo --list`, `locus world demo --name emberleaf --world <id>`; API `GET /api/world/demos`, `POST /api/world/worlds/{id}/demo/{name}`. The packaged World File loads with **0 LLM calls**; the home screen's demo cards use it (U8). The source-based build (`locus world build --world <id> --demo <name>`, `POST .../demo/{name}/build`) still needs `OPENAI_API_KEY`. 〔U8〕 The demos come from a manifest — see the U8 section.
 - **Build** — `locus world build --world <id> --inputs <file.json>` (images base64 in `map_images`/`concept_arts`); API `POST /api/world/worlds/{id}/build` (JSON) or `.../build/upload` (multipart fields: `memos`, `maps`, `images` (repeatable), `name`, `description`). `BuildReport.ok` is false only for error-severity warnings (persist failure, unreadable input, zero regions); item-level problems and unresolved names are warnings; `unscoped_knowledge_ids` lists knowledge that found no region; `llm_calls`/`embedding_calls` count that build.
 - **Replacing a world** — build/import/demo replace an existing world by default (`replace=true`). Before deleting, the old world is exported to `LOCUS_DATA_DIR/backups/<id>-<UTC>.world.json` (compose: the `locus_data` volume at `/app/data`). Recover with `locus world import --world <id> --file <backup>`. If the world has **open sessions**, the API answers 409 (`open_sessions`, `session_ids`) until `confirm=true`; the CLI exits 1 until `--force`; confirmed/forced replaces close those sessions and list them in `closed_session_ids`.
 - **Single worker** — play and the editor read one in-process `WorldCache` per worker; run the API with **one uvicorn worker** (compose does). Writes (build, import, edit, augmentation, prior edit) invalidate it.
-- **Without `OPENAI_API_KEY`** — the API starts, `/health` reports `degraded`, and world file / demo / list / editor routes work; build, augmentation and wiki routes answer 503.
+- **Without `OPENAI_API_KEY`** 〔U8 정정〕 — the API starts and `/health` reports `ok` (the LLM is not a boundary). `GET /api/capabilities` says `{"llm": false, …}`. The routes that need an LLM answer 503: build (`…/build`, `…/build/upload`, `…/demo/{name}/build`), NPC drafts, rumor generate/regenerate, event suggestion, NPC dialogue `start`/`say`. Everything else works: World File, demo load, world list, the editor, augmentation Q&A (templates), wiki priors, sessions, moves, turns, seeds, GM manual events.
 - `locus world list` prints stored worlds with name, region count and last update (`WorldMeta`; pre-U2 worlds show `name=id`). Old aliases `locus build-world` / `locus export` still work for one cycle.
 
 ## Player mode (Purpose Restructure U4, 2026-09-30)
@@ -361,7 +362,7 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
 
 ## World editor (Purpose Restructure U3, 2026-10-01)
 - **Screens**
-  - `/` lists the worlds (name, regions, last edit, open sessions) with [Edit] and [Start session]. With no world: [Load the demo] (LLM-free) and [Build from sources].
+  - `/` lists the worlds (name, regions, last edit, open sessions) with [Edit] and [Start session], and [Build from sources]. 〔U8〕 Demo cards from the manifest sit above the list, with or without worlds (no [Load the demo] button).
   - `/editor/:worldId`: the World File bar (save = download, load = replace after a yes, close open sessions after a second yes, build from sources, the "open sessions" band), the map, and the Region / Unscoped / Augment / Wiki tabs.
   - The map has three tools: select/move (a click saves nothing; a drag over 4px saves the position once), add region (click an empty spot), connect (click two regions in turn).
 - **Edits** (`/api/world/worlds/{w}/…`, `api/routers/world_editor.py`)
@@ -369,7 +370,7 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   - A path id that does not match the body is 400; a missing referenced region is 404; a parent that is the region or one of its descendants is 400.
   - A connection is always a pair (a→b, b→a) with one kind, weight, rationale and prior; changing the kind keeps them. A road and a river between the same two regions are two connections.
   - Adding knowledge on a region gives it one DIRECT scope; editing it keeps its scopes; `PUT …/scopes` sets exactly the given regions (an empty list leaves it unscoped).
-  - Deleting knowledge also deletes its search document and its translations. NPC text is never translated.
+  - Deleting knowledge — from the inspector, the unscoped list, an augmentation "remove" answer or the undo of an added fact (U8, U3 review S10) — also deletes its search document and its translations. NPC text is never translated.
   - `DELETE /worlds/{w}/nodes/{n}` was removed: deletes go by kind.
 - **Region delete** (`GET …/delete-plan`, `DELETE …/regions/{r}`)
   - What happens, in this order: children move under the deleted region's parent; entities lose their location; its scopes go (knowledge stays — an item scoped only there becomes "unscoped"); its NPCs are deleted (search document, then node); both directions of its connections go; then the region.
@@ -380,7 +381,8 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   - Detectors: gap, low_confidence, wiki_conflict (reads `terrain_kind`), orphan, dangling (a `parent_id`, `located_in`, connection `wiki_prior_ref`, or an id in `derived_from_prior_ids` / `about_entity_ids` that points at nothing — one issue per id), unscoped.
   - A question names its target and offers fixed actions; the answer is applied to the question's target. 20 questions per detection; 30 answers per run.
   - Undo is latest first; it is refused (409) for an undone change, a change that is not the latest, or a target edited outside the run since. Ignore is not in the undo order; an ignored question can be asked again (`unignore`).
-  - Runs live in process memory, 20 per world: a restart loses them and the screen offers a new search.
+  - Runs live in process memory, 20 per world: a restart loses them and the screen offers a new search. A 404 for a target removed meanwhile keeps the run and shows the reason (U8, U3 review #12).
+  - Known limit (one designer, A-4; U3 review S16): an answer's change record is the edge difference around the nodes it watches, so a map save made during the answer's embedding call (~1 s) joins that change, and undoing the answer undoes it too.
   - LLM: none needed (template questions, no wiki-conflict check). With one: 5 question rewrites per detection, 20 (knowledge, terrain) checks per detection against priors found by search only (no LLM-made priors), at most 60 calls per run (`llm_budget_exhausted` then).
 - **NPC drafts**: `POST …/regions/{r}/npc-drafts` — one LLM call, 0–3 drafts, nothing saved (503 without an LLM, 200 with `failed` when the call fails).
 - **Wiki grounds**
@@ -391,13 +393,34 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   - `build/upload`: memos ≤ 20 files of 256 KiB and 60,000 characters each; maps ≤ 5 × 2 MiB (JSON); map images ≤ 4 and concept art ≤ 8, 8 MiB each, PNG/JPEG/WebP by their first bytes (else 422).
 - **GM (U7 carry)**: setting a region's distortion also clears that region's contribution of every ACTIVE event (`event_contributions_cleared` on the line), so resolving the event later does not take the region below the GM's value. NaN or Infinity in a GM value is 422.
 
-## Web UI (U10)
+## Demo · deploy · docs (Purpose Restructure U8, 2026-10-01)
+- **Demos are data**
+  - `locus/world/demo/worlds/manifest.json` lists the demos: `name`, `title`, `description`, `file` (a World File next to it), `start_region_id`, `credits`, optional `sources` (memos, maps, map images for `world build --demo`). The home cards, `GET /api/world/demos` and `locus world demo --list` read it; no demo name is in the code (TP-U8-6 scans `locus`, `api`, `web/src`).
+  - Entries are checked once at assembly; a bad entry is left out with a warning (`DemoWorlds.problems`). `python -c "from locus.world.demo import check_packaged; print(check_packaged())"` prints the problems of the installed package ([] when fine; the CI images job runs it).
+  - Adding a demo: put `<name>.world.json` (and its sources) in that folder and add an entry; a reinstall (`pip install .` / the image build) ships it.
+  - Old command → new: `world demo --name aldermoor` → `world demo --name emberleaf`; `build-world --demo` (alias) → `world build --demo emberleaf`. The old Aldermoor file lives on only as a test fixture (`tests/fixtures/aldermoor/`).
+  - [play now] on a card: load the demo into the world id of its name if it is not there (or on [load fresh]), start a session named "여행자"/"Traveler" at `start_region_id`, open `/play/:id`. Loading never calls an LLM.
+- **Event seeds**
+  - World File optional section `event_seeds` (format_version stays 1): `id`, `region_id`, `title`, `description`, `category`, `magnitude`, optional `lifecycle`. Stored as `EventSeed` nodes; a region delete removes its seeds (the delete plan lists `seed_ids`).
+  - `GET /api/gm/sessions/{sid}/seeds` (each with its region name and running event id) and `POST /api/gm/sessions/{sid}/seeds/{seed_id}/start` → 201 with an ACTIVE event (no LLM), under the GM lease. A second start while its event runs is 409; after a resolve it starts again. The timeline line reads "씨앗 사건 시작: {title}".
+  - Hosts running the API outside compose: run `locus init-schema --world` once after upgrading (the `EventSeed` constraint). Compose runs `init-schema` on every start.
+- **Keyless** — `GET /api/capabilities` → `{llm, vlm, embedding}` from the assembled providers. The home, editor and GM screens show one line when `llm` is false and turn the LLM buttons off with "LLM 키가 필요합니다"; a failed read turns nothing off; a 503 naming the provider reads the same.
+- **Ports and profiles**
+  - Infra ports bind 127.0.0.1 and take `NEO4J_HTTP_PORT`, `NEO4J_BOLT_PORT`, `OPENSEARCH_PORT`, `SESSION_DB_PORT`, `DASHBOARD_PORT` from `.env` (defaults unchanged). `API_PORT`/`WEB_PORT` stay open on all addresses.
+  - A host where 7474/7687 are taken (another Neo4j): add `NEO4J_HTTP_PORT=17474` and `NEO4J_BOLT_PORT=17687` to `.env`; with host uvicorn also set `NEO4J_URI=bolt://localhost:17687`.
+  - `web` has a healthcheck (`wget -q --spider http://127.0.0.1/`).
+- **CI** — `.github/workflows/ci.yml`: backend (ruff, black, pytest with a printed hypothesis seed: re-run a failure with `pytest --hypothesis-seed=<seed>`), frontend (`npm ci`, tsc, vitest), audit (`npm audit --omit=dev --audit-level=moderate`), images (both builds, `check_packaged()` in the installed package, `import api.main`). No secrets, no services. mypy stays local (baseline 11).
+- **Known gap (A8-10)** — replacing a world from the CLI (`world import`/`world demo`/`world build`) does not purge its translations; the API paths (and so the screens) do. Stale rows are filtered by source hash on read; they only take space.
+- **License** — MIT (`LICENSE`, `pyproject.toml`). The demo world's credits are in the manifest and the README.
+
+## Web UI
 ```bash
-cd web && npm install
+cd web && npm ci     # the lock as committed (no --legacy-peer-deps needed)
 npm run dev          # dev server :5173, proxies /api -> :8000 (run uvicorn separately)
-npm run build        # static build -> web/dist (serve behind any static host / reverse proxy)
+npm run build        # tsc + vite build -> web/dist
 ```
-- Review/edit/augment UI: map-overlay topology, region knowledge, in-UI augmentation Q&A.
+- In compose the `web` service builds this with `npm ci` on `node:22-alpine` and serves `dist/` from nginx, which proxies `/api` to `app:8000` (`client_max_body_size 49m`, read timeout 130 s) — U8.
+- Screens: `/` (demo cards, world list), `/editor/:worldId`, `/gm/:sessionId`, `/play/:sessionId`. See `web/README.md`.
 
 ## Observability (current)
 - Structured stdout from CLI/app; container healthchecks (Neo4j HTTP, OpenSearch cluster health, **Postgres `pg_isready`**).
@@ -407,8 +430,8 @@ npm run build        # static build -> web/dist (serve behind any static host / 
 - **Translation (X1)**: LLM-backed ko translation of session content (rumors/events) + canonical Knowledge, cached in the PostgreSQL `translations` table (created by `init-schema`, additive). Reuses the OpenAI provider. Config: `TRANSLATION_ENABLED`(기본 true), `TRANSLATION_TARGET_LANG`(ko). **Reads never block on the LLM** — cache-only on read, misses warm on a background thread; so the first view of new content may show English, then Korean on refetch. Disabled → all English (graceful).
 - **Turn-change notifications**: `advance-turn` returns `region_changes` (per-region promoted/demoted/pruned/events/added); the web SessionPanel shows one auto-dismiss toast per changed region.
 - **Regenerate preserves promoted**: `regenerate_region` keeps promoted rumors and reseeds the rest from **canonical knowledge only** (promoted rumors are not reused as chain seeds). Applies to per-region and "전체 재생성".
-- **Frontend (X2/X3)**: Tailwind v4 ("Doodly" paper+ink theme) + self-hosted Gaegu Korean handwriting font (`@fontsource/gaegu`, no CDN). Korean UI labels + timeline i18n (U5: every label is in a ko and an en dictionary in `web/src/i18n.ts`; see the dialogue section for the toggle). Build: `cd web && npm install --legacy-peer-deps && npm run build`.
+- **Frontend (X2/X3)**: Tailwind v4 ("Doodly" paper+ink theme) + self-hosted Gaegu Korean handwriting font (`@fontsource/gaegu`, no CDN). Korean UI labels + timeline i18n (U5: every label is in a ko and an en dictionary in `web/src/i18n.ts`; see the dialogue section for the toggle). Build: `cd web && npm ci && npm run build` (U8: the peer conflict is gone).
 - **No new infra**: canonical graph unchanged; only additive session-layer `translations` table + response-only ko fields + `region_changes`. Rollback is additive-safe.
 
 ## Future Operations (not implemented)
-- Containerized app service running uvicorn by default; CI/CD; cloud deploy; monitoring/alerting; backup of Neo4j/OpenSearch/**Postgres** volumes; consensus cache + scaling; managed PostgreSQL / connection pooling.
+- CD and cloud deploy (U8 added the app/web containers and a CI workflow); monitoring/alerting; backup of Neo4j/OpenSearch/**Postgres** volumes; consensus cache + scaling; managed PostgreSQL / connection pooling.

@@ -3187,3 +3187,27 @@ Baselines measured at HEAD aedf72d: pytest 735, vitest 94, mypy 11.
 **Context**: NFR Requirements (light) — U3 — next: approval gate (advisory verdict terminal; artifacts frozen).
 
 ---
+
+## U3 NFR Requirements (light) — approval gate
+**Timestamp**: 2026-10-01T09:00:11Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U3 NFR (light) approved. All 8 open findings carried to the code plan. Step 1 corrects nfr-light with inline correction markers, as U7 did.
+- R-01: step ① becomes new CONTAINS → `parent_id` replace → delete old CONTAINS. This is a scoped change to FD BLM §1.3 ①. NPC search docs are deleted before the node. TP-U3-2a cuts at every port write call.
+- R-02: a cache hit costs 1 version read. Call counts cover FD writes only; `_written` is counted on its own line.
+- R-03: C-3 now declares the search-only wiki lookup path, skipping a judgement when no grounding prior exists, polish cap 5, and the run budget of 60 (with its basis) plus `llm_budget_exhausted`. The judgement cap unit is fixed. Embeddings are outside the budget.
+- R-04..R-08: the upload table is reconciled; the pure ASGI middleware method is specified; UNWIND batching or round-trip acceptance; `MATERIAL` call sites; the map-JSON 422 fixed text; `list_worlds` move unchanged.
+The reviewer's optimistic-concurrency suggestion is not adopted (single designer, A-4); recorded only.
+Next: U3 Code Generation Part 1 (plan).
+**Context**: CONSTRUCTION / U3 — NFR (light) approved.
+
+---
+
+## Plan Review Dispositions — NFR Requirements (light) — U3
+R-01 → Accepted risk
+R-02 → Accepted risk
+R-03 → Accepted risk
+R-04 → Accepted risk
+R-05 → Accepted risk
+R-06 → Accepted risk
+R-07 → Accepted risk
+R-08 → Accepted risk

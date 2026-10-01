@@ -2708,3 +2708,11 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **User Input**: (none — plan Steps 1–10)
 **AI Response**: Steps 1–10 done and committed (39b9f91 … 3315e8b). Gates: pytest 630 (557 + 73, 0 regressions; one U5 test changed on purpose — timeline kinds now checked as append-only), vitest 74 (64 + 10), mypy 11 (= baseline), ruff/black/tsc/vite clean, boundaries 4, docker build OK (OpenAPI lists the two deed routes; act takes lang). Mutation checks: removing the prep-failure breaker, the canonical-only chain sources or the birth-turn exemption each fails a test. Code summary written with the complete deviation list and nine generation-time decisions for the gate. Presenting the code gate.
 **Context**: CONSTRUCTION / U6 — Code Generation Part 2 complete.
+
+---
+
+## Code Generation Approval — U6 행적·전파
+**Timestamp**: 2026-10-01T00:42:32Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U6 code approved with the generation-time decisions as presented (code-summary §5). Next: `/code-review` of the U6 diff (39b9f91~1..HEAD), then U7 GM 모드·안정화.
+**Context**: CONSTRUCTION / U6 — Code Generation approved.

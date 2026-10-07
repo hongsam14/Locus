@@ -283,24 +283,35 @@ def _seed_demo_translations(
         service = loc.translations
         if service is None:
             return say("skipped (no translation service)")
-        if not getattr(report, "ok", False):
-            return say("skipped (the load was not ok)")
-        if getattr(report, "replaced", False):
-            try:
-                service.purge(world_id=world_id)
-                service.purge(kind="world", ids=[world_id])
-            except Exception as exc:
-                say(f"purge failed ({type(exc).__name__}); seeding anyway")
+        ok = bool(getattr(report, "ok", False))
         remapped = bool(getattr(report, "remapped", False))
+        texts = demos.texts(name, target_world_id=world_id, remapped=remapped)
+        if getattr(report, "replaced", False):  # whether or not the load is ok (BR-V3-14)
+            try:
+                if ok:  # keep the rows of the ids the new world holds (code review 01 #1)
+                    service.prune_world(world_id, {id_ for _kind, id_, _field in texts})
+                else:
+                    service.purge(world_id=world_id)
+                    service.purge(kind="world", ids=[world_id])
+            except Exception as exc:
+                say(f"purge failed ({type(exc).__name__}); going on")
+        if not ok:
+            return say("skipped (the load was not ok)")
+        langs = [
+            lang
+            for lang in demos.translation_langs(name)
+            if lang != SOURCE_LANG and lang in settings.supported_langs
+        ]
+        if not langs:
+            return say(
+                "no supported language" if demos.translation_langs(name) else "none in this demo"
+            )
         parts: list[str] = []
-        for lang in demos.translation_langs(name):
-            if lang == SOURCE_LANG or lang not in settings.supported_langs:
-                continue
+        for lang in langs:
             entries = demos.translations(name, lang, target_world_id=world_id, remapped=remapped)
-            texts = demos.texts(name, target_world_id=world_id, remapped=remapped)
             got = service.seed(entries, lang=lang, current_text=texts, world_id=world_id)
             parts.append(f"{lang} seeded {got.seeded}, stale {got.stale}, unknown {got.unknown}")
-        say("; ".join(parts) or "none in this demo")
+        say("; ".join(parts))
     except Exception as exc:
         say(f"failed ({type(exc).__name__}: {exc})")
     finally:

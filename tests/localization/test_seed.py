@@ -66,6 +66,13 @@ def test_without_an_llm_there_is_a_service_that_never_warms() -> None:
     loc.close()
 
 
+def test_without_a_translator_the_scheduler_is_never_called() -> None:  # review 01 #4
+    asked: list = []
+    svc = TranslationService(InMemoryTranslationRepository(), None, warm_scheduler=asked.append)
+    svc.enrich([_Region(id="r1", name="Ironcrag")], kind="region", fields=["name"], world_id="w")
+    assert asked == []
+
+
 def test_off_or_without_a_database_there_is_no_service() -> None:
     store = InMemoryTranslationRepository()
     assert assemble_localization(_shared(enabled=False), store=store).translations is None  # type: ignore[arg-type]

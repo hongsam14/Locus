@@ -196,3 +196,70 @@ def test_demo_with_translation_off_says_off(fake_env, capsys, monkeypatch) -> No
     monkeypatch.setattr(settings, "translation_enabled", False)
     assert cli.main(["world", "demo", "--name", "emberleaf", "--world", "w"]) == 0
     assert capsys.readouterr().err.strip() == "translations: off"
+
+
+def test_demo_replace_prunes_ids_the_world_lost_and_a_failed_replace_purges(
+    fake_env, capsys, monkeypatch
+) -> None:
+    # BR-V3-14/28 with code review 01 #1/#9: the purge runs on a replace whether or not ok
+    from locus.localization import (
+        InMemoryTranslationRepository,
+        LocalizationContainer,
+        Translation,
+        TranslationService,
+    )
+    from locus.shared.models import BuildWarning, ImportReport
+
+    store = InMemoryTranslationRepository()
+    loc = LocalizationContainer(translations=TranslationService(store, None))
+    monkeypatch.setattr(cli, "assemble_localization", lambda shared: loc)
+    cli.assemble_shared().sql_engine = object()
+    assert cli.main(["world", "demo", "--name", "emberleaf", "--world", "w"]) == 0
+
+    def row(id_: str) -> Translation:
+        return Translation(
+            source_kind="region",
+            source_id=id_,
+            source_field="name",
+            text="t",
+            source_hash="h",
+            world_id="w",
+        )
+
+    store.upsert_many([row("lost-region")])
+    assert cli.main(["world", "demo", "--name", "emberleaf", "--world", "w"]) == 0  # replace
+    rows = list(store._translations.values())  # noqa: SLF001
+    assert "lost-region" not in {t.source_id for t in rows}  # an id the world lacks: pruned
+    assert len([t for t in rows if t.world_id == "w"]) == 123  # the demo's rows kept and reseeded
+    capsys.readouterr()
+
+    def failed(self, name, world_id, *, replace=True):
+        return ImportReport(
+            world_id=world_id,
+            format_version=1,
+            source_world_id=name,
+            replaced=True,
+            warnings=[BuildWarning(stage="import", message="commit failed", severity="error")],
+        )
+
+    monkeypatch.setattr(cli.DemoWorlds, "load", failed)
+    cli.main(["world", "demo", "--name", "emberleaf", "--world", "w"])
+    assert capsys.readouterr().err.strip().endswith("skipped (the load was not ok)")
+    assert not [t for t in store._translations.values() if t.world_id == "w"]  # noqa: SLF001
+
+
+def test_demo_with_no_supported_language_says_so(fake_env, capsys, monkeypatch) -> None:
+    from locus.localization import (
+        InMemoryTranslationRepository,
+        LocalizationContainer,
+        TranslationService,
+    )
+
+    loc = LocalizationContainer(
+        translations=TranslationService(InMemoryTranslationRepository(), None)
+    )
+    monkeypatch.setattr(cli, "assemble_localization", lambda shared: loc)
+    cli.assemble_shared().sql_engine = object()
+    monkeypatch.setattr(cli.get_settings(), "supported_langs_raw", "en")
+    assert cli.main(["world", "demo", "--name", "emberleaf", "--world", "w"]) == 0
+    assert capsys.readouterr().err.strip() == "translations: no supported language"

@@ -153,6 +153,12 @@ class TranslationService:
                 }
         return removed
 
+    def prune_world(self, world_id: str, keep_ids: set[str]) -> int:
+        """After a world replace: drop the world's rows whose source id the new world
+        lacks, keep the rest — the source hash already decides whether a kept row is
+        still shown (V3, BR-V3-13 as corrected by code review 01 #1)."""
+        return self._store.purge_world_except(world_id, keep_ids)
+
     def seed(
         self,
         entries: Sequence[TranslationEntry],

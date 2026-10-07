@@ -587,11 +587,36 @@ def seed_demo_translations(
     return total
 
 
-def purge_world_translations(loc: LocalizationContainer | None, world_id: str) -> None:
-    """A replaced world's translations go: every row marked with the world, and the
-    world's own name rows, which the world list warms unmarked (V3, BR-V3-13)."""
-    purge_translations(loc, world_id=world_id)
-    purge_translations(loc, kind="world", ids=[world_id])
+def live_ids(snapshot: WorldSnapshot) -> set[str]:
+    """The ids a world holds now that a translation can be about (V3)."""
+    ids = {r.id for r in snapshot.topo.regions}
+    ids |= {n.id for n in snapshot.npcs}
+    ids |= {s.id for s in snapshot.event_seeds}
+    ids |= {k.id for k in snapshot.kg.knowledge}
+    if snapshot.meta is not None:
+        ids.add(snapshot.meta.id)
+    return ids
+
+
+def purge_world_translations(
+    loc: LocalizationContainer | None, world_id: str, keep_ids: set[str] | None = None
+) -> None:
+    """After a replace (V3, BR-V3-13 as corrected by code review 01 #1). With the new
+    world's ids (``keep_ids``) only the rows of ids it lacks go: a re-import of the same
+    file keeps its hand-made translations, and the source hash still hides any whose
+    text changed. Without them (the world is gone or unreadable) every row of the world
+    goes, with the world's own name rows, which the world list warms unmarked. A side
+    job: a failure is logged and never breaks the response."""
+    if loc is None or loc.translations is None:
+        return
+    if keep_ids is None:
+        purge_translations(loc, world_id=world_id)
+        purge_translations(loc, kind="world", ids=[world_id])
+        return
+    try:
+        loc.translations.prune_world(world_id, keep_ids)
+    except Exception:
+        _log.exception("translation prune failed (world=%s)", world_id)
 
 
 def carry_seed_translation(

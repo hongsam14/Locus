@@ -125,7 +125,8 @@ def _row(
     )
 
 
-def test_a_replace_drops_the_worlds_rows_only_and_the_seed_comes_after() -> None:  # BR-V3-13·14
+def test_a_replace_keeps_the_rows_of_ids_still_held_and_drops_the_rest() -> None:
+    # BR-V3-13 as corrected by code review 01 #1: rows of ids the new world lacks go
     client, store = _app()
     _load(client)
     w = _demo(client)["name"]
@@ -134,14 +135,43 @@ def test_a_replace_drops_the_worlds_rows_only_and_the_seed_comes_after() -> None
             _row("region", "elsewhere", world_id="other"),
             _row("rumor", "ru1", session_id="s1"),
             _row("world", w),  # the world list's warm writes the world's name unmarked
-            _row("region", "stale-region", world_id=w),
+            _row("region", "stale-region", world_id=w),  # an id the new world lacks
         ]
     )
     assert _load(client, confirm="true").status_code == 200
     ids = {t.source_id for t in _rows(store)}
-    assert {"elsewhere", "ru1"} <= ids and "stale-region" not in ids
-    world_rows = [t for t in _rows(store) if t.source_kind == "world"]
-    assert world_rows and all(t.world_id == w for t in world_rows)  # seeded again after the purge
+    assert {"elsewhere", "ru1", w} <= ids and "stale-region" not in ids
+    assert len([t for t in _rows(store) if t.world_id == w]) == 123
+
+
+def test_re_importing_the_same_world_file_keeps_its_korean() -> None:  # review 01 #1
+    client, store = _app()
+    _load(client)
+    w = _demo(client)["name"]
+    file = client.get(f"/api/world/worlds/{w}/file").json()
+    r = client.post(
+        f"/api/world/worlds/{w}/file", params={"replace": "true", "confirm": "true"}, json=file
+    )
+    assert r.status_code == 200 and r.json()["replaced"]
+    assert len([t for t in _rows(store) if t.world_id == w]) == 123
+    names = client.get(f"/api/world/worlds/{w}/names").json()
+    assert names["regions"]["region-saltwake"]["name"] == "솔트웨이크 항구"
+
+
+def test_when_the_world_cannot_be_read_every_row_and_the_name_rows_go() -> None:  # BR-V3-13
+    from api.schemas import purge_world_translations
+
+    client, store = _app()
+    _load(client)
+    w = _demo(client)["name"]
+    store.upsert_many([_row("world", w, world_id=None), _row("region", "x", world_id="other")])
+    loc = client.app.state.containers.localization
+    purge_world_translations(loc, w, None)  # e.g. a failed replace left no world
+    left = _rows(store)
+    assert not [
+        t for t in left if t.world_id == w or (t.source_kind == "world" and t.source_id == w)
+    ]
+    assert [t.source_id for t in left] == ["x"]
 
 
 def test_deleting_a_region_or_an_npc_drops_their_rows() -> None:  # BR-V3-16

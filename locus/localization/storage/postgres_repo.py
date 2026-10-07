@@ -128,6 +128,28 @@ class PostgresTranslationRepository:
                     removed += int(res.rowcount or 0)
         return removed
 
+    def purge_world_except(self, world_id: str, keep_ids: set[str]) -> int:
+        """Delete the rows marked with ``world_id`` whose source id is not in ``keep_ids``
+        (V3, code review 01 #1). The world's ids are read first and the doomed ones
+        deleted in chunks, so no NOT IN() list grows with the world."""
+        removed = 0
+        with self._require_engine().begin() as conn:
+            present = conn.execute(
+                select(translations.c.source_id)
+                .where(translations.c.world_id == world_id)
+                .distinct()
+            ).scalars()
+            doomed = sorted({sid for sid in present if sid not in keep_ids})
+            for start in range(0, len(doomed), _IN_CHUNK):
+                res = conn.execute(
+                    delete(translations).where(
+                        translations.c.world_id == world_id,
+                        translations.c.source_id.in_(doomed[start : start + _IN_CHUNK]),
+                    )
+                )
+                removed += int(res.rowcount or 0)
+        return removed
+
     def _require_engine(self) -> Engine:
         if self._engine is None:
             self.connect()

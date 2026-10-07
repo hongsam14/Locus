@@ -103,3 +103,25 @@ def test_reupsert_keeps_primary_key(store) -> None:
     row = store.get_many([("rumor", "a", "statement")], "ko")[("a", "statement")]
     assert row.text == "hello again"
     assert row.id == first.id  # ON CONFLICT never rewrites the PK
+
+
+def test_purge_world_except_keeps_the_ids_still_held(store) -> None:  # V3 code review 01 #1
+    def row(id_: str, world: str | None) -> Translation:
+        return Translation(
+            source_kind="region",
+            source_id=id_,
+            source_field="name",
+            text="t",
+            source_hash="h",
+            world_id=world,
+        )
+
+    store.upsert_many(
+        [row("kept", "w"), row("gone", "w"), row("elsewhere", "other"), row("loose", None)]
+    )
+    assert store.purge_world_except("w", {"kept"}) == 1
+
+    def held(id_: str) -> bool:
+        return (id_, "name") in store.get_many([("region", id_, "name")], "ko")
+
+    assert held("kept") and not held("gone") and held("elsewhere") and held("loose")

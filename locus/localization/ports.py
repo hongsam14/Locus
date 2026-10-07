@@ -28,3 +28,6 @@ class TranslationStore(Protocol):
         world_id: str | None = None,
         session_id: str | None = None,
     ) -> int: ...  # U5 (FR-G4): rows removed; ValueError when no filter is given
+    def purge_world_except(
+        self, world_id: str, keep_ids: set[str]
+    ) -> int: ...  # V3: rows of ``world_id`` whose source id is not kept; rows removed

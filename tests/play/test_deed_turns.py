@@ -186,7 +186,7 @@ def test_ex6_my_deed_travels_a_then_b_then_c_more_distorted_each_hop() -> None:
     assert seed.support == pytest.approx(0.4)
     # V3 (BR-V3-24): the seeding line names its teller by id beside the frozen name
     born = next(e for e in repo.list_timeline(session.id) if e.kind == "deed_seeded")
-    assert born.payload["npc_id"] and "npc_name" in born.payload
+    assert born.payload["npc_id"] == "n1" and "npc_name" in born.payload  # Mara told it
     gm.turns.advance(session.id, WaitAction())
     at_b = [r for r in repo.list_rumors_by_origin(session.id) if r.region_id == "b"]
     assert len(at_b) == 1 and at_b[0].spread_from_region_id == "a"

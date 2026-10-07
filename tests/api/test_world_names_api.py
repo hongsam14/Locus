@@ -20,6 +20,7 @@ from locus.play.turn.executor import SyncTurnExecutor
 from locus.play.wiring import assemble_play
 from locus.shared.config import Settings
 from locus.shared.wiring import SharedContainer
+from locus.world.editor.models import WorldSummary
 from locus.world.wiring import assemble_world
 from tests.shared.storage.fakes import InMemoryGraphRepository, InMemorySearchRepository
 
@@ -138,3 +139,34 @@ def test_with_an_llm_the_map_hands_its_misses_to_the_warm() -> None:  # code pla
     store.purge(world_id=name)  # as for a world with no translation file
     assert client.get(f"/api/world/worlds/{name}/names").json()["regions"] == {}
     assert scheduled  # the region, NPC, seed and world misses went to the warm
+
+
+def test_a_world_without_meta_is_not_translated_by_its_id() -> None:  # review 01 § 2
+    from locus.localization import Translation
+    from locus.shared.models import source_hash
+
+    store = InMemoryTranslationRepository()
+    client, world, loc = _app(loc=assemble_localization_keyless(store))
+    world_id = "old-world"
+    # a pre-U2 world lists its id as its name; a row for that "name" must not be used
+    store.upsert_many(
+        [
+            Translation(
+                source_kind="world",
+                source_id=world_id,
+                source_field="name",
+                text="옛 세계",
+                source_hash=source_hash(world_id),
+            )
+        ]
+    )
+    world.catalog.list_worlds = lambda: [  # type: ignore[method-assign]
+        WorldSummary(id=world_id, name=world_id),
+        WorldSummary(id="named", name="Named"),
+    ]
+    rows = {r["id"]: r for r in client.get("/api/world/worlds").json()}
+    assert rows[world_id]["name_ko"] is None
+
+
+def assemble_localization_keyless(store: InMemoryTranslationRepository) -> LocalizationContainer:
+    return LocalizationContainer(translations=TranslationService(store, None))

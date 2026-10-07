@@ -36,6 +36,7 @@ from api.schemas import (
     WorldInfo,
     WorldNamesOut,
     enrichment_for,
+    live_ids,
     purge_translations,
     purge_world_translations,
     seed_demo_translations,
@@ -112,6 +113,7 @@ def _after_replace(
     play: PlayContainer | None,
     loc: LocalizationContainer | None,
     world_id: str,
+    w: WorldContainer | None = None,
 ) -> None:
     """What follows a replace: close the confirmed sessions, and drop the old world's
     translations (U5 Q4=A; V3 BR-V3-13: every kind of the world, not only knowledge). The
@@ -121,7 +123,18 @@ def _after_replace(
     ``_import``)."""
     _close_if_replaced(report, open_ids, play)
     if getattr(report, "replaced", False):
-        purge_world_translations(loc, world_id)
+        purge_world_translations(loc, world_id, _held_ids(w, world_id))
+
+
+def _held_ids(w: WorldContainer | None, world_id: str) -> set[str] | None:
+    """The replaced world's ids now, or None when it cannot be read (gone or no cache):
+    then every translation row of the world goes."""
+    if w is None or w.cache is None:
+        return None
+    try:
+        return live_ids(w.cache.get(world_id))
+    except Exception:  # an empty world raises LookupError; anything else: purge all
+        return None
 
 
 def _close_if_replaced(report, open_ids: list[str], play: PlayContainer | None) -> None:
@@ -180,7 +193,7 @@ def build_world(
         report = builder.build(world_id, inputs, replace=replace)
     except (WorldExistsError, BuildInProgressError) as exc:
         raise http_error(exc) from exc
-    _after_replace(report, open_ids, play, loc, world_id)
+    _after_replace(report, open_ids, play, loc, world_id, w)
     return report
 
 
@@ -242,7 +255,7 @@ def build_world_upload(
         report = builder.build(world_id, inputs, replace=replace)
     except (WorldExistsError, BuildInProgressError) as exc:
         raise http_error(exc) from exc
-    _after_replace(report, open_ids, play, loc, world_id)
+    _after_replace(report, open_ids, play, loc, world_id, w)
     return report
 
 
@@ -275,7 +288,9 @@ def list_worlds(
     the translation cache the names in the display language (V3, BR-V3-23)."""
     catalog = _need(w.catalog, "world catalog")
     rows = catalog.list_worlds()
-    names = enrichment_for(loc, rows, kind="world", fields=["name", "description"], lang=lang)
+    # a world without meta shows its id as its name: an id is not translated (review § 2)
+    named = [row for row in rows if row.name != row.id]
+    names = enrichment_for(loc, named, kind="world", fields=["name", "description"], lang=lang)
     out: list[WorldInfo] = []
     for row in rows:
         open_sessions = None
@@ -359,7 +374,7 @@ def _import(
         report = importer.import_(world_id, file, replace=replace, force_remap=remap)
     except WorldExistsError as exc:
         raise http_error(exc) from exc
-    _after_replace(report, open_ids, play, loc, world_id)
+    _after_replace(report, open_ids, play, loc, world_id, w)
     return report
 
 
@@ -438,12 +453,13 @@ def load_demo_world(
         report = demo.load(name, world_id, replace=replace)
     except (LookupError, WorldExistsError) as exc:
         raise http_error(exc) from exc
-    _after_replace(report, open_ids, play, loc, world_id)
+    _after_replace(report, open_ids, play, loc, world_id, w)
     seeded = seed_demo_translations(
         loc, demo, name, world_id=world_id, report=report, langs=settings.supported_langs
     )
     return DemoLoadOut(
-        **report.model_dump(exclude={"ok"}),  # ``ok`` is computed, not an input
+        # computed fields (``ok``) are output only, never an input (review § 2)
+        **report.model_dump(exclude=set(ImportReport.model_computed_fields)),
         translations_seeded=seeded.seeded,
         translations_stale=seeded.stale,
     )
@@ -473,7 +489,7 @@ def build_demo_world_from_sources(
         report = demo.build_from_sources(name, world_id, replace=replace, include_map=with_map)
     except (LookupError, WorldExistsError, BuildInProgressError) as exc:
         raise http_error(exc) from exc
-    _after_replace(report, open_ids, play, loc, world_id)
+    _after_replace(report, open_ids, play, loc, world_id, w)
     return report
 
 

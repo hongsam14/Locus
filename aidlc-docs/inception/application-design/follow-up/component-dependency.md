@@ -15,7 +15,7 @@
 | **world** | ✓ (+`TranslationEntry`) | ✓ | ✓ (+`carry_over`) | – | – | – |
 | **play** | ✓ | ✓ | – | ✓ (+`short_write`, `GmBusyError`) | – | – |
 | **localization** | ✓ (+`TranslationEntry`) | – | – | – | ✓ (+`seed`) | – |
-| **api** (합성 루트) | ✓ | ✓ | ✓ (+`DemoWorlds.translations`, `remapped_id`) | ✓ (+`recover_interrupted`, `gm_busy`) | ✓ (+`seed`, 새 종류) | ✓ (+오류 `code`) |
+| **api** (합성 루트) | ✓ | ✓ | ✓ (+`DemoWorlds.translations`·`texts`; `remapped_id`는 world 안에서 씀 〔V3 FD Q5=A 정정, 2026-10-07〕) | ✓ (+`recover_interrupted`, `gm_busy`) | ✓ (+`seed`, 새 종류) | ✓ (+오류 `code`) |
 | **CLI** (합성 루트) | ✓ | ✓ | ✓ | ✓ | ✓ (지금은 스키마만, +시딩) | – |
 
 - **새로 생기는 경계 사이 화살표는 없다.** CLI는 이미 localization을 import한다(`init-schema --localization`). 이번에는 같은 경계에서 `seed`를 더 쓸 뿐이다. CLI는 합성 루트라서 경계 테스트가 허용한다(`__main__` 면제).
@@ -106,7 +106,7 @@ flowchart BT
 |---|---|---|
 | V2 디자인 시스템 | V4·V6·V8 화면 | `ui/`·`layout/`·`map/`·`format/`·`errors/`·`hooks/`의 공개 API(§ component-methods 1). V8을 넘겨도 에디터는 V2의 공유 프리미티브·표기·상태 처리를 입는다(R-01 정리) |
 | V2 (api 오류 계약) | V4·V5·V6 | 오류 응답 `{"detail", "code"}`와 코드 목록. 코드 목록은 V2에서 정하고, V5가 `gm_busy` 등을 더한다 |
-| V3 한국어 백엔드 | V4 홈·플레이(V6·V8도 씀) | 번역 칸(`region_name_ko`, `npcs[].name_ko`, `title_ko`…), 데모 카드 `title_ko`·`description_ko`·`credits_ko` |
+| V3 한국어 백엔드 | V4 홈·플레이(V6·V8도 씀) | ~~번역 칸(`region_name_ko`, `npcs[].name_ko`, `title_ko`…)~~ 〔V3 FD Q5=A 정정, 2026-10-07〕 월드 이름표 `GET /api/world/worlds/{w}/names?lang=`(지역·NPC·씨앗·월드, V3 FD BR-V3-21), `WorldInfo.name_ko`·`description_ko`, `RegionView.level_path_ids`, 데모 카드 `title_ko`·`description_ko`·`credits_ko` |
 | V5 GM 정확성 | V6 GM 화면, V4 플레이 | `RegionView.gm_busy`, 409 `gm_busy`·`turn_running` 코드, 세션 닫기 동작 |
 | V7 월드 정확성 | V8 에디터 | 보강 `needs`(대상 종류별), 빌드 리포트의 이어 붙이기 수와 경고 |
 | V1 CI | 모든 유닛 | 새 액션 버전·러너에서 네 잡이 녹색 |

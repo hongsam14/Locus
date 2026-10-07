@@ -94,6 +94,7 @@ class HttpError extends Error { status: number; code?: string; detail: unknown; 
 ```python
 # models/i18n.py [새]
 class TranslationEntry(LocusModel):
+    # 〔V3 FD Q5=A 정정, 2026-10-07〕 lang·source_hash 칸 대신 source(영어 원문), 해시는 속성; 파일은 TranslationFile(lang 한 번) — V3 FD domain-entities § 2
     kind: Literal["region", "npc", "event_seed", "world", "knowledge"]
     id: str
     field: str
@@ -153,6 +154,7 @@ class DemoInfo(BaseModel):
     i18n: dict[str, DemoCardText] = {}                    # lang → {title, description?, credits?}
     translations: dict[str, str] = {}                     # lang → 매니페스트 기준 상대 경로
 DemoWorlds.translations(name: str, lang: str) -> list[TranslationEntry]    # 없으면 []
+# 〔V3 FD Q5=A 정정, 2026-10-07〕 translations(name, lang, *, target_world_id, remapped); texts(name, *, target_world_id, remapped) 추가 — V3 FD BLM § 5
 DemoWorlds.card(name: str, lang: str) -> DemoCardText                      # 없으면 영어 원문
 # _check: name == world.id, 번역 파일 파싱·범위·경로
 
@@ -167,6 +169,7 @@ NEEDS: dict[tuple[IssueType, TargetKind], dict[Action, list[str]]]
 TranslationService.seed(entries: Sequence[TranslationEntry], *, current_text: Mapping[tuple[str, str, str], str],
                         world_id: str) -> SeedReport
     # (kind, id, field) → 지금 영어 원문. 해시가 맞는 항목만 upsert. SeedReport(seeded, stale, missing)
+    # 〔V3 FD Q5=A 정정, 2026-10-07〕 seed(entries, *, lang, current_text, world_id); SeedReport(seeded, stale, unknown); carry(…) 추가 — V3 FD BLM § 3·10
 TranslationService.enrich(...)       # 그대로. 새 kind 값을 받는다
 TranslationService.purge(...)        # 그대로. 새 kind 값을 받는다
 ```
@@ -224,6 +227,7 @@ class SeedViewOut(SeedView): title_ko: str | None; description_ko: str | None
 class WorldInfo(WorldSummary): ...; name_ko: str | None; description_ko: str | None   # [바뀜] 칸 추가
 class DemoInfoOut(BaseModel): ... title_ko, description_ko, credits_ko: str | None
 def localize_region_view(view, loc, *, lang) -> RegionViewOut          # 지역·NPC 종류 더함
+# 〔V3 FD Q5=A 정정, 2026-10-07〕 위 RegionViewOut·SeedViewOut·NpcOut의 *_ko 칸은 만들지 않는다. WorldNamesOut(이름표)·RegionView.level_path_ids로 대신한다 — V3 FD BR-V3-21·24
 def purge_translations(loc, *, kind, ids=None, world_id=None, session_id=None) -> None   # 새 종류
 
 # routers/world.py [바뀜]

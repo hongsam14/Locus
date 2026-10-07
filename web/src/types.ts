@@ -285,6 +285,12 @@ export interface ImportReport {
   ok: boolean;
 }
 
+/** What a demo load answers (V3): the import report plus the seeding of its translations. */
+export interface DemoLoadReport extends ImportReport {
+  translations_seeded?: number;
+  translations_stale?: number;
+}
+
 export interface WorldInfo {
   id: string;
   name: string;
@@ -293,6 +299,20 @@ export interface WorldInfo {
   updated_at?: string | null;
   last_writer?: string | null;
   open_sessions?: number | null;
+  name_ko?: string | null; // V3: in the display language, from the translation cache
+  description_ko?: string | null;
+}
+
+/** `GET /api/world/worlds/{w}/names` (V3, Q5=A): the world's region, NPC, event-seed and
+ * world text in the display language, `{id: {field: text}}`. Only translated fields are
+ * there; a screen falls back to the English it holds. */
+export interface WorldNames {
+  world_id: string;
+  lang: string;
+  world: Record<string, string>;
+  regions: Record<string, Record<string, string>>;
+  npcs: Record<string, Record<string, string>>;
+  event_seeds: Record<string, Record<string, string>>;
 }
 
 /** A manifest demo as the home screen sees it (U8, domain-entities §1). */
@@ -303,6 +323,9 @@ export interface DemoInfo {
   credits?: string | null;
   start_region_id: string;
   has_sources: boolean;
+  title_ko?: string | null; // V3: the card in the display language, from the manifest
+  description_ko?: string | null;
+  credits_ko?: string | null;
 }
 
 /** Which providers the server has (U8, `GET /api/capabilities`). */
@@ -565,6 +588,7 @@ export interface RegionView {
   level: string;
   description: string;
   level_path: string[];
+  level_path_ids?: string[]; // V3: the ids of level_path, for the name map
   npcs: NPC[];
   facts: KnowledgeView[];
   hearsay: KnowledgeView[];

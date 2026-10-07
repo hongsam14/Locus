@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../api";
 import { HttpError, detailOf, needsLlm, openSessionsOf, useReplaceConfirm } from "../api/http";
 import { llmOff, resetCapabilities, useCapabilities } from "../capabilities";
-import { dicts, setLang, t, timelineText } from "../i18n";
+import { configureLangs, dicts, setLang, t, timelineText } from "../i18n";
 
 beforeEach(() => {
   resetCapabilities();
@@ -179,6 +179,23 @@ describe("api.loadDemo (worldId, name, options) — FD review 01 R-08", () => {
     expect(url).toContain("replace=true");
     expect(url).toContain("confirm=true");
     expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: "POST" });
+  });
+
+  it("V3: the name map and the two lists carry the display language", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+    configureLangs("ko", ["ko", "en"]);
+    setLang("en"); // not the server default: sent as ?lang=
+    await api.worldNames("my world");
+    await api.listWorlds();
+    await api.listDemos();
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls[0]).toContain("/api/world/worlds/my%20world/names?lang=en");
+    expect(urls[1]).toMatch(/\/api\/world\/worlds\?lang=en$/);
+    expect(urls[2]).toMatch(/\/api\/world\/demos\?lang=en$/);
+    setLang("ko"); // the server default: no ?lang=
+    await api.listDemos();
+    expect(String(fetchMock.mock.calls[3][0])).toMatch(/\/api\/world\/demos$/);
   });
 
   it("listSeeds and startSeed call the GM seed routes", async () => {

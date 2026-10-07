@@ -218,11 +218,11 @@
   - 커밋: `feat(cli): world demo seeds the demo's translations when the database is there (V3)`
 
 ### Step 10 — 웹 타입과 API 함수 (domain-entities § 7)
-- [ ] 10.1 `types.ts`: `WorldNames`, `DemoInfo`·`WorldInfo`의 `*_ko`, `RegionView.level_path_ids?`
-- [ ] 10.2 `api/world.ts`
+- [x] 10.1 `types.ts`: `WorldNames`, `DemoInfo`·`WorldInfo`의 `*_ko`, `RegionView.level_path_ids?`
+- [x] 10.2 `api/world.ts`
   - 새 함수 `worldNames(worldId)`, URL은 `withLang(`/api/world/worlds/{w}/names`)`.
   - `listDemos`·`listWorlds`도 `withLang`을 쓴다.
-- [ ] 10.3 테스트:
+- [x] 10.3 테스트:
   - vitest 한 개: 세 함수의 URL과 `?lang=`
   - 커밋: `feat(web): name map and Korean list field types; list calls carry the display language (V3)`
 

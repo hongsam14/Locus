@@ -19,6 +19,8 @@ import type {
   WorldExport,
   WorldFile,
   WorldInfo,
+  WorldNames,
+  DemoLoadReport,
 } from "../types";
 import { BASE, enc, http, HttpError, withLang } from "./http";
 
@@ -80,12 +82,14 @@ export const worldApi = {
       `/api/world/worlds/${enc(worldId)}/file?${replaceQuery(options, { remap: String(options?.remap ?? false) })}`,
       { method: "POST", body: JSON.stringify(file) },
     ),
-  listWorlds: () => http<WorldInfo[]>(`/api/world/worlds`),
-  listDemos: () => http<DemoInfo[]>(`/api/world/demos`),
+  listWorlds: () => http<WorldInfo[]>(withLang(`/api/world/worlds`)),
+  listDemos: () => http<DemoInfo[]>(withLang(`/api/world/demos`)),
+  // V3 (Q5=A): the world's names in the display language; find by id, else the English
+  worldNames: (worldId: string) => http<WorldNames>(withLang(`${w(worldId)}/names`)),
   // Loads a manifest demo's World File — no LLM call (FR-B3, US-1.3). No default name:
   // the home screen reads the demos from the manifest (U8, BR-U8-1).
   loadDemo: (worldId: string, name: string, options?: ReplaceOptions) =>
-    http<ImportReport>(
+    http<DemoLoadReport>(
       `/api/world/worlds/${enc(worldId)}/demo/${enc(name)}?${replaceQuery(options)}`,
       { method: "POST" },
     ),

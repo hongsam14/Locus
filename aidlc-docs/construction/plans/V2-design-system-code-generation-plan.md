@@ -88,12 +88,12 @@
 - [x] 2.5 pytest·ruff·black·mypy(≤ 11)를 돌리고 커밋한다(`feat(api): error responses carry a code — ordered ERROR_CODES, Starlette/validation/500 handlers, body-limit 413 (V2 Step 2)`).
 
 ### Step 3 — 의존성 (NFR light § 3)
-- [ ] 3.1 `web/package.json` 의존을 바꾼다.
+- [x] 3.1 `web/package.json` 의존을 바꾼다.
   - 더함: `@radix-ui/react-dialog` ^1.2.0, `@radix-ui/react-tabs` ^1.1.22, `@fontsource/noto-sans-kr` ^5.3.0, `@fontsource/nanum-myeongjo` ^5.3.0, `@fontsource/im-fell-english-sc` ^5.3.0
   - 지움: `@fontsource/gaegu`
   - 개발 의존에 더함: `fast-check` ^4.10.2
-- [ ] 3.2 `npm install`(잠금 파일 갱신)을 하고 `npm audit --omit=dev` 0을 확인한다. dev audit 수는 기준선보다 늘지 않아야 한다.
-- [ ] 3.3 tsc·vitest를 돌려 그대로 GREEN인지 보고 커밋한다(`build(web): Radix dialog and tabs, Noto Sans KR / Nanum Myeongjo / IM Fell English SC, fast-check; Gaegu out (V2 Step 3)`).
+- [x] 3.2 `npm install`(잠금 파일 갱신)을 하고 `npm audit --omit=dev` 0을 확인한다. dev audit 수는 기준선보다 늘지 않아야 한다.
+- [x] 3.3 tsc·vitest를 돌려 그대로 GREEN인지 보고 커밋한다(`build(web): Radix dialog and tabs, Noto Sans KR / Nanum Myeongjo / IM Fell English SC, fast-check; Gaegu out (V2 Step 3)`).
 
 ### Step 4 — 토큰·글꼴·테스트 바탕 (FR-D2·D3, BR-V2-04·06·07·09)
 - [ ] 4.1 `web/src/index.css`를 다시 쓴다.

@@ -212,8 +212,8 @@
     - `feat(api): seed demo translations on load; purge world kinds; carry a seed's translation to its event (V3, FR-L3)`
 
 ### Step 9 — CLI `world demo` 시딩 (BLM § 4, BR-V3-28, R-01)
-- [ ] 9.1 `cmd_world_demo`: 불러오기·보고 뒤에 〔실행 메모 R-01〕의 네 갈래를 따른다. 그다음 교체면 지우기, 이어서 시딩하고 한 줄을 찍는다(`translations: ko seeded 123, stale 0, unknown 0`). 종료 코드는 불러오기 결과다.
-- [ ] 9.2 테스트:
+- [x] 9.1 `cmd_world_demo`: 불러오기·보고 뒤에 〔실행 메모 R-01〕의 네 갈래를 따른다. 그다음 교체면 지우기, 이어서 시딩하고 한 줄을 찍는다(`translations: ko seeded 123, stale 0, unknown 0`). 종료 코드는 불러오기 결과다.
+- [x] 9.2 테스트:
   - TP-V3-9: 서비스 있음(주입), 서비스 assemble 예외(→ skipped, 종료 0), 엔진 없음, 꺼짐
   - 커밋: `feat(cli): world demo seeds the demo's translations when the database is there (V3)`
 

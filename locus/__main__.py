@@ -17,10 +17,12 @@ from pathlib import Path
 from locus.knowledge.cache import WorldCache
 from locus.knowledge.loader import WorldLoader
 from locus.localization.storage.schema import ensure_localization_schema
+from locus.localization.wiring import assemble_localization
 from locus.play.session_service import SessionService
 from locus.play.storage.postgres_repo import PostgresPlayRepository
 from locus.play.storage.schema import ensure_play_schema
 from locus.shared.config import Settings, get_settings
+from locus.shared.models.i18n import SOURCE_LANG
 from locus.shared.storage.schema import ensure_world_schema
 from locus.shared.wiring import SharedContainer, assemble_shared
 from locus.world.build import WorldBuilder, WorldExistsError
@@ -246,9 +248,63 @@ def cmd_world_demo(args: argparse.Namespace) -> int:
             raise SystemExit(str(exc)) from exc
         except WorldExistsError as exc:
             raise SystemExit(f"{exc}; pass --replace to overwrite it") from exc
-        return _print_report(report, open_ids, shared)
+        code = _print_report(report, open_ids, shared)
+        _seed_demo_translations(shared, settings, demos, args.name, args.world, report)
+        return code
     finally:
         shared.close()
+
+
+def _seed_demo_translations(
+    shared: SharedContainer,
+    settings: Settings,
+    demos: DemoWorlds,
+    name: str,
+    world_id: str,
+    report,
+) -> None:
+    """After a demo load, seed its translations as the API does (V3, BR-V3-28). Calls the
+    services directly — ``locus`` never imports ``api`` (code plan memo R-03). The one
+    line goes to stderr, so stdout stays the JSON report (memo R-02); it never changes
+    the exit code. Order: off -> no database -> database unreachable -> seed (memo R-01)."""
+
+    def say(message: str) -> None:
+        print(f"translations: {message}", file=sys.stderr)
+
+    if not settings.translation_enabled:
+        return say("off")
+    if shared.sql_engine is None:
+        return say("skipped (no database configured)")
+    try:
+        loc = assemble_localization(shared)
+    except Exception as exc:  # ensure_schema could not reach PostgreSQL
+        return say(f"skipped (database unreachable: {type(exc).__name__})")
+    try:
+        service = loc.translations
+        if service is None:
+            return say("skipped (no translation service)")
+        if not getattr(report, "ok", False):
+            return say("skipped (the load was not ok)")
+        if getattr(report, "replaced", False):
+            try:
+                service.purge(world_id=world_id)
+                service.purge(kind="world", ids=[world_id])
+            except Exception as exc:
+                say(f"purge failed ({type(exc).__name__}); seeding anyway")
+        remapped = bool(getattr(report, "remapped", False))
+        parts: list[str] = []
+        for lang in demos.translation_langs(name):
+            if lang == SOURCE_LANG or lang not in settings.supported_langs:
+                continue
+            entries = demos.translations(name, lang, target_world_id=world_id, remapped=remapped)
+            texts = demos.texts(name, target_world_id=world_id, remapped=remapped)
+            got = service.seed(entries, lang=lang, current_text=texts, world_id=world_id)
+            parts.append(f"{lang} seeded {got.seeded}, stale {got.stale}, unknown {got.unknown}")
+        say("; ".join(parts) or "none in this demo")
+    except Exception as exc:
+        say(f"failed ({type(exc).__name__}: {exc})")
+    finally:
+        loc.close()
 
 
 def cmd_world_list(args: argparse.Namespace) -> int:

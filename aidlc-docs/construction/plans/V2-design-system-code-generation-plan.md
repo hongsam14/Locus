@@ -131,13 +131,13 @@
 - [x] 5.5 커밋한다(`feat(web): i18n split into ko/en modules, enum labels, measure bands, locale dates (V2 Step 5)`).
 
 ### Step 6 — 오류 문장 (FR-D9, BR-V2-16)
-- [ ] 6.1 `api/http.ts`:
+- [x] 6.1 `api/http.ts`:
   - `HttpError`에 `code`·`detail`을 더한다. 본문 JSON을 한 번 파싱한다.
   - `http()`가 `init.signal`을 넘긴다.
   - `conflictKind`·`needsLlm`·`openSessionsOf`·`detailOf`는 이름과 반환을 유지하고, code를 먼저 본다. code가 없을 때의 옛 문자열 판단은 남긴다(옛 서버 대비).
-- [ ] 6.2 `web/src/errors/describe.ts`: `describeError(err, lang?) → DescribedError`(BLM § 6.2의 순서, `raw`는 300자).
-- [ ] 6.3 `errors/describe.prop.test.ts`(TP-V2-7): fast-check 생성기는 상태 400~599, 알려진 code ∪ 모르는 문자열 ∪ 없음, 본문(JSON·비JSON·빈 문자열)이다. 제목이 비지 않고 원문 본문을 섞지 않는지 본다. 표의 code마다 예시도 둔다. 지금 `http`·`conflictKind` 테스트도 GREEN이어야 한다.
-- [ ] 6.4 커밋한다(`feat(web): HttpError carries code and detail; describeError picks a user sentence by code, then status (V2 Step 6)`).
+- [x] 6.2 `web/src/errors/describe.ts`: `describeError(err, lang?) → DescribedError`(BLM § 6.2의 순서, `raw`는 300자).
+- [x] 6.3 `errors/describe.prop.test.ts`(TP-V2-7): fast-check 생성기는 상태 400~599, 알려진 code ∪ 모르는 문자열 ∪ 없음, 본문(JSON·비JSON·빈 문자열)이다. 제목이 비지 않고 원문 본문을 섞지 않는지 본다. 표의 code마다 예시도 둔다. 지금 `http`·`conflictKind` 테스트도 GREEN이어야 한다.
+- [x] 6.4 커밋한다(`feat(web): HttpError carries code and detail; describeError picks a user sentence by code, then status (V2 Step 6)`).
 
 ### Step 7 — 요청 도우미와 capabilities (FR-C13, BR-V2-24·25)
 - [ ] 7.1 `web/src/hooks/useResource.ts`: AbortController, 요청 번호로 늦은 답 버림, `reload` 중 data 유지, 언마운트 abort.

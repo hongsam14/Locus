@@ -30,15 +30,22 @@ def file_ids(file: WorldFile) -> set[str]:
     return ids
 
 
+def remapped_id(target_world_id: str, old_id: str) -> str:
+    """The id ``old_id`` of a World File takes in ``target_world_id`` when the file is
+    remapped. The one formula: ``remap_ids`` uses it, and so does moving a demo's
+    translation entries along with their file (V3, BR-V3-18)."""
+    return str(uuid.uuid5(NAMESPACE_LOCUS, f"{target_world_id}:{old_id}"))
+
+
 def remap_ids(file: WorldFile, target_world_id: str) -> WorldFile:
-    """Rewrite every id and reference to ``uuid5(NAMESPACE_LOCUS, f"{target}:{old}")``
+    """Rewrite every id and reference to ``remapped_id(target, old)``
     and every ``world_id`` (and ``world.id``) to ``target_world_id``. Deterministic."""
     known = file_ids(file)
 
     def new(old: str | None) -> str | None:
         if old is None or old not in known:
             return old
-        return str(uuid.uuid5(NAMESPACE_LOCUS, f"{target_world_id}:{old}"))
+        return remapped_id(target_world_id, old)
 
     def new_list(ids: list[str]) -> list[str]:
         return [new(i) or i for i in ids]

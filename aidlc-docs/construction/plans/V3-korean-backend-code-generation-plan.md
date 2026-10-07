@@ -135,11 +135,11 @@
   - 커밋: `feat(localization): a translation service without an LLM reads and seeds; seed and carry (V3)`
 
 ### Step 4 — world: 원문 목록과 id 옮기기 (BLM § 5, BR-V3-18~20)
-- [ ] 4.1 `locus/world/worldfile/texts.py`를 만든다: `translatable_texts(file: WorldFile) -> dict[tuple[str, str, str], str]`.
+- [x] 4.1 `locus/world/worldfile/texts.py`를 만든다: `translatable_texts(file: WorldFile) -> dict[tuple[str, str, str], str]`.
   - 대상은 `world`(`file.world`), `regions`, `npcs`, `event_seeds`, `knowledge`의 `TRANSLATABLE_FIELDS`다.
   - 빈 원문은 뺀다. 순수 함수다.
-- [ ] 4.2 `remap.py`: `remapped_id(target_world_id, old_id) -> str`를 공개하고, `remap_ids`의 `new()`가 이 함수를 쓰게 한다. 값은 바뀌지 않는다.
-- [ ] 4.3 테스트:
+- [x] 4.2 `remap.py`: `remapped_id(target_world_id, old_id) -> str`를 공개하고, `remap_ids`의 `new()`가 이 함수를 쓰게 한다. 값은 바뀌지 않는다.
+- [x] 4.3 테스트:
   - TP-V3-3: PBT. 재매핑한 파일의 id 집합이 `{remapped_id(t, i) for i in file_ids}`와 같다.
   - `translatable_texts`: Emberleaf 123개, 빈 원문은 빠짐.
   - 커밋: `feat(world): translatable texts of a World File; remapped_id is public (V3)`

@@ -228,5 +228,10 @@ data/
 .vscode/
 .DS_Store
 
-# Claude Code local settings (machine-specific)
-.claude/
+# Claude Code local settings (machine-specific) — except the AI-DLC reviewer agents,
+# which are part of the Plan Review rule (.aidlc/aws-aidlc-rule-details/common/plan-review.md)
+.claude/*
+!.claude/agents/
+
+# stray root node_modules from running npx outside web/
+node_modules/

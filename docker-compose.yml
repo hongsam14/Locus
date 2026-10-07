@@ -1,11 +1,18 @@
-# Default `docker compose up -d` brings up the infrastructure tier:
-#   neo4j, opensearch, dashboard (OpenSearch Dashboards @ :5601).
-# Profiles:
-#   - service: production-ish deployment — adds the app (FastAPI) + web (UI).
-#       docker compose --profile service up -d --build
+# Locus — five services, three profiles (U8 Infra §1).
+#   default  neo4j, opensearch, postgres        docker compose up -d
+#   service  + app (FastAPI :8000) + web (UI :3000)
+#                                               docker compose --profile service up -d --build
+#   tools    + dashboard (OpenSearch Dashboards) docker compose --profile tools up -d dashboard
+# Stop everything: docker compose --profile service --profile tools down
 #
-# First run: ./scripts/setup-volumes.sh  (creates ./data bind-mount dirs)
-#            cp env.example .env          (set OPENAI_API_KEY, NEO4J_PASSWORD, ...)
+# First run: ./scripts/setup-volumes.sh  (creates the ./data bind-mount dirs; safe to rerun)
+#            cp env.example .env          (set NEO4J_PASSWORD and SESSION_DB_PASSWORD;
+#                                          OPENAI_API_KEY is optional — the demo plays without it)
+#
+# Infrastructure ports listen on 127.0.0.1 only. Host port numbers come from .env when a
+# default is taken: NEO4J_HTTP_PORT (7474), NEO4J_BOLT_PORT (7687), OPENSEARCH_PORT (9200),
+# SESSION_DB_PORT (5432), DASHBOARD_PORT (5601), API_PORT (8000), WEB_PORT (3000).
+# Containers reach each other on the compose network, so the app needs no change.
 services:
   # ---------------------------------------------------------------------------
   # Infrastructure
@@ -15,8 +22,8 @@ services:
     container_name: locus-neo4j
     restart: unless-stopped
     ports:
-      - "7474:7474" # HTTP browser
-      - "7687:7687" # Bolt
+      - "127.0.0.1:${NEO4J_HTTP_PORT:-7474}:7474" # HTTP browser
+      - "127.0.0.1:${NEO4J_BOLT_PORT:-7687}:7687" # Bolt
     environment:
       # No hardcoded default — must be set in .env (see env.example).
       - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?NEO4J_PASSWORD is required (set it in .env)}
@@ -46,7 +53,7 @@ services:
     container_name: locus-opensearch
     restart: unless-stopped
     ports:
-      - "9200:9200"
+      - "127.0.0.1:${OPENSEARCH_PORT:-9200}:9200"
     environment:
       - discovery.type=single-node
       - plugins.security.disabled=true # local dev only (ID-Q2=A)
@@ -76,7 +83,7 @@ services:
     container_name: locus-postgres
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${SESSION_DB_PORT:-5432}:5432"
     environment:
       - POSTGRES_USER=${SESSION_DB_USER:-locus}
       # No hardcoded default — must be set in .env (see env.example).
@@ -92,7 +99,7 @@ services:
     networks:
       - locus-net
 
-  # OpenSearch Dashboards (index inspection UI) — http://localhost:5601
+  # OpenSearch Dashboards (index inspection UI) — profile tools, http://localhost:5601
   dashboard:
     image: opensearchproject/opensearch-dashboards:2.13.0
     container_name: locus-opensearch-dashboards
@@ -101,15 +108,17 @@ services:
       - OPENSEARCH_HOSTS=["http://opensearch:9200"]
       - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
     ports:
-      - "5601:5601"
+      - "127.0.0.1:${DASHBOARD_PORT:-5601}:5601"
     depends_on:
       opensearch:
         condition: service_healthy
     networks:
       - locus-net
+    profiles:
+      - tools
 
   # ---------------------------------------------------------------------------
-  # Application (profile: service) — needs OPENAI_API_KEY in .env
+  # Application (profile: service) — runs without OPENAI_API_KEY (the demo needs no LLM)
   # ---------------------------------------------------------------------------
   app:
     build: .
@@ -129,10 +138,14 @@ services:
       - NEO4J_URI=bolt://neo4j:7687
       - OPENSEARCH_URL=http://opensearch:9200
       - SESSION_DB_URL=postgresql+psycopg://${SESSION_DB_USER:-locus}:${SESSION_DB_PASSWORD:?SESSION_DB_PASSWORD is required (set it in .env)}@postgres:5432/${SESSION_DB_NAME:-locus_session}
+      - LOCUS_DATA_DIR=/app/data   # World File backups (<dir>/backups) survive container recreation
+    volumes:
+      - locus_data:/app/data
     ports:
       - "${API_PORT:-8000}:8000"
-    # bootstrap schema (no API key needed) then serve the API
-    command: ["sh", "-c", "python -m locus init-schema && uvicorn api.main:app --host 0.0.0.0 --port 8000"]
+    # bootstrap schema (no API key needed) then serve the API.
+    # --workers 1: the in-process WorldCache assumes a single worker (U2 Q6=A).
+    command: ["sh", "-c", "python -m locus init-schema && uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 1"]
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
       interval: 15s
@@ -155,6 +168,12 @@ services:
         condition: service_healthy
     ports:
       - "${WEB_PORT:-3000}:80"
+    healthcheck:
+      # 127.0.0.1, not localhost: localhost can resolve to ::1 where nginx does not listen
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     networks:
       - locus-net
     profiles:
@@ -195,6 +214,8 @@ volumes:
       type: none
       o: bind
       device: ./data/opensearch
+  locus_data:
+    driver: local
   postgres_data:
     driver: local
     driver_opts:

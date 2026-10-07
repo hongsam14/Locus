@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { t } from "../i18n";
 import { Button } from "./Button";
 
 /** Confirm dialog (X2 presentational). Used by X3 for destructive actions. */
@@ -6,9 +7,10 @@ export function Modal({
   open,
   title,
   children,
-  confirmLabel = "확인",
-  cancelLabel = "취소",
+  confirmLabel = t("action.confirm"),
+  cancelLabel = t("action.cancel"),
   confirmTone = "primary",
+  busy = false,
   onConfirm,
   onCancel,
 }: {
@@ -18,6 +20,7 @@ export function Modal({
   confirmLabel?: string;
   cancelLabel?: string;
   confirmTone?: "primary" | "danger";
+  busy?: boolean; // the confirmed request is running: no second click (U6 review #13)
   onConfirm?: () => void;
   onCancel?: () => void;
 }) {
@@ -35,7 +38,7 @@ export function Modal({
           <Button size="sm" onClick={onCancel}>
             {cancelLabel}
           </Button>
-          <Button size="sm" variant={confirmTone} onClick={onConfirm}>
+          <Button size="sm" variant={confirmTone} onClick={onConfirm} disabled={busy}>
             {confirmLabel}
           </Button>
         </div>

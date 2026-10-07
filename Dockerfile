@@ -6,12 +6,14 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install the package
-COPY pyproject.toml README.md ./
+# Install the package (locus = core boundaries, api = FastAPI composition root)
+COPY pyproject.toml README.md LICENSE ./
 COPY locus ./locus
+COPY api ./api
 RUN pip install --no-cache-dir .
 
 EXPOSE 8000
 
-# Default command is overridden by docker-compose (U1: init-schema + idle).
+# docker-compose overrides this with `init-schema && uvicorn api.main:app`;
+# standalone, the image only bootstraps the schemas.
 CMD ["python", "-m", "locus", "init-schema"]

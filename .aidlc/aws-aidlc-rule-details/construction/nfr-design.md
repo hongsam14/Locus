@@ -51,6 +51,12 @@ Incorporate NFR requirements into unit design using patterns and logical compone
 - Create `aidlc-docs/construction/{unit-name}/nfr-design/nfr-design-patterns.md`
 - Create `aidlc-docs/construction/{unit-name}/nfr-design/logical-components.md`
 
+### Step 6a: Plan Review (MANDATORY — before the completion message)
+- **Load `common/plan-review.md`** and run it for this stage: reviewer **architecture-reviewer**, class **adversarial (max 2 iterations; builder fixes between passes)**, reviewed artifact `aidlc-docs/construction/{unit-name}/nfr-design/nfr-design-patterns.md` plus `logical-components.md` (a single light note at Minimal depth: class lowered to advisory)
+- Log the request and the verdict in `aidlc-docs/audit.md` and note the verdict in `aidlc-docs/aidlc-state.md` as plan-review.md § 3 directs
+- Do not proceed to Step 7 until a verdict is recorded; present the Review brief (plan-review.md § 5) immediately before the "WHAT'S NEXT?" block
+- After a "Request Changes" revision, re-run this step before re-presenting the approval
+
 ### Step 7: Present Completion Message
 - Present completion message in this structure:
      1. **Completion Announcement** (mandatory): Always start with this:

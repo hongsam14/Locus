@@ -1,136 +1,203 @@
-"""FastAPI application factory for Locus (U8 serving + U9 authoring)."""
+"""FastAPI application factory — composes the five boundaries (AD-R2, FR-A3).
+
+Each boundary is assembled by its own ``assemble_*`` and handed to its routers
+through a typed container. A boundary that fails to assemble is left ``None``
+and only its routes answer 503; the others keep working.
+"""
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+import logging
+import math
+from contextlib import asynccontextmanager
 
-from locus.commonsense_wiki import CrossWorldWikiExplorer, WikiAdmin
-from locus.config import get_settings
-from locus.llm.factory import ProviderFactory
-from locus.query import QueryEngine, WorldLoader
-from locus.services import Exporter, GraphEditor, PipelineOrchestrator
-from locus.storage import Neo4jGraphRepository, OpenSearchRepository, SchemaInitializer
+from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
-from .routers import authoring as authoring_router
-from .routers import query as query_router
-from .routers import session as session_router
+from api.deps import Containers, lang_settings
+from api.routers import gm as gm_router
+from api.routers import knowledge as knowledge_router
+from api.routers import play as play_router
+from api.routers import world as world_router
+from api.uploads import BodyLimitMiddleware
+from locus.knowledge.wiring import KnowledgeContainer
+from locus.localization.wiring import LocalizationContainer
+from locus.play.wiring import PlayContainer
+from locus.shared.wiring import SharedContainer
+from locus.world.wiring import WorldContainer
 
-_STATE_KEYS = (
-    "query_engine",
-    "orchestrator",
-    "wiki_admin",
-    "wiki_explorer",
-    "graph_editor",
-    "exporter",
-    "graph_repo",
-    "augmentation_service",
-    "session_service",
-    "game_master",
-    "session_query",
-    "translation",
-)
+logger = logging.getLogger(__name__)
 
 
-def _wire_default(app: FastAPI) -> None:  # pragma: no cover - requires live services
-    s = get_settings()
-    graph = Neo4jGraphRepository(
-        uri=s.neo4j_uri, user=s.neo4j_user, password=s.neo4j_password.get_secret_value()
+def _finite(value):
+    """``value`` with every NaN / Infinity float replaced by its text, for a JSON body."""
+    if isinstance(value, float) and not math.isfinite(value):
+        return str(value)
+    if isinstance(value, dict):
+        return {k: _finite(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_finite(v) for v in value]
+    if isinstance(value, bytes):  # an undecodable body is echoed as text (U3 review S27)
+        return value.decode("utf-8", errors="replace")
+    return jsonable_encoder(value) if not isinstance(value, (str, int, float, bool)) else value
+
+
+def assemble_all(containers: Containers) -> Containers:  # pragma: no cover - live services
+    """Fill in every container that was not injected. Failures isolate per boundary."""
+    from locus.knowledge.wiring import assemble_knowledge
+    from locus.localization.storage.schema import ensure_localization_schema
+    from locus.localization.wiring import assemble_localization
+    from locus.play.storage.schema import ensure_play_schema
+    from locus.play.wiring import assemble_play
+    from locus.shared.storage.schema import ensure_world_schema
+    from locus.shared.wiring import assemble_shared
+    from locus.world.wiring import assemble_world
+
+    if containers.shared is None:
+        containers.shared = assemble_shared(strict=False)
+        containers.owned.add("shared")
+    shared = containers.shared
+
+    def _try(name: str, fn):
+        try:
+            return fn()
+        except Exception:
+            logger.exception("%s boundary unavailable", name)
+            return None
+
+    if shared.graph is not None and shared.search is not None:
+        _try("world schema", lambda: ensure_world_schema(shared.graph, shared.search))
+    if shared.sql_engine is not None:
+        _try("play schema", lambda: ensure_play_schema(shared.sql_engine))
+        _try("localization schema", lambda: ensure_localization_schema(shared.sql_engine))
+
+    if containers.knowledge is None:
+        containers.knowledge = _try("knowledge", lambda: assemble_knowledge(shared))
+    if containers.world is None and containers.knowledge is not None:
+        containers.world = _try("world", lambda: assemble_world(shared, containers.knowledge))
+    if containers.play is None and containers.knowledge is not None:
+        containers.play = _try("play", lambda: assemble_play(shared, containers.knowledge))
+        if containers.play is not None:
+            containers.owned.add("play")  # only an owned executor may be shut down
+    if containers.localization is None:
+        containers.localization = _try("localization", lambda: assemble_localization(shared))
+        if containers.localization is not None:
+            containers.owned.add("localization")
+    return containers
+
+
+def create_app(
+    *,
+    shared: SharedContainer | None = None,
+    knowledge: KnowledgeContainer | None = None,
+    world: WorldContainer | None = None,
+    play: PlayContainer | None = None,
+    localization: LocalizationContainer | None = None,
+    assemble_missing: bool | None = None,
+) -> FastAPI:
+    """Build the app.
+
+    Tests inject the containers they need (the rest answer 503). With no
+    container injected, everything is assembled from settings on startup;
+    ``assemble_missing=True`` forces assembly of the missing ones even when some
+    were injected.
+    """
+    containers = Containers(
+        shared=shared, knowledge=knowledge, world=world, play=play, localization=localization
     )
-    search = OpenSearchRepository(
-        url=s.opensearch_url, index=s.opensearch_index, vector_dimension=s.embedding_dimension
-    )
-    graph.connect()
-    search.connect()
-    SchemaInitializer(graph, search).initialize()
+    injected = any(c is not None for c in (shared, knowledge, world, play, localization))
+    do_assemble = (not injected) if assemble_missing is None else assemble_missing
 
-    factory = ProviderFactory(s)
-    llm, embedding = factory.llm(), factory.embedding()
-    from locus.commonsense_wiki.base import CommonsenseWiki
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        if do_assemble:
+            assemble_all(containers)
+        app.state.containers = containers
+        if containers.play is not None:  # U4 BR-U4-15: runs interrupted by a restart
+            try:
+                stale = containers.play.repo.fail_stale_runs(reason="interrupted")
+                if stale:
+                    logger.warning("marked %d interrupted turn run(s) failed", stale)
+            except Exception:  # pragma: no cover - storage down: play routes will tell
+                logger.exception("could not clean up stale turn runs")
+        try:
+            yield
+        finally:
+            # Only an owned play container's executor is shut down: shutting down an
+            # injected one is one-way and left its owner's later requests failing
+            # (code review U4-2 #14).
+            if "play" in containers.owned and containers.play is not None:
+                timeout = (
+                    containers.shared.settings.turn_shutdown_timeout_s
+                    if containers.shared is not None
+                    else 30.0
+                )
+                try:
+                    containers.play.executor.shutdown(timeout)
+                except Exception:  # pragma: no cover
+                    logger.exception("turn executor shutdown failed")
+            # close only what assemble_all created; injected containers stay
+            # usable for their owner (review U1 #13)
+            if "localization" in containers.owned and containers.localization is not None:
+                containers.localization.close()
+            if "shared" in containers.owned and containers.shared is not None:
+                containers.shared.close()
 
-    loader = WorldLoader(graph)
+    app = FastAPI(title="Locus", version="0.2.0", lifespan=lifespan)
+    app.state.containers = containers
+    app.add_middleware(BodyLimitMiddleware)  # U3, NFR-6: 48 MiB, World File 20 MiB
 
-    def _wiki_for(world_id: str) -> CommonsenseWiki:  # single-world (BR-A9)
-        return CommonsenseWiki(search, llm, embedding, world_id=world_id)
-
-    app.state.graph_repo = graph
-    app.state.query_engine = QueryEngine(loader)
-    app.state.orchestrator = PipelineOrchestrator.from_factory(factory, graph, search)
-    app.state.wiki_admin = WikiAdmin(graph, search, embedding)
-    app.state.wiki_explorer = CrossWorldWikiExplorer(graph, search, embedding)
-    editor = GraphEditor(graph, search, embedding)
-    app.state.graph_editor = editor
-    app.state.exporter = Exporter(loader)
-
-    from locus.augmentation import AugmentationEngine, AugmentationService
-
-    app.state.augmentation_service = AugmentationService(
-        AugmentationEngine(loader, editor, graph, wiki_provider=_wiki_for, llm=llm)
-    )
-
-    from locus.session import (
-        EventSuggester,
-        GameMasterService,
-        RumorGenerator,
-        SessionQueryEngine,
-        SessionService,
-    )
-    from locus.storage.postgres_session_repo import PostgresSessionRepository
-
-    session_repo = PostgresSessionRepository(s.session_db_url)
-    session_repo.connect()
-    session_repo.ensure_schema()
-    app.state.session_repo = session_repo
-    app.state.session_service = SessionService(session_repo, graph)
-    app.state.game_master = GameMasterService(
-        session_repo,
-        RumorGenerator(llm),
-        loader,
-        suggester=EventSuggester(llm),
-        rumor_params=get_settings().rumor_dynamics_params(),
-    )
-
-    # X1 localization — cache-first translation over the session store. Reads are
-    # LLM-free; cache misses warm on a background thread so reads never block
-    # (review #3). Disabled -> originals shown.
-    translation = None
-    if s.translation_enabled:
-        from concurrent.futures import ThreadPoolExecutor
-
-        from locus.translation import TranslationService, Translator
-
-        warm_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="xlate-warm")
-        translation = TranslationService(
-            session_repo,
-            Translator(llm),
-            default_lang=s.translation_target_lang,
-            warm_scheduler=warm_pool.submit,
-        )
-    app.state.translation = translation
-    app.state.session_query = SessionQueryEngine(
-        session_repo, loader, translation=translation, target_lang=s.translation_target_lang
-    )
-
-
-def create_app(**state) -> FastAPI:
-    """Build the app. Pass explicit services (query_engine=..., orchestrator=...) for tests;
-    if none are provided, services are wired from settings on startup."""
-    app = FastAPI(title="Locus", version="0.1.0")
-    for key in _STATE_KEYS:
-        setattr(app.state, key, state.get(key))
-
-    if not any(state.get(k) for k in _STATE_KEYS):
-
-        @app.on_event("startup")
-        def _startup() -> None:  # pragma: no cover - requires live DB
-            _wire_default(app)
+    @app.exception_handler(RequestValidationError)
+    async def _invalid(_request: Request, exc: RequestValidationError) -> JSONResponse:
+        """The default 422 body echoes the input, and a NaN or Infinity input cannot be
+        written as JSON (it became a 500). Non-finite numbers are echoed as text (U3,
+        U7 review §3)."""
+        return JSONResponse(status_code=422, content={"detail": _finite(exc.errors())})
 
     @app.get("/health", tags=["health"])
-    def health() -> dict:
-        return {"status": "ok"}
+    def health() -> JSONResponse:
+        """``ok`` = every boundary up, ``degraded`` = some down, 503 = none up (review U1 #4)."""
+        c: Containers = app.state.containers
+        boundaries = {
+            name: getattr(c, name) is not None
+            for name in ("world", "knowledge", "play", "localization")
+        }
+        if not any(boundaries.values()):
+            return JSONResponse(
+                status_code=503, content={"status": "unavailable", "boundaries": boundaries}
+            )
+        status = "ok" if all(boundaries.values()) or not do_assemble else "degraded"
+        return JSONResponse(content={"status": status, "boundaries": boundaries})
 
-    app.include_router(query_router.router)
-    app.include_router(authoring_router.router)
-    app.include_router(session_router.router)
+    @app.get("/api/capabilities", tags=["meta"])
+    def capabilities() -> dict[str, bool]:
+        """Which providers this server has (U8, BR-U8-23): the screens warn ahead and
+        switch LLM buttons off when ``llm`` is false. Read from the providers assembled
+        at startup; ``/health`` is unchanged (a server without a key is still ``ok``)."""
+        shared = app.state.containers.shared
+        return {
+            "llm": shared is not None and shared.llm is not None,
+            "vlm": shared is not None and shared.vlm is not None,
+            "embedding": shared is not None and shared.embedding is not None,
+        }
+
+    @app.get("/api/langs", tags=["meta"])
+    def langs(request: Request) -> dict[str, object]:
+        """The display languages this server accepts (review U5 #2). The web client sends
+        ``?lang=`` only for one of these, so a server configured for English only never
+        receives ``?lang=ko`` and answers 400 to every read."""
+        settings = lang_settings(request)
+        return {
+            "default": settings.translation_target_lang,
+            "supported": list(settings.supported_langs),
+        }
+
+    app.include_router(world_router.router)
+    app.include_router(knowledge_router.router)
+    app.include_router(play_router.router)
+    app.include_router(gm_router.router)
     return app
 
 

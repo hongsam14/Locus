@@ -1,5 +1,7 @@
 # Integration Test Instructions — Locus (live walkthrough)
 
+> **〔Purpose Restructure U8〕** 이 주기의 통합 확인은 `scripts/live_scenario.py`가 한다. 안내는 `purpose-restructure/integration-test-instructions.md`에 있다. 아래는 MVP 주기(2026-06)의 기록이고, 명령 일부(`docker-compose`, 옛 데모 이름)는 지금과 다르다.
+
 Tests the units working together against **real Neo4j + OpenSearch + OpenAI**. Operator-run (needs `OPENAI_API_KEY` + Docker). Unit tests already cover logic offline; this validates wiring, persistence, and the end-to-end SC-1/2/4.
 
 ## Setup

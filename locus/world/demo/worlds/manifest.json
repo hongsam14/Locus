@@ -1,0 +1,15 @@
+[
+  {
+    "name": "emberleaf",
+    "title": "Emberleaf Isle",
+    "description": "Tree-top mages, meadow archers, cliff warriors and harbor rogues on an island split by cliffs and joined by a river. Start at the harbor; three event seeds wait.",
+    "file": "emberleaf.world.json",
+    "start_region_id": "region-saltwake",
+    "credits": "An original world inspired by the structure and mood of MapleStory's Victoria Island. Not affiliated with Nexon.",
+    "sources": {
+      "memos": ["emberleaf/memo.md"],
+      "maps": ["emberleaf/map.json"],
+      "map_images": []
+    }
+  }
+]

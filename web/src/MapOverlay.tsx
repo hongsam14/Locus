@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { isDrag, toNorm } from "./features/editor/drag";
 import { autoLayout } from "./layout";
 import type { ConnectionEdge, Region } from "./types";
 import { edgeStyle } from "./viz";
@@ -13,6 +14,17 @@ interface Props {
   mapImageUrl?: string | null;
   onSelect: (id: string) => void;
   onMove: (id: string, x: number, y: number) => void;
+  // U3 editor (Q5=A): a press-and-release without moving never moves (BR-U3-30);
+  // ``draggable=false`` turns dragging off (the add/connect tools)
+  draggable?: boolean;
+  onBackground?: (x: number, y: number) => void; // a click on empty map, normalized
+  onSelectConnection?: (c: ConnectionEdge) => void;
+  selectedConnection?: ConnectionEdge | null;
+  // U7 GM screen: the player's region is ringed (BR-U7-22); the world state overlay
+  // colors regions and puts a count badge on them (BR-U7-23)
+  markerId?: string | null;
+  regionFill?: Record<string, string>;
+  regionBadge?: Record<string, string>;
 }
 
 export function MapOverlay({
@@ -22,21 +34,37 @@ export function MapOverlay({
   mapImageUrl,
   onSelect,
   onMove,
+  markerId,
+  regionFill,
+  regionBadge,
+  draggable = true,
+  onBackground,
+  onSelectConnection,
+  selectedConnection,
 }: Props) {
   const pos = autoLayout(regions);
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const [drag, setDrag] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [drag, setDrag] = useState<{
+    id: string;
+    x: number;
+    y: number;
+    start: { x: number; y: number }; // screen pixels at the press
+    moved: boolean;
+  } | null>(null);
 
-  const coordOf = (id: string) => (drag && drag.id === id ? { x: drag.x, y: drag.y } : pos[id]);
+  const coordOf = (id: string) =>
+    drag && drag.id === id && drag.moved ? { x: drag.x, y: drag.y } : pos[id];
 
   function clientToNorm(e: { clientX: number; clientY: number }) {
-    const rect = svgRef.current?.getBoundingClientRect();
-    if (!rect) return { x: 0.5, y: 0.5 };
-    return {
-      x: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)),
-      y: Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height)),
-    };
+    return toNorm(e, svgRef.current?.getBoundingClientRect());
   }
+  const isSelectedConnection = (c: ConnectionEdge) =>
+    selectedConnection != null &&
+    selectedConnection.kind === c.kind &&
+    ((selectedConnection.source_region_id === c.source_region_id &&
+      selectedConnection.target_region_id === c.target_region_id) ||
+      (selectedConnection.source_region_id === c.target_region_id &&
+        selectedConnection.target_region_id === c.source_region_id));
 
   return (
     <div
@@ -58,13 +86,24 @@ export function MapOverlay({
         onPointerMove={(e) => {
           if (drag) {
             const n = clientToNorm(e);
-            setDrag({ id: drag.id, x: n.x, y: n.y });
+            const moved = drag.moved || isDrag(drag.start, { x: e.clientX, y: e.clientY });
+            setDrag({ ...drag, x: n.x, y: n.y, moved });
           }
         }}
         onPointerUp={() => {
           if (drag) {
-            onMove(drag.id, drag.x, drag.y);
+            if (drag.moved) onMove(drag.id, drag.x, drag.y); // a click saves nothing (B7)
             setDrag(null);
+          }
+        }}
+        // a drag the browser took away (a touch scroll, a lost window) ends unsaved; the
+        // capture after a normal release ends nothing, the release already did (U3 S23)
+        onPointerCancel={() => setDrag(null)}
+        onLostPointerCapture={() => setDrag(null)}
+        onClick={(e) => {
+          if (onBackground && e.target === e.currentTarget) {
+            const n = clientToNorm(e);
+            onBackground(n.x, n.y);
           }
         }}
       >
@@ -73,6 +112,7 @@ export function MapOverlay({
           const b = coordOf(c.target_region_id);
           if (!a || !b) return null;
           const s = edgeStyle(c.kind, c.weight);
+          const picked = isSelectedConnection(c);
           return (
             <line
               key={i}
@@ -82,9 +122,11 @@ export function MapOverlay({
               x2={b.x * W}
               y2={b.y * H}
               stroke={s.color}
-              strokeWidth={s.width}
+              strokeWidth={picked ? s.width + 3 : s.width}
               strokeOpacity={s.opacity}
               strokeDasharray={s.dashed ? "6 4" : undefined}
+              style={onSelectConnection ? { cursor: "pointer" } : undefined}
+              onClick={onSelectConnection ? () => onSelectConnection(c) : undefined}
             />
           );
         })}
@@ -96,15 +138,39 @@ export function MapOverlay({
               key={r.id}
               data-testid={`region-marker-${r.id}`}
               transform={`translate(${c.x * W}, ${c.y * H})`}
-              style={{ cursor: "grab" }}
-              onPointerDown={() => setDrag({ id: r.id, x: c.x, y: c.y })}
+              style={{ cursor: draggable ? "grab" : "pointer" }}
+              onPointerDown={(e) => {
+                if (draggable) {
+                  // the marker keeps the pointer: a release outside the map still ends the
+                  // drag, and a click still lands on the marker (U3 review S23)
+                  try {
+                    e.currentTarget.setPointerCapture?.(e.pointerId);
+                  } catch {
+                    // no active pointer (a synthetic event): the svg handlers still apply
+                  }
+                  const start = { x: e.clientX, y: e.clientY };
+                  setDrag({ id: r.id, x: c.x, y: c.y, start, moved: false });
+                }
+              }}
               onClick={() => onSelect(r.id)}
             >
+              {markerId === r.id && (
+                <circle
+                  data-testid={`player-marker-${r.id}`}
+                  r={15}
+                  style={{ fill: "none", stroke: "var(--color-danger)" }}
+                  strokeWidth={3}
+                />
+              )}
               <circle
                 r={10}
+                data-testid={regionFill?.[r.id] ? `region-fill-${r.id}` : undefined}
                 // var() resolves in CSS (style), not in SVG presentation attributes
                 style={{
-                  fill: selectedId === r.id ? "var(--color-ink)" : "var(--color-paper-card)",
+                  fill:
+                    selectedId === r.id
+                      ? "var(--color-ink)"
+                      : (regionFill?.[r.id] ?? "var(--color-paper-card)"),
                   stroke: "var(--color-ink)",
                 }}
                 strokeWidth={2}
@@ -116,7 +182,19 @@ export function MapOverlay({
                 style={{ fill: "var(--color-ink)", fontFamily: "var(--font-display)" }}
               >
                 {r.name}
+                {markerId === r.id ? " ●" : ""}
               </text>
+              {regionBadge?.[r.id] && (
+                <text
+                  data-testid={`region-badge-${r.id}`}
+                  x={12}
+                  y={20}
+                  fontSize={11}
+                  style={{ fill: "var(--color-ink-soft)" }}
+                >
+                  {regionBadge[r.id]}
+                </text>
+              )}
             </g>
           );
         })}

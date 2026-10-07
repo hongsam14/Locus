@@ -1483,3 +1483,2585 @@ Locus — 초기 인텐트 (AI-DLC Inception Input)
 **Context**: Operations — cycle complete.
 
 ---
+
+## Purpose Restructure Cycle — Initial Request
+**Timestamp**: 2026-09-29T02:12:56Z
+**User Input**: "ai-dlc를 사용해서 현재 프로젝트를 다시 개편해서 조금 더 명료한 목적의 프로젝트로 바꾸고 싶어"
+**AI Response**: Started a new AI-DLC cycle on the completed project (brownfield). Loaded core-workflow + common rules (process-overview, session-continuity, content-validation, question-format-guide) + extension opt-ins (security-baseline, property-based-testing). Full welcome message not re-displayed (shown at project start 2026-06-07); brief welcome-back status given instead.
+**Context**: New cycle — Purpose Restructure. INCEPTION / Workspace Detection.
+
+---
+
+## Purpose Restructure Cycle — Workspace Detection
+**Timestamp**: 2026-09-29T02:12:56Z
+**User Input**: (none — informational stage)
+**AI Response**: Workspace Detection complete. Findings: existing aidlc-state.md (prior cycle UX Improvement COMPLETE 2026-08-11, git clean on main @ ee61277); brownfield — Python 3.11+ backend (locus/ 14 packages ~8.2k lines, api/ ~0.5k), React+Vite+TS frontend (web/src ~2.3k), tests ~5.1k lines (305 offline GREEN at last cycle); build = setuptools/pyproject + npm; infra = Docker Compose (neo4j/opensearch/postgres); no CI. No `aidlc-docs/inception/reverse-engineering/` artifacts exist (project began greenfield; prior brownfield cycles used design docs as RE-equivalent). Decision: EXECUTE Reverse Engineering this cycle — a purpose-level restructure needs one current picture of what the system does and which feature serves which purpose; the per-cycle design docs (5 cycles) do not give that. Next: Reverse Engineering.
+**Context**: INCEPTION / Workspace Detection → Reverse Engineering.
+
+---
+
+## Purpose Restructure Cycle — Reverse Engineering Complete (approval prompt)
+**Timestamp**: 2026-09-29T02:29:54Z
+**User Input**: (none since initial request)
+**AI Response**: Reverse Engineering executed via 3 parallel read-only analyses (canonical pipeline / session·translation·API / frontend·tests·tooling). Offline runs: pytest 281 passed (87% cov), vitest 24 passed, tsc/ruff/black clean, mypy 16 errors. Reproduced 5 defects in in-memory simulations (connection hints lost on region merge; dangling entity ids across inputs; images not sendable as JSON; augmentation Entity confirm/edit KeyError; rumor/LLM-call geometric growth 9→36→144→576 per turn + promoted rumor disables region decay). Generated aidlc-docs/inception/reverse-engineering/{business-overview (+Purpose Map), architecture, code-structure, api-documentation, component-inventory, technology-stack, dependencies, code-quality-assessment, reverse-engineering-timestamp}.md. Key finding: two product axes — canonical spatial-knowledge builder vs PostgreSQL rumor/event simulator (simulation ≈35% backend code, ≈51% UI, ≈47% tests); core output 2 (per-region NPC knowledge) is computed per query, never stored/exported; no input UI; augmentation Q&A broken in UI; `service` docker profile cannot start (api/ not in image). Presented completion message with Request Changes / Approve & Continue.
+**Context**: INCEPTION / Reverse Engineering — awaiting approval.
+
+---
+
+## Purpose Restructure Cycle — Reverse Engineering Approval
+**Timestamp**: 2026-09-29T04:58:46Z
+**User Input**: "Approve & Continue"
+**AI Response**: Reverse Engineering APPROVED. Proceeding to Requirements Analysis (brownfield; loading RE artifacts business-overview/architecture/component-inventory/technology-stack/code-quality-assessment as context).
+**Context**: INCEPTION / Reverse Engineering → Requirements Analysis.
+
+---
+
+## Purpose Restructure Cycle — Requirements Analysis: Verification Questions (Round 1) Created
+**Timestamp**: 2026-09-29T04:59:47Z
+**User Input**: (none — questions issued)
+**AI Response**: Intent analysis: Request type = Refactoring + Enhancement (purpose-level restructure); Scope = System-wide; Complexity = Complex; Depth = Comprehensive. Request clarity = Vague ("더 명료한 목적") → direction must be set first. Created inception/requirements/purpose-restructure-verification-questions.md (round 1, direction only): Q1 central purpose (A builder / B living-world simulator / C unified NPC knowledge engine / D split into two products; no recommendation — depends on Q2), Q2 intended use (A game dev tool / B service-library / C portfolio-demo / D research; no recommendation), Q3 restructure depth (A boundaries + complete purpose path — recommended / B structure only / C docs only / D rewrite core), Q4 compatibility (A break freely — recommended / B keep NPC serving contract / C keep all APIs), Security opt-in (B No recommended, same as prior), PBT opt-in (B Partial recommended, same as prior). Round 2 (details depending on Q1: fate of other axis, add-ons, UI center, NPC output form, defect scope) deferred. Asking Q1+Q2 in chat per user's global question rule (1–2 long-background questions at a time).
+**Context**: INCEPTION / Requirements Analysis — awaiting round 1 answers.
+
+---
+
+## Purpose Restructure Cycle — Requirements Analysis: Round 1 Answers (Q1, Q2)
+**Timestamp**: 2026-09-29T05:24:54Z
+**User Input**: Q1 (중심 목적) = "(B). 사실상 사용자가 월드를 구성하고 동적인 TableRPG를 사용자가 플레이한다고 보면 됨." / Q2 (쓰임새) = "포트폴리오·데모"
+**AI Response**: Recorded Q1=B (living-world simulator is the center; user builds the world, then plays a dynamic TRPG) and Q2=C (portfolio/demo) in purpose-restructure-verification-questions.md. Noted ambiguities for round 2: user's role in play (GM vs player vs solo-with-auto-GM), whether play includes talking to NPCs (region knowledge + rumors as the play mechanic), player presence/movement over the topology, and world-construction UI. Asking Q3 (depth) + Q4 (compatibility) next in chat.
+**Context**: INCEPTION / Requirements Analysis — round 1 in progress.
+
+---
+
+## Purpose Restructure Cycle — Requirements Analysis: Round 1 Answers (Q3, Q4)
+**Timestamp**: 2026-09-29T06:06:28Z
+**User Input**: Q3 (개편 깊이) = "경계 재정리 + 플레이 완성 (Recommended)" / Q4 (호환성) = "자유롭게 깬다 (Recommended)"
+**AI Response**: Recorded Q3=A and Q4=A. Remaining round 1: Security/PBT opt-ins. Creating round 2 file (play model details depending on Q1=B TRPG).
+**Context**: INCEPTION / Requirements Analysis — round 1 in progress.
+
+---
+
+## Purpose Restructure Cycle — Requirements Analysis: Clarification Questions (Round 2) Created
+**Timestamp**: 2026-09-29T06:07:32Z
+**User Input**: (none — questions issued)
+**AI Response**: No contradictions in round 1 (B + portfolio + deep restructure + break freely are consistent). Ambiguity: Q1 answer says "사용자가 플레이" but current code has the user as GM with no player/character/NPC interaction. Created inception/requirements/purpose-restructure-clarification-questions.md: R2-1 user role in play (A player w/ system GM / B GM / C solo player + GM mode — recommended), R2-2 NPC encounter (A LLM NPC dialogue bounded by region knowledge+rumors — recommended / B browse region knowledge / C out of scope), R2-3 player presence & movement (A position + move along connections, actions advance turns — recommended / B free move, manual turns / C none), R2-4 world composition (A upload+correct / B templates / C manual editor / D A + one-click TRPG demo world — recommended), R2-5 canonical add-ons (A delete wiki/corroboration/cross-world/OpenSearch/augmentation/concept-art/LangGraph — recommended / B optional module / C keep), R2-6 content language (A generate in configured language, drop translation cache / B keep en+ko cache / C English only; no recommendation — depends on audience). Asking Security + PBT + R2-1 in chat.
+**Context**: INCEPTION / Requirements Analysis — awaiting answers.
+
+---
+
+## Purpose Restructure Cycle — Requirements Analysis: Answers (R2-1, Security, PBT)
+**Timestamp**: 2026-09-29T06:12:00Z
+**User Input**: R2-1 (사용자 역할) = "플레이어 + GM 모드 (Recommended)" / Security = "No (Recommended)" / PBT = "Partial (Recommended)"
+**AI Response**: Recorded R2-1=C (solo TRPG: player view by default + GM mode), Security Baseline = No (rules file not loaded; skip logged), PBT = Partial (loaded extensions/testing/property-based/property-based-testing.md; enforced PBT-02/03/07/08/09, others advisory). Round 1 complete. Asking R2-2 (NPC encounter) + R2-3 (player presence & movement) next. (Bash permission classifier transiently unavailable — recorded via file tools; timestamp approximate.)
+**Context**: INCEPTION / Requirements Analysis — round 2 in progress.
+
+---
+
+## Purpose Restructure Cycle — Requirements Analysis: Answers (R2-2, R2-3)
+**Timestamp**: 2026-09-29T06:20:00Z
+**User Input**: R2-2 (NPC 만남) = "LLM NPC와 대화 (Recommended)" / R2-3 (이동·턴) = "연결 따라 이동, 행동이 턴 진행 (Recommended)"
+**AI Response**: Recorded R2-2=A (LLM NPC dialogue bounded by region knowledge + heard rumors) and R2-3=A (player position; move only along connections, weight = travel cost; movement/actions advance turns). Asking R2-4 (world composition) + R2-5 (canonical add-ons) next. (timestamp approximate)
+**Context**: INCEPTION / Requirements Analysis — round 2 in progress.
+
+---
+
+## Purpose Restructure Cycle — Requirements Analysis: Answers (R2-4, R2-5) + Follow-ups Added
+**Timestamp**: 2026-09-29T06:30:00Z
+**User Input**: R2-4 (월드 구성) = "(1)+(4). 사실상 월드 에디터임. 그리고 그렇게 만든 월드를 저장하고 로드할 수도 있어야 함. (이미 저장포멧이 있긴 함)" / R2-5 (부가 기능) = "목록 중 대부분은 구현을 못한거임. 앞으로 계속 구현 할 기능이기 때문에 놔두는게 맞음"
+**AI Response**: Recorded R2-4 = upload+auto-build + one-click demo world (chat option 1) + manual draw-in-UI editor (chat option 4) → effectively a world editor, plus world save/load using an existing format. Recorded R2-5 = X (keep; they are unfinished features to be continued — not out of purpose). This reverses the earlier assumption that these add-ons are outside the purpose. Ambiguities → added to clarification file: R2-7 (how kept unfinished features are handled this cycle, since Q3=A reorganizes packages: A relocate only, finish later — recommended / B finish editor-facing ones now / C leave fully untouched) and R2-8 (which existing save format: A export JSON + add import — recommended / B extend Locus Map JSON / C store raw inputs and rebuild). Asking R2-6 (language) + R2-7 + R2-8 next.
+**Context**: INCEPTION / Requirements Analysis — round 2 in progress.
+
+---
+
+## Purpose Restructure Cycle — Requirements Analysis: Answers (R2-7, R2-8)
+**Timestamp**: 2026-09-29T06:40:00Z
+**User Input**: R2-7 (미완성 기능) = "에디터에 닿는 것은 이번에 완성" / R2-8 (저장 포맷) = "export JSON + 불러오기 추가 (Recommended)"
+**AI Response**: Recorded R2-7=B (relocate kept features into the world-construction boundary; finish the editor-facing ones this cycle — augmentation Q&A wired into the editor + defect fixes B1–B6, wiki lookups visible in editor; the rest relocated and marked in-progress) and R2-8=A (export JSON becomes the world save format with a version field + new elements such as NPCs; add import; save→load round-trip is a PBT-02 target). Asking R2-6 (content language), the last open question.
+**Context**: INCEPTION / Requirements Analysis — round 2 in progress.
+
+---
+
+## Purpose Restructure Cycle — Requirements Analysis: Answer (R2-6) — all questions answered
+**Timestamp**: 2026-09-29T06:50:00Z
+**User Input**: R2-6 (언어) = "(2). 영어를 쓴 이유는 벡터라이즈 때문임."
+**AI Response**: Recorded R2-6=B (generate content in English because embedded/vectorized text must stay in one language; keep the Korean translation cache; decouple translation from the session domain). All round 1 + round 2 + follow-up questions answered. Contradiction check: none (see requirements doc §3). Assumptions to confirm at approval: NPC dialogue (not embedded) generated directly in display language; blocked connections impassable; movement cost formula deferred to Functional Design. Generating inception/requirements/purpose-restructure-requirements.md.
+**Context**: INCEPTION / Requirements Analysis — generating requirements document.
+
+---
+
+## Purpose Restructure Cycle — Requirements Analysis Complete (approval prompt)
+**Timestamp**: 2026-09-29T07:06:48Z
+**User Input**: (none — all questions answered previously)
+**AI Response**: Generated inception/requirements/purpose-restructure-requirements.md (Comprehensive). §0 one-sentence purpose; §2 decision log (Q1=B/Q2=C/Q3=A/Q4=A, R2-1=C/R2-2=A/R2-3=A/R2-4=A+C+demo/R2-5=X keep/R2-6=B/R2-7=B/R2-8=A, Security=No, PBT=Partial); §3 no contradictions, RE add-on classification reversed per user; §4 terminology split (rumor/distortion/session); §5 personas (P-Builder, P-Player new, P-GM mode, P-Viewer new, P3 internalized); §6 end-to-end demo flow; §7 FR-A..FR-I with P0/P1/P2; §8 NFR-1..9; §9 constraints C-1..4 + assumptions A-1..5 to confirm at approval; §10 out of scope; §11 RE→FR traceability; §12 workflow proposal (User Stories EXECUTE, App Design EXECUTE, Units EXECUTE, NFR/Infra light). Presented completion message: Request Changes / Approve & Continue → User Stories.
+**Context**: INCEPTION / Requirements Analysis — awaiting approval.
+
+---
+
+## Purpose Restructure Cycle — Requirements Analysis Approval
+**Timestamp**: 2026-09-29T07:27:55Z
+**User Input**: "Approve & Continue"
+**AI Response**: Requirements APPROVED (assumptions A-1..A-5 accepted as stated). Proceeding to User Stories (EXECUTE — new personas P-Player/P-Viewer, new flows). Loading inception/user-stories.md rule + existing personas.md/stories.md for mapping.
+**Context**: INCEPTION / Requirements Analysis → User Stories.
+
+---
+
+## Purpose Restructure Cycle — User Stories Part 1: Assessment + Plan Created
+**Timestamp**: 2026-09-29T07:30:55Z
+**User Input**: (none — planning questions issued)
+**AI Response**: Assessment (inception/plans/purpose-restructure-user-stories-assessment.md): EXECUTE — new user features (player mode, NPC dialogue, world editor, save/load, demo), UX center shifts to player, personas change (P-Builder/P-Player/P-GM/P-Viewer; P3 internalized), old 30 stories written for the old purpose. Plan (inception/plans/purpose-restructure-story-generation-plan.md) with 3 questions: SP-R1 old stories handling (A new stories.md + disposition table, archive old — recommended / B append / C rewrite-delete), SP-R2 breakdown (A journey-based epics per §6 flow + enabler epic — recommended / B FR-area epics as before / C persona epics), SP-R3 format defaults (A keep G/W/T + P0/P1/P2 + medium — recommended / B coarser / C finer). Personas fixed from approved requirements §5 (not asked). Asking SP-R1 + SP-R2 in chat.
+**Context**: INCEPTION / User Stories — Part 1, awaiting answers.
+
+---
+
+## Purpose Restructure Cycle — User Stories Part 1: Answers (SP-R1, SP-R2)
+**Timestamp**: 2026-09-29T07:36:31Z
+**User Input**: SP-R1 (기존 스토리 30개) = "통째로 다시 쓰고 옛 것 삭제" / SP-R2 (묶는 방식) = "여정 기반 Epic + 조력자 Epic (Recommended)"
+**AI Response**: Recorded SP-R1=C (overwrite stories.md/personas.md; old content survives only in git history; no disposition table) and SP-R2=A (journey-based epics following requirements §6 flow + enabler epic for FR-A/E/I expressed as viewer/player value). Plan checklist step 5 (disposition table) becomes N/A. Asking SP-R3 (format defaults).
+**Context**: INCEPTION / User Stories — Part 1 in progress.
+
+---
+
+## Purpose Restructure Cycle — User Stories Part 1: Answer (SP-R3) + Plan Approval Prompt
+**Timestamp**: 2026-09-29T07:38:08Z
+**User Input**: SP-R3 (형식) = "이전과 같이 유지 (Recommended)"
+**AI Response**: Recorded SP-R3=A. Answer analysis: SP-R1=C / SP-R2=A / SP-R3=A — all single, consistent; no follow-ups. Plan finalized: 9 epics (E1 띄우기·둘러보기, E2 월드 만들기, E3 세션·이동, E4 NPC 대화, E5 살아 있는 세계·GM 개입, E6 다시 보기·저장, E7 enabler 읽히는 구조 FR-A/I, E8 enabler 폭주하지 않는 세계 FR-E, E9 enabler 언어 FR-G); G/W/T + P0/P1/P2 + medium granularity; overwrite stories.md/personas.md. Checklist step 5 marked N/A. Presented plan approval prompt: "Request Changes / Approve & Continue → Part 2 generation".
+**Context**: INCEPTION / User Stories — Part 1 plan awaiting approval.
+
+---
+
+## Purpose Restructure Cycle — User Stories Part 1 Plan APPROVED → Part 2 Generation
+**Timestamp**: 2026-09-29T07:41:13Z
+**User Input**: "Approve & Continue"
+**AI Response**: Story generation plan APPROVED. Executing Part 2: overwriting inception/user-stories/personas.md and stories.md per approved plan (9 epics: 6 journey + 3 enabler; G/W/T; P0/P1/P2; personas P-Builder/P-Player/P-GM/P-Viewer; assumptions A-1..A-5 embedded in ACs).
+**Context**: INCEPTION / User Stories — Part 2 generation started.
+
+---
+
+## Purpose Restructure Cycle — User Stories Part 2 Complete (approval prompt)
+**Timestamp**: 2026-09-29T07:47:47Z
+**User Input**: (none — generation per approved plan)
+**AI Response**: Overwrote inception/user-stories/personas.md (P-Builder / P-Player / P-GM mode / P-Viewer + internalized NPC runtime note + role-switch flow + persona↔epic map) and inception/user-stories/stories.md (9 epics: E1 띄우기·둘러보기 4 / E2 월드 만들기 8 / E3 세션·이동 4 / E4 NPC 대화 3 / E5 살아 있는 세계·GM 5 / E6 다시 보기·저장 4 / E7 읽히는 구조 6 / E8 폭주하지 않는 세계 5 / E9 언어 4 = 43 stories; P0 32 · P1 10 · P2 1; G/W/T ACs; assumptions A-1..A-5 embedded; FR→story traceability covering every FR/NFR; INVEST check). Plan checklist all [x] (step 5 N/A). Presented completion message: Request Changes / Approve & Continue → Workflow Planning.
+**Context**: INCEPTION / User Stories — generated, awaiting approval.
+
+---
+
+## Purpose Restructure Cycle — User Stories Approval
+**Timestamp**: 2026-09-29T07:53:52Z
+**User Input**: "Approve & Continue"
+**AI Response**: User Stories APPROVED (personas.md + stories.md, 9 epics · 43 stories). Proceeding to Workflow Planning. Loading inception/workflow-planning.md + common/content-validation.md; prior context = RE artifacts, requirements (approved), stories (approved).
+**Context**: INCEPTION / User Stories → Workflow Planning.
+
+---
+
+## Purpose Restructure Cycle — Workflow Planning Complete (approval prompt)
+**Timestamp**: 2026-09-29T07:57:11Z
+**User Input**: (none)
+**AI Response**: Generated inception/plans/purpose-restructure-execution-plan.md. Analysis: Architectural transformation (5 boundaries world/knowledge/play/localization/shared; 3-screen web; new Player/NPC/World File/conversation models; defect fixes A1/A2/A3/A4/A7/A11, B1–B6, C1–C3, Docker). Impact: user-facing Yes, structural Yes, data model Yes (no migration — Q4=A), API Yes (breaking, boundary prefixes; session region-knowledge API kept), NFR Yes. Risk High / Rollback Moderate / Testing Complex. EXECUTE: Application Design, Units Generation, per-unit FD (new-logic units), NFR light (Req+Design combined; play/editor/hardening units), Infra Design light (demo/deploy unit only), Code Generation, Build and Test. SKIP: Units Planning as separate stage, Infra Design elsewhere, FD for U1 (behavior-preserving move). Unit draft (sequential): U1 경계 재정리 → U2 World File + 캐노니컬 기반 → U3 월드 에디터 → U4 플레이어 모드 → U5 NPC 대화 + 언어 → U6 GM 모드 + 안정화 → U7 데모·배포·문서. ~30 stage-steps, ~3–4 working days. Mermaid validated (alphanumeric ids, no special chars in labels) + text alternative. Presented: Request Changes / Add Skipped Stages / Approve & Continue → Application Design.
+**Context**: INCEPTION / Workflow Planning — awaiting approval.
+
+---
+
+## Purpose Restructure Cycle — Workflow Planning Approval
+**Timestamp**: 2026-09-29T08:07:54Z
+**AI Prompt**: "Approve plan and proceed to Application Design?"
+**User Response**: "Approe & Continue"
+**Status**: Approved (typo "Approe" read as Approve)
+**Context**: Workflow plan approved — 7 stages to execute (App Design, Units Gen, per-unit FD/NFR-light/Infra-light, CodeGen, Build&Test), unit draft U1..U7. Proceeding to Application Design (loading inception/application-design.md).
+
+---
+
+## Purpose Restructure Cycle — Application Design: Plan + Questions Created
+**Timestamp**: 2026-09-29T08:11:59Z
+**User Input**: (none — design questions issued)
+**AI Response**: Created inception/plans/purpose-restructure-application-design-plan.md with 8 questions: AD-R1 top-level package layout (A five packages incl. shared — recommended / B four + flat shared / C separate distributions), AD-R2 composition root (A per-boundary wiring + typed containers via Depends — recommended / B single main with split functions), AD-R3 repository ports (A split Protocols, single PG adapter implements all — recommended / B split adapters / C keep), AD-R4 GameMaster facade (A remove, routers take SRP services — recommended / B keep as turn coordinator), AD-R5 player actions vs turn engine (A PlayService converts action→turn cost and calls advance_turn n times — recommended / B extend engine), AD-R6 API prefixes (A world/knowledge/play/gm — recommended / B three / C keep), AD-R7 canonical distance-rumor rename (A hearsay — recommended / B distant / C scope_type only), AD-R8 frontend structure (A react-router 3 screens — recommended / B state-based modes). Design decisions taken without questions listed (npc_scope pure module in play, WorldCache in knowledge, import = delete-then-persist, conversation history, tuning dataclasses, event-suggestion context via knowledge). Asking AD-R1 + AD-R2 in chat; user may say "나머지는 권장대로".
+**Context**: INCEPTION / Application Design — awaiting answers.
+
+---
+
+## Purpose Restructure Cycle — Application Design: Answers (AD-R1, AD-R2)
+**Timestamp**: 2026-09-29T08:19:03Z
+**User Input**: AD-R1 (패키지 배치) = "다섯 패키지로 완전히 접기 (Recommended)" / AD-R2 (조립 루트) = "경계별 wiring + 타입 컨테이너 (Recommended)"
+**AI Response**: Recorded AD-R1=A (locus/{world,knowledge,play,localization,shared}) and AD-R2=A (assemble_<boundary>() → typed Container dataclasses injected via Depends; no app.state string lookup). Asking AD-R3 (port split) + AD-R4 (GM facade).
+**Context**: INCEPTION / Application Design — questions in progress.
+
+---
+
+## Purpose Restructure Cycle — Application Design: Answers (AD-R3, AD-R4)
+**Timestamp**: 2026-09-29T08:23:25Z
+**User Input**: AD-R3 (포트 분할) = "Protocol은 나누고 PG 어댑터는 하나 (Recommended)" / AD-R4 (GM 파사드) = "없애고 라우터가 서비스를 직접 받기 (Recommended)"
+**AI Response**: Recorded AD-R3=A (7 play store Protocols + TranslationStore; single PostgresPlayRepository implements all, shared engine/transaction) and AD-R4=A (remove GameMasterService facade; routers receive SRP services from container). Asking AD-R5 (player actions vs turn engine) + AD-R6 (API prefixes).
+**Context**: INCEPTION / Application Design — questions in progress.
+
+---
+
+## Purpose Restructure Cycle — Application Design: Answers (AD-R5, AD-R6)
+**Timestamp**: 2026-09-29T08:26:52Z
+**User Input**: AD-R5 (행동→턴) = "턴 엔진을 확장해 행동을 입력으로" / AD-R6 (API 접두어) = "네 접두어: world / knowledge / play / gm (Recommended)"
+**AI Response**: Recorded AD-R5=**B** (not the recommendation): TurnAdvancer.advance(session_id, action: PlayerAction | None) becomes the single entry point; GM manual turn passes action=None; movement rules stay a pure module called by the engine; multi-turn cost handled inside the engine, returning one ActionResult. Recorded AD-R6=A (/api/world, /api/knowledge, /api/play, /api/gm). Asking AD-R7 (hearsay rename) + AD-R8 (frontend structure).
+**Context**: INCEPTION / Application Design — questions in progress.
+
+---
+
+## Purpose Restructure Cycle — Application Design: Answers (AD-R7, AD-R8) + Artifacts Generated (approval prompt)
+**Timestamp**: 2026-09-29T08:37:39Z
+**User Input**: AD-R7 (캐노니컬 거리 소문 이름) = "hearsay (전언) (Recommended)" / AD-R8 (프론트 구조) = "react-router로 화면 3개 (Recommended)"
+**AI Response**: Recorded AD-R7=A, AD-R8=A. Answer analysis: all 8 single and consistent (AD-R5=B non-recommended, consistent with AD-R4). Generated inception/application-design/purpose-restructure/{components,component-methods,services,component-dependency,application-design}.md: 5 packages locus/{shared,knowledge,world,play,localization}; per-boundary assemble_*() + typed containers + Depends; play ports split into 7 Stores + PlayUnitOfWork with single PostgresPlayRepository; GameMaster facade removed; TurnAdvancer.advance(session_id, action|None) single time-advance entry point with TurnGuard + LLM budget; new components WorldCache, WorldFile export/import, DemoWorlds, NpcDraftService, PlayService, movement (pure), NpcScope (pure), NpcDialogueService, SessionKnowledgeService; localization boundary with own TranslationStore, applied only at API layer via api/schemas; API prefixes /api/{world,knowledge,play,gm}; terminology hearsay/path_decay/AugmentationRun/SIMULATION; web react-router 3 screens; dependency matrix enforced by tests/test_boundaries.py; RE debt 15 items mapped to new locations. Presented completion message: Request Changes / Approve & Continue → Units Generation.
+**Context**: INCEPTION / Application Design — generated, awaiting approval.
+
+---
+
+## Purpose Restructure Cycle — Application Design: Change Request (player deeds become rumors)
+**Timestamp**: 2026-09-29T08:59:12Z
+**User Input**: "결국 플레이어의 행동이 소문으로 퍼질 수도 있기 때문에, 이 점이 기존 legacy locus와는 달라지게 됨"
+**AI Response**: Treated as Request Changes on Application Design. Gap: current design's rumor sources are canonical knowledge + existing rumors + events only; the player is an observer. New mechanic: player deeds (행적) become session-origin rumor sources that spread. Two design forks need the user: AD-R9 what counts as a deed (auto: arrival + what the player told NPCs / + free-text declared actions adjudicated by LLM / free-text only), AD-R10 how deeds spread (session-origin rumor propagation along topology with distance-based distortion — new mechanism / origin region only). Added AD-R9/AD-R10 to the AD plan; asking in chat. Plan after answers: addenda to requirements (FR-C8, FR-E7, SourceKind PLAYER) and stories (E4/E6), update the 5 design artifacts, re-present for approval. Not re-running Requirements/User Stories approval gates (would be 구색맞추기 — the change is scoped and will be shown in the re-approval); user may request a formal re-approval instead.
+**Context**: INCEPTION / Application Design — change request in progress.
+
+---
+
+## Purpose Restructure Cycle — Application Design: Change Applied (player deeds → rumors) + re-approval prompt
+**Timestamp**: 2026-09-29T09:15:36Z
+**User Input**: AD-R9 = "(1). 하지만 모든 행적이 소문이 되면 이상하기 때문에(실제 세계에서 한 사람의 대화와 행동이 모든 소문이 되는게 말이 안됨) \"행동\"의 attribute가 존재해야 함. 그리고 그것은 대화를 한 npc가 결정함." / AD-R10 = "토폴로지를 따라 턴마다 왜곡되며 전파 (Recommended)"
+**AI Response**: Recorded AD-R9=B(+condition: deed gets an appraisal attribute decided by the NPC the player talked to; unappraised deeds never become rumors — assumption A-6) and AD-R10=A. Applied: requirements §13 부록 A (FR-C8 Deed record, FR-C9 Declare action narrated by LLM GM without adjudication — A-7, FR-C10 NPC decides rumor value, FR-E7 session-origin rumor propagation along topology (canonical-origin never propagates), FR-D6 GM deed management; FR-D2/F4/NFR-5 reinforced; terms Deed/DeedAppraisal/session-origin rumor; assumptions A-6/A-7); stories +5 (US-4.4, 4.5, 5.6, 6.5, 8.6 → 48 stories, P0 36 / P1 11 / P2 1; traceability, persona map, rollup updated); personas P-Player/P-GM addenda; design artifacts: components §9 (P16 DeedService, P17 GmNarrator, P19 plan_spread; changes to P1/P2/P3/P6/P7/P8/P9/P12/P13/A6/A7/F3/F4/S1/S2), component-methods (signatures), services §5 (flows: declare, end-talk appraisal, turn-loop steps seed→spread, GM void), component-dependency §6, application-design decisions AD-R9/R10 + §7b. Requirements/User Stories approval gates not re-run (scoped addenda shown in this re-approval; user may request formal re-approval). Presented revised Application Design for approval.
+**Context**: INCEPTION / Application Design — revised, awaiting approval.
+
+---
+
+## Purpose Restructure Cycle — Application Design Approval (revised)
+**Timestamp**: 2026-09-29T09:19:01Z
+**User Input**: "Approve & Continue"
+**AI Response**: Application Design APPROVED (incl. change: player deeds → NPC appraisal → session-origin rumor spread). Proceeding to Units Generation. Loading inception/units-generation.md.
+**Context**: INCEPTION / Application Design → Units Generation.
+
+---
+
+## Purpose Restructure Cycle — Units Generation Part 1: Plan + Questions Created
+**Timestamp**: 2026-09-29T09:22:02Z
+**User Input**: (none — decomposition questions issued)
+**AI Response**: Created inception/plans/purpose-restructure-unit-of-work-plan.md with 2 questions: UOW-R1 unit count/boundaries (A 8 units with dedicated U6 행적·전파 — recommended / B 7 units per draft, deeds split across U5/U6 / C 6 units absorbing U2), UOW-R2 build order (A play-first U1→U2→U4→U5→U6→U7→U3→U8 — recommended, core stories US-6.1/6.5 work at ~60% / B draft order world-first / C alternate). Decided without asking: U1 builds router skeleton + api clients, per-unit test checkpoints as in execution plan, one commit per unit, no migrations. Asking both in chat.
+**Context**: INCEPTION / Units Generation — Part 1, awaiting answers.
+
+---
+
+## Purpose Restructure Cycle — Units Generation Part 1: Answers + Plan Approval Prompt
+**Timestamp**: 2026-09-29T09:35:39Z
+**User Input**: UOW-R1 (유닛 경계) = "8유닛 — 행적·전파를 독립 유닛으로 (Recommended)" / UOW-R2 (빌드 순서) = "플레이 먼저: U1→U2→U4→U5→U6→U7→U3→U8 (Recommended)"
+**AI Response**: Recorded UOW-R1=A (8 units: U1 경계 재정리, U2 World File·캐노니컬 기반, U3 월드 에디터, U4 플레이어 모드, U5 NPC 대화·언어, U6 행적·전파, U7 GM 모드·안정화, U8 데모·배포·문서) and UOW-R2=A (execution order U1→U2→U4→U5→U6→U7→U3→U8; numbering follows dependency picture). Answer analysis: single, consistent, no follow-ups. Presented plan approval prompt: "Unit of work plan complete. Review the plan in aidlc-docs/inception/plans/purpose-restructure-unit-of-work-plan.md. Ready to proceed to generation?"
+**Context**: INCEPTION / Units Generation — Part 1 plan awaiting approval.
+
+---
+
+## Purpose Restructure Cycle — Units Generation Part 1 Plan APPROVED → Part 2 Generation
+**Timestamp**: 2026-09-29T12:53:15Z
+**User Input**: "Approve & Continue"
+**AI Response**: Unit of work plan APPROVED (8 units, play-first order). Executing Part 2: generating inception/application-design/purpose-restructure/{unit-of-work,unit-of-work-dependency,unit-of-work-story-map}.md.
+**Context**: INCEPTION / Units Generation — Part 2 generation started.
+
+---
+
+## Purpose Restructure Cycle — Units Generation Part 2 Complete (approval prompt)
+**Timestamp**: 2026-09-29T12:58:05Z
+**User Input**: (none — generation per approved plan)
+**AI Response**: Generated inception/application-design/purpose-restructure/{unit-of-work,unit-of-work-dependency,unit-of-work-story-map}.md. 8 units: U1 경계 재정리(의미 불변; FD/NFR SKIP) · U2 World File·캐노니컬 기반 · U3 월드 에디터 · U4 플레이어 모드 · U5 NPC 대화·언어 · U6 행적·전파 · U7 GM 모드·안정화 · U8 데모·배포·문서(FD-light, Infra-light). Execution order U1→U2→U4→U5→U6→U7→U3→U8 (US-6.1 works after U5, US-6.5 after U6). Dependency matrix acyclic; U3 independent of U4–U7. All 48 stories assigned (per-unit P0 36 / P1 11 / P2 1 matches stories.md); all FR (incl. 부록 A) and NFR covered. Coordination points: API contract freeze (U1), World File v1 (U2), WorldSnapshot/WorldCache read-only (U4–U7), advance(action) hook slots for U6, shared LlmBudget, PlayTuning keys. Plan checklist all [x]. Presented completion message: Request Changes / Approve & Continue → CONSTRUCTION (U1).
+**Context**: INCEPTION / Units Generation — generated, awaiting approval.
+
+---
+
+## Purpose Restructure Cycle — Units Generation Approval (INCEPTION COMPLETE)
+**Timestamp**: 2026-09-29T13:01:23Z
+**User Input**: "Approve & Continue"
+**AI Response**: Units Generation APPROVED. INCEPTION complete. Entering CONSTRUCTION — U1 경계 재정리 (FD SKIP, NFR SKIP per execution plan; Code Generation Part 1 planning). Loading construction/code-generation.md.
+**Context**: INCEPTION → CONSTRUCTION / U1 Code Generation (planning).
+
+---
+
+## Purpose Restructure Cycle — U1 Code Generation Part 1: Plan Created (approval prompt)
+**Timestamp**: 2026-09-29T13:06:06Z
+**User Input**: (none)
+**AI Response**: Read current composition root (api/main.py), routers, CLI, session __init__/repository/base/game_master/query, translation service, settings, Dockerfile, web api.ts/App.tsx, tests and web trees. Created construction/plans/U1-boundary-restructure-code-generation-plan.md: 15 steps / 45 sub-steps — (1) baseline+skeleton, (2) shared incl. renames hearsay/path_decay/SourceKind-neutral/_ko removal + Tuning dataclasses (config→session import removed) + sql.py, (3) knowledge (consensus/loader/query, region_known, wiring), (4) world (ingestion/topology/ontology/wiki/augmentation→Run, WorldBuilder DI, WorldEditor, WorldFileExporter, demo, STATUS docstrings, wiring), (5) play models/ports(5 Stores + PlayUnitOfWork Protocol def)/PostgresPlayRepository/memory/schema, (6) play services (advance rename, SessionKnowledgeService w/o translation, PlayTuning, GameMasterService deleted, wiring), (7) localization (Translation model, TranslationStore, PG/memory/schema, enrich returns mapping), (8) api containers/lifespan/deps/schemas(_ko DTOs)/routers world·knowledge·play·gm, (9) CLI init-schema flags, (10) tests relocation + test_boundaries + contract tests, (11) web api split + react-router skeleton (editor/gm/play placeholder) + badge, (12) Dockerfile api/ + .dockerignore, (13) dead code (untested only) + clamp/normalize helpers, (14) code-summary + CLAUDE.md layout, (15) final verification. Behavior-preserving; wire renames listed. Presented plan summary for approval.
+**Context**: CONSTRUCTION / U1 — Code Generation Part 1 awaiting approval.
+
+---
+## Framework Change — Plan Review step ported from telemetry-projects AI-DLC
+**Timestamp**: 2026-09-29T13:41:19Z
+**User Input**: "@../telemetry-projects/ 에서 aidlc의 각 plan 별 리뷰하는 단계를 이 ai-dlc에 이식하고 싶어."
+**AI Response**: Ported the reviewer protocol (stage-protocol-reviewer.md + architecture-reviewer / product-lead reviewer personas) as an engine-free rule: new `.aidlc/aws-aidlc-rule-details/common/plan-review.md` (stage table, advisory/adversarial classes, dispatch brief, verdict handling, freeze, dispositions, record format, Review brief, narration), personas under `common/reviewers/`, Claude Code agents `.claude/agents/aidlc-{architecture,product-lead}-reviewer.md` (`.gitignore` now keeps `.claude/agents/`), MANDATORY section + per-stage steps in `core-workflow.md`, Step Na pointers in 9 stage rule files, CLAUDE.md note. Not a workflow stage; no artifact or state change. Effective from the next approval gate (U1 Code Generation plan, currently awaiting approval, is a reviewed gate).
+**Context**: Framework maintenance during CONSTRUCTION / U1 Code Generation Part 1 (plan awaiting approval).
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — U1 경계 재정리
+**Timestamp**: 2026-09-29T13:41:19Z
+**User Input**: "드라이런 결과 나오면 U1 플랜 리뷰로 정식 반영해 줘" (user promoted the dry run to the official iteration 1 review)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1 of max 2) on `aidlc-docs/construction/plans/U1-boundary-restructure-code-generation-plan.md`. Fallback dispatch (general-purpose sub-agent, sonnet, persona preflight) because `.claude/agents/` is loaded at session start. Upstream passed: application-design/purpose-restructure/* (design + unit-of-work*), purpose-restructure-requirements.md, stories.md, reverse-engineering/, read-only workspace. Review record: `aidlc-docs/construction/plans/reviews/U1-boundary-restructure-code-generation-plan-review-01.md`.
+**Context**: CONSTRUCTION / U1 Code Generation Part 1 — review requested before the plan approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — U1 경계 재정리
+**Timestamp**: 2026-09-29T13:46:19Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 4 Major / 6 Minor; open 10. Major: R-01 SharedContainer 위치 열림(api 역의존 가능, test_boundaries가 못 잡음) / R-02 SourceKind 값 변경이 저장된 Neo4j 월드를 깨는데 "동작 불변"으로 적힘 / R-03 Step 5(삭제)→7(이동) 순서 역전 + 공유 MetaData 분리 누락 / R-04 승인된 U1 책임 ON CONFLICT가 계획에서 빠짐. Minor R-05~R-10 (assemble_shared 부분 조립, demo.py parents[1], web/src/api.ts 충돌, 경로 매핑표·오타·추적표·mypy 기준·완료 기준, traverse 테스트 삭제, TranslationStore 이름·enrich 테스트). Record: `aidlc-docs/construction/plans/reviews/U1-boundary-restructure-code-generation-plan-review-01.md` (dry-run record promoted verbatim; scratch copy retained).
+**Context**: CONSTRUCTION / U1 Code Generation Part 1 — adversarial iteration 1 < 2: builder fixes the plan, then re-review (iteration 2).
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — U1 경계 재정리 (iteration 2)
+**Timestamp**: 2026-09-29T13:52:08Z
+**User Input**: (none — adversarial loop per plan-review.md § 3.4)
+**AI Response**: Builder applied R-01..R-10 to the plan: SharedContainer/assemble_shared moved to `locus/shared/wiring.py` as Step 2.6 with partial assembly and no schema init (R-01/R-05); stored-data incompatibility of the SourceKind change stated as rebuild-required under Q4=A (R-02); Step 5 no longer deletes translation code, Step 7 cuts-and-moves it, play/localization get separate MetaData (R-03); ON CONFLICT upsert added as Step 5.4 with contract tests (R-04); demo map path parents[3] + test (R-06); git mv api.ts → api/index.ts (R-07); old→new route table, 503 typo, US-5.1/US-7.3 traceability, measured mypy baseline, compose-profile boot restored as completion criterion (R-08); traverse test removal named, expected count adjusted, rule unified (R-09); TranslationStore names aligned to design L2 and localization test updates added (R-10). Dispatching architecture-reviewer iteration 2 of 2 with prior findings carried forward. Record: `aidlc-docs/construction/plans/reviews/U1-boundary-restructure-code-generation-plan-review-02.md`.
+**Context**: CONSTRUCTION / U1 Code Generation Part 1 — re-review after builder fixes.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — U1 경계 재정리 (iteration 2)
+**Timestamp**: 2026-09-29T13:54:21Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. R-01..R-10 all **Resolved** (verified against code and routes); one new finding R-11 (Minor, New): Step 7.3 listed `play/region_knowledge.py` as an `enrich` call site, contradicting 6.2/8.5 and the play → localization boundary rule. Open 1 (0 Critical / 0 Major / 1 Minor). Record: `aidlc-docs/construction/plans/reviews/U1-boundary-restructure-code-generation-plan-review-02.md`. Rule fix while porting: verdict rules now state explicitly that only New/Unresolved findings count (plan-review.md § 4 + both personas).
+**Context**: CONSTRUCTION / U1 Code Generation Part 1 — terminal READY; builder then corrected the one-phrase R-11 contradiction in Step 7.3 (single source of truth must not contradict itself), which makes the receipt stale → exactly one recovery review (iteration 3) per plan-review.md § 3.5 before the gate.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — U1 경계 재정리 (iteration 3, recovery: artifact changed after terminal verdict)
+**Timestamp**: 2026-09-29T13:55:12Z
+**User Input**: (none — plan-review.md § 3.5 recovery review)
+**AI Response**: Only Step 7.3 changed since the iteration-2 READY verdict (R-11: `enrich` call-site list now names `api/routers` only). Dispatching architecture-reviewer iteration 3 with prior findings (R-01..R-10 Resolved, R-11 New) carried forward; this is the one permitted recovery review — after its verdict the plan is frozen until the human answers the gate. Record: `aidlc-docs/construction/plans/reviews/U1-boundary-restructure-code-generation-plan-review-03.md`.
+**Context**: CONSTRUCTION / U1 Code Generation Part 1 — recovery review before the plan approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — U1 경계 재정리 (iteration 3, recovery)
+**Timestamp**: 2026-09-29T13:56:15Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 3 → **READY**. R-01..R-11 all **Resolved**; no new findings; open 0. Record: `aidlc-docs/construction/plans/reviews/U1-boundary-restructure-code-generation-plan-review-03.md`. Terminal verdict: the plan is frozen until the human answers the approval gate.
+**Context**: CONSTRUCTION / U1 Code Generation Part 1 — proceeding to the plan approval gate with the Review brief.
+
+---
+
+## Purpose Restructure Cycle — U1 Code Generation Part 1: Plan Approval Prompt (post Plan Review)
+**Timestamp**: 2026-09-29T13:56:15Z
+**User Input**: (none)
+**AI Response**: Presenting the Review brief (Stage: Code Generation Part 1 — U1; outcome: No open findings remain; why now: Re-check after the artifact changed; records review-01/02/03) followed by the plan approval question for `aidlc-docs/construction/plans/U1-boundary-restructure-code-generation-plan.md` (15 steps, revised through the review loop: SharedContainer in locus/shared/wiring.py with partial assembly; stored-world rebuild risk under Q4=A; translation cut-and-move in Step 7 + separate MetaData; ON CONFLICT upsert 5.4; demo path parents[3]; old→new route table; boundary test covers locus→api; compose-profile boot as completion criterion; US-5.1/US-7.3 traced; TranslationStore names per design). Options: Approve & Continue (recommended) / Request Changes.
+**Context**: CONSTRUCTION / U1 — Code Generation Part 1 plan awaiting approval (HARD STOP).
+
+---
+
+## Purpose Restructure Cycle — U1 Plan Approval gate left open (session handoff)
+**Timestamp**: 2026-09-29T13:59:14Z
+**User Input**: "이제 다시 원래 세션에서 작업할게"
+**AI Response**: No approval given in this session; the U1 plan approval gate stays OPEN. On resume in another session: re-present the gate from the recorded review (`construction/plans/reviews/U1-boundary-restructure-code-generation-plan-review-03.md`, READY, open 0) — do NOT dispatch a new review and do NOT edit the frozen plan (plan-review.md § 3.5, § 3.7); HARD STOP until the human chooses Approve & Continue / Request Changes. Note: the Claude Code reviewer agents under `.claude/agents/` load at session start; in a session started before they were added, use the fallback dispatch in plan-review.md § 3.2.
+**Context**: CONSTRUCTION / U1 — Code Generation Part 1 plan awaiting approval; session ended.
+
+---
+
+
+## Purpose Restructure Cycle — U1 Plan Approval gate re-presented (resume in original session)
+**Timestamp**: 2026-09-29T14:00:29Z
+**User Input**: "다른 세션에서 플랜을 수정했어. 확인해봐"
+**AI Response**: Verified the handoff: Plan Review rule (common/plan-review.md, reviewer personas, .claude/agents, stage-rule pointers, CLAUDE.md, .gitignore un-ignore) is in place; U1 plan was revised through the adversarial loop (records review-01 NOT-READY 10 findings → review-02 READY R-01..R-10 Resolved + R-11 → review-03 READY, open 0). Plan mtime 2026-09-29T13:54:21Z precedes review-03 date 13:55:29Z → verdict is current, not stale; unit-of-work*.md mtimes (12:56–12:58Z) are this session's own writes. Per plan-review.md §3.5/§3.7 and the handoff note: no new review dispatched, plan not edited. Re-presenting the plan approval gate with the Review brief from review-03 (outcome: No open findings remain; why now: Re-check after the artifact changed) plus a summary of the plan revisions for the human.
+**Context**: CONSTRUCTION / U1 — Code Generation Part 1 plan awaiting approval (HARD STOP).
+
+---
+
+## Purpose Restructure Cycle — U1 Code Generation Plan APPROVED → Part 2 Generation
+**Timestamp**: 2026-09-29T14:03:55Z
+**User Input**: "Approve & Continue"
+**AI Response**: U1 plan APPROVED at the reviewer-backed gate (review-03 READY, open 0 — no findings to disposition). Starting Code Generation Part 2 per construction/plans/U1-boundary-restructure-code-generation-plan.md, Step 1 (baseline + skeleton).
+**Context**: CONSTRUCTION / U1 — Code Generation Part 2 started.
+
+## Plan Review Dispositions — Code Generation Part 1 — U1 경계 재정리
+**Timestamp**: 2026-09-29T14:03:55Z
+**User Input**: "Approve & Continue"
+**AI Response**: No findings with status New/Unresolved at approval (R-01..R-11 Resolved). Nothing to record as Accepted risk.
+**Context**: CONSTRUCTION / U1 — gate approved.
+
+---
+
+## Purpose Restructure Cycle — U1 Code Generation Part 2 COMPLETE → code approval gate
+**Timestamp**: 2026-09-29T14:52:33Z
+**User Input**: (none — autonomous continuation after "Approve & Continue" on the U1 plan; session resumed once from a compacted context)
+**AI Response**: Executed plan Steps 10–15. Step 10: `RumorFeedbackService` no longer inherits `SessionAppService` (DistortionStore only) → mypy 15 (baseline 16). Step 11: `web/src/api.ts` → `web/src/api/{index,http,world,knowledge,play,gm}.ts` on the new `/api/{world,knowledge,play,gm}` routes; `types.ts` (`is_hearsay`/`path_decay`/`distortion`, `AugRun`, `WorldExport.entities`); react-router screens `routes/{AppNav,EditorPage,GmPage,PlayPage}.tsx`, `/`→`/editor/aldermoor`; RegionPanel badge hearsay/rumor/scope; vitest 28 (24 kept + 4 new). Pre-existing `npm install` ERESOLVE (plugin-react 4 vs vite 8) fixed by bumping `@vitejs/plugin-react` to ^5.2. Step 12: Dockerfile `COPY api ./api`, root `.dockerignore`; compose command confirmed `uvicorn api.main:app`. Step 13: removed `World`, `WikiBuildReport`, `embedding_ref`, `Settings.debug`/`LOCUS_DEBUG`, `merge_add`(+its unit test), `SUPPORT_DECAY` decay path (evolve_support reinforce-only; test updated), `RunStore.delete` (test delete segment dropped), `to_terrain_entity`; kept `RegionLevel.DISTRICT` (used by ingestion test); unified 8 clamps → `shared/models/util.clamp01`, 6 name normalizers → `shared/models/util.normalize_name` (re-exported from mapping; placed in shared so topology/ontology do not import the ingestion package — deviation from plan text, same result). One over-greedy regex deleted `to_relation/to_knowledge/merge_*` mid-step; restored verbatim from the index before any test run passed. Step 14: code-summary completed; CLAUDE.md Status/Code/CLI/conventions updated to the five-boundary tree; operations.md init-schema flags line. Step 15: pytest 292 GREEN, boundaries 3, vitest 28, ruff/black/tsc/vite clean, mypy 15; `docker build` OK and `api/` present in image. `docker compose --profile service up` + `/health` NOT run: host ports 7474/7687 are held by another project's running container `sigraph-neo4j-1`; stopping it is the operator's call → recorded as operator-run (lowered criterion), substitute check: standalone image `/health` 200 and `/api/knowledge/...` 503 "knowledge boundary unavailable". Presenting the 2-option code approval gate.
+**Context**: CONSTRUCTION / U1 경계 재정리 — Code Generation Part 2 complete; HARD STOP at code approval.
+
+---
+
+## Purpose Restructure Cycle — U1 Code Generation APPROVED
+**Timestamp**: 2026-09-29T15:05:12Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: U1 경계 재정리 generated code APPROVED at the code approval gate (292 pytest / 28 vitest GREEN, mypy 15 ≤ 16, docker build OK; compose `/health` recorded as operator-run). Marking U1 Code Generation complete. Next, as stated at the gate: code review of the U1 diff, disposition of its findings, then U2 World File·캐노니컬 기반 Functional Design (reviewer-backed gate).
+**Context**: CONSTRUCTION / U1 — Code Generation complete and approved.
+
+---
+
+## Purpose Restructure Cycle — U1 code review dispositioned; U2 Functional Design Part 1 started
+**Timestamp**: 2026-09-29T16:15:00Z
+**User Input**: (none — continuation of "Continue to Next Stage")
+**AI Response**: `/code-review` (effort max) on the U1 diff returned 15 verified findings; all 15 fixed in place (record: `construction/U1-boundary-restructure/code/reviews/code-review-01.md`). Two were stored-data breakages the U1 code-summary had mis-stated as handled by `init-schema`: legacy `SourceKind` values now map on read via `_missing_`; the rebuild-duplication half of #2 (RE A3, `delete_world` unused) is U2 scope (`WorldBuilder.build(replace=)`, FR-B4). Verification after fixes: pytest 306, vitest 30, ruff/black/tsc/vite clean, mypy 14. Then U2 FD Step 1–4: read unit/stories/requirements/AD component methods/current code; wrote `construction/plans/U2-worldfile-foundation-functional-design-plan.md` with FD-U2 Q1–Q7 (`[Answer]:`) and 12 stated assumptions; presenting Q1 (World File id rule + legacy export) and Q2 (world meta storage) in chat first.
+**Context**: CONSTRUCTION / U2 World File·캐노니컬 기반 — Functional Design Part 1, awaiting answers.
+
+---
+
+## Purpose Restructure Cycle — U2 Functional Design answers collected
+**Timestamp**: 2026-09-29T16:40:00Z
+**User Input**: FD-U2 Q1="A. 같은 world_id면 그대로, 다르면 결정적 재매핑" / Q2="A. :WorldMeta 노드 1개를 둔다" / Q3="A. 레벨 있으면 정확 일치, 없으면 역할별 기본" / Q4="A. severity 두 단계, ok = error 없음" / Q5="A. 손으로 옮긴 결정적 파일" / Q6="A. 명시적 무효화만, 단일 워커 전제" / Q7="B. NPC description도 색인한다"
+**AI Response**: All seven answers are unambiguous; no clarification round. Q7=B departs from the recommendation: NPC name/role/description become OpenSearch documents (kind=npc) so augmentation/hybrid search can find NPCs; embedding calls grow by one batch per build/import. Proceeding to Step 6 artifacts (domain-entities, business-logic-model, business-rules with Testable Properties) then Step 6a Plan Review (architecture-reviewer, adversarial ≤ 2).
+**Context**: CONSTRUCTION / U2 — Functional Design Part 2.
+
+---
+
+## Plan Review Requested — Functional Design — U2 World File·캐노니컬 기반
+**Timestamp**: 2026-09-29T16:35:47Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/U2-worldfile-foundation/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/U2-worldfile-foundation/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — U2 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — U2 World File·캐노니컬 기반
+**Timestamp**: 2026-09-29T16:39:13Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 1 Critical / 4 Major / 6 Minor; open 11. Record: `aidlc-docs/construction/U2-worldfile-foundation/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — U2 — builder fix + re-review (iteration 2).
+
+---
+
+## Plan Review Requested — Functional Design — U2 World File·캐노니컬 기반
+**Timestamp**: 2026-09-29T16:43:32Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Builder fixed R-01..R-11 in place (v0 parser + source world id, remap determinism/no-op + NAMESPACE_LOCUS, explicit LEVEL_RANK with terrain excluded, prepare/commit build order + backup + finally-invalidate, full sort-key table, load_warnings + extension fields, list_world_ids only, SearchDoc.label="NPC", BR→verification map, single-candidate parent rank check, cache generation counter). Dispatching architecture-reviewer (class adversarial, iteration 2) on `aidlc-docs/construction/U2-worldfile-foundation/functional-design/business-logic-model.md` with prior findings carried forward. Review record: `aidlc-docs/construction/U2-worldfile-foundation/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — U2 — re-review before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — U2 World File·캐노니컬 기반
+**Timestamp**: 2026-09-29T16:45:03Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: 0 Critical / 1 Major / 1 Minor open (R-12 forced remap is a no-op for same-world files; R-13 provenance.refs remap of external ids); R-01..R-11 Resolved. Record: `aidlc-docs/construction/U2-worldfile-foundation/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — U2 — approval gate (artifacts frozen per plan-review.md § 3.5).
+
+---
+
+## Purpose Restructure Cycle — U2 Functional Design APPROVED
+**Timestamp**: 2026-09-29T16:58:10Z
+**User Input**: "Continue to next stage"
+**AI Response**: U2 World File·캐노니컬 기반 Functional Design APPROVED at the reviewer-backed gate (iteration 2 READY, open 2). Marking Functional Design complete. NFR Requirements/Design and Infrastructure Design are SKIP for U2 per the execution plan; next: Code Generation Part 1 (U2 code generation plan, architecture-reviewer adversarial ≤ 2).
+**Context**: CONSTRUCTION / U2 — Functional Design complete and approved.
+
+## Plan Review Dispositions — Functional Design — U2 World File·캐노니컬 기반
+**Timestamp**: 2026-09-29T16:58:10Z
+**User Input**: "Continue to next stage"
+**AI Response**: R-12 → Accepted risk (forced remap identity shortcut; required action carried into the U2 code generation plan as a step). R-13 → Accepted risk (remap only ids present in the file; carried into the plan). R-01..R-11 were Resolved at iteration 2.
+**Context**: CONSTRUCTION / U2 — gate approved.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — U2 World File·캐노니컬 기반
+**Timestamp**: 2026-09-29T17:03:00Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Plan written: `aidlc-docs/construction/plans/U2-worldfile-foundation-code-generation-plan.md` (16 steps; FD accepted-risk R-12/R-13 carried into Step 9.3). Dispatching architecture-reviewer (class adversarial, iteration 1) on it. Review record: `aidlc-docs/construction/plans/reviews/U2-worldfile-foundation-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — U2 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — U2 World File·캐노니컬 기반
+**Timestamp**: 2026-09-29T17:09:14Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 6 Major / 8 Minor; open 14. Record: `aidlc-docs/construction/plans/reviews/U2-worldfile-foundation-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — U2 — builder fix + re-review (iteration 2).
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — U2 World File·캐노니컬 기반
+**Timestamp**: 2026-09-29T17:12:18Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Builder revised the plan for R-01..R-14 (warnings/unscoped path via TopologyBuild/OntologyBuild + kg.unscoped_knowledge_ids; per-build provider wrapping through factories; invalidation at augmentation apply/revert and WikiAdmin; persist failures severity=error + ConstraintViolation port exception; TP-U2-2 restated at importer level; exact call-site lists; WorldSnapshot in io.py; /export keeps world_id; 422 mapping + item-level unknown-key stripping; list_sessions/close_session with open filter; compose data volume; connection_hints deviation recorded; EX-22/EX-23 tests; LLM-optional assemble_world). Dispatching architecture-reviewer (class adversarial, iteration 2) with prior findings carried forward. Review record: `aidlc-docs/construction/plans/reviews/U2-worldfile-foundation-code-generation-plan-review-02.md`.
+**Context**: Code Generation Part 1 — U2 — re-review before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — U2 World File·캐노니컬 기반
+**Timestamp**: 2026-09-29T17:14:36Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: 0 Critical / 0 Major / 1 Minor open (R-14 narrowed: gate LLM-dependent services on `shared.llm`, add 503 handling for wiki/cross-world/augmentation routes); R-01..R-13 Resolved. Record: `aidlc-docs/construction/plans/reviews/U2-worldfile-foundation-code-generation-plan-review-02.md`.
+**Context**: Code Generation Part 1 — U2 — approval gate (plan frozen per plan-review.md § 3.5).
+
+## Purpose Restructure Cycle — U2 Code Generation plan approval prompt
+**Timestamp**: 2026-09-29T17:14:36Z
+**User Input**: (none — Step 6 prompt log)
+**AI Response**: Presenting the approval gate for `aidlc-docs/construction/plans/U2-worldfile-foundation-code-generation-plan.md` (16 steps) with the Review brief (iteration 2 READY, R-14 open). Options: Request Changes / Continue to Next Stage (Code Generation Part 2).
+**Context**: CONSTRUCTION / U2 — Code Generation Part 1 awaiting approval (HARD STOP).
+
+---
+
+## Purpose Restructure Cycle — U2 Code Generation Plan APPROVED → Part 2 Generation
+**Timestamp**: 2026-09-29T17:20:22Z
+**User Input**: "Approve & Continue"
+**AI Response**: U2 code generation plan APPROVED at the reviewer-backed gate (iteration 2 READY, open 1 Minor). Starting Code Generation Part 2 per `construction/plans/U2-worldfile-foundation-code-generation-plan.md`, Step 1.
+**Context**: CONSTRUCTION / U2 — Code Generation Part 2 started.
+
+## Plan Review Dispositions — Code Generation Part 1 — U2 World File·캐노니컬 기반
+**Timestamp**: 2026-09-29T17:20:22Z
+**User Input**: "Approve & Continue"
+**AI Response**: R-14 → Accepted risk (gate LLM-dependent world services on `shared.llm is not None`; 503 for wiki/cross-world/augmentation routes when absent — applied during Steps 11.1/12.2/12.4). R-01..R-13 Resolved at iteration 2.
+**Context**: CONSTRUCTION / U2 — gate approved.
+
+---
+
+## Purpose Restructure Cycle — U2 Code Generation Part 2 COMPLETE → code approval gate
+**Timestamp**: 2026-09-29T23:13:02Z
+**User Input**: (none — autonomous execution of the approved U2 plan)
+**AI Response**: Executed all 16 plan steps. Shared models (WorldMeta, NPC, WorldSnapshot, RegionBrief, severity/ImportReport), storage (ConstraintViolation, list_world_ids, NPC/WorldMeta/relation mapping, error-severity persist, touch_world_meta), knowledge (snapshot loader with skip-on-error, generation-counter WorldCache, cache-based QueryEngine + region_briefs + title fill), every loader call site migrated to SnapshotSource, ingestion defects A1/A2/A7 (attribute-preserving merge, entity id map + reference rewrite, base64 inputs, BuildWarning results), naming rule + TopologyBuild/OntologyBuild + unscoped ids (A4/A11/A13), prepare/commit WorldBuilder with backup, finally-invalidate and per-build LLMCallCounter (A3/A12/NFR-5), World File v1 (parse incl. v0, deterministic remap without identity shortcut, reference validation, sorted export, importer), packaged Aldermoor World File + DemoWorlds (LLM-free), LLM-optional WorldContainer + invalidation in editor/augmentation/wiki admin (R-14, R-03), world/knowledge API routes (file get/post/upload, worlds, demos, multipart build, 409/confirm open-session gate, 422 for unsupported files, 503 for LLM routes), CLI `locus world ...` with --force/--remap/exit codes and aliases, frontend types + API functions + LLM-free demo button, operations/compose/CLAUDE/README updates. Verification: pytest 373 GREEN, boundaries 4, vitest 30, ruff/black/tsc/vite clean, mypy 12 (≤14), docker build OK (demo file packaged, api imports). Live Neo4j/PostgreSQL round trip recorded as operator-run (host ports 7474/7687 held by another project). Presenting the 2-option code approval gate.
+**Context**: CONSTRUCTION / U2 World File·캐노니컬 기반 — Code Generation Part 2 complete; HARD STOP at code approval.
+
+---
+
+## Purpose Restructure Cycle — U2 Code Generation APPROVED
+**Timestamp**: 2026-09-29T23:30:31Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: U2 World File·캐노니컬 기반 generated code APPROVED at the code approval gate (pytest 373 / vitest 30 / mypy 12 / docker build OK; live round trip operator-run). Marking U2 Code Generation complete. Next, as stated at the gate: `/code-review` on the U2 diff, disposition of its findings, then U4 플레이어 모드 Functional Design (reviewer-backed gate).
+**Context**: CONSTRUCTION / U2 — Code Generation complete and approved.
+
+---
+
+## Purpose Restructure Cycle — U2 code review dispositioned; U4 Functional Design Part 1 started
+**Timestamp**: 2026-09-30T00:40:13Z
+**User Input**: (none — continuation of "Continue to Next Stage")
+**AI Response**: `/code-review` (effort max) on the U2 changes returned 15 verified findings plus a tail; all 15 fixed in place (record: `construction/U2-worldfile-foundation/code/reviews/code-review-01.md`): no search indexing after a graph write failure, commit-phase failures reported with backup path, demo-load confirmation dialog, edge identity keys (relation id / connection kind), level inference for level-less structured maps, replace gate checks first and closes sessions only after a real replace (validation before the gate; CLI same), LLM-free play assembly with 503 on rumor/event/turn routes, region delete cascades to its NPCs, loader drops dangling edges, sync upload routes, OpenSearch empty-vector/bulk-error handling, editor/wiki write ordering, RFC 5987 filenames, dangling prior refs dropped on replace, cache re-checks a WorldMeta version marker. Most tail items fixed; the rest recorded. Verification: pytest 388, vitest 31, ruff/black/tsc/vite clean, mypy 12. Then U4 FD Steps 1–4: wrote `construction/plans/U4-player-mode-functional-design-plan.md` (FD-U4 Q1–Q6 + 12 assumptions); presenting Q1 (move cost formula) and Q2 (per-turn caps / LLM budget) first.
+**Context**: CONSTRUCTION / U4 플레이어 모드 — Functional Design Part 1, awaiting answers.
+
+---
+
+## Purpose Restructure Cycle — U4 Functional Design answers collected
+**Timestamp**: 2026-09-30T00:53:26Z
+**User Input**: FD-U4 Q1="A. cost = ceil(1 / weight), 상한 5턴" / Q2="A. 지역·턴당 새 소문 ≤ 2, 턴당 LLM ≤ 8" / Q3="A. 프로세스 안 세션별 락, 두 번째 요청은 즉시 409" / Q4="A. 즉시 응답 + 배경 턴 처리(TurnRun 폴링)" / Q5="A. 현재 지역 + 직접 연결된 이웃만" / Q6="A. 이동·대기는 동작, 소문 생성만 건너뛰고 안내 플래그"
+**AI Response**: All six answers unambiguous; no clarification round. Q4=A supersedes services.md §3.4's synchronous flow (design deviation to record in the FD and code-summary: `act` returns a `TurnRun`, the turn loop runs in a background task, the GM manual turn uses the same contract). Proceeding to Step 6 artifacts (domain-entities, business-logic-model, business-rules with Testable Properties, frontend-components) then Step 6a Plan Review.
+**Context**: CONSTRUCTION / U4 — Functional Design Part 2.
+
+---
+
+## Plan Review Requested — Functional Design — U4 플레이어 모드
+**Timestamp**: 2026-09-30T00:56:20Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/U4-player-mode/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/U4-player-mode/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — U4 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — U4 플레이어 모드
+**Timestamp**: 2026-09-30T01:03:22Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 4 Major / 4 Minor; open 8. Record: `aidlc-docs/construction/U4-player-mode/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — U4 — builder fix + re-review.
+
+---
+
+## Plan Review Requested — Functional Design — U4 플레이어 모드
+**Timestamp**: 2026-09-30T01:09:31Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Builder fixed R-01..R-08 in place (three-phase turn: event application computed in memory and passed as post-event distortions to `RumorService.append_for_turn`, which now drafts without saving; budget = attempted degree steps via caller-sliced `degrees` + `LlmBudget.take(n)`, chain length bounded by `max_new - len(out)`; `ActionResult.player` optional with GM-scope changes; `advance(session_id, action=None) -> ActionResult` kept per P7 with `begin()` for the async player path, GM route unchanged (`TurnResult`), 24 test call sites listed; in-memory repo RLock held across UoW + PG `_PgStores(conn)` single-connection UoW + sync executor in tests; `assert_idle` on GM write routes; `sync_regions` and log filter moved to U7 per story map; stale-run cleanup only in API lifespan + bounded executor shutdown; deviations table §11). Dispatching architecture-reviewer (class adversarial, iteration 2) on `aidlc-docs/construction/U4-player-mode/functional-design/business-logic-model.md` with prior findings carried forward. Review record: `aidlc-docs/construction/U4-player-mode/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — U4 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — U4 플레이어 모드
+**Timestamp**: 2026-09-30T01:15:18Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: 0 Critical / 0 Major / 7 Minor open (R-09 session-create response shape for the body-less legacy call; R-10 move validation outside the guard; R-11 failed submit / queued run shown as running; R-12 §11 omits P6/P7/P8 signature deviations; R-13 llm_calls is an upper bound when a chain stops early; R-14 hung worker thread at interpreter exit; R-15 US-8.1 per-region active-rumor cap not designed); R-01..R-08 Resolved. Record: `aidlc-docs/construction/U4-player-mode/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — U4 — next: approval gate (artifacts frozen).
+
+---
+
+## Functional Design Approved — U4 플레이어 모드
+**Timestamp**: 2026-09-30T01:19:47Z
+**User Input**: "지역당 상한으로" (gate option 2: Continue to Next Stage with R-15 settled as a per-region active-rumor cap; no value given)
+**AI Response**: Functional Design approved (review iter 2 READY, 7 Minor open → dispositions below). R-15 decision: a per-region active-rumor cap is added; value not stated by the human → assumption `PlayTuning.max_active_rumors_per_region = 20` (env `RUMOR_MAX_ACTIVE_PER_REGION`), to be confirmed in the code-generation plan questions if needed. R-09..R-14 and the cap rule/TP are carried into the U4 code-generation plan. Next: U4 NFR Requirements (light) per the execution plan.
+**Context**: CONSTRUCTION / U4 — Functional Design gate → NFR Requirements (light).
+
+---
+
+## Plan Review Dispositions — Functional Design — U4 플레이어 모드
+**Timestamp**: 2026-09-30T01:19:47Z
+**User Input**: (approval at gate; see above)
+**AI Response**:
+- R-09 → Accepted risk (carry: body-less call keeps 200 `GameSession`; body call returns 201 `{session, player}`; list affected tests + SessionBar in the code plan)
+- R-10 → Accepted risk (carry: validate inside the guard, in `_start`'s UoW against the fresh player position)
+- R-11 → Accepted risk (carry: `begin` handles a rejected `submit` with `_fail` + `guard.release`; queued runs show as `running` — documented)
+- R-12 → Accepted risk (carry: §11-equivalent deviation list completed in the code plan: TurnGuard acquire/release, single-region `append_for_turn`, `exclude_knowledge_ids`, `store=`, `chain_degrees_for`, `turn_shutdown_timeout_s`)
+- R-13 → Accepted risk (carry: BR-U4-21 wording "reserved calls (upper bound)")
+- R-14 → Accepted risk (carry: daemon-thread executor or reliance on LLM call timeout, stated in the plan)
+- R-15 → Accepted risk (human decision: per-region active-rumor cap; value 20 assumed; rule + TP added in the code plan)
+**Context**: Functional Design — U4 — dispositions recorded; artifacts unchanged.
+
+---
+
+## Purpose Restructure Cycle — U4 NFR Requirements + Design (light) started
+**Timestamp**: 2026-09-30T01:38:50Z
+**User Input**: (none — follows FD approval "지역당 상한으로")
+**AI Response**: Light stage per execution plan: plan `construction/plans/U4-player-mode-nfr-requirements-plan.md` (no questions — NFR values already fixed by requirements §NFR, FD answers and the gate decision; assumptions N-1..N-5 recorded) and single note `construction/U4-player-mode/nfr/nfr-light.md` (NFR-1..9 mapping, reliability/concurrency/shutdown, scale, usability, no new tech stack, inputs to the code plan). Plan Review class lowered to advisory per plan-review.md "Light stages".
+**Context**: CONSTRUCTION / U4 — NFR Requirements + Design (light).
+
+---
+
+## Plan Review Requested — NFR Requirements (light) — U4 플레이어 모드
+**Timestamp**: 2026-09-30T01:38:50Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class advisory, iteration 1) on `aidlc-docs/construction/U4-player-mode/nfr/nfr-light.md`. Review record: `aidlc-docs/construction/U4-player-mode/nfr/reviews/nfr-light-review-01.md`.
+**Context**: NFR Requirements (light) — review requested before approval gate.
+
+---
+
+## Plan Review Completed — NFR Requirements (light) — U4 플레이어 모드
+**Timestamp**: 2026-09-30T01:41:25Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY** (advisory). Findings: 0 Critical / 2 Major / 4 Minor; open 6 (R-01 active-rumor cap not closed as a checkable rule; R-02 worst-case run time under LLM outage — retry.py CALL_TIMEOUT_SECONDS=30 × 3 retries; R-03 responsiveness check not a gate; R-04 PBT-08 seed logging missing; R-05 env list 5 not 3, "≤ 40" is a formula; R-06 turn-run lookup must be session-scoped). Record: `aidlc-docs/construction/U4-player-mode/nfr/reviews/nfr-light-review-01.md`.
+**Context**: NFR Requirements (light) — next: approval gate (advisory: artifact frozen, human triages).
+
+---
+
+## NFR Requirements + Design (light) Approved — U4 플레이어 모드
+**Timestamp**: 2026-09-30T01:44:05Z
+**User Input**: "Continue to next stage"
+**AI Response**: NFR (light) approved (advisory review iter 1 READY, 6 open → dispositions below). Next: U4 Code Generation Part 1 (plan).
+**Context**: CONSTRUCTION / U4 — NFR gate → Code Generation Part 1.
+
+---
+
+## Plan Review Dispositions — NFR Requirements (light) — U4 플레이어 모드
+**Timestamp**: 2026-09-30T01:44:05Z
+**User Input**: (approval at gate; see above)
+**AI Response**:
+- R-01 → Accepted risk (carry: active = non-pruned incl. promoted; new count = min(max_new, cap − active, budget remaining); TP "a turn never pushes a region above max(before, cap)"; capped regions recorded separately from budget-exhausted ones)
+- R-02 → Accepted risk (carry: state the real per-call worst case ≈ 97s from retry.py; circuit breaker — first LLM failure in a turn abandons that turn's remaining rumor drafts, `llm_failed` reported; per-action worst case ≈ max_move_cost × 97s)
+- R-03 → Accepted risk (carry: numbers demoted to targets; offline structural assertion — `act` makes 0 LLM calls and opens 1 UoW; marker round trip noted)
+- R-04 → Accepted risk (carry: hypothesis profile in `tests/conftest.py` with `print_blob=True` / `--hypothesis-seed` documented — PBT-08)
+- R-05 → Accepted risk (carry: 5 env vars — PLAY_MAX_MOVE_COST, RUMOR_MAX_NEW_PER_REGION_TURN, LLM_MAX_CALLS_PER_TURN, RUMOR_MAX_ACTIVE_PER_REGION, TURN_SHUTDOWN_TIMEOUT_S; per-action cap = max_move_cost × max_llm_calls_per_turn)
+- R-06 → Accepted risk (carry: `get_run` 404 when `run.session_id != sid`)
+**Context**: NFR (light) — dispositions recorded; note unchanged.
+
+---
+
+## Purpose Restructure Cycle — U4 Code Generation Part 1 (plan written)
+**Timestamp**: 2026-09-30T01:48:01Z
+**User Input**: (none — follows NFR approval "Continue to next stage")
+**AI Response**: Plan written: `aidlc-docs/construction/plans/U4-player-mode-code-generation-plan.md` (11 steps; unit context, external-contract changes, carry-forward table settling FD R-09..R-15 and NFR R-01..R-06 with step references, execution principles). Dispatching architecture-reviewer (class adversarial, iteration 1) on it.
+**Context**: CONSTRUCTION / U4 — Code Generation Part 1, Step 5a.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — U4 플레이어 모드
+**Timestamp**: 2026-09-30T01:48:01Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/U4-player-mode-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/U4-player-mode-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — U4 플레이어 모드
+**Timestamp**: 2026-09-30T01:51:04Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 4 Major / 4 Minor; open 8 (R-01 SessionService constructor call sites incomplete; R-02 LLM-free `turns` always assembled conflicts with test_wiring 503 expectations; R-03 gm.py except tuples do not map TurnInProgressError/InvalidActionError; R-04 SessionBar change contradicts carry-forward R-09 and components.test; R-05 conftest new-file declaration; R-06 "11 sites" count; R-07 step mapping errors; R-08 lifespan None guard / advance finally-release). Record: `aidlc-docs/construction/plans/reviews/U4-player-mode-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — builder fix + re-review.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — U4 플레이어 모드
+**Timestamp**: 2026-09-30T01:53:14Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Builder revised the plan for R-01..R-08 (SessionService(repo, snapshots, guard) with the full call-site list incl. `locus/__main__.py::_session_service` via `assemble_knowledge(shared).cache`, `tests/play/test_service.py` FakeSnapshots, `tests/play/helpers.py` `_NullGraph` removal, `test_wiring.py`; `turns` always assembled with the early return removed, contract (5) LLM-free advance 200 and the `test_wiring.py:108-113` update; `PLAY_ERRORS` tuple + `http_error` 409 mapping applied to the 10 gm.py except sites and `_idle`; SessionBar "New Session" untouched plus a separate "플레이 시작" button opening NewSessionForm; `tests/conftest.py` declared new with a full-suite check; postgres method count wording; step mapping for FD R-13 / NFR R-02 / NFR R-06; lifespan None guard and `finally: release` on `advance`). Dispatching architecture-reviewer (class adversarial, iteration 2) with prior findings carried forward. Review record: `aidlc-docs/construction/plans/reviews/U4-player-mode-code-generation-plan-review-02.md`.
+**Context**: Code Generation Part 1 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — U4 플레이어 모드
+**Timestamp**: 2026-09-30T01:54:43Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: 0 Critical / 0 Major / 2 Minor open (R-09 whether GM `start_session` writes SESSION_STARTED vs `test_timeline_empty_for_new_session`; R-10 `tests/api/play_fixtures.py:77` `compose_play(graph=)` call site and the definition/injection of the new `_idle` dependency); R-01..R-08 Resolved. Record: `aidlc-docs/construction/plans/reviews/U4-player-mode-code-generation-plan-review-02.md`.
+**Context**: Code Generation Part 1 — next: approval gate (plan frozen).
+
+---
+
+## Approval Prompt — Code Generation Plan — U4 플레이어 모드
+**Timestamp**: 2026-09-30T01:54:43Z
+**User Input**: (none — Step 6 prompt logging)
+**AI Response**: Presenting the U4 code generation plan `aidlc-docs/construction/plans/U4-player-mode-code-generation-plan.md` (11 steps) for approval with the Review brief (iteration 2 READY, R-09/R-10 open Minor). Options: Approve & Continue (open findings → Accepted risk, settled at Steps 7.1/8.3 as stated in the brief) / Request Changes.
+**Context**: Code Generation Part 1 — Step 6.
+
+---
+
+## Code Generation Plan Approved — U4 플레이어 모드
+**Timestamp**: 2026-09-30T02:10:52Z
+**User Input**: "Approve & Continue"
+**AI Response**: Plan approved (review iter 2 READY; R-09/R-10 → Accepted risk below). Starting Code Generation Part 2 from Step 1.
+**Context**: CONSTRUCTION / U4 — Code Generation Part 1 complete → Part 2.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — U4 플레이어 모드
+**Timestamp**: 2026-09-30T02:10:52Z
+**User Input**: (approval at gate; see above)
+**AI Response**:
+- R-09 → Accepted risk (carry: GM `start_session` writes no timeline entry; only player `start` writes SESSION_STARTED — existing tests unchanged)
+- R-10 → Accepted risk (carry: `tests/api/play_fixtures.py` drops `graph=`; `_idle` is a new dependency in `api/routers/gm.py` receiving the PlayContainer via `Depends(get_play)`)
+**Context**: Code Generation Part 1 — dispositions recorded.
+
+---
+
+## Purpose Restructure Cycle — U4 Code Generation Part 2 COMPLETE (code gate presented)
+**Timestamp**: 2026-09-30T02:45:17Z
+**User Input**: (none — Part 2 executed after "Approve & Continue")
+**AI Response**: Executed plan Steps 1–11 (11.3 = this gate). Models/tuning/settings (5 env), ports + `players`/`turn_runs` tables, `_PgStores(conn)` single-connection stores + `uow()`, in-memory RLock UoW, pure movement/budget/guard/executor/summary, `RumorService.append_for_turn` (caps, seed exclusion, circuit breaker), three-phase `TurnAdvancer` with `advance -> ActionResult` / `begin -> TurnRun`, `SessionService.start` (one UoW) + `PlayService`, wiring (turns always assembled), play routes (dual session start 200/201, region, act 202, turn-runs, log), gm `_idle` 409 on 8 write routes, lifespan stale-run cleanup + bounded executor shutdown, frontend `/play/:sessionId` (RegionScene/MovePanel/ActionBar/PlayLog/LlmBanner/NewSessionForm, polling), docs (env.example, operations.md, CLAUDE.md). Verification: pytest 457 (baseline 388, 0 regressions, 4 intentional test updates recorded), vitest 38 (31), ruff/black/tsc/vite clean, mypy 12 (= baseline), docker build OK; live checks operator-run. One PBT-found defect fixed (subnormal weight overflow in move_cost). Summary: `construction/U4-player-mode/code/code-summary.md`.
+**Context**: CONSTRUCTION / U4 — Code Generation Part 2 complete → code approval gate.
+
+---
+
+## Code Approved — U4 플레이어 모드
+**Timestamp**: 2026-09-30T03:16:23Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: U4 generated code approved at the code gate. Running `/code-review` on the U4 changes (findings fixed in place and dispositioned, as for U1/U2), then U5 NPC 대화·언어 Functional Design.
+**Context**: CONSTRUCTION / U4 — code gate → code review.
+
+---
+
+## Purpose Restructure Cycle — U5 NPC 대화·언어 Functional Design Part 1 (plan + questions)
+**Timestamp**: 2026-09-30T03:20:07Z
+**User Input**: (none — follows the U4 code approval; `/code-review` on U4 runs in the background and will be dispositioned when it returns)
+**AI Response**: Read U5 upstream (unit-of-work U5, story map, FR-C4/F4/F5/G1~G5, A-1, component-methods P2/P3/P12/P13/P14/L4, services §3.5/§3.8) and the current code (`region_knowledge.py` already tags `rumor:promoted`; `localization/service.py` already suppresses duplicate warms; knowledge router already localizes; no `purge`). Wrote `construction/plans/U5-npc-dialogue-language-functional-design-plan.md` with FD-U5 Q1 표시 언어 위치 / Q2 UI 라벨 통일 범위 / Q3 NPC 컨텍스트 한도 / Q4 번역 purge 트리거 and assumptions A5-1..A5-10. Asking Q1·Q2 first.
+**Context**: CONSTRUCTION / U5 — Functional Design Part 1.
+
+---
+
+## Purpose Restructure Cycle — U4 `/code-review` retried after a rate limit
+**Timestamp**: 2026-09-30T04:28:44Z
+**User Input**: "실패한 요청 이어서 하기" (after switching the model to Opus 5)
+**AI Response**: The first `/code-review` run on the U4 changes died early (HTTP 429, Fable usage limit) with nothing recorded. Relaunched with the same scope from scratch on Opus 5. U5 Functional Design questions continue in parallel.
+**Context**: CONSTRUCTION / U4 — code review (retry).
+
+---
+
+## Purpose Restructure Cycle — U5 Functional Design answers Q1·Q2
+**Timestamp**: 2026-09-30T04:28:44Z
+**User Input**: FD-U5 Q1="A. 서버 기본값 + 요청별 덮어쓰기" / Q2="A. ko 통일 + en 사전까지"
+**AI Response**: Both unambiguous; no clarification round. Q1=A → `?lang=ko|en` on the dialogue and view routes over the `TRANSLATION_TARGET_LANG` default, remembered client-side; the translation cache already keys on `target_lang`. Q2=A → every remaining English label moves into the i18n dictionary and an `en` dictionary is added so the Q1 toggle switches UI labels too (US-9.4 complete). Asking Q3 (NPC context limits) and Q4 (translation purge trigger) next.
+**Context**: CONSTRUCTION / U5 — Functional Design Part 1.
+
+---
+
+## Purpose Restructure Cycle — U5 Functional Design answers Q3·Q4 (all four collected)
+**Timestamp**: 2026-09-30T04:40:24Z
+**User Input**: FD-U5 Q3="A. facts 12 · hearsay 6 · rumors 8 · 대화 10" / Q4="A. 삭제·재생성 라우트에서 직역(즉시 정리)"
+**AI Response**: All four answers unambiguous; no clarification round. Writing the four artifacts. Design decisions to record as deviations: (1) hearsay is part of the NPC context (P12's `NpcContext.hearsay` and Q3's limit) although FR-C4 / US-4.2 list only direct+inherited+global — the core invariant "no knowledge unknowable from R" still holds since hearsay is reachable from R, and the player's region screen already shows it; (2) `RumorService.regenerate_region` returns a typed result carrying `deleted_ids` so the router can purge their translations without play importing localization; (3) `start` needs no LLM (get_or_create + persona), so only `say` answers 503 without a provider (narrows assumption A5-3); (4) `TranslationStore.purge` takes filters (kind/ids/world_id/session_id) and gains a world-scoped form used on world replace/import.
+**Context**: CONSTRUCTION / U5 — Functional Design Part 2.
+
+---
+
+## Purpose Restructure Cycle — U4 code review findings verified and fixed
+**Timestamp**: 2026-09-30T09:13:46Z
+**User Input**: "사용량이 충전되었기 때문에 다시 실패한 작업들 진행"
+**AI Response**: `/code-review` died on rate limits twice (429 on Fable, then on Opus); on the second attempt one angle agent returned 8 findings before the rest died, so the orchestration's verification pass never ran. This session verified all 8 against the code (every reproduction path confirmed) and fixed 6, accepting 2. Record: `construction/U4-player-mode/code/reviews/code-review-01.md`. Fixed: (1) timeline order inside one transaction — PostgreSQL's CURRENT_TIMESTAMP is the transaction time, so a turn's entries tied and came back in arbitrary order → application-stamped monotonic clock (`play/storage/clock.py`) + `(turn, created_at, id)` ordering (deviation from BR-S1-8 for that table, recorded); (2) `WorldCache.get` read the version marker after the load, caching a stale snapshot under the post-write marker forever → marker read before the load; (3) `regenerate_region` deleted before calling the LLM and the generator swallows failures, so an outage destroyed a region's rumors and still answered 200 → draft first, delete nothing when the draft is empty, swap in one UoW; (4) `resolve_event` restored distortion in N autocommit writes, so a mid-way failure left the event ACTIVE and broke the symmetric-restore arithmetic → one UoW (`SessionAppService._entry` moved to the base); (6) the in-memory UoW accepted writes before `__enter__` where the SQL adapter raises → stores are open-gated read-only properties and the `PlayUnitOfWork` protocol members are read-only (mypy 12 → 11); (8) `ThreadTurnExecutor._loop` caught only `Exception`, so a `BaseException` silently killed the worker and stranded every later run as `running` with the guard held → catches `BaseException` and refuses new work if the loop ever exits. Removed the dead `RegionViewOut.region_name_ko` (no `kind="region"` translation exists; region-name translation moved to U5). Accepted: (5) `fail_stale_runs` is unscoped across processes (single-worker assumption, now spelled out in operations.md), and the same non-atomic timeline write in `create_event`/`set_distortion` (deferred to U7). Verification: pytest 464 (457 before, +7 regression tests, 0 regressions), vitest 38, mypy 11, ruff/black/tsc clean. Relaunching the full `/code-review` on the fixed code so the angles that never ran get their pass.
+**Context**: CONSTRUCTION / U4 — code review fixes; U5 Functional Design Part 2 in progress.
+
+---
+
+## Purpose Restructure Cycle — U4 full code review completed and dispositioned
+**Timestamp**: 2026-09-30T09:56:30Z
+**User Input**: (none — the relaunched `/code-review` returned)
+**AI Response**: The full review ran (10 finder angles + a verification pass) and returned 16 findings; the 8 fixed in round 1 were confirmed fixed and not re-reported. **15 fixed, 1 accepted.** Fixed: two guard leaks in the background turn body (`get_run` outside the try/finally; `_fail` before `release` in `begin`); the world-replace gate now refuses a session mid-turn *before* destroying the world and reports sessions it could not close; a region deleted from the canonical world no longer wedges the turn engine; a failed run now refunds the turn charge and restores the position when no turn advanced (unlimited free movement); `regenerate_region` keeps everything on a *partial* LLM failure (`(drafts, complete)`) and distinguishes "no sources"; the GM guard became a lease held for the whole write (a turn starting mid-write had its promotion deleted); the store phase writes only the distortions its events moved (silent lost update + one upsert per region per turn); `update_event` is session-scoped and update-only in both adapters, so a discarded event is not resurrected; a failed version-marker read is no longer cached as "no marker"; the turn loop re-checks OPEN at every boundary; movement reads the topology as undirected (one-way doors stranded the player); `RumorService`/`EventService` are always assembled and only their LLM-needing methods 503 (a regression that 503'd seven deterministic routes); the lifespan shuts down only an owned executor and `ExecutorShutdownError` maps to 503 instead of an unhandled 500; `events/suggest` got the guard it was missing; PlayPage's poll loop has generation-based cleanup, refreshes on every exit path so `busy` cannot latch, and renders the narration. Also from the below-cap list: named GM toasts, deterministic list ordering in both adapters, json-mode action dump, enum-value parity in the twin, `ConnectionKind.BLOCKED`, no leaked executor threads in tests, dead `append_for_region` removed. Accepted: `fail_stale_runs` is unscoped across processes (single-worker assumption, documented). Record: `construction/U4-player-mode/code/reviews/code-review-01.md` (round 2 section). Verification: pytest 475 (464 before, +18 regression tests, 0 regressions), vitest 39, mypy 11 (baseline 12), ruff/black/tsc/vite build clean. CLAUDE.md test counts corrected to 514 total.
+**Context**: CONSTRUCTION / U4 — code review complete; next: U5 Functional Design Part 2 (business-rules + frontend-components, then the reviewer).
+
+---
+
+## Correction — U5 Functional Design checklist overstated progress
+**Timestamp**: 2026-09-30T11:40:20Z
+**User Input**: "현재 작업 상황"
+**AI Response**: While reporting status I found the U5 FD plan checklist marked all four artifacts done. Only `domain-entities.md` and `business-logic-model.md` exist: the bookkeeping script ticked all four names before the files were written, and the run was interrupted after two. Un-ticked `business-rules.md` and `frontend-components.md`; they are the next work item, followed by the architecture reviewer and the approval gate.
+**Context**: CONSTRUCTION / U5 — Functional Design Part 2 (2 of 4 artifacts written).
+
+---
+
+## Purpose Restructure Cycle — U1/U2/U4 committed
+**Timestamp**: 2026-09-30T11:49:47Z
+**User Input**: "그럼 커밋 후, U5의 나머지 작업을 ai-dlc를 사용해서 작업 진행"
+**AI Response**: Branched `feat/purpose-restructure` off `main` (the repo's convention; `main` is the default branch) and committed the tree in two logical commits: `07e4b04 feat(play): five boundaries, World File v1 and player mode (U1+U2+U4)` (293 paths) and `21dea89 docs(aidlc): Purpose Restructure cycle artifacts (U1, U2, U4 + U5 in progress)` (80 paths). Working tree clean. Removed a stray empty root `node_modules/` (a vitest cache from running npx outside `web/`) and added `node_modules/` to the root `.gitignore`.
+**Context**: CONSTRUCTION / U5 — commit before continuing.
+
+---
+
+## Purpose Restructure Cycle — U5 Functional Design artifacts complete
+**Timestamp**: 2026-09-30T11:49:47Z
+**User Input**: (none — continuing the stage)
+**AI Response**: Wrote the two remaining artifacts: `business-rules.md` (BR-U5-1..30 + Testable Properties TP-U5-1..7, the NPC-scope invariant as PBT-03 and per-rule examples EX-1..12) and `frontend-components.md` (`LangToggle`, the `en` dictionary with the same key set as `ko`, the remaining English labels mapped to keys, `NpcList`, `DialoguePanel`, the API layer's `?lang=`). All four artifacts now exist. Next: Step 6a Plan Review (architecture-reviewer, adversarial, max 2).
+**Context**: CONSTRUCTION / U5 — Functional Design Part 2.
+
+---
+
+## Plan Review Requested — Functional Design — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T11:49:47Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/U5-npc-dialogue-language/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/U5-npc-dialogue-language/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — U5 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:00:18Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 5 Major / 6 Minor; open 11. Record: `aidlc-docs/construction/U5-npc-dialogue-language/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — U5 — builder fix + re-review.
+
+---
+
+## Plan Review Requested — Functional Design — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:00:18Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Builder fixed R-01..R-11 in place. The substantive change is R-01: **hearsay is removed from the NPC context**, following FR-C4/US-4.2 as written — the reviewer showed that hearsay is another region's canonical knowledge reached over a weak path, so including it let a distant NPC recite the undistorted original and weakened US-6.1 and US-4.3. Q3's option text mentioned "hearsay 6", so the gate will offer the human the chance to put it back. R-02: `build_context` now drops canonical knowledge that an active local rumor derives from, so the original and the distortion are never held together (with the pruned-chain limit stated). R-03: the invariant moved to the `region_sources` + `build_context` composition with an oracle built independently from ConsensusEngine and the repository. R-04: `?lang=` is validated once at the API edge (`display_lang` dependency) and threaded through `enrichment_for`/`localize_*`, with `*_ko` naming, `TRANSLATION_ENABLED` independence and the route list settled. R-05: `RegenerateResult` specifies `deleted_ids == []` for both skip paths U4's review settled, lists the real call sites (1 router + 5 tests), drops the "only way" claim and records the purge/warm race as accepted. R-06: purge hooks the one helper the six replace routes share, and the CLI gap is a stated rule. R-07: `region_sources` replaces the third copy of the resolve skeleton, the U4 `PlayService` constructor/wiring change is recorded, the 404 message is shared and the DTO renamed `RegionSources`. R-08: NPC 404 vs 400 split, `LlmUnavailableError` reused rather than redeclared, conversation creation moved inside the `say` transaction. R-09: EndTalk pseudocode matches U4's real shape and the `timeline.npc_talked` keys are listed. R-10: zero-limit slicing, `ge=0` bounds, a message length cap and the interleaving note. R-11: the deviation list is now complete (P12/P13/P2 signatures, `messages.lang`, i18n file location). Dispatching architecture-reviewer (class adversarial, iteration 2) with prior findings carried forward. Review record: `aidlc-docs/construction/U5-npc-dialogue-language/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — U5 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:03:03Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: 0 Critical / 1 Major open (R-04 narrowed: the default language is never checked against the supported set, and the timeline route has a meaningless `lang`) / 2 Minor open (R-12 `shadowed` is computed before the rumor cap, so a cut rumor can hide its own source and the NPC knows neither; R-13 the purge must sit outside `_close_if_replaced`'s early return and the six routes need a `loc` dependency); R-01..R-03, R-05..R-11 Resolved. Record: `aidlc-docs/construction/U5-npc-dialogue-language/functional-design/reviews/functional-design-review-02.md`. Artifacts frozen per plan-review.md §3.5 until the human answers the gate.
+**Context**: Functional Design — U5 — next: approval gate.
+
+---
+
+## Approval Prompt — Functional Design — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:03:03Z
+**User Input**: (none — gate prompt logging)
+**AI Response**: Presenting the four U5 functional-design artifacts with the Review brief (iteration 2 READY; R-04 Unresolved, R-12/R-13 New). The gate also carries the hearsay decision explicitly: the design now follows FR-C4/US-4.2 and excludes hearsay from the NPC context, although FD-U5 Q3's option text mentioned "hearsay 6", so the human may put it back. Options: Continue to Next Stage (open findings → Accepted risk, settled as one-line instructions in the code-generation plan) / Request Changes.
+**Context**: Functional Design — U5 — approval gate.
+
+---
+
+## Functional Design Approved — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:11:36Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: Functional Design approved (review iter 2 READY; R-04/R-12/R-13 open → dispositions below). The human did not ask for hearsay back, so the design keeps it out of the NPC context per FR-C4/US-4.2. Next: U5 NFR Requirements + Design (light) per the execution plan.
+**Context**: CONSTRUCTION / U5 — Functional Design gate → NFR (light).
+
+---
+
+## Plan Review Dispositions — Functional Design — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:11:36Z
+**User Input**: (approval at gate; see above)
+**AI Response**:
+- R-04 → Accepted risk (carry into the code plan: validate at startup that `TRANSLATION_TARGET_LANG` is in `SUPPORTED_LANGS`, or fall back to the first supported value; drop `lang` from `GET /api/gm/sessions/{s}/timeline`, which returns untranslated entries)
+- R-12 → Accepted risk (carry: pick the rumors first, then compute `shadowed` from the selected rumors only, so a capped-out rumor cannot hide its own source; the oracle in TP-U5-1 follows the same order, and EX-5/EX-7 gain an over-the-cap case)
+- R-13 → Accepted risk (carry: the purge step sits outside `_close_if_replaced`'s early return and is conditioned on `report.replaced` alone; the six replace routes gain a `loc` dependency; EX-9 gains a "replace with no open sessions" case)
+- hearsay → stays excluded from the NPC context (human made no change at the gate); the region screen keeps it as a player-facing panel with a hint line
+**Context**: Functional Design — U5 — dispositions recorded; artifacts unchanged.
+
+---
+
+## Purpose Restructure Cycle — U5 NFR Requirements + Design (light) written
+**Timestamp**: 2026-09-30T12:13:41Z
+**User Input**: (none — follows the Functional Design approval)
+**AI Response**: Light stage per the execution plan: plan `construction/plans/U5-npc-dialogue-language-nfr-requirements-plan.md` (no questions — the values are fixed by FD-U5 Q1/Q3/Q4, A-1 and the requirements; assumptions N5-1..N5-6) and the single note `construction/U5-npc-dialogue-language/nfr/nfr-light.md` (NFR-1..9 mapping with the three contract changes and their exact call sites, the non-tautological PBT target, the structural responsiveness assertion for `say`, prompt injection as an accepted risk with its blast radius, reliability/scale, no new tech stack, and the inputs to the code plan). Dispatching architecture-reviewer (class advisory, iteration 1) on the note. Review record: `construction/U5-npc-dialogue-language/nfr/reviews/nfr-light-review-01.md`.
+**Context**: CONSTRUCTION / U5 — NFR Requirements + Design (light).
+
+---
+
+## Plan Review Completed — NFR Requirements (light) — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:15:43Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY** (advisory). Findings: 0 Critical / 2 Major / 4 Minor; open 6 (R-01 the retry arithmetic is 93s not 97s and the provider's own SDK retries push a single call to ~270s; R-02 `say` reads the snapshot at least twice, so the structural assertion as worded would fail; R-03 the note promises a re-read on a conversation UNIQUE race that the flow does not do; R-04 the injection blast radius is understated — stored text re-enters via `recent`, and unauthenticated free text can drive paid calls; R-05 the p95 target has no verification method; R-06 the note does not say whether the new `region_knowledge` argument is required or defaulted). Advisory: the artifact is frozen and the human triages at the gate. Record: `construction/U5-npc-dialogue-language/nfr/reviews/nfr-light-review-01.md`.
+**Context**: NFR (light) — next: approval gate.
+
+---
+
+## Approval Prompt — NFR Requirements (light) — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:15:43Z
+**User Input**: (none — gate prompt logging)
+**AI Response**: Presenting `construction/U5-npc-dialogue-language/nfr/nfr-light.md` with the Review brief (advisory iteration 1 READY; six open findings). Options: Continue to Next Stage (open findings → Accepted risk, corrected in the code-generation plan) / Request Changes.
+**Context**: NFR (light) — approval gate.
+
+---
+
+## NFR Requirements + Design (light) Approved — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:19:54Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: NFR (light) approved (advisory review iter 1 READY, 6 open → dispositions below). Next: U5 Code Generation Part 1 (plan).
+**Context**: CONSTRUCTION / U5 — NFR gate → Code Generation Part 1.
+
+---
+
+## Plan Review Dispositions — NFR Requirements (light) — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:19:54Z
+**User Input**: (approval at gate; see above)
+**AI Response**:
+- R-01 → Accepted risk (carry: the session verified the finding in the code — `stop_after_attempt(3)` waits twice, so the retry layer is 93s, and `ChatOpenAI` sets no `max_retries`, so the SDK's own 2 retries can stack. The code plan pins `max_retries=0` on both providers, making 93s the real bound, and aligns the number in the NFR note, the functional design and operations.md)
+- R-02 → Accepted risk (carry: restate the structural assertion as exactly one `LLM.complete`, exactly one `repo.uow()` entry, and at most two `SnapshotSource.get` calls with no direct graph/search access)
+- R-03 → Accepted risk (carry: catch the unique-constraint violation on a concurrent first `say`, re-read the conversation and append to it; one test fixes the behaviour)
+- R-04 → Accepted risk (carry: state that contamination persists through `recent` within a conversation, and that there is no request-rate limit — accepted for a local single-player demo)
+- R-05 → Accepted risk (carry: the latency target is operator-run; the offline gate is the structural assertion)
+- R-06 → Accepted risk (carry: `region_knowledge` is a required positional argument; `tests/play/test_player_mode.py::_services` is the one direct construction to update)
+**Context**: NFR (light) — dispositions recorded; note unchanged.
+
+---
+
+## Purpose Restructure Cycle — U5 Code Generation Part 1 (plan written)
+**Timestamp**: 2026-09-30T12:22:35Z
+**User Input**: (none — follows the NFR approval)
+**AI Response**: Plan written: `aidlc-docs/construction/plans/U5-npc-dialogue-language-code-generation-plan.md` (8 steps; unit context, the four external-contract changes, a carry-forward table that settles FD R-04/R-12/R-13 and NFR R-01..R-06 with step references, execution principles). Dispatching architecture-reviewer (class adversarial, iteration 1) on it. Review record: `aidlc-docs/construction/plans/reviews/U5-npc-dialogue-language-code-generation-plan-review-01.md`.
+**Context**: CONSTRUCTION / U5 — Code Generation Part 1, Step 5a.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:28:59Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 4 Major / 8 Minor; open 12. Record: `aidlc-docs/construction/plans/reviews/U5-npc-dialogue-language-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — builder fix + re-review.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:28:59Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Builder revised the plan for R-01..R-12. R-01: `_close_if_replaced` has five call sites and 291 sits in the `_import` helper the `file` and `file/upload` routes share, so `_import` gains a `loc` parameter and both callers change. R-02: the `PlayService` signature change and both construction sites now live in one sub-step (4.4), and the carry table points at it. R-03: the unique-violation recovery is explicitly outside the unit of work — a typed `ConversationExistsError` is caught, the conversation re-read, and a second append-only unit of work opened, because PostgreSQL aborts the transaction and the in-memory twin restores state. R-04: `assemble_play` gains a `dialogue_llm` injection point defaulting to `shared.llm`, and `compose_play`/`play_fixtures` pass a fake, without which the `say` 200 tests could not be composed. Minors: keep the player-region check before `region_sources` so U4's message survives; spell out the adapter work including the in-memory rollback state tuple and both unit-of-work properties; point the docs work at the right step and correct the U4 section of operations.md; add Step 1.3 to amend the approved design and NFR texts the dispositions changed (rumor-first ordering, the timeline `lang` row, 97s → 93s, the structural assertion, and `ScopeLimits.from_tuning` instead of a method on shared's `PlayTuning`); put the same-language translation skip in `enrichment_for`; note that pinning `max_retries=0` changes every LLM and VLM call and pin it with a test; declare `tests/shared/test_config.py` as new; and state the write-route blast radius and the timeline exclusion from `withLang`. Dispatching architecture-reviewer (class adversarial, iteration 2) with prior findings carried forward. Review record: `aidlc-docs/construction/plans/reviews/U5-npc-dialogue-language-code-generation-plan-review-02.md`.
+**Context**: Code Generation Part 1 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:30:58Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: 0 Critical / 0 Major open / 4 Minor open (R-13 the "five routes" wording against the six it lists; R-14 `SUPPORTED_LANGS=ko,en` needs `NoDecode` plus a before-validator because pydantic-settings JSON-decodes tuple fields; R-15 no stated mapping from the PostgreSQL unique violation to `ConversationExistsError`, and SQLite cannot exercise the transaction abort; R-16 `region_knowledge` is built inline in `assemble_play`, so extracting it to a local belongs in 4.4 as well as 4.8); R-01..R-12 Resolved. Record: `aidlc-docs/construction/plans/reviews/U5-npc-dialogue-language-code-generation-plan-review-02.md`. Plan frozen per plan-review.md §3.5 until the human answers the gate.
+**Context**: Code Generation Part 1 — next: approval gate.
+
+---
+
+## Approval Prompt — Code Generation Plan — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:30:58Z
+**User Input**: (none — Step 6 prompt logging)
+**AI Response**: Presenting `aidlc-docs/construction/plans/U5-npc-dialogue-language-code-generation-plan.md` (8 steps) for approval with the Review brief (iteration 2 READY; R-13..R-16 open Minor). Options: Approve & Continue (open findings → Accepted risk, settled while executing the named steps) / Request Changes.
+**Context**: Code Generation Part 1 — Step 6.
+
+---
+
+## Code Generation Plan Approved — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:41:51Z
+**User Input**: "Approve & Continue"
+**AI Response**: Plan approved (review iter 2 READY; R-13..R-16 → Accepted risk below). Starting Code Generation Part 2 from Step 1.
+**Context**: CONSTRUCTION / U5 — Code Generation Part 1 complete → Part 2.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T12:41:51Z
+**User Input**: (approval at gate; see above)
+**AI Response**:
+- R-13 → Accepted risk (carry: Step 6.3 wording is "six routes share five call sites")
+- R-14 → Accepted risk (carry: `SUPPORTED_LANGS` is read as a plain string field and split on commas in a property, avoiding pydantic-settings' JSON decoding of tuple fields; Step 2.4 covers "ko,en" and the empty value)
+- R-15 → Accepted risk (carry: the PostgreSQL adapter maps only the `conversations` unique violation — matched by constraint name, falling back to a pre-read — to `ConversationExistsError`; other integrity errors propagate. The PostgreSQL transaction-abort path stays operator-run and is named in the code summary)
+- R-16 → Accepted risk (carry: Step 4.4 extracts `region_knowledge` into a local in `assemble_play`; Step 4.8 only adds `dialogue`)
+**Context**: Code Generation Part 1 — dispositions recorded.
+
+---
+
+## U5 Code Generation Step 1.3 — approved-text corrections
+**Timestamp**: 2026-09-30T12:43:08Z
+**User Input**: (none — plan Step 1.3, part of the approved plan)
+**AI Response**: Amended the approved U5 design and NFR texts exactly where the gate dispositions changed them, each marked "〔Step 1.3 정정〕": `business-logic-model.md` §1 (`build_context` picks rumors first and shadows only the selected rumors' sources — FD R-12), §2.2 (`ScopeLimits.from_tuning(tuning)` instead of a method on shared's `PlayTuning`, which would make shared import play; 97s → 93s with `max_retries=0`), §7 (the timeline route no longer takes `lang` — FD R-04(2)); `business-rules.md` BR-U5-11 and TP-U5-1 (same ordering); `nfr-light.md` NFR-3 structural assertion (normal-path one `uow()`, two on the race-recovery path, at most two snapshot reads) and NFR-5/NFR-8 (93s). Review records still quote the old figures and stay unchanged.
+**Context**: CONSTRUCTION / U5 — Code Generation Part 2, Step 1.
+
+---
+
+---
+
+## U5 Code Generation Step 7 — frontend and docs
+**Timestamp**: 2026-09-30T13:14:35Z
+**User Input**: (none — plan Step 7, part of the approved plan)
+**AI Response**: `web/src/i18n.ts` now holds a ko and an en dictionary (same key set, enforced by the type `Record<Key, string>` and a vitest check), the display language as module state (`lang` / `setLang` / `useLang`, localStorage `locus.lang`), and `timeline.npc_talked` in both languages. `api/http.ts::withLang` adds `?lang=` to the five translated reads and `say` (not the timeline, not writes); `api/play.ts` gains `listNpcs` / `startDialogue` / `say` / `dialogueHistory`; `types.ts` gains `Lang` / `Message` / `Conversation` / `NpcReply` / `NpcSummary`. New `features/play/{LangToggle,NpcList,DialoguePanel}.tsx`; `RegionScene` uses `NpcList` and shows the hearsay hint; `PlayPage` opens the panel (`activeNpcId`), ends talk with the U4 `end_talk` action and re-reads the region on a language switch; `AppNav` carries the toggle. The remaining English labels (and the hard-coded Korean ones, so the en toggle covers the whole UI) moved into the dictionaries; enum codes (scope type, event status / category / lifecycle, session status, level) stay codes. Existing label assertions became key-based. Docs: `env.example` (+5 env), `operations.md` dialogue section and U4 "≈97s" → 93s, `CLAUDE.md`. Deviation: the ko `timeline.npc_talked` reads "대화: {npc_name} · {region_name}" instead of the design's "{npc_name}와 대화 · …", which picks the wrong particle after a consonant-final name. Also fixed `aidlc-state.md`, whose U2 and U4 lines had carried the next unit's progress. vitest 56 (39 + 17), tsc clean; two mutations (no language re-read, no rollback) each failed a new test.
+**Context**: CONSTRUCTION / U5 — Code Generation Part 2, Step 7.
+
+---
+
+## U5 Code Generation Step 8.1–8.2 — gates and code summary
+**Timestamp**: 2026-09-30T13:21:13Z
+**User Input**: (none — plan Step 8, part of the approved plan)
+**AI Response**: Gates: pytest 545 (baseline 475, +70, 0 regressions), vitest 56 (39 → 56), mypy 11 (= baseline), ruff/black clean on `locus api tests`, boundaries 4 passed, tsc and vite build clean, `docker build` OK (`locus-u5-check`; the image's OpenAPI lists the four dialogue routes and exactly six `lang` routes). Whole-repo `ruff check .` / `black --check .` flag only `examples/demo_world/generate_map.py`, untouched since `ce8fd98` (pre-U5; not fixed, noted). Two NFR test items the NFR note asked for were missing and were added: NFR-6 injection example and NFR-9 removed-NPC scenario (`tests/play/test_dialogue.py`). Code summary written (`construction/U5-npc-dialogue-language/code/code-summary.md`): results, file list, TP mapping (TP-U5-1 split into 1a scope / 1b composed), carry-forward locations, the complete deviation list (FD §7 ten + plan values + Step 1.3 corrections + six made during generation, incl. the 500 on a failed dialogue LLM call that BR-U5-30 leaves unspecified), operator-run live commands (US-6.1, PG race path R-15, latency), hand-offs to U6/U7/U3/U8.
+**Context**: CONSTRUCTION / U5 — Code Generation Part 2, Step 8.1–8.2; next: code gate (8.3).
+
+---
+
+## Code Generation Approval — U5 NPC 대화·언어
+**Timestamp**: 2026-09-30T15:36:53Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: Code approved with the four generation-time decisions as presented (ko timeline wording "대화: {npc_name} · {region_name}"; hard-coded Korean labels moved into the dictionaries too, enum codes kept; a dialogue LLM call that fails after retries answers 500; NFR-6 / NFR-9 tests added). CLAUDE.md test count corrected to 601 (545 + 56). Next: `/code-review` of the U5 diff (6ef8d38~1..HEAD), then U6 행적·전파.
+**Context**: CONSTRUCTION / U5 — Code Generation approved.
+
+---
+
+## U6 Functional Design Part 1 — plan and questions
+**Timestamp**: 2026-09-30T15:41:25Z
+**User Input**: (continuation of "Continue to Next Stage" — U5 approved; next unit in the order U1→U2→U4→U5→**U6**)
+**AI Response**: `/code-review` of the U5 diff launched in the background. Wrote `construction/plans/U6-deeds-spread-functional-design-plan.md`: three questions (Q1 who appraises a deed, Q2 which LLM work the turn budget serves first, Q3 the language of a declaration's narration) and assumptions A6-1..13 (LLM calls inside the background run, deed kinds, pending window = current stay, zero-LLM seeding from the NPC's retelling with support `birth × (1 + salience)`, one-hop-per-turn spread excluding blocked edges with permanent reached set, no canonical spread, void semantics, no-LLM behaviour, NPC context and event-suggestion context, tuning/env, additive schema via `ensure_play_schema`, UI). Asking Q1·Q2 first.
+**Context**: CONSTRUCTION / U6 — Functional Design Part 1.
+
+---
+
+## U6 FD Q1·Q2 answers
+**Timestamp**: 2026-09-30T15:50:59Z
+**User Input**: Q1: "A와 C의 하이브리드. 대화는 A(1대1 communication이니까). 행동은 C(목격을 모두가 하기 때문)" · Q2: "A. 행적 전파가 먼저 (Recommended)"
+**AI Response**: Recorded in the plan. Q1 read as: a statement is appraised by its one listener and seeds at most once; arrival and declared actions are appraised by every witnessing NPC the player talks to, and each noteworthy appraisal seeds that NPC's own version. For action deeds the uniqueness invariant becomes (deed, appraising NPC, region); each version spreads on its own, bounded by the per-region per-turn spread cap and the per-region active cap. This reading is stated in the Q3 prompt for correction. Asking Q3.
+**Context**: CONSTRUCTION / U6 — Functional Design Part 1.
+
+---
+
+## U6 FD Q3 answer and artifacts
+**Timestamp**: 2026-09-30T16:03:18Z
+**User Input**: Q3: "A. 한 호출로 두 가지 (Recommended)" (no objection to the stated Q1 reading)
+**AI Response**: Wrote `construction/U6-deeds-spread/functional-design/{domain-entities,business-logic-model,business-rules,frontend-components}.md` (BR-U6-1..34, TP-U6-1..7, EX-1..15, eleven deviations in domain-entities §7). Spread treats connections as bidirectional like movement (knowledge's best_path_weights is directed, so reversed edges are added).
+**Context**: CONSTRUCTION / U6 — Functional Design Part 2.
+
+---
+
+## Plan Review Requested — Functional Design — U6 행적·전파
+**Timestamp**: 2026-09-30T16:03:18Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/U6-deeds-spread/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/U6-deeds-spread/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — U6 행적·전파 (iteration 1)
+**Timestamp**: 2026-09-30T16:20:50Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: architecture-reviewer iteration 1: NOT-READY (3 Major, 11 Minor). Verified the three Majors against code: support arithmetic prunes far spreads at birth (R-01); canonical chain sources include deed rumors (`_collect_sources(include_existing=True)`, R-02); `turn_runs` has no `lang`/`turns_charged`/`from_region_id` columns and `_start` overwrites `run` with the stored row, so U4 failed-run compensation silently does nothing on PostgreSQL (R-03; latent U4 defect). All 14 addressed in the artifacts: newborn deed rumors skip decay + spread support `parent × (0.5 + 0.5 × edge)` + drop targets below `prune_floor + support_decay`; canonical sources exclude deed-origin rumors (BR-U6-35); `turn_runs` gains three columns (BR-U6-37); shared per-turn region quota (TP-U6-8); stay boundary and statement cursor ignore voiding; "talked" = new player lines since the cursor; `TurnAdvancer._prepare` owns the prep step, writes only in `DeedService`; failed runs with no advanced turn delete their deeds (`run_id`); void guarded by the router's `_idle` lease; deviations 12–20 listed; inspector-based column adds on both dialects; no `min_length` on the declaration; log-filter scope stated; `onDeclare` returns success. Suggestions taken: `DeedService.recent`, server-provided `declare_max_chars`, narrator injection guard.
+**Context**: Functional Design — adversarial round 1 fixes applied.
+
+---
+
+## Plan Review Requested — Functional Design — U6 행적·전파
+**Timestamp**: 2026-09-30T16:20:50Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 2) on `aidlc-docs/construction/U6-deeds-spread/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/U6-deeds-spread/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — U6 행적·전파
+**Timestamp**: 2026-09-30T23:23:30Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: 0 Critical / 3 Major / 14 Minor; open 4 (R-10 Unresolved; R-15, R-16, R-17 New — all Minor). Record: `aidlc-docs/construction/U6-deeds-spread/functional-design/reviews/functional-design-review-02.md`. The reviewer wrote the record before the previous session ended; the record is complete and the artifacts are unchanged since (mtimes precede the record date, no diff since 0ffd807). Artifacts frozen until the gate answer.
+**Context**: Functional Design — next: approval gate.
+
+---
+
+## U5 /code-review result received
+**Timestamp**: 2026-09-30T23:23:30Z
+**User Input**: (none — background review finished)
+**AI Response**: Record `aidlc-docs/construction/U5-npc-dialogue-language/code/reviews/code-review-01.md`: 15 correctness findings (1 high, several medium), 6 cleanup findings, 1 capped, 1 rejected. The heaviest (#1) breaks BR-U5-11: the rumor-shadowing rule only covers the first chain link, so an NPC can hold an original and its distortion together (reproduced on the aldermoor demo after a GM regenerate). The code is approved, so fixing it changes approved code: asking the human (record §7 options), per the global rule on reworking approved artifacts.
+**Context**: CONSTRUCTION / U5 — post-approval code review.
+
+---
+
+## Functional Design Approval — U6 행적·전파
+**Timestamp**: 2026-09-30T23:26:40Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U6 functional design approved. Next: U6 NFR (light) — after the U5 review fixes below, because U6 builds on the same code.
+**Context**: CONSTRUCTION / U6 — Functional Design approved.
+
+---
+
+## Plan Review Dispositions — Functional Design — U6 행적·전파
+**Timestamp**: 2026-09-30T23:26:40Z
+**User Input**: (approval at gate; see above)
+**AI Response**:
+- R-10 → Accepted risk (carry: the code plan lists the remaining deviations — DeedService method names, reach weight as w(X)×edge vs best_path_weights, SpreadTarget/DeedView/void shapes)
+- R-15 → Accepted risk (carry: decide rumor-level birth-turn decay exemption in the code plan; the gate note proposed rumor-level)
+- R-16 → Accepted risk (carry: a missing statement appraisal defaults to noteworthy=false, salience=0, stored with the statement deed)
+- R-17 → Accepted risk (carry: code plan names who builds SceneBrief and the lang path router → PlayService.act → TurnAdvancer.begin/_start)
+- Riding suggestions (Q4=A migration note, timeline lines of deleted deeds, length caps on appraisal fields) → carried to the code plan as questions/assumptions.
+**Context**: Functional Design — dispositions recorded.
+
+---
+
+## U5 code review — fix decision
+**Timestamp**: 2026-09-30T23:26:40Z
+**User Input**: "A. 14건 지금 수정, 1건 감수 (Recommended)"
+**AI Response**: Fix #1–#14 of `U5-npc-dialogue-language/code/reviews/code-review-01.md` now on this branch, recorded as review fixes without reopening the code gate (U4 precedent). #15 (sync `say` holding AnyIO thread-pool tokens under 40+ concurrent slow calls) → Accepted risk.
+**Context**: CONSTRUCTION / U5 — post-approval review fixes.
+
+---
+
+## U5 code review fixes applied
+**Timestamp**: 2026-09-30T23:39:36Z
+**User Input**: (continuation of "A. 14건 지금 수정, 1건 감수")
+**AI Response**: Fixed #1–#14 of `U5-npc-dialogue-language/code/reviews/code-review-01.md` (outcomes in its §8): chain-root shadowing with lineage incl. pruned links (#1; generator now makes chains, independent oracle `chain_roots`, mutation check fails 4 tests); `GET /api/langs` + client sends `?lang=` only for a non-default language the server takes (#2); Retry-After-aware waits capped at 8s → 106s bound (#3); closed-session re-check inside the say transaction (#4); nginx 130s (#5); id-scoped in-flight purge (#6); read-only history panel for closed sessions (#7); panel closes on region change (#8); input locked while sending (#9); bounded embeddings client (#10); latest-read-wins in PlayPage/SessionPanel and re-read on the request language (#11; mutation check fails the new test); localized turn summary (#12); one snapshot read per screen/say (#13); empty drafts end the chain and blank rumors are never picked (#14). #15 → Accepted risk (operations.md). Docs: operations.md (106s, /api/langs, closed sessions, accepted risk), CLAUDE.md (test count 621, two inaccurate phrases), U5 code-summary §8. Gates: pytest 557, vitest 64, mypy 11, ruff/black/tsc/vite clean, docker build OK with /api/langs.
+**Context**: CONSTRUCTION / U5 — post-approval review fixes complete.
+
+---
+
+## U6 NFR (light) — plan and artifact
+**Timestamp**: 2026-09-30T23:41:21Z
+**User Input**: (continuation — next stage after the U6 FD approval)
+**AI Response**: Wrote `construction/plans/U6-deeds-spread-nfr-requirements-plan.md` (no questions; assumptions N6-1..N6-6 incl. the three FD-review suggestions as decisions: output length caps, inspector column adds kept as a Q4=A deviation, timeline lines of deleted deeds kept as audit trail) and `construction/U6-deeds-spread/nfr/nfr-light.md` (NFR-1..9, structural assertions incl. "no LLM call while a UoW is open", 106s per-call bound, carry-forward list for the code plan).
+**Context**: CONSTRUCTION / U6 — NFR (light).
+
+---
+
+## Plan Review Requested — NFR (light) — U6 행적·전파
+**Timestamp**: 2026-09-30T23:41:21Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class advisory, iteration 1) on `aidlc-docs/construction/U6-deeds-spread/nfr/nfr-light.md`. Review record: `aidlc-docs/construction/U6-deeds-spread/nfr/reviews/nfr-light-review-01.md`.
+**Context**: NFR (light) — review requested before approval gate.
+
+---
+
+## Plan Review Completed — NFR (light) — U6 행적·전파
+**Timestamp**: 2026-09-30T23:43:14Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY** (advisory, terminal). Findings: 0 Critical / 2 Major / 3 Minor; open 5. Record: `aidlc-docs/construction/U6-deeds-spread/nfr/reviews/nfr-light-review-01.md`. Fact check: R-05's "CLAUDE.md says 601" does not hold — CLAUDE.md reads 621 (557 + 64) in the working tree and at HEAD since 3452fd8; the rest of R-05 stands.
+**Context**: NFR (light) — next: approval gate.
+
+---
+
+## NFR (light) Approval — U6 행적·전파
+**Timestamp**: 2026-09-30T23:46:16Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U6 NFR (light) approved. Next: U6 Code Generation Part 1 (plan).
+**Context**: CONSTRUCTION / U6 — NFR (light) approved.
+
+---
+
+## Plan Review Dispositions — NFR (light) — U6 행적·전파
+**Timestamp**: 2026-09-30T23:46:16Z
+**User Input**: (approval at gate; see above)
+**AI Response**:
+- R-01 → Accepted risk (carry: worst case per action kind in numbers; a failed prep call trips the turn's circuit breaker so spread and canonical drafts are skipped that turn; test the path)
+- R-02 → Accepted risk (carry: one column table — 4 session_rumors + 3 turn_runs columns with type/nullable/default; the origin_deed_id index on the existing table via CREATE INDEX IF NOT EXISTS; deeds.run_id is created by create_all; cost estimate revised)
+- R-03 → Accepted risk (carry: deeds committed by a run that a restart marks interrupted stay — recorded as an accepted risk in NFR-9/operations)
+- R-04 → Accepted risk (carry: budget 0 → no reservation, the no-LLM fallback applies; example with budget 0 and 1)
+- R-05 → Accepted risk (carry: code plan step 1 measures the baseline — 557 / 64 / mypy 11 — and the GET deeds p95 target states 300 deeds / 100 rumors). Note: the finding's "CLAUDE.md says 601" is factually wrong (621 since 3452fd8).
+- Suggestion (statement → appraisal summary → NPC prompt injection assertion) → carried to the code plan's test steps.
+**Context**: NFR (light) — dispositions recorded.
+
+---
+
+## U6 Code Generation Part 1 — plan written
+**Timestamp**: 2026-09-30T23:50:02Z
+**User Input**: (continuation — next stage after the U6 NFR approval)
+**AI Response**: Wrote `construction/plans/U6-deeds-spread-code-generation-plan.md` (11 steps; carry-forward table closing FD R-10/R-15/R-16/R-17, FD suggestions, NFR R-01..R-05 + suggestion, U5 review C4 (C1 deferred to U7); fixed column-add table; call sites of every changed constructor/signature listed).
+**Context**: CONSTRUCTION / U6 — Code Generation Part 1.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — U6 행적·전파
+**Timestamp**: 2026-09-30T23:50:02Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/U6-deeds-spread-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/U6-deeds-spread-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — U6 행적·전파
+**Timestamp**: 2026-09-30T23:54:27Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY** (adversarial, terminal). Findings: 0 Critical / 2 Major / 6 Minor; open 8. Record: `aidlc-docs/construction/plans/reviews/U6-deeds-spread-code-generation-plan-review-01.md`. Fact check: R-08's "CLAUDE.md says 545 + 56 = 601" does not hold (CLAUDE.md reads 621 = 557 + 64); the rest of R-08 stands. Plan frozen until the gate answer.
+**Context**: Code Generation Part 1 — next: approval gate.
+
+---
+
+## Code Generation Part 1 — approval prompt — U6 행적·전파
+**Timestamp**: 2026-09-30T23:54:36Z
+**User Input**: (none — prompt)
+**AI Response**: Presenting the U6 code generation plan (`construction/plans/U6-deeds-spread-code-generation-plan.md`, 11 steps) for approval with the review brief (8 open findings). Options: Approve & Continue / Request Changes.
+**Context**: CONSTRUCTION / U6 — Code Generation Part 1 approval gate.
+
+---
+
+## Code Generation Part 1 Approval — U6 행적·전파
+**Timestamp**: 2026-09-30T23:57:33Z
+**User Input**: "Approve & Continue (Recommended)"
+**AI Response**: Plan approved. Starting Code Generation Part 2 from Step 1.
+**Context**: CONSTRUCTION / U6 — Code Generation Part 1 → Part 2.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — U6 행적·전파
+**Timestamp**: 2026-09-30T23:57:33Z
+**User Input**: (approval at gate; see above)
+**AI Response**:
+- R-01 → Accepted risk (carry: reach weight follows the approved BR-U6-17 — w(X) = best_path_weights(origin)[X] over passable edges both ways; recorded weight = best[X] × edge(X,Y) ≤ best[Y]; Step 1.3(a) wording follows this, not "the path actually taken"; one non-best-path example)
+- R-02 → Accepted risk (carry: `dialogue_llm` supplies dialogue, appraisal and narration; assemble_play/compose_play signatures unchanged)
+- R-03 → Accepted risk (carry: `_start(..., *, lang=None)`; call sites advancer.advance/begin and test_player_mode.py:443 keep working)
+- R-04 → Accepted risk (carry: each caller keeps its status codes (404/400); the dead fallback in advancer goes; PlayService.params and the duplicate _require_player are deferred to U7 — C4 partially closed)
+- R-05 → Accepted risk (carry: constructor injection only — appraise(session_id, npc_id, *, budget); the player name travels in SceneBrief)
+- R-06 → Accepted risk (carry: the empty tracked locus/play/gm/__init__.py is reused)
+- R-07 → Accepted risk (carry: RumorService seed/spread/reserved unit tests live in 6.5; deeds=None turns deed features off (a declaration is narrated but not recorded, declaration still returned); region_knowledge=None gives a SceneBrief without facts/rumors; _prepare runs after the turn-1 open-session check)
+- R-08 → Accepted risk (carry: if Step 1.1 measures a different baseline, Step 1.3(f) corrects NFR-1). The finding's "CLAUDE.md says 601" is factually wrong (621).
+**Context**: Code Generation Part 1 — dispositions recorded.
+
+---
+
+## U6 Code Generation Step 1 — baseline, skeleton, approved-text corrections
+**Timestamp**: 2026-09-30T23:58:59Z
+**User Input**: (none — plan Step 1)
+**AI Response**: Baseline measured: pytest 557 / vitest 64 / mypy 11 (as expected; no NFR-1 correction needed). Skeleton files created (frontend files wait for Step 8 so an empty test file does not fail vitest). Step 1.3 corrections marked "〔Step 1.3 정정〕": domain-entities §7 rows 21–23 (DeedService names, reach weight = best_path_weights(origin)[X] × edge per BR-U6-17, SpreadTarget/DeedView/void shapes) and §4.3 fixed column table; BR-U6-10 (missing statement appraisal → false) and BR-U6-34 (column table, index, run_id via create_all); BLM §4 (c) rumor-level exemption and §0.1 wiring (region_knowledge, lang path, dialogue_llm, None behaviour, prep after the open check); nfr-light NFR-5 (prep failure trips the breaker, worst cases, budget 0/1), NFR-9 (interrupted-run deeds kept), NFR-3 (p95 conditions). Review records keep the old wording.
+**Context**: CONSTRUCTION / U6 — Code Generation Part 2, Step 1.
+
+---
+
+## U6 Code Generation Part 2 — complete
+**Timestamp**: 2026-10-01T00:34:23Z
+**User Input**: (none — plan Steps 1–10)
+**AI Response**: Steps 1–10 done and committed (39b9f91 … 3315e8b). Gates: pytest 630 (557 + 73, 0 regressions; one U5 test changed on purpose — timeline kinds now checked as append-only), vitest 74 (64 + 10), mypy 11 (= baseline), ruff/black/tsc/vite clean, boundaries 4, docker build OK (OpenAPI lists the two deed routes; act takes lang). Mutation checks: removing the prep-failure breaker, the canonical-only chain sources or the birth-turn exemption each fails a test. Code summary written with the complete deviation list and nine generation-time decisions for the gate. Presenting the code gate.
+**Context**: CONSTRUCTION / U6 — Code Generation Part 2 complete.
+
+---
+
+## Code Generation Approval — U6 행적·전파
+**Timestamp**: 2026-10-01T00:42:32Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U6 code approved with the generation-time decisions as presented (code-summary §5). Next: `/code-review` of the U6 diff (39b9f91~1..HEAD), then U7 GM 모드·안정화.
+**Context**: CONSTRUCTION / U6 — Code Generation approved.
+
+---
+
+## U7 Functional Design Part 1 — plan and questions
+**Timestamp**: 2026-10-01T00:44:54Z
+**User Input**: (continuation of "Continue to Next Stage" — U6 approved; next unit in the order U1→U2→U4→U5→U6→**U7**)
+**AI Response**: `/code-review` of the U6 diff launched in the background. Wrote `construction/plans/U7-gm-mode-hardening-functional-design-plan.md` with a current-state table (verified in code: promoted rumors count as feedback "strong" rumors and so keep their region's decay off; discards leave no timeline line; SUGGESTED events can be resolved; suggestion n has no cap and the prompt sees region ids only; regenerate deletes parents; GM timeline payloads carry no region names; consensus thresholds are not env-overridable; ConsensusParams is already built once), three questions (Q1 GM mode in/out, Q2 feedback restore/cap, Q3 player log scope) and assumptions A7-1..10. Asking Q1·Q2 first.
+**Context**: CONSTRUCTION / U7 — Functional Design Part 1.
+
+---
+
+## U7 Functional Design — answers Q1·Q2
+**Timestamp**: 2026-10-01T00:48:55Z
+**User Input**: FD-U7 Q1 = "B. 두 화면 사이 전환"; FD-U7 Q2 = "A. 복원 + 상한 둘 다 (Recommended)"
+**AI Response**: Recorded in the plan. Q1=B: the play screen's "GM 모드" button goes to `/gm/:sid`, and the GM screen gets "플레이로 돌아가기". The player state stays on the server, and the GM screen shows the player's position and turn so it stays in view. Q2=A: track the feedback share per region, restore it once strong rumors are gone, and cap it. Asking Q3 (player log scope).
+**Context**: CONSTRUCTION / U7 — Functional Design Part 1.
+
+---
+
+## U7 Functional Design — answer Q3
+**Timestamp**: 2026-10-01T01:00:51Z
+**User Input**: FD-U7 Q3 = "A. 내 행동 + 그때 있던 지역의 일 (Recommended)"
+**AI Response**: Recorded. Server-side player log filter: the player's own actions plus changes in the region the player was in on that turn; GM operations and other regions are hidden. Proceeding to FD Part 2 (artifacts).
+**Context**: CONSTRUCTION / U7 — Functional Design Part 2.
+
+---
+
+## U7 Functional Design — follow-up Q4 (feedback rule)
+**Timestamp**: 2026-10-01T01:17:29Z
+**User Input**: FD-U7 Q4 = "A. 승격 제외 + 면제 해제 + 기준 0.45 (Recommended)"
+**AI Response**: Asked a follow-up because the code showed a conflict. The feedback "strong" bar and the promotion bar are both 0.6, so excluding promoted rumors (A7-1) alone switches feedback off. Counting them instead never ends feedback, since promoted rumors do not decay, so the Q2 restore would never run. Recorded Q4=A in the plan:
+- exclude promoted rumors from feedback;
+- feedback regions are no longer exempt from decay (changes Phase 2 BR-H1-2: reinforced = event-influenced only);
+- `high_support_threshold` default 0.6 → 0.45 (env-overridable).
+The H1 tests on reinforcement change as intended.
+**Context**: CONSTRUCTION / U7 — Functional Design Part 2.
+
+---
+
+## U7 Functional Design Part 2 — artifacts written
+**Timestamp**: 2026-10-01T01:24:52Z
+**AI Response**: Wrote `construction/U7-gm-mode-hardening/functional-design/{domain-entities,business-logic-model,business-rules,frontend-components}.md`.
+- Feedback share, cap and restore (Q2=A); promoted rumors are excluded and feedback no longer exempts decay (Q4=A).
+- Event timeline kinds suggested/approved/discarded; a SUGGESTED resolve is 400; suggestion n is 1..5; the suggestion prompt carries region briefs, recent events and deeds.
+- Regenerate deactivates instead of deleting, and `delete_rumor` is removed.
+- The distortion list has one row per world region (read-time default); a set on a missing region is 404.
+- New `GET /state` and `WorldStateService`.
+- `player_log` pure filter (Q3=A); region names in timeline payloads.
+- `WorldTuning` plus env for the consensus, weights, dedup, event and promotion values.
+- Carried U5 C1/C4 and the say 503.
+- Frontend: Q1=B buttons, PlayerStrip, the GmHub split (testids kept), WorldStateOverlay, CommitRange.
+Deviations are listed in domain-entities §7 (A7-1/A7-5 rewritten, U6 frontend §2.5, U4 R-09, the US-5.1 wording, orphan rows).
+**Context**: CONSTRUCTION / U7 — Functional Design Part 2.
+
+---
+
+## Plan Review Requested — Functional Design — U7
+**Timestamp**: 2026-10-01T01:24:52Z
+**AI Response**: Dispatching aidlc-architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/U7-gm-mode-hardening/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/U7-gm-mode-hardening/functional-design/reviews/functional-design-review-01.md`.
+**Context**: CONSTRUCTION / U7 — Functional Design, Plan Review.
+
+---
+
+## Plan Review Completed — Functional Design — U7
+**Timestamp**: 2026-10-01T01:29:48Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 1 Major / 8 Minor; open 9. Record: `aidlc-docs/construction/U7-gm-mode-hardening/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — U7 — next: approval gate (artifacts frozen; R-01..R-09 quoted at the gate).
+
+---
+
+## U7 Functional Design — approval gate
+**Timestamp**: 2026-10-01T01:43:37Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: Functional design approved. Gate also announced the assumption changes A7-2 (30 regions / 2 knowledge per region) and A7-4 (`deleted`→`deactivated`) per R-04. Next: U7 NFR Requirements (light). Open findings carried to the code plan (R-01 snapshot injection + wiring, R-02 GM session_started flow, R-03 EX-2 as an input sequence from share 0, R-05 call-site list, R-06 truncation order, R-07 /state consistency wording or one read tx, R-08 listTurnRuns(sid,"running"), R-09 TP-U7-2 tolerance and the EX-8 premise).
+**Context**: CONSTRUCTION / U7 — Functional Design approved.
+
+---
+
+## Plan Review Dispositions — Functional Design — U7
+R-01 → Accepted risk
+R-02 → Accepted risk
+R-03 → Accepted risk
+R-04 → Accepted risk
+R-05 → Accepted risk
+R-06 → Accepted risk
+R-07 → Accepted risk
+R-08 → Accepted risk
+R-09 → Accepted risk
+
+---
+
+## U6 code review (/code-review) — result
+**Timestamp**: 2026-10-01T01:44:05Z
+**User Input**: (none — background review launched after the U6 code gate)
+**AI Response**: Record `aidlc-docs/construction/U6-deeds-spread/code/reviews/code-review-01.md` (scope `git diff 39b9f91~1..d936c7d`). The review found 15 correctness findings, all CONFIRMED by reproduction, plus 16 cleanup findings and 8 dismissed.
+- Top four:
+  - #1 `appraise` builds KNOWN with `rumors=[]`, so the BR-U5-11 shadowing hides nothing and an original can leak into a seeded deed rumor.
+  - #2 both void-confirm buttons read "취소" in ko.
+  - #3 a null summary still yields a noteworthy statement appraisal (BR-U6-9).
+  - #4 failed-run compensation leaves appraisals of earlier deeds made in that run (`DeedAppraisal` has no run_id).
+- Orchestrator spot-check: #1–#4 verified in code (`dialogue.py:213-219`, `:255`, `i18n.ts:100/163`, `advancer.py:517-521` + `memory_repo.delete_by_run`).
+- Gates unchanged (pytest 630, vitest 74, ruff/black/tsc clean).
+- Out-of-scope notes from the reviewer:
+  - U7 FD plan Q3 option C lacked a cost line, and no option stated reversibility (question-rule miss; noted for future questions).
+  - U5's "newline forging" backlog item (#6) was missing from the U7 carry list. It will be added to the U7 code plan.
+- The code is approved, so asking the human how to handle the fixes (A mix / B all to U7 / C accept).
+**Context**: CONSTRUCTION / U6 — post-approval code review.
+
+---
+
+## U6 code review — human decision
+**Timestamp**: 2026-10-01T01:56:05Z
+**User Input**: "A. #1~#4 지금 수정, 나머지 U7 (Recommended)"
+**AI Response**: Fixing #1–#4 now as a U6 post-approval follow-up (tests + gates). #5–#15, cleanup C1–C16 and U5's newline-forging item go to the U7 code-plan carry list.
+**Context**: CONSTRUCTION / U6 — post-approval review fixes.
+
+---
+
+## U6 code review — fixes applied (#1–#4)
+**Timestamp**: 2026-10-01T02:01:48Z
+**AI Response**: Fixed U6 review #1–#4 as a post-approval follow-up (human choice A).
+- #1: `appraise` selects its facts with the same source hiding as `say`.
+- #2: the void confirm button is labelled "없던 일로 하기" (`deed.voidConfirmBtn`).
+- #3: a null summary forces the statement appraisal to be not noteworthy.
+- #4: `DeedAppraisal.run_id` plus the `deed_appraisals.run_id` column and index (ADDED_COLUMNS/ADDED_INDEXES). `delete_by_run` also removes the run's appraisals of earlier deeds, in both adapters.
+Tests: `test_review_u6_1/3/4_*` (6 new pytest) plus the vitest void-dialog assertion. Mutation checks caught all five backend mutations and the label revert.
+Gates: pytest 636, vitest 74, ruff/black/tsc clean, mypy baseline 11.
+Docs updated: U6 domain-entities §4.3, BR-U6-36 (marked 〔리뷰 후속 정정〕), operations.md schema, U6 code-summary §8, review record §8, CLAUDE.md test count.
+Carried to the U7 code plan: #5–#15, C1–C16, U5 newline forging, and the scene-shadowing decision.
+**Context**: CONSTRUCTION / U6 — post-approval review fixes done. Next: U7 NFR Requirements (light).
+
+---
+
+## U7 NFR Requirements (light) — plan and note written
+**Timestamp**: 2026-10-01T02:03:29Z
+**AI Response**: Wrote `construction/plans/U7-gm-mode-hardening-nfr-requirements-plan.md` with no questions (values were fixed in the FD) and assumptions N7-1..6. Also wrote `construction/U7-gm-mode-hardening/nfr/nfr-light.md`:
+- NFR-1..9 application;
+- reliability and scale;
+- tech decisions (none new);
+- intended behaviour changes C-1..C-8 with the known affected tests;
+- code-plan hand-offs.
+
+---
+
+## Plan Review Requested — NFR Requirements (light) — U7
+**Timestamp**: 2026-10-01T02:03:29Z
+**AI Response**: Dispatching aidlc-architecture-reviewer (class advisory, iteration 1) on `aidlc-docs/construction/U7-gm-mode-hardening/nfr/nfr-light.md`. Review record: `aidlc-docs/construction/U7-gm-mode-hardening/nfr/reviews/nfr-light-review-01.md`.
+**Context**: CONSTRUCTION / U7 — NFR (light), Plan Review.
+
+---
+
+## Plan Review Completed — NFR Requirements (light) — U7
+**Timestamp**: 2026-10-01T02:05:05Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 5 Minor; open 7. Record: `aidlc-docs/construction/U7-gm-mode-hardening/nfr/reviews/nfr-light-review-01.md`. Orchestrator factual notes for the gate:
+- R-02: the port method is already defined in the approved FD (domain-entities §6.3 `ConversationStore.message_counts(session_id) -> dict[str, int]`, one LEFT JOIN + GROUP BY); the NFR note did not repeat it.
+- R-06: mypy measured 11 at today's U6 fix gate (`Found 11 errors in 6 files`).
+**Context**: NFR Requirements (light) — U7 — next: approval gate (advisory verdict terminal; artifacts frozen).
+
+---
+
+## U7 NFR Requirements (light) — approval gate
+**Timestamp**: 2026-10-01T02:09:51Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: NFR (light) approved. Next: U7 Code Generation Part 1 (plan). The open findings are carried to the code plan:
+- R-01: char caps on name, path and knowledge, with the prompt total shown by computation.
+- R-02: `message_counts` port per FD §6.3, both adapters plus a contract test.
+- R-03: all Unicode line separators and control characters.
+- R-04: every new env has a default; bad JSON or out-of-range values fail startup.
+- R-05: measurement conditions; `/log` makes one repository read.
+- R-06: measure mypy first; new `features/gm/` paths.
+- R-07: TP-U7-8 is in scope; npm audit applies or not.
+**Context**: CONSTRUCTION / U7 — NFR approved.
+
+---
+
+## Plan Review Dispositions — NFR Requirements (light) — U7
+R-01 → Accepted risk
+R-02 → Accepted risk
+R-03 → Accepted risk
+R-04 → Accepted risk
+R-05 → Accepted risk
+R-06 → Accepted risk
+R-07 → Accepted risk
+
+---
+
+## U7 Code Generation Part 1 — plan written
+**Timestamp**: 2026-10-01T02:13:13Z
+**AI Response**: Wrote `construction/plans/U7-gm-mode-hardening-code-generation-plan.md`.
+- 11 steps: baseline/corrections, tuning, models+storage, pure functions, turn engine, services+wiring, API, frontend, docs, verification, gate.
+- A carry table closing FD R-01..09, NFR R-01..07, U6 code-review-01 #5–#15 and C1–C16, the scene-shadowing decision (decided: apply the same source hiding), and U5 C1/C4/say-500/newline forging.
+- Decisions taken in the plan:
+  - R-06 truncation order (player region → active-event regions → rumor-dense → leaves → upper levels).
+  - NFR R-01 per-field char caps with a 21,000-char computed bound (corrects the 8,000 in nfr-light via Step 1.3).
+  - NFR R-03 `one_line` normalizer over all Unicode line separators and control characters.
+  - NFR R-04: every env has a default, and invalid values fail startup.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — U7
+**Timestamp**: 2026-10-01T02:13:13Z
+**AI Response**: Dispatching aidlc-architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/U7-gm-mode-hardening-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/U7-gm-mode-hardening-code-generation-plan-review-01.md`.
+**Context**: CONSTRUCTION / U7 — Code Generation Part 1, Plan Review.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — U7
+**Timestamp**: 2026-10-01T02:16:36Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 1 Major / 6 Minor; open 7. Record: `aidlc-docs/construction/plans/reviews/U7-gm-mode-hardening-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — U7 — next: approval gate (adversarial READY is terminal; plan frozen).
+
+---
+
+## U7 Code Generation Part 1 — approval prompt
+**Timestamp**: 2026-10-01T02:16:43Z
+**AI Response**: Asking approval of `aidlc-docs/construction/plans/U7-gm-mode-hardening-code-generation-plan.md` (11 steps) with the Review brief (R-01..R-07 open). Options: Request Changes / Approve & Continue.
+**Context**: CONSTRUCTION / U7 — Code Generation Part 1, approval gate.
+
+---
+
+## U7 Code Generation Part 1 — approval
+**Timestamp**: 2026-10-01T02:35:15Z
+**User Input**: "Approve & Continue (Recommended)"
+**AI Response**: Code generation plan approved. R-01 is handled by the plan's own principle: caller fixes move into the same sub-step, recorded as plan deviations in code-summary. R-02..R-07 close at their steps. Starting Part 2 at Step 1.
+**Context**: CONSTRUCTION / U7 — Code Generation Part 2.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — U7
+R-01 → Accepted risk
+R-02 → Accepted risk
+R-03 → Accepted risk
+R-04 → Accepted risk
+R-05 → Accepted risk
+R-06 → Accepted risk
+R-07 → Accepted risk
+
+---
+
+## U7 Code Generation Part 2 — steps 1–10 done
+**Timestamp**: 2026-10-01T03:23:00Z
+**AI Response**: Generated U7 per the approved plan (commits 202424c..ca7f329 plus the step 10 summary).
+- Gates:
+  - pytest 730 (+94), vitest 90 (+16)
+  - ruff/black/tsc clean; mypy 11 (baseline, no U7 file)
+  - largest GM component 239 lines
+  - npm audit: moderate 2 (react-router, pre-existing; record only, NFR R-07)
+- Mutation checks:
+  - step 4: 9/9
+  - step 5: 8/8
+  - step 6: 17/17 (two after tightening tests)
+  - step 8: 13/14 (the void re-entry guard is behind the modal's busy, so removing it is not observable)
+- Plan deviations are listed in code-summary §5: R-01 call-site moves, the GM-set share reset pulled into step 5, the say 503 mapping and the NPC route pulled into step 6, `one_line` folding tabs, `npcs_here` returning counts, and C2 as `seed_candidates` plus a wider `list_deeds`.
+Summary: `construction/U7-gm-mode-hardening/code/code-summary.md`.
+**Context**: CONSTRUCTION / U7 — Code Generation Part 2, step 11 (code gate) next.
+
+---
+
+## U7 Code Generation — approval gate
+**Timestamp**: 2026-10-01T04:11:45Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U7 code approved. Running `/code-review` on the U7 diff (`git diff 5eb3760..HEAD`, code plan commit → code summary) in the background. Next unit in the order U1→U2→U4→U5→U6→U7→**U3**: U3 월드 에디터 (Functional Design Part 1).
+**Context**: CONSTRUCTION / U7 — Code Generation complete.
+
+---
+
+## U3 Functional Design Part 1 — plan and questions
+**Timestamp**: 2026-10-01T04:19:07Z
+**User Input**: (continuation of "Continue to Next Stage" — U7 approved; next unit U3)
+**AI Response**: An exploration agent surveyed the U3 code state. Findings:
+- `WorldEditor` has three methods.
+- No edge or search-document delete ports.
+- Updates cannot clear fields (props merge).
+- Region delete cascades only NPCs.
+- Augmentation B1–B6 still present; DANGLING detection is dead (the loader drops dangling relations, and Neo4j cannot store them).
+- No NPC CRUD or drafts; WikiAdmin has no refs.
+- Build, World File and world-list endpoints exist with no UI; `/` redirects to the editor.
+- B7/B8 live; no `features/editor/`.
+Wrote `construction/plans/U3-world-editor-functional-design-plan.md`: a current-state table, five questions (Q1 delete cascade, Q2 editing with open sessions, Q3 what "dangling" means, Q4 wiki refs depth, Q5 map drawing interaction) and assumptions A3-1..13. Asking Q1·Q2 first.
+**Context**: CONSTRUCTION / U3 — Functional Design Part 1.
+
+---
+
+## U3 Functional Design — answers Q1·Q2
+**Timestamp**: 2026-10-01T05:08:13Z
+**User Input**: FD-U3 Q1 = "A. 정리해서 지운다 (Recommended)"; FD-U3 Q2 = "A. 편집 자유, 플레이어 지역 삭제만 막음 (Recommended)"
+**AI Response**: Recorded both answers.
+- Q1 (region delete): connections and NPCs are deleted; children are re-parented to the grandparent; knowledge scoped only there becomes unscoped; entity located_in is cleared. Counts appear in the confirm dialog and in the delete report.
+- Q2 (open sessions): editing is free; deleting a region where an open session's player stands answers 409 with the session list.
+Asking Q3·Q4 next.
+**Context**: CONSTRUCTION / U3 — Functional Design Part 1.
+
+---
+
+## U3 Functional Design — answers Q3·Q4
+**Timestamp**: 2026-10-01T06:05:54Z
+**User Input**: FD-U3 Q3 = "A. 끊긴 id 참조 + 스코프 없는 지식 (Recommended)"; FD-U3 Q4 = "A. 빌드가 근거를 저장하게 고치고 보인다 (Recommended)"
+**AI Response**: Recorded both answers.
+- Q3: DANGLING means id-carrying properties that point at missing nodes (parent_id, located_in, home_region_id, wiki_prior_ref, derived_from_prior_ids); add an UNSCOPED detector.
+- Q4: the build stores LLM-fallback priors and keeps connection/knowledge refs; the wiki tab shows priors and the items referencing them, with broken refs marked.
+Q5 is pending.
+**Context**: CONSTRUCTION / U3 — Functional Design Part 1.
+
+---
+
+## U7 code review (/code-review max) — result
+**Timestamp**: 2026-10-01T06:06:13Z
+**User Input**: (none — background review launched after the U7 code gate)
+**AI Response**: Record `aidlc-docs/construction/U7-gm-mode-hardening/code/reviews/code-review-01.md` (scope `git diff 5eb3760..83022bf`). 15 correctness findings, all CONFIRMED by reproduction; plus 12 above-cap correctness, 19 cleanup and 6 dismissed.
+- Top findings:
+  - #1 (medium): CommitRange compares the browser's step-snapped value with the raw server value, so a blur or click commits a value the GM never chose (and clears the feedback share). Reproduced in Chrome.
+  - #2 (medium): bulk generate/regenerate sends 5 concurrent GM writes, but each holds the exclusive per-session lease, so 4 of 5 get 409.
+  - #3: the CLI build ignores WorldTuning.
+  - #4: a refused slider save is never resent.
+  - #5: player_log is not repositioned after a failed move.
+- Orchestrator spot-check: #1 and #2 verified in code (`CommitRange.tsx:23-27`, `gm.py:42-55` + routes 122/140 with `_idle`).
+- The code is approved, so asking the human how to handle the fixes (A mix / B all to U3 / C accept), together with U3 Q5.
+**Context**: CONSTRUCTION / U7 post-approval review; U3 FD Part 1 in progress.
+
+---
+
+## U7 code review — human decision; U3 Q5
+**Timestamp**: 2026-10-01T06:43:11Z
+**User Input**: U7 review = "A. #1~#5·#11 지금 수정, 나머지 U3 (Recommended)"; FD-U3 Q5 = "A. 도구 모드 버튼 (Recommended)"
+**AI Response**: Fixing U7 review #1–#5 and #11 now as a U7 post-approval follow-up. The other findings (#6–#10, #12–#15, §3, cleanup, and the two design memos) go to the U3 carry list. U3 Q5 recorded: tool-mode buttons (select/move, add region, draw connection); a position is saved only after a real drag.
+**Context**: CONSTRUCTION / U7 post-approval fixes, then U3 FD Part 2.
+
+---
+
+## U7 code review — fixes applied (#1–#5, #11)
+**Timestamp**: 2026-10-01T06:50:47Z
+**AI Response**: Fixed U7 review #1–#5 and #11 as a post-approval follow-up (human choice A).
+- #1: CommitRange saves only values the user moved to.
+- #2: TurnGuard lets GM writes share the session (holder count); turns stay exclusive.
+- #3: the CLI passes `world_tuning()`; `from_factory(tuning=)` is now required.
+- #4: CommitRange marks a value saved only on success; `GmHub.run` returns a boolean; DistortionPanel is keyed per region.
+- #5: `restored_region_id` is on the turn_run_failed line and `player_log` follows it; BR-U7-13 marked 〔리뷰 후속 정정〕.
+- #11: GmPage re-reads the session after a void is refused; GmHub reports a closed session.
+Tests: +4 pytest, +4 vitest; 8 mutations caught.
+Gates: pytest 735, vitest 94, ruff/black/tsc clean, mypy 11.
+Docs: BR-U7-24 annotated, operations.md, code-summary §9, review record §8, CLAUDE.md (829).
+Carried to U3: #6–#10, #12–#15, §3 (12), cleanup (19), and two design memos.
+**Context**: U7 post-approval fixes done; back to U3 FD Part 2.
+
+---
+
+## U3 Functional Design — answer Q6 (U7 design memo 1)
+**Timestamp**: 2026-10-01T06:54:25Z
+**User Input**: FD-U3 Q6 = "A. GM 설정이 사건 몫도 지운다 (Recommended)"
+**AI Response**: Recorded Q6. A GM distortion set also zeroes the ACTIVE events' contributions for that region, in the same UoW, and records `event_contributions_cleared`. This is implemented in the U3 code plan's U7-carry step. Proceeding to FD Part 2 (artifacts).
+**Context**: CONSTRUCTION / U3 — Functional Design Part 2.
+
+---
+
+## U3 Functional Design Part 2 — artifacts written
+**Timestamp**: 2026-10-01T06:59:49Z
+**AI Response**: Wrote `construction/U3-world-editor/functional-design/{domain-entities,business-logic-model,business-rules,frontend-components}.md`.
+- Ports: `replace_nodes` (property replace), `delete_edges` (EdgeKey), `SearchRepository.delete`.
+- WorldEditor:
+  - typed ops for region (parent rewire, cycle check), connection pair, knowledge + scopes, unscoped list, NPC, entity, list_worlds;
+  - region delete plan/report with the Q1=A cascade order;
+  - the Q2=A 409 via `SessionService.open_player_regions`.
+- NpcDraftService: one call, 0–3 drafts, unsaved.
+- Augmentation:
+  - six detectors (dangling = broken id properties, plus unscoped);
+  - question targets and fixed actions;
+  - server-side target, `AnswerResult` with a kept run, full revert with `reverted`.
+- Wiki: the build stores LLM-fallback priors and keeps refs; `list_priors`/`prior_usage`/broken refs.
+- Build upload with concept arts; HomePage world list.
+- `features/editor/`: MapCanvas tool modes, RegionInspector, UnscopedPanel, AugmentPanel, WikiPanel, BuildPanel, WorldFileBar, ConfirmDelete.
+- U7 carry: Q6=A, A3-14, A3-15.
+- Deviations: domain-entities §8 (6 items: generic delete route removed, answer response shape, build prior handling, BR-U7-5 extension, TOPOLOGY_DEFAULT_BASE removal).
+
+---
+
+## Plan Review Requested — Functional Design — U3
+**Timestamp**: 2026-10-01T06:59:49Z
+**AI Response**: Dispatching aidlc-architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/U3-world-editor/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/U3-world-editor/functional-design/reviews/functional-design-review-01.md`.
+**Context**: CONSTRUCTION / U3 — Functional Design, Plan Review.
+
+---
+
+## Plan Review Completed — Functional Design — U3 (iteration 1)
+**Timestamp**: 2026-10-01T07:06:38Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 4 Major / 6 Minor; open 10. Record: `aidlc-docs/construction/U3-world-editor/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — U3 — next: builder fix + re-review (iteration 2).
+
+---
+
+## U3 FD — builder fix after review 01
+**Timestamp**: 2026-10-01T07:09:11Z
+**AI Response**: Revised the U3 FD artifacts for R-01..R-10.
+- R-01: fallback priors are deduped by query and capped at 40 per build; persisted in two batches (topology batch before ontology, ontology batch before knowledge); ref filter uses distilled ∪ created.
+- R-02: NPC text is not translated; BR-U3-3/19/37 aligned.
+- R-03: `AugmentationAnswer.ref_id`; stable `Issue.key` (type+target+field); `AugmentationRun.issues/ignored_keys/answers`; dedup on key.
+- R-04: max 30 answers per run, with a status table including revert.
+- R-05: BR-U3-41 LLM call caps and per-run caches.
+- R-06: NPC removed from dangling; dead relation branch removed.
+- R-07: component-methods differences listed in deviation 0, and the reviewer's suggestion adopted (WorldEditor split into seven classes).
+- R-08: LIFO revert; TP-U3-4 widened; BR-U3-42 run lifetime.
+- R-09: GM leases held over the delete check; turn running → 409; single `change_connection_kind` op.
+- R-10: HomePage session start via `exportWorld` + `startSession(w, body)`.
+
+---
+
+## Plan Review Requested — Functional Design — U3 (iteration 2)
+**Timestamp**: 2026-10-01T07:09:11Z
+**AI Response**: Dispatching aidlc-architecture-reviewer (class adversarial, iteration 2) on `aidlc-docs/construction/U3-world-editor/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/U3-world-editor/functional-design/reviews/functional-design-review-02.md`.
+**Context**: CONSTRUCTION / U3 — Functional Design, Plan Review.
+
+---
+
+## Plan Review Completed — Functional Design — U3 (iteration 2)
+**Timestamp**: 2026-10-01T07:10:33Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: 0 Critical / 0 Major / 2 Minor open (R-08 Unresolved, R-11 New); R-01..R-07, R-09, R-10 Resolved. Record: `aidlc-docs/construction/U3-world-editor/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — U3 — next: approval gate (artifacts frozen).
+
+---
+
+## U3 Functional Design — approval gate
+**Timestamp**: 2026-10-01T08:23:37Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U3 FD approved. Open findings carried to the code plan:
+- R-08: ignore is outside LIFO and separately undoable; a revert is refused (409) when the target was edited outside the run; TP-U3-4 widened.
+- R-11: one issue per broken id in list attributes; connection-ref edits apply to both directions; parent edits run the BR-U3-7 cycle check.
+Next: U3 NFR Requirements (light).
+**Context**: CONSTRUCTION / U3 — FD approved.
+
+---
+
+## Plan Review Dispositions — Functional Design — U3
+R-08 → Accepted risk
+R-11 → Accepted risk
+
+---
+
+## U3 NFR Requirements (light) — plan and note written
+**Timestamp**: 2026-10-01T08:31:36Z
+**User Input**: (continuing after FD approval "Continue to Next Stage (Recommended)")
+**AI Response**: Wrote `construction/plans/U3-world-editor-nfr-requirements-plan.md` with no questions (values were fixed in the FD) and assumptions N3-1..8. Also wrote `construction/U3-world-editor/nfr/nfr-light.md`:
+- NFR-1..9 table with structural assertions (region delete ≤ 9 + NPC port calls; connection save = 1 delete + 1 upsert; world list without snapshot loads).
+- Upload limits (48 MiB request, per-field counts/sizes, memo 60,000 chars, PNG/JPEG/WebP).
+- Augmentation LLM run budget 60, search-only wiki lookup.
+- Prompt caps computed from per-field character limits (NPC drafts ≤ 6,000).
+- Region-delete atomicity by order + idempotent retry (TP-U3-2a).
+- Per-run lock; intended changes C-1..C-10; hand-offs for FD R-08/R-11, U7 carry and port contracts.
+Baselines measured at HEAD aedf72d: pytest 735, vitest 94, mypy 11.
+**Context**: CONSTRUCTION / U3 — NFR Requirements (light).
+
+---
+
+## U3 NFR Requirements (light) — Plan Review dispatched
+**Timestamp**: 2026-10-01T08:31:36Z
+**AI Response**: Dispatching aidlc-architecture-reviewer (class advisory, iteration 1) on `aidlc-docs/construction/U3-world-editor/nfr/nfr-light.md`. Review record: `aidlc-docs/construction/U3-world-editor/nfr/reviews/nfr-light-review-01.md`.
+**Context**: CONSTRUCTION / U3 — NFR Plan Review.
+
+## Plan Review Completed — NFR Requirements (light) — U3
+**Timestamp**: 2026-10-01T08:36:04Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY** (advisory, terminal). Findings: 0 Critical / 3 Major / 5 Minor; open 8. Record: `aidlc-docs/construction/U3-world-editor/nfr/reviews/nfr-light-review-01.md`. Orchestrator factual checks:
+- R-02 confirmed: `locus/knowledge/cache.py:39` defaults `check_version=True`. `loader.version()` (`loader.py:34-37`) reads `find_nodes(WorldMeta)` on every hit.
+- R-06 confirmed: `neo4j_repo.py:101` runs one query per edge.
+- R-01 is a logic finding on FD BLM §1.3 step ① order (approved FD). Fixing it changes that step's write order (requires upstream change: business-logic-model.md §1.3).
+**Context**: NFR Requirements (light) — U3 — next: approval gate (advisory verdict terminal; artifacts frozen).
+
+---
+
+## U3 NFR Requirements (light) — approval gate
+**Timestamp**: 2026-10-01T09:00:11Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U3 NFR (light) approved. All 8 open findings carried to the code plan. Step 1 corrects nfr-light with inline correction markers, as U7 did.
+- R-01: step ① becomes new CONTAINS → `parent_id` replace → delete old CONTAINS. This is a scoped change to FD BLM §1.3 ①. NPC search docs are deleted before the node. TP-U3-2a cuts at every port write call.
+- R-02: a cache hit costs 1 version read. Call counts cover FD writes only; `_written` is counted on its own line.
+- R-03: C-3 now declares the search-only wiki lookup path, skipping a judgement when no grounding prior exists, polish cap 5, and the run budget of 60 (with its basis) plus `llm_budget_exhausted`. The judgement cap unit is fixed. Embeddings are outside the budget.
+- R-04..R-08: the upload table is reconciled; the pure ASGI middleware method is specified; UNWIND batching or round-trip acceptance; `MATERIAL` call sites; the map-JSON 422 fixed text; `list_worlds` move unchanged.
+The reviewer's optimistic-concurrency suggestion is not adopted (single designer, A-4); recorded only.
+Next: U3 Code Generation Part 1 (plan).
+**Context**: CONSTRUCTION / U3 — NFR (light) approved.
+
+---
+
+## Plan Review Dispositions — NFR Requirements (light) — U3
+R-01 → Accepted risk
+R-02 → Accepted risk
+R-03 → Accepted risk
+R-04 → Accepted risk
+R-05 → Accepted risk
+R-06 → Accepted risk
+R-07 → Accepted risk
+R-08 → Accepted risk
+
+## U3 Code Generation Part 1 — plan written
+**Timestamp**: 2026-10-01T09:06:23Z
+**User Input**: (continuing after NFR approval "Continue to Next Stage (Recommended)")
+**AI Response**: Wrote `construction/plans/U3-world-editor-code-generation-plan.md`:
+- 13 steps: baseline/corrections, storage ports, editor package, NPC drafts, augmentation, wiki evidence, U7 carry (backend), API, frontend editor, U7 carry (frontend), docs, verification, gate.
+- The carry tables close FD R-08/R-11, NFR R-01..R-08, U7 code-review-01 §1 #6–#10/#12–#15, §2 C1–C19, §3 (12) and §5 doc notes, plus Q6=A/A3-14/A3-15.
+- Step 1.3 lists the approved-artifact corrections (FD BLM §1.3 ①/④ order; augmentation model additions; nfr-light fixes).
+**Context**: CONSTRUCTION / U3 — Code Generation Part 1.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — U3
+**Timestamp**: 2026-10-01T09:06:23Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching aidlc-architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/U3-world-editor-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/U3-world-editor-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — U3 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — U3
+**Timestamp**: 2026-10-01T09:14:53Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 1 Critical / 5 Major / 7 Minor; open 13. Record: `aidlc-docs/construction/plans/reviews/U3-world-editor-code-generation-plan-review-01.md`. Iteration 1 < 2: fixing the plan and re-dispatching.
+**Context**: Code Generation Part 1 — U3 — fix loop.
+
+---
+
+## U3 Code Generation Part 1 — plan revised after review 01
+**Timestamp**: 2026-10-01T09:19:37Z
+**User Input**: (none)
+**AI Response**: Revised the plan for R-01..R-13.
+- Steps renumbered so that wiki (3) precedes the editor package (4), NPC drafts (5) and augmentation (6).
+- 4.7 closes every `WorldEditor` call site, including the `Editors` bundle with `delete_any`, router edits, and the test fixtures in `test_world_api` and `test_augment_api`.
+- Step 9 declares a red interval from 9.2 to 9.8, makes HttpError the standalone first sub-step with its fixtures listed, and moves HomePage after BuildPanel.
+- New FD R-08a transition rows: unignore, ignore counts as an answer, and the revert check order.
+- `QuestionTarget.broken_id`, the Editors-based apply/revert signatures, and LLM-less `wiki_conflict` returns empty.
+- The region-delete within-step order, the TP-U3-2a fake semantics, and single deletes cleaning search docs on retry.
+- Known limitation added for session start and GM writes during region delete.
+- Per-path upload limits, constraint translation for `replace_nodes`, and updated line references.
+- Model locations (`reports.py`, `play/models.py:641`), RegionInspector sub-components, and the U7 code-summary correction.
+**Context**: Code Generation Part 1 — U3 — fix loop.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — U3
+**Timestamp**: 2026-10-01T09:19:37Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching aidlc-architecture-reviewer (class adversarial, iteration 2) on `aidlc-docs/construction/plans/U3-world-editor-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/U3-world-editor-code-generation-plan-review-02.md`.
+**Context**: Code Generation Part 1 — U3 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — U3
+**Timestamp**: 2026-10-01T09:22:05Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY** (terminal; max iterations reached). R-01..R-13 Resolved. New: 0 Critical / 2 Major (R-14, R-15) / 1 Minor (R-16); open 3. Record: `aidlc-docs/construction/plans/reviews/U3-world-editor-code-generation-plan-review-02.md`. Artifacts frozen until the gate answer.
+**Context**: Code Generation Part 1 — U3 — next: approval gate.
+
+---
+
+## U3 Code Generation Part 1 — approval gate
+**Timestamp**: 2026-10-01T09:26:08Z
+**User Input**: "Approve & Continue (Recommended)"
+**AI Response**: U3 code generation plan approved. The open findings are accepted as risk and handled at their steps; the plan records them as "〔검토 02 처리〕":
+- R-14: 4.7 replaces the `_Editor` fake in `test_augmentation.py` (:107·137-157·226) with real `Editors`; apply/revert rename the argument only.
+- R-15: the augmentation router response model and status changes move just before 6.9; 8.4 keeps priors and npc-drafts.
+- R-16: `HttpError.message` keeps the current `${status} ${statusText}: ${body}` format; four fixtures stay unchanged.
+Next: Code Generation Part 2, starting at Step 1.
+**Context**: CONSTRUCTION / U3 — code plan approved.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — U3
+R-14 → Accepted risk
+R-15 → Accepted risk
+R-16 → Accepted risk
+
+## U3 Code Generation Part 2 — Step 1 (baseline, skeleton, approved-artifact corrections)
+**Timestamp**: 2026-10-01T09:30:03Z
+**User Input**: (continuing after plan approval "Approve & Continue (Recommended)")
+**AI Response**: Step 1 done.
+- Baseline measured at HEAD 9228861: pytest 735, vitest 94, mypy 11.
+- Skeleton files created. The editor package is deferred to 4.1 so it does not shadow `editor.py`; the two vitest files are deferred to 9.10.
+- Step 1.3 corrections, each marked "〔Step 1.3 정정〕":
+  - FD BLM §1.3 (①②④ order and retry), §4.2 (ignore, broken_id), §4.3 (unignore rows, revert check order), §7 (unignore route, revert 200 + run, LLM-less runs).
+  - domain-entities §4.2–§4.4, §6 (three new 409 errors), §8 item 8.
+  - business-rules BR-U3-8/23/27/28/41, TP-U3-2a (new), TP-U3-4.
+  - nfr-light §6 (new) with markers.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 1.
+
+---
+
+## U3 Code Generation Part 2 — Step 2 (storage ports, MATERIAL)
+**Timestamp**: 2026-10-01T09:33:35Z
+**AI Response**: Added the `EdgeKey` port, `replace_nodes`, `delete_edges` and `SearchRepository.delete`. Implemented them in the Neo4j (UNWIND, constraint translation), OpenSearch (`delete_by_query`) and in-memory adapters. Added `test_port_contract.py` (13 tests; TP-U3-3 mutation caught). Moved `MATERIAL` to `shared/text.py`; 4 call sites updated. Gates: pytest 748, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 2.
+
+---
+
+## U3 Code Generation Part 2 — Step 3 (wiki evidence)
+**Timestamp**: 2026-10-01T09:38:27Z
+**AI Response**:
+- `CommonsenseWiki`: optional LLM, `fallback=` flag, dedupe, cap of 40, `created_priors`.
+- Build: stores fallback priors in two batches, keeps refs that point at distilled ∪ created priors, records `priors_created`.
+- New `world/refs.py` (plan deviation; recorded in code-summary).
+- WikiAdmin: `list_priors` returns models; added `prior_refs`, `broken_refs`, `delete_prior`.
+- Tests: 8 new; mutations caught.
+- Gates: pytest 756, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 3.
+
+---
+
+## U3 Code Generation Part 2 — Step 4 (editor package)
+**Timestamp**: 2026-10-01T09:49:11Z
+**AI Response**:
+- Replaced `WorldEditor` with the `locus/world/editor/` package (seven classes + `EditorWrites` + the `Editors` bundle).
+- Region delete follows the corrected order with an idempotent retry. Connections are written as pairs. Knowledge scopes, NPCs, entities and the catalog have their own classes.
+- Call sites in 4.7 updated (wiring, router, augmentation, tests), including R-14.
+- 22 new tests (TP-U3-1/2/2a/3/6, EX-1..5, write counts). Mutations caught.
+- Gates: pytest 778, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 4.
+
+---
+
+## U3 Code Generation Part 2 — Step 5 (NPC drafts)
+**Timestamp**: 2026-10-01T09:51:04Z
+**AI Response**: Added `NpcDraftService` (one structured LLM call, 0–3 drafts, nothing stored; field caps; prompt ≤ 6,000 chars; material guard). It is wired as `WorldContainer.npc_drafts` when an LLM is present. 7 tests. Gates: pytest 785, mypy 11.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 5.
+
+---
+
+## U3 Code Generation Part 2 — Step 6 (augmentation Q&A)
+**Timestamp**: 2026-10-01T10:04:38Z
+**AI Response**: Rewrote augmentation for U3:
+- Six detectors (dangling by id property, one per broken id; unscoped).
+- Targeted questions with fixed actions; polish capped at 5 per detection and cached.
+- wiki_conflict: search only, skipped without a prior, 20 pairs, cached verdicts.
+- Editor-backed apply/revert with node and edge diffs, an outside-edit conflict check and search doc restore.
+- Run state with lock and caches (20 per world); 30 answers; LLM budget 60; R-08a transitions; revert check order.
+- LLM-free assembly; router moved up (6.8a, R-15).
+- Tests: 31 new or rewritten (TP-U3-4/5, EX-7/8/9). Mutations caught.
+- Gates: pytest 803, mypy 11.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 6.
+
+---
+
+## U3 Code Generation Part 2 — Step 7 (U7 carry, backend)
+**Timestamp**: 2026-10-01T10:17:38Z
+**AI Response**: Closed the backend carry items in the plan's tables:
+- A3-15/C10/§3 NaN settings; Q6=A plus rollback; #9 settle.
+- #13/#14/#15 and §3 suggestion fixes; C11/C13.
+- C2/C3/C4/C5/C6/C9/C12; spread and void names.
+- §3 say narrowing; C14/C17/C18; NaN 422 (with a JSON-safe 422 handler); 409 body pins.
+- Tests: 28 new. Mutations caught.
+- Gates: pytest 833, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 7.
+
+---
+
+## U3 Code Generation Part 2 — Step 8 (API)
+**Timestamp**: 2026-10-01T10:23:47Z
+**AI Response**:
+- Upload limits: pure ASGI body limit plus field caps and image format checks; fixed 422 texts.
+- Editor routes in the new `api/routers/world_editor.py` (mounted under /api/world).
+- Region delete holds the leases of open sessions and returns 409 with the session ids.
+- `open_player_regions`; editor DTOs with knowledge `*_ko`.
+- Tests: 17 new (paths, 409s, the lease regression, structural ④⑤, LLM-free assembly, uploads). Mutation caught.
+- Gates: pytest 850, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 8.
+
+---
+
+## U3 Code Generation Part 2 — Step 9 (frontend editor)
+**Timestamp**: 2026-10-01T10:36:26Z
+**AI Response**:
+- HttpError/statusOf (C16); fixtures converted.
+- Editor API and types.
+- Map tools with the 4px drag rule; inspector and sub-components; delete plan dialog; unscoped, augmentation (kept run, latest-first undo, unignore), wiki, build and World File panels.
+- `/` world list. RegionPanel moved to the GM's read-only RegionKnowledgePanel; Toolbar and the root AugmentPanel removed.
+- About 150 i18n keys.
+- Tests: 17 new, plus intended changes in components.test. EX-11 mutation caught.
+- Gates: vitest 111, tsc clean.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 9.
+
+---
+
+## U3 Code Generation Part 2 — Step 10 (U7 carry, frontend)
+**Timestamp**: 2026-10-01T10:41:41Z
+**AI Response**: Closed the frontend carry items:
+- GM: #6, #8, #15, C1, C8, C15, C19 and §3 PlayerStrip.
+- Play: #7, #12, §3 act/EDGE_SPACE, C6, C7.
+- Timeline: #10 and A3-14.
+- Tests: 12 new, plus intended changes. Mutations caught.
+- Gates: vitest 123, tsc clean.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 10.
+
+---
+
+## U3 Code Generation Part 2 — Step 11 (docs)
+**Timestamp**: 2026-10-01T10:46:38Z
+**AI Response**:
+- operations.md: new World editor section; U7 lines corrected.
+- env.example: TOPOLOGY_DEFAULT_BASE removed; upload-cap note.
+- Doc accuracy fixes (U7 §5), each marked 〔U3 정정〕.
+- CLAUDE.md status/layout/test count; web/README.md screens and editor tools.
+- Out-of-plan fix: the editor's local background-map picker, dropped with the Toolbar in Step 9.8 (no FD decision to remove it), restored on EditorPage like the GM page; 1 test, mutation caught.
+- Gates: pytest 850, vitest 124, tsc clean.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 11.
+
+---
+
+## U3 Code Generation Part 2 — Step 12 (verification and summary)
+**Timestamp**: 2026-10-01T10:50:02Z
+**AI Response**:
+- Gates: pytest 850 (baseline 735), vitest 124 (baseline 94), ruff/black/tsc clean, mypy 11 (baseline, none in U3 code), npm audit moderate 2 (react-router, unchanged; record only), largest files 233/212 lines, dangerouslySetInnerHTML 0.
+- code-summary finalized: results, files, verification-ID → test map, carry locations, deviations and known limits, mutation results, operator commands, hand-offs to U8.
+**Context**: CONSTRUCTION / U3 — Code Generation Part 2, Step 12.
+
+---
+
+## U3 Code Generation — approval gate
+**Timestamp**: 2026-10-01T10:51:42Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U3 code approved. Running `/code-review` on the U3 diff (`git diff 9228861..bc1bd3a`, code plan commit → code summary) in the background. Next unit in the order U1→U2→U4→U5→U6→U7→U3→**U8**: U8 데모·배포·문서 (Functional Design light).
+**Context**: CONSTRUCTION / U3 — Code Generation complete.
+
+---
+
+## U8 Functional Design Part 1 — plan and questions
+**Timestamp**: 2026-10-01T10:58:46Z
+**User Input**: (continuation of "Continue to Next Stage" — U3 approved; next unit U8)
+**AI Response**: An exploration agent surveyed the U8 state:
+- The demo has 5 regions and only a blocked connection pair, so no move is possible. No event seeds; World File v1 has no place for them, and readers ignore unknown keys.
+- One-click demo appears only with no worlds and goes to the editor.
+- No key-less guidance on `/` or the editor.
+- README tells the old purpose. `tools` compose profile is referenced but absent. requirements.txt lacks sqlalchemy/psycopg/python-multipart. LICENSE MIT vs pyproject Proprietary.
+- No CI. No live scenario script.
+Wrote `construction/plans/U8-demo-deploy-docs-functional-design-plan.md` with a current-state table, six questions (Q1 demo world, Q2 event seeds, Q3 one-click destination, Q4 key-less notice, Q5 CI, Q6 license) and assumptions A8-1..10. Asking Q1·Q2 first.
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Part 1.
+
+---
+
+## U8 Functional Design Part 1 — design principle from the human
+**Timestamp**: 2026-10-01T12:43:25Z
+**User Input**: "그런데 데모 지역을 코드에 const로 박아버리는 형태는 부적절한데. demo world파일을 로드하는 형태가 맞지 않나?" (Q1·Q2 question call declined)
+**AI Response**: Agreed. Surveyed the hardcoding:
+- web `HomePage.tsx:11` DEMO const, `api/world.ts:86·94`, `AppNav.tsx:17`
+- backend `demo/__init__.py` inline memo/map (copies of `examples/demo_world/memo.txt`, `map.json`), `build_from_sources` name check, map image read from outside the package
+- CLI `--demo-sources`
+Added the principle "데모는 데이터다" to the U8 FD plan: code knows demos only through the manifest; each demo is files (World File + optional sources); the UI lists `GET /demos`. Added a current-state row and assumption A8-11 (move the hardcoded parts to manifest/files). Updated A8-4 (start region in the manifest entry) and reframed Q1 (now about content and test inputs only).
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Part 1.
+
+---
+
+## U8 Functional Design Part 1 — Q1·Q2 answers
+**Timestamp**: 2026-10-01T12:46:46Z
+**User Input**: Q1 = "C. 새 월드로 바꾼다"; Q2 = "A. 월드에 저장, GM [시작] (Recommended)"
+**AI Response**: Recorded both. Q1=C leaves the new world's identity open → follow-up Q1-1 (setting/name). Added A8-12: the old Aldermoor World File moves to `tests/fixtures/` for tests that use it as a generic input; demo tests switch to the new world; living docs get the new name; past unit code-summaries stay as historical records (a one-line mapping note in operations.md instead). Asking Q1-1 and Q3 next.
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Part 1.
+
+---
+
+## U8 Functional Design Part 1 — Q1-1·Q3 answers
+**Timestamp**: 2026-10-01T12:57:11Z
+**User Input**: Q1-1 = "(A). 메이플스토리의 스토리를 참고해서. `https://www.inven.co.kr/board/maple/2304/24374`이 사이트 링크 참고"; Q3 = "A. [바로 플레이]+[에디터] (Recommended)"
+**AI Response**: Read the link: a fan-made index of MapleStory story posts (루트론, 2020-11-01), mostly Arcane River lore (소멸의 여로, 츄츄 아일랜드, 레헬른, 아르카나, 모라스, 에스페라), Grandis/Cernium, the Black Mage, Transcendents, Erda, seal stones — not the story text itself. Added follow-ups Q1-2 (how faithfully: inspired original names vs MapleStory names as a fan demo — the names and story are Nexon's, the repo has a GitHub remote and a LICENSE question open) and Q1-3 (which part: Arcane River / Victoria Island / both). Recorded Q3=A.
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Part 1.
+
+---
+
+## U8 Functional Design Part 1 — Q1-2·Q1-3 answers
+**Timestamp**: 2026-10-01T13:01:52Z
+**User Input**: Q1-2 = "A. 구조·분위기만, 이름은 새로 (Recommended)"; Q1-3 = "B. 빅토리아 아일랜드"
+**AI Response**: Recorded. The new demo world borrows Victoria Island's structure and mood (forest, rocky mountain, plains, city, port, underground; a river drawn in) with original names and text; the README credits MapleStory as inspiration. Asking Q4 (key-less notice) and Q5 (CI) next.
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Part 1.
+
+---
+
+## U8 Functional Design Part 1 — Q4·Q5 answers
+**Timestamp**: 2026-10-01T13:14:53Z
+**User Input**: Q4 = "A. 서버가 알리고 화면이 미리 안내 (Recommended)"; Q5 = "A. 지금 넣고 audit도 0건으로 (Recommended)"
+**AI Response**: Recorded. Asking Q6 (license) next — the last question.
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Part 1.
+
+---
+
+## U8 Functional Design Part 2 — artifacts and Plan Review request
+**Timestamp**: 2026-10-01T13:26:10Z
+**User Input**: Q6 = "A. MIT로 맞춘다" (all questions answered: Q1=C, Q1-1=A, Q1-2=A, Q1-3=B, Q2=A, Q3=A, Q4=A, Q5=A, Q6=A)
+**AI Response**: Wrote `construction/U8-demo-deploy-docs/functional-design/`:
+- domain-entities: DemoInfo manifest entry and sources, EventSeed (enums moved to shared), SeedView, Capabilities, the Emberleaf Isle content spec (12 regions, 10 connection pairs, 15 NPCs, 3 seeds), repo metadata.
+- business-logic-model: demo-as-data (backend, CLI, web, old Aldermoor to tests/fixtures), one-click flow, seed storage/read/start, key-less tour, docs and metadata, CI, live scenario.
+- business-rules: BR-U8-1..36, TP-U8-1..8, EX-1..11, story trace.
+- frontend-components: DemoCards, LlmNotice/useCapabilities, SeedPanel, LLM-button disabling, InProgressBadge, API client and i18n changes.
+Verified: consensus path weights (max-product incl. blocked) and deed spread (passable, one hop per turn) give the stated outcomes. Plan Review requested: architecture-reviewer, adversarial, iteration 1 of ≤2.
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Part 2.
+
+---
+
+## U3 code review (/code-review max) — result
+**Timestamp**: 2026-10-01T13:30:27Z
+**User Input**: (none — background review launched after the U3 code gate)
+**AI Response**: Record `aidlc-docs/construction/U3-world-editor/code/reviews/code-review-01.md` (scope `git diff 9228861..bc1bd3a`). 15 correctness findings, all confirmed by reproduction; plus 32 above-cap correctness, 17 cleanup, 12 dismissed, 10 design/doc memos.
+- Top findings:
+  - #1: the inspector saves a stale region view whole (drag undone).
+  - #2: the augmentation run is lost on a tab switch.
+  - #3: a kind change re-saves from the body, losing rationale, prior and provenance.
+  - #4: connection-target reverts skip the outside-edit check.
+  - #5: an empty weight box saves 0 and blocks the path.
+  - #6: `/` build replaces an existing world without asking.
+  - #7: TP-U3-5 is flaky. A saved counterexample in the git-ignored `.hypothesis/examples` now makes pytest 849 passed / 1 failed in this checkout.
+- Orchestrator spot-check: #3 verified (`world_editor.py:154-162`), #7 verified (`test_augmentation.py:205-208` draws per edge), #1 consistent with `RegionInspector.tsx:57-62,149-150`.
+- The code is approved, so the human chooses how to handle the fixes (A mix / B all to U8 / C accept). The U8 FD review is running in parallel.
+**Context**: CONSTRUCTION / U3 post-approval review; U8 FD Part 2 under Plan Review.
+
+---
+
+## U3 code review — human choice
+**Timestamp**: 2026-10-01T13:34:03Z
+**User Input**: "A. 섞는다 (Recommended)"
+**AI Response**: Fix #1–#7, #9 and #11 now as U3 post-approval commits, with regression tests and a gate re-run, and correct BR-U3-27 / BLM §4.3 ("outside edit" includes edges). Carry the rest (#8, #10, #12–#15, §3, §2, design memos) to the U8 code-generation plan's carry table. The three design decisions (augmentation budget model, where global knowledge is edited, how "confirm" ends wiki_conflict) stay open for a U3 follow-up or the next cycle.
+**Context**: CONSTRUCTION / U3 post-approval review fixes; U8 FD Plan Review iteration 1 returned in parallel.
+
+---
+
+## U8 Functional Design — Plan Review iteration 1 verdict and fixes
+**Timestamp**: 2026-10-01T13:37:26Z
+**AI Response**: Reviewer (architecture-reviewer, adversarial, iter 1) returned NOT-READY with 5 Major and 6 Minor findings (`functional-design/reviews/functional-design-review-01.md`). Fixed all eleven in place, each marked 〔검토 01 R-xx〕:
+- R-01: license table form; explicit package-data globs.
+- R-02: 503 table rebuilt from code with dependency fields; `priors` removed.
+- R-03: one-click failure semantics (ok=false, busy_sessions, missing start region).
+- R-04: three graphs separated; computed weight table; relic narrative corrected.
+- R-05: live scenario reordered by player position; support arithmetic.
+- R-06: SeedService, create_event keyword extension, SeedAlreadyRunningError 409, 201 EventOut.
+- R-07: change points listed; FR-A2 exception; init-schema note.
+- R-08: loadDemo argument order unified.
+- R-09: manifest validated once at assembly; sources build differs.
+- R-10: help/docstring names; TP-U8-6 search terms.
+- R-11: separate audit job; `npm ci` prerequisite.
+Re-dispatching for iteration 2.
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Plan Review.
+
+---
+
+## U3 post-approval review fixes (choice A)
+**Timestamp**: 2026-10-01T13:45:56Z
+**AI Response**: Fixed #1–#7, #9 and #11:
+- #1: the inspector re-reads on the page reload key.
+- #2: the run id is kept by the page and re-read with getRun.
+- #3: a kind change only moves the pair.
+- #4: revert checks edges.
+- #5: the weight box rejects empty or invalid values.
+- #6: build sends replace=false first and asks on 409.
+- #7: the TP-U3-5 generator keeps a pair invariant; the saved counterexample passes.
+- #9: continue instead of break.
+- #11: the snapshot is read after the guard.
+Tests: pytest +7, vitest +5; every fix caught by a mutation. Gates: pytest 857, vitest 129, ruff/black/tsc clean, mypy 11. Corrected BR-U3-27 / BLM §4.3 (edges count as outside edits), CLAUDE.md/web README ("entities" not edited). code-summary §10 records it; the rest is listed under "넘겨받은 것" in the U8 FD plan.
+**Context**: CONSTRUCTION / U3 post-approval review fixes.
+
+---
+
+## U8 Functional Design — Plan Review iteration 2 verdict
+**Timestamp**: 2026-10-01T13:46:15Z
+**AI Response**: Reviewer (architecture-reviewer, adversarial, iter 2 of 2) returned READY: R-01..R-04 and R-06..R-11 resolved; R-05 lowered to Minor and still unresolved (T3→T4 step missing in the live scenario); new Minor R-12 (startSeed type SessionEvent vs EventOut) and R-13 (Ironcrag hearsay list narrower than the table). Terminal verdict: artifacts frozen; the three open findings go to the gate.
+**Context**: CONSTRUCTION / U8 — Functional Design (light), Plan Review complete; gate next.
+
+---
+
+## U8 Functional Design — approval gate
+**Timestamp**: 2026-10-01T13:48:04Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U8 FD approved. Next: U8 Infrastructure Design (light).
+**Context**: CONSTRUCTION / U8 — Functional Design (light) complete.
+
+## Plan Review Dispositions — Functional Design — U8 데모·배포·문서
+**Timestamp**: 2026-10-01T13:48:04Z
+- R-05 → Accepted risk (code plan Step 1 correction: add a T3→T4 step or restate steps 10·11 at T3)
+- R-12 → Accepted risk (code plan Step 1 correction: `api.startSeed` returns `EventOut`)
+- R-13 → Accepted risk (code plan Step 1 correction: the Ironcrag hearsay list is every town at ≥ 0.15 in the table, asserted from the table)
+
+---
+
+## U8 Infrastructure Design Part 1 — plan and questions
+**Timestamp**: 2026-10-01T13:49:26Z
+**User Input**: (continuation of "Continue to Next Stage" — U8 FD approved)
+**AI Response**: Read the deploy files. Facts:
+- Bind-mount volumes need `setup-volumes.sh` first, so the start is two commands.
+- OpenSearch Dashboards starts by default with no healthcheck; the docs use a `tools` profile that does not exist.
+- Infra ports are published on 0.0.0.0 with fixed numbers; this host already holds 7474/7687.
+- web uses `npm install` on node:20 and nginx has no `client_max_body_size` (1 MiB).
+- There is no CI.
+Wrote `construction/plans/U8-demo-deploy-docs-infrastructure-design-plan.md`: three questions (Q1 volumes, Q2 Dashboards, Q3 CI image job) and assumptions I8-1..8 (127.0.0.1 + env-overridable host ports, node:22 + npm ci, nginx 48m, one workflow). Asking Q1·Q2 first.
+**Context**: CONSTRUCTION / U8 — Infrastructure Design (light), Part 1.
+
+---
+
+## U8 Infrastructure Design Part 1 — Q1·Q2 answers
+**Timestamp**: 2026-10-01T13:51:48Z
+**User Input**: Q1 = "B. bind mount 유지"; Q2 = "A. tools 프로필로 옮긴다 (Recommended)"
+**AI Response**: Recorded. Q1=B keeps `./data` bind mounts and `setup-volumes.sh`; the README start becomes a preparation command plus the start command, a recorded deviation from US-1.1's "one command" (the human's decision). Asking Q3 (CI image job).
+**Context**: CONSTRUCTION / U8 — Infrastructure Design (light), Part 1.
+
+---
+
+## U8 Infrastructure Design Part 2 — artifacts and Plan Review request
+**Timestamp**: 2026-10-01T13:54:00Z
+**User Input**: Q3 = "A. 이미지 작업을 더한다 (Recommended)"
+**AI Response**: Wrote `construction/U8-demo-deploy-docs/infrastructure-design/`:
+- infrastructure-design.md:
+  - services and profiles (default infra, service app+web, tools dashboard)
+  - 127.0.0.1 and env-overridable infra ports
+  - bind mounts kept, with the US-1.1 deviation recorded
+  - app image unchanged plus package-data
+  - web: node:22, npm ci, nginx 48m, healthcheck
+  - CI: four jobs (backend with seed, frontend, audit, images)
+  - observation, risks
+- deployment-architecture.md: visitor, developer and CI diagrams, start flow, acceptance-check map.
+Plan Review requested: architecture-reviewer, adversarial, iteration 1 of ≤2.
+**Context**: CONSTRUCTION / U8 — Infrastructure Design (light), Part 2.
+
+---
+
+## U8 Infrastructure Design — Plan Review iteration 1 verdict
+**Timestamp**: 2026-10-01T13:56:00Z
+**AI Response**: Reviewer (architecture-reviewer, adversarial, iter 1) returned READY with six open findings (`infrastructure-design/reviews/infrastructure-design-review-01.md`):
+- R-01 Major: relative `driver_opts.device` paths unproven.
+- R-02 Major: web healthcheck `localhost` may resolve to ::1 while nginx listens on IPv4 only.
+- R-03..R-06 Minor: nginx 413 shape; package-data change and image demo-check script; CI baseline / npm cache path / tsbuildinfo; port variables in env.example and `down` with tools.
+Terminal verdict: artifacts frozen.
+Orchestrator evidence for the gate (read-only): `docker compose config` (Compose v2.40.3) renders the relative `./data/...` devices as absolute paths, and `locus_*` volumes already exist on this host.
+**Context**: CONSTRUCTION / U8 — Infrastructure Design (light), Plan Review complete; gate next.
+
+---
+
+## U8 Infrastructure Design — approval gate
+**Timestamp**: 2026-10-01T14:00:03Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U8 Infrastructure Design approved. Next: U8 Code Generation Part 1 (plan).
+**Context**: CONSTRUCTION / U8 — Infrastructure Design (light) complete.
+
+## Plan Review Dispositions — Infrastructure Design — U8 데모·배포·문서
+**Timestamp**: 2026-10-01T14:00:03Z
+- R-01 → Accepted risk (compose config renders absolute paths on this host; the live scenario step 1 confirms the stack actually starts, with a fallback to `${PWD}`-based devices)
+- R-02 → Accepted risk (code: web healthcheck uses `http://127.0.0.1/`)
+- R-03 → Accepted risk (code: nginx limit set just above the app's so the app judges the limit, or a JSON error_page)
+- R-04 → Accepted risk (code plan: package-data glob change listed; the image demo-check script specified)
+- R-05 → Accepted risk (code plan: local baseline of ruff/black/tsc/npm ci first; npm cache-dependency-path; tsbuildinfo in web/.dockerignore)
+- R-06 → Accepted risk (code: port variables in env.example and the compose header; docs add `--profile tools` to down)
+
+---
+
+## U8 Code Generation Part 1 — plan and Plan Review request
+**Timestamp**: 2026-10-01T14:03:33Z
+**AI Response**: Wrote `construction/plans/U8-demo-deploy-docs-code-generation-plan.md`: 17 steps.
+- Steps: baseline and corrections; shared seed model and storage; World File event_seeds; region-delete seeds; demo as data (manifest, sources, CLI, check_packaged, package-data, Aldermoor to fixtures); Emberleaf content and tests; SeedService and GM routes; capabilities and the 503 sweep; U3 carry backend; U8 frontend; U3 carry frontend; deploy (compose, images, nginx, env, react-router, CI); metadata; docs; live scenario; verification; gate.
+- Carry tables: FD R-05/R-12/R-13; Infra R-01..R-06; U3 code-review-01 #10, #12–#15, S01–S32, C1–C17, docs and design memos.
+Checked: Neo4j `upsert_edges` merges properties (`SET r += props`), so #13(b) adds a `replace_edges` port.
+Plan Review requested: architecture-reviewer, adversarial, iteration 1 of ≤2.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 1.
+
+---
+
+## U8 Code Generation Part 1 — Plan Review iteration 1 verdict
+**Timestamp**: 2026-10-01T14:07:53Z
+**AI Response**: Reviewer (architecture-reviewer, adversarial, iter 1) returned READY with six open findings (`plans/reviews/U8-demo-deploy-docs-code-generation-plan-review-01.md`):
+- R-01 Major: Aldermoor moves before the manifest swap; the CLI/API tests have no fixture path.
+- R-02 Major: the image check runs from `/app`, which shadows the installed package; the accessor is unnamed.
+- R-03..R-06 Minor: port implementations unlisted; TP-U8-6 scope and leftover names; carry sub-steps too coarse; no react-router fallback.
+Terminal verdict: plan frozen.
+Orchestrator evidence for R-06 (read-only): `npm audit` says both advisories (GHSA-wrjc-x8rr-h8h6 open redirect via backslash in Link/useNavigate; GHSA-337j-9hxr-rhxg SSR hydration) cover >=6.0.0 <7.18.0. The newest 6.x is 6.30.6, so the fix needs react-router(-dom) 7.18.x (semver-major). The app uses only declarative APIs on React 18.3. This becomes a human decision at the gate.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 1, gate next.
+
+---
+
+## U8 Code Generation Part 1 — approval prompt
+**Timestamp**: 2026-10-01T14:08:04Z
+**AI Response**: Asking for approval of `construction/plans/U8-demo-deploy-docs-code-generation-plan.md` (17 steps), with the Review brief (six open findings) and a separate react-router decision (R-06: no fixed 6.x; the fix needs 7.18.x).
+**Context**: CONSTRUCTION / U8 — Code Generation Part 1 gate.
+
+---
+
+## U8 Code Generation Part 1 — approval
+**Timestamp**: 2026-10-01T14:13:15Z
+**User Input**: Gate = "Approve & Continue (Recommended)"; react-router = "A. v7.18로 올린다 (Recommended)"
+**AI Response**: Plan approved. The six open findings are recorded as execution notes in the plan. Next: Code Generation Part 2, Step 1.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 1 complete.
+
+## Plan Review Dispositions — Code Generation Part 1 — U8 데모·배포·문서
+**Timestamp**: 2026-10-01T14:13:15Z
+- R-01 → Accepted risk (execution note: Step 6 before 5.6; fixture injection)
+- R-02 → Accepted risk (execution note: check from the installed copy with `-w /tmp` and `python -I`; `DemoWorlds.problems`)
+- R-03 → Accepted risk (execution note: ports and every implementation listed)
+- R-04 → Accepted risk (execution note: leftover names; search scope)
+- R-05 → Accepted risk (execution note: 9a–9e and 11a–11c commits; call-site counts)
+- R-06 → Accepted risk (the human's decision: react-router-dom 7.18.x)
+
+---
+
+## U8 Code Generation Part 2 — Step 1 (baseline and corrections)
+**Timestamp**: 2026-10-01T14:15:02Z
+**AI Response**: Baseline: pytest 857, vitest 129, mypy 11, ruff/black/tsc clean; a clean `npm ci` works; npm audit moderate 2. Applied the 〔Step 1.2 정정〕 corrections to the approved FD and Infra artifacts (R-05, R-12, R-13, the react-router decision, Infra R-02/R-03/R-04a, code plan R-02). Started the code summary.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 1.
+
+---
+
+## U8 Code Generation Part 2 — Step 2 (shared seed model and storage)
+**Timestamp**: 2026-10-01T14:17:36Z
+**AI Response**: Moved the event vocabulary to shared (play re-exports). Added EventSeed, WorldSnapshot.event_seeds, the seed mapping, persist_graph(seeds=), the Neo4j label, and loader support (dangling seeds dropped with a warning). 4 tests. Gates: pytest 861, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 2.
+
+---
+
+## U8 Code Generation Part 2 — Step 3 (World File event_seeds)
+**Timestamp**: 2026-10-01T14:20:28Z
+**AI Response**: Added the optional `event_seeds` section across schema, remap, validate_references, export and import (format_version stays 1). The World File generator draws seeds. Tests: TP-U8-1, TP-U8-2, EX-5, EX-6; mutations caught. Gates: pytest 865, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 3.
+
+---
+
+## U8 Code Generation Part 2 — Step 4 (region delete takes its seeds)
+**Timestamp**: 2026-10-01T14:22:23Z
+**AI Response**: Region delete plan/report carry seed_ids/seeds_deleted; seeds go between ③ and ④. The TP-U3-2 oracle checks seed region ids (TP-U8-3). EX-7 added; mutation caught. Gates: pytest 866, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 4.
+
+---
+
+## U8 Code Generation Part 2 — Steps 6 and 5 (Emberleaf content; demos are data)
+**Timestamp**: 2026-10-01T14:29:20Z
+**AI Response**: Per execution note R-01, the content and the manifest swap came first.
+- Emberleaf Isle World File and sources are generated from the real models; the manifest has one entry.
+- `locus/world/demo` is rewritten: manifest-driven, checked once, `problems`, `sources`, `check_packaged`, no constants.
+- `GET /demos` returns DemoInfoOut. The CLI uses `--demo <name>` (alias kept). Leftover names cleaned. package-data globs widened.
+- Aldermoor and `examples/` moved to `tests/fixtures/aldermoor` (lint excludes fixtures).
+- Tests: demo (11, incl. TP-U8-4, the weight table, EX-9, EX-10, EX-11, forbidden names), TP-U8-6 (backend scope), CLI. Mutations caught.
+- Gates: pytest 875, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Steps 5–6.
+
+---
+
+## U8 Code Generation Part 2 — Step 7 (seed start)
+**Timestamp**: 2026-10-01T14:32:42Z
+**AI Response**: create_event takes provenance and timeline_extra. Added SeedService (list, start, running-from-provenance), SeedView, SeedAlreadyRunningError (409), PlayContainer.seeds, and GM routes GET seeds and POST start (201 EventOut, GM lease). Tests: EX-4/TP-U8-5 and refusals; mutation caught. Gates: pytest 877, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 7.
+
+---
+
+## U8 Code Generation Part 2 — Step 8 (capabilities and the 503 sweep)
+**Timestamp**: 2026-10-01T14:34:35Z
+**AI Response**: Added GET /api/capabilities. TP-U8-8: on a keyless production-style assembly, the eight LLM routes are 503 and the keyless visitor path works; no 500 found. Gates: pytest 878, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 8.
+
+---
+
+## U8 Code Generation Part 2 — Step 9a (U3 carry: editor writes)
+**Timestamp**: 2026-10-01T14:42:46Z
+**AI Response**: Ports replace_edges/edges_touching. Closed #13 (a, b), #12 (server), C3/S12, C4, C6, C11, C17, S21, S26, S29, S30, S32. Deviations recorded:
+- WikiAdmin builds its own EditorWrites (import cycle).
+- C11 skips only fully unchanged docs (a vector would otherwise be lost).
+- S26 is enforced by an editor check, without rekeying the fake.
+Tests: 13 carry and 3 port contract; mutations caught after strengthening #13b to cut at every write. Gates: pytest 894, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 9a.
+
+---
+
+## U8 Code Generation Part 2 — Step 9b (U3 carry: augmentation)
+**Timestamp**: 2026-10-01T14:48:06Z
+**AI Response**: Closed C2 (question type/needs/ref_kind, ConnectionKey target, stored titles), C10 (edges_touching), S03 (resumable undo), S09, S10 (purge on answer/undo routes), S15, S06 server inputs. 7 tests; mutations caught. Gates: pytest 901, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 9b.
+
+---
+
+## U8 Code Generation Part 2 — Step 9c (U3 carry: uploads, limits, API)
+**Timestamp**: 2026-10-01T14:56:16Z
+**AI Response**: Closed:
+- C7: one open-session filter; the CLI uses WorldCatalog; need_service lives in deps.
+- C9: refs from one snapshot.
+- C13: WorldInfo inherits.
+- C15: sessions are checked before files are read.
+- S07: a non-object or too-deep map is 422.
+- S19: WorldInputs caps are shared with uploads.
+- S20: root_path is stripped and the World File limit gets a margin.
+- S27: bytes in a 422 body no longer cause a 500.
+7 tests and 2 intended changes; mutations caught. Gates: pytest 908, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 9c.
+
+---
+
+## U8 Code Generation Part 2 — Steps 9d and 9e (U3 carry: play, drafts)
+**Timestamp**: 2026-10-01T15:02:06Z
+**AI Response**: Closed:
+- #10: conditional contributions update; event reads inside the UoW with FOR UPDATE.
+- C16: region names read once.
+- S17: narrator split into prompts/call/finish; only the provider call is guarded.
+- S18: settled supports.
+- S22: one material heading.
+Known limit recorded: offline tests cannot exercise PostgreSQL row locks. 7 tests; mutations caught. Gates: pytest 915, ruff/black clean, mypy 11. Step 9 complete.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Steps 9d–9e.
+
+---
+
+## U8 Code Generation Part 2 — Step 10 (frontend U8 features)
+**Timestamp**: 2026-10-01T15:24:17Z
+**AI Response**: Built the U8 screens:
+- capabilities read and the LLM-off notice and buttons (BR-U8-23..27)
+- manifest demo cards with the replace and open-session flow (EX-1..3, EX-12..14)
+- SeedPanel on the GM hub
+- the in-progress badge and seeds in the region delete plan
+- AppNav home link
+
+Also:
+- `useReplaceConfirm` (C8), used by DemoCard; BuildPanel and WorldFileBar move in Step 11.
+- i18n: new keys; the 21 C14 keys and `home.loadDemo` deleted.
+- TP-U8-6 now scans `web/src`.
+- C5 server change committed here: it had been checked in 9.3 but left out of the Step 9 commits.
+
+Intended test changes: home demo button, `llm-banner`, the dialogue 503 body. 17 of 18 mutations caught; the survivor is equivalent. Gates: pytest 918, vitest 169, tsc/ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 10.
+
+---
+
+## U8 Code Generation Part 2 — Step 11a (U3 carry: editor screen)
+**Timestamp**: 2026-10-01T15:34:59Z
+**AI Response**: Closed:
+- C1: a drag is one PUT; the world list is read only on mount, load and build; the unscoped count comes from the server.
+- #14: a fresh build panel per opening.
+- #15: the connect tool edits a stored pair and keeps its grounds and prior.
+- S01 remainder: a session start on the bar; the two strings. Recorded: the plan put this in Step 10.
+- S05: a blocked delete shows its sessions.
+- S21: map tools are off with no world.
+- S23: the marker captures the pointer; cancel and lost capture end the drag. Design note: captured on the marker so clicks still select.
+- S24: the file box is reset after a pick.
+- S25: names for all six plan lines.
+- S31: the last read wins.
+- C8: the replace hook in BuildPanel and WorldFileBar; NewRegionForm.
+- C12: one read per write.
+- C17: an empty title is sent as is.
+17 tests and 1 intended change; 20/20 mutations caught. Gates: vitest 185, tsc clean.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 11a.
+
+---
+
+## U8 Code Generation Part 2 — Step 11b (U3 carry: augmentation screen)
+**Timestamp**: 2026-10-01T15:39:11Z
+**AI Response**: Closed:
+- #12 panel: a 404 checks the run; if it still exists, the server's reason is shown.
+- C2 web: inputs and references follow the server's `needs` and `ref_kind`.
+- S06: title and confidence inputs.
+- S28: inputs are keyed by `issue_key`.
+6 tests and 1 intended change (the lost-run test mocks getRun itself). 8/8 mutations caught; one test was tightened after its mutation survived. Gates: vitest 191, tsc clean.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 11b.
+
+---
+
+## U8 Code Generation Part 2 — Step 11c (U3 carry: play and GM screens)
+**Timestamp**: 2026-10-01T15:43:38Z
+**AI Response**: Closed:
+- S02: a held session is read again, up to 5 times.
+- S04: the closed line survives the read-only re-read.
+- S08: placeholders are checked on the template.
+- S13: the suggestion cap is corrected by the next state read.
+- S14: the player strip is keyed per session, and the marker resets.
+6 tests; 7/7 mutations caught. Gates: vitest 197, tsc clean. Step 11 complete.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 11c.
+
+---
+
+## U8 Code Generation Part 2 — Step 12 (deploy)
+**Timestamp**: 2026-10-01T15:48:40Z
+**AI Response**: Changed:
+- Compose: infra ports on 127.0.0.1 with port variables; dashboard in the `tools` profile; web healthcheck on 127.0.0.1; header comment.
+- `.dockerignore` excludes web and scripts. Web image uses node:22-alpine and `npm ci`; nginx 49m.
+- `env.example` and the setup-volumes text fixed.
+- react-router-dom 7.18.4 (choice A); package files only.
+- `npm audit --omit=dev`: 0. Observation: 4 dev-only advisories remain outside the gate.
+- `.github/workflows/ci.yml`: backend, frontend, audit and images jobs.
+
+Checked locally:
+- `docker compose config` resolves the profiles and ports.
+- Both images build.
+- `check_packaged()` reports [] inside the installed app, and `import api.main` works.
+- `nginx -t` passes and the healthcheck command succeeds in the web container.
+
+Live compose up stays with the operator (Infra R-01).
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 12.
+
+---
+
+## U8 Code Generation Part 2 — Step 13 (metadata)
+**Timestamp**: 2026-10-01T15:51:45Z
+**AI Response**: Changed:
+- pyproject: MIT license, purpose-statement description, Repository URL.
+- requirements.txt matches the dependencies (3 were missing).
+- STATUS docstrings on the four in-progress modules.
+TP-U8-7 adds 4 tests; 4/4 mutations caught. Metadata confirmed through the app image build. Gates: pytest 922, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 13.
+
+---
+
+## U8 Code Generation Part 2 — Step 14 (docs)
+**Timestamp**: 2026-10-01T15:56:39Z
+**AI Response**:
+- README rewritten in Korean: purpose statement on the first line, flow, start commands, keyless tour, demo, in-progress table, development, directory, MIT and demo credits, CI badge.
+- CLAUDE.md: overview, status, layout, commands.
+- operations.md: stale lines fixed (demo button, aldermoor, keyless/health sentence, Web UI, legacy-peer-deps, knowledge-delete translations); a U8 section added; the S16 known limit noted.
+- web/README.md updated.
+- 〔U8 정정〕 notes on U3 BLM §1.4 and U3 nfr-light §3.
+- Recorded: the keyless notice now says how to turn the LLM on (BLM §4.2).
+- 2 tests (purpose sentence; README profiles exist); mutations caught. Gates: pytest 924, vitest 197.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 14.
+
+---
+
+## U8 Code Generation Part 2 — Step 15 (live scenario)
+**Timestamp**: 2026-10-01T16:03:24Z
+**AI Response**: Added `scripts/live_scenario.py` (urllib only):
+- Steps 1–12 with the 9a wait. Step 10 is split into 10a distortion (no LLM) and 10b dialogue (LLM).
+- Regions are found by name. Each step prints PASS, FAIL or SKIP; any FAIL exits 1.
+
+Tests (`tests/test_live_scenario.py`, 9):
+- The real API runs in-process without a key through a TestClient adapter (two world ids).
+- A scripted server covers the LLM-path verdicts.
+- 5/5 mutations caught.
+
+Found and fixed: the keyless test fixture built `KnowledgeContainer(params=None)`, so `GET /region` was a 500 in that fixture only. It now uses `assemble_knowledge`.
+
+The actual run against a live stack (15.3) is left to Build & Test. Gates: pytest 933, ruff/black clean, mypy 11.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 15.
+
+---
+
+## U8 Code Generation Part 2 — Step 16 (gates and summary)
+**Timestamp**: 2026-10-01T16:10:07Z
+**AI Response**: Gates:
+- pytest 933, vitest 197
+- ruff/black (incl. scripts) and tsc clean; mypy 11
+- `npm audit --omit=dev` 0; `dangerouslySetInnerHTML` 0
+
+250-line gate, read as NFR-7's god-component rule:
+- GmHub 275 → 228 (`useBulkRumors` hook).
+- AugmentPanel 258 → 182 (`AugmentQuestion`).
+- The remaining long files are recorded as deviations with reasons.
+
+The code summary is finalized: results, changed files, TP/EX → tests, where each U3 carry item closed, deviations and known limits, mutation results, remaining decisions (design memos 1·2·5), operator checks.
+**Context**: CONSTRUCTION / U8 — Code Generation Part 2, Step 16. Next: code gate (Step 17).
+
+---
+
+## U8 Code Generation — Approval
+**Timestamp**: 2026-10-01T16:29:16Z
+**User Input**: "Continue to Next Stage (Recommended)"
+**AI Response**: U8 code (Steps 1–16, HEAD 7490b4b) approved. Next: a background `/code-review` over 589dc2b..7490b4b (review only, no code change), then Build and Test (operator checks: compose up with port overrides on this host, the live scenario, the CI first run).
+**Context**: CONSTRUCTION / U8 — Code Generation approval gate (Step 17).
+
+---
+
+## U8 Code Review — Decision
+**Timestamp**: 2026-10-01T18:15:36Z
+**User Input**: "A. 섞는다 (Recommended)"
+**AI Response**: `code/reviews/code-review-01.md`: 15 correctness findings, all reproduced. These are fixed now as U8 follow-up commits before Build & Test (reopening approved code):
+- #1–#3 (medium)
+- #4, #6, #7, #8 (left by this unit's U3 carry fixes)
+- #5(b)
+#9–#15, §3, the cleanups and the design memos go to the next-cycle list. FD BLM §7 step 6 is corrected: appraisal happens at end_talk.
+**Context**: CONSTRUCTION / U8 — post-approval code review decision.
+
+---
+
+## U8 Code Review — Follow-up fixes (choice A)
+**Timestamp**: 2026-10-01T18:34:19Z
+**AI Response**: Fixed U8 review findings in follow-up commits:
+- #1: first demo load is replace=false.
+- #2: build panel kept while a build runs; one build per world (409).
+- #5(b): a failed held read schedules the next one.
+- #4: edits compared with stored values; the search document is written before the node.
+- #6: idempotent revert resume.
+- #7: one failed wiki lookup per detection.
+- #8: Issue.connection.
+- #3: live scenario ends the talk so the witness appraises; FAIL vs SKIP.
+Commits: 377e80c 6111fd2 2db1856 c2fcf4b e6b4951 54e306c.
+
+The real API with a fake LLM now passes all 15 scenario steps in-process. 30/30 mutations caught (3 after strengthening tests). FD BLM §7 and FC §2.3 corrected; earlier code-summary claims corrected (9b S03, 11c S14, Step 15). #9–#15, §3, the cleanups and the design memos are on the next-cycle list (code-summary §10). Gates: pytest 948, vitest 202, lint/tsc clean, mypy 11, audit 0.
+**Context**: CONSTRUCTION / U8 — post-approval review follow-up. Next: two deploy-facing design decisions (review memos 13 and 11), then Build and Test.
+
+---
+
+## U8 — Deploy decisions before Build & Test
+**Timestamp**: 2026-10-01T18:42:02Z
+**User Input**: memo 13 "A. 빌드 경로만 늘린다 (Recommended)"; memo 11 "A. SPDX 문자열로 바꾼다 (Recommended)"
+**AI Response**:
+- nginx: a build-only location at 600 s (other /api routes stay at 130 s).
+- pyproject: `license = "MIT"`, `license-files = ["LICENSE"]`, `setuptools>=77`; the Dockerfile copies LICENSE.
+- Corrected Infra §3.2, BR-U8-29 and operations.md.
+
+Verified:
+- Rebuilt app image: License-Expression MIT, License-File LICENSE, `check_packaged()` [].
+- nginx `-t` passes, and both locations proxy to a stub app on a throwaway network (cleaned up).
+- test_packaging guards the SPDX form and the LICENSE copy.
+**Context**: CONSTRUCTION / U8 — post-review deploy decisions. Next: Build and Test.
+
+---
+
+## Build and Test — Purpose Restructure (live run)
+**Timestamp**: 2026-10-01T18:52:28Z
+**User Input**: "(A). + 다른 월드도 정리"
+**AI Response**: Ran on this host (`WEB_PORT=13000` on the command line; .env unchanged; other stacks untouched).
+- `docker compose --profile service up -d --build --wait`: five services healthy; `/health` ok; capabilities llm true; web :13000 proxies /api.
+- `scripts/live_scenario.py` with the key: **15 passed, 0 failed, 0 skipped**. The deed was judged at end_talk (T3), hopped to the harbor and Sylvarch at T4 and was not in Ironcrag at T5; the harbor NPC knew of the scorched granary, not of the blight.
+- Offline: pytest 948, vitest 202, lint/tsc clean, mypy 11, audit 0.
+
+"Clean up the other worlds": aldermoor, demo and demo00 were backed up as World Files (app volume and host data/backups/). Closing their sessions and deleting them was **denied by the Claude Code permission guard** (irreversible deletion) and was not done; it is left to the human.
+
+Docs: `construction/build-and-test/purpose-restructure/` (build, unit, integration, summary, run log); the old integration doc points there.
+**Context**: CONSTRUCTION / Build and Test — Purpose Restructure cycle.
+
+---
+
+## Build and Test — Old worlds cleaned up
+**Timestamp**: 2026-10-01T18:56:34Z
+**User Input**: (ran in the prompt) close the open sessions of aldermoor/demo/demo00; delete the three worlds from the graph and search index.
+**AI Response**: The first close attempt joined ids without a space and missed aldermoor's two sessions; this was pointed out and the human re-ran it. All sessions are closed. After the delete, `list_world_ids()` = ['emberleaf']. Claude restarted the app container (cache only). `/api/world/worlds` lists emberleaf alone (12 regions, 1 open session from the live scenario); `/health` ok. Backups: `data/backups/*-before-u8-cleanup.world.json`.
+**Context**: CONSTRUCTION / Build and Test — Purpose Restructure cycle.
+
+---
+
+## Build and Test — UI check
+**Timestamp**: 2026-10-01T19:00:45Z
+**User Input**: "최초 동작 화면은 확인했고 화면 고도화는 후속 테스크임"
+**AI Response**: Recorded: the human checked the first-run screens; screen polish goes on the next-cycle list (U8 code-summary §10, B&T summary). Next: the Build and Test approval gate (→ Operations, placeholder).
+**Context**: CONSTRUCTION / Build and Test — Purpose Restructure cycle.
+
+---
+
+## Build and Test — Approval; Operations; cycle close
+**Timestamp**: 2026-10-01T19:05:31Z
+**User Input**: "Approve & Continue (Recommended)"
+**AI Response**: Build and Test approved. Operations (placeholder): operations.md already holds the U8 section (Step 14); CLAUDE.md Status now says the cycle is complete. The next-cycle list is gathered in `operations/next-cycle.md`:
+- screen polish (the human's follow-up)
+- CI first run and the PostgreSQL concurrency check
+- U8 review #9–#15, §3, the cleanups and open design memos
+- U3 design memos 1·2·5
+- the four in-progress features and tech debt
+**PURPOSE RESTRUCTURE CYCLE COMPLETE.** The branch is committed, not pushed.
+**Context**: CONSTRUCTION → OPERATIONS (placeholder) — Purpose Restructure cycle.
+
+---
+
+## Cycle close — push, PR, first CI run
+**Timestamp**: 2026-10-01T19:22:58Z
+**User Input**: "어" (push and open the PR); the human ran `git push -u origin feat/purpose-restructure` after the permission guard denied Claude's push.
+**AI Response**: Opened PR #4 (feat/purpose-restructure → main). The first CI run (36913556830) passed all four jobs (backend 1m46s, frontend 20s, audit 6s, images 43s); GitGuardian passed. Two annotations went to the next-cycle list: Node 20 action versions, and the ubuntu-latest move to Ubuntu 26 on 2026-10-19.
+**Context**: OPERATIONS (placeholder) — Purpose Restructure cycle close.
+
+---

@@ -4839,3 +4839,137 @@ Next: V2 Code Generation Part 1 (plan).
 
 ---
 
+## Functional Design — V3 한국어 표시 백엔드 — Plan started
+**Timestamp**: 2026-10-07T14:14:27Z
+**User Input**: (continues the earlier "Continue to Next Stage", V2 → V3)
+**AI Response**: Wrote the FD plan `construction/plans/V3-korean-backend-functional-design-plan.md`.
+- Self-decided:
+  - A no-LLM translation service that reads the cache and seeds but never warms. A design gap: `assemble_localization` returns None without an LLM, so seeded rows would never be read.
+  - `source_hash` moves to shared.
+  - Order: import → world purge → seed.
+  - New rows carry `world_id`, and a world replace purges all world-scoped kinds.
+  - Editor purge on region and NPC delete.
+  - CLI seeding.
+  - Card text from the manifest.
+  - Entities and NPC traits are out of scope (editor only).
+- Questions:
+  - Q1: proper-name style
+  - Q2: English source in the file vs hash only
+  - Q3: check strictness
+  - Q4: FR-C11 refuse vs remap
+  - A fifth question, on how GM/editor screens get translated names, waits on an inventory search.
+**Context**: CONSTRUCTION / V3 — FD Part 1 (questions).
+
+---
+
+## Functional Design — V3 — Answers
+**Timestamp**: 2026-10-07T14:29:20Z
+**User Input**: AskUserQuestion answers:
+- Q1 → "음역 + 지형 낱말만 옮김 (Recommended)"
+- Q2 → "영어 원문을 함께 적음 (Recommended)"
+- Q3 → "CI는 엄격, 실행은 너그러움 (Recommended)"
+- Q4 → "검사가 문제로 보고 (Recommended)"
+- Q5 → "월드 이름표 하나 (Recommended)"
+
+**AI Response**: Q1..Q5 = A. No ambiguous answers. Wrote the FD artifacts under `construction/V3-korean-backend/functional-design/`:
+- `domain-entities.md`
+- `business-logic-model.md`
+- `business-rules.md` (BR-V3-01..28, TP-V3-1..12)
+
+Q5 came from an API inventory (a search sub-agent). Ten-plus responses copy names, and timeline payloads freeze English names next to ids.
+**Context**: CONSTRUCTION / V3 — FD Part 2 artifacts written; plan review next.
+
+---
+
+## Plan Review Requested — Functional Design — V3 한국어 표시 백엔드
+**Timestamp**: 2026-10-07T14:29:20Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/V3-korean-backend/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/V3-korean-backend/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — V3 한국어 표시 백엔드
+**Timestamp**: 2026-10-07T14:34:01Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 6 Minor; open 8. Record: `aidlc-docs/construction/V3-korean-backend/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — next: approval gate (artifacts frozen).
+
+---
+
+## Functional Design — V3 — Approval
+**Timestamp**: 2026-10-07T14:36:21Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V3 FD approved. The open findings become Accepted risk and are carried into the V3 code-generation plan as explicit steps:
+- R-01: the CLI catches the DB error as "skipped".
+- R-02: a table of deviations from the approved design, plus notes for V4/V6/V8.
+- R-03..R-08: rules and tests.
+
+Next: V3 Code Generation Part 1 (NFR SKIP per the unit table).
+**Context**: CONSTRUCTION / V3 — FD approved.
+
+---
+
+## Plan Review Dispositions — Functional Design — V3
+**Timestamp**: 2026-10-07T14:36:21Z
+- R-01 → Accepted risk
+- R-02 → Accepted risk
+- R-03 → Accepted risk
+- R-04 → Accepted risk
+- R-05 → Accepted risk
+- R-06 → Accepted risk
+- R-07 → Accepted risk
+- R-08 → Accepted risk
+
+---
+
+## Code Generation Part 1 — V3 — Plan written
+**Timestamp**: 2026-10-07T14:39:28Z
+**User Input**: (none since FD approval)
+**AI Response**: Wrote `construction/plans/V3-korean-backend-code-generation-plan.md`: 12 steps, about 13 commits. The FD review's R-01..R-08 (Accepted risk) are mapped to steps as 실행 메모 R-01..R-08.
+**Context**: CONSTRUCTION / V3 — Code Generation Part 1.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — V3 한국어 표시 백엔드
+**Timestamp**: 2026-10-07T14:39:28Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/V3-korean-backend-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V3-korean-backend-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — V3 한국어 표시 백엔드
+**Timestamp**: 2026-10-07T14:43:40Z
+**User Input**: (the human interrupted a state-file edit while the review ran; no message)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 4 Minor; open 6. Record: `aidlc-docs/construction/plans/reviews/V3-korean-backend-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — next: approval gate (plan frozen).
+
+---
+
+## Code Generation Part 1 — V3 — Approval prompt
+**Timestamp**: 2026-10-07T14:43:40Z
+**AI Response**: Asked for approval of `construction/plans/V3-korean-backend-code-generation-plan.md` with the review brief.
+**Context**: CONSTRUCTION / V3 — Code Generation Part 1 gate.
+
+---
+
+## Code Generation Part 1 — V3 — Approval
+**Timestamp**: 2026-10-07T14:55:14Z
+**User Input**: "Approve & Continue"
+**AI Response**: V3 code plan approved; it authorizes the 14 commits the plan lists on `feat/follow-up`, with no push. The open findings become 실행 메모 R-01..R-06 in plan § 1.2. Starting Code Generation Part 2 at Step 1.
+**Context**: CONSTRUCTION / V3 — Code Generation Part 1 approved.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — V3
+**Timestamp**: 2026-10-07T14:55:14Z
+- R-01 → Accepted risk
+- R-02 → Accepted risk
+- R-03 → Accepted risk
+- R-04 → Accepted risk
+- R-05 → Accepted risk
+- R-06 → Accepted risk
+
+---
+

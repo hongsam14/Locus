@@ -173,9 +173,9 @@
   - 커밋: `feat(world): Emberleaf in Korean — translation file and card text (V3, FR-L3)`
 
 ### Step 7 — 가산 id (BLM § 11, BR-V3-24)
-- [ ] 7.1 `knowledge/query.py`에 `level_path_ids(region, snapshot) -> list[str]`를 둔다. `level_path`와 같은 순서·같은 순환 방지다. `RegionView.level_path_ids: list[str] = []`를 두고, `player/service.py`가 채운다.
-- [ ] 7.2 `advancer.py` `deed_seeded` payload에 `npc_id`를 더한다. `npc_name`은 그대로다.
-- [ ] 7.3 테스트:
+- [x] 7.1 `knowledge/query.py`에 `level_path_ids(region, snapshot) -> list[str]`를 둔다. `level_path`와 같은 순서·같은 순환 방지다. `RegionView.level_path_ids: list[str] = []`를 두고, `player/service.py`가 채운다.
+- [x] 7.2 `advancer.py` `deed_seeded` payload에 `npc_id`를 더한다. `npc_name`은 그대로다.
+- [x] 7.3 테스트:
   - TP-V3-11
   - 커밋: `feat(play): level path ids on the region view; npc_id on deed_seeded (V3, additive)`
 

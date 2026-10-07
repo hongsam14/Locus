@@ -254,3 +254,17 @@ def test_region_briefs_top_k_and_hierarchy_path() -> None:  # EX-21 / BR-U2-20
     top = sorted([ks[1], ks[3]], key=lambda k: k.id)
     assert t.top_knowledge == [top[0].title, top[1].title, ks[2].title]
     assert briefs[empty.id].top_knowledge == [] and briefs[prov.id].level_path == ["Greenvale"]
+
+
+def test_level_path_ids_follow_the_names_and_survive_a_cycle() -> None:  # V3 BR-V3-24
+    from locus.knowledge.query import level_path, level_path_ids
+
+    kg, topo, prov, town, _empty, _ks = _world_for_briefs()
+    snap = snapshot_of(kg, topo)
+    assert level_path(town, snap) == ["Greenvale", "Riverton"]
+    assert level_path_ids(town, snap) == [prov.id, town.id]
+    a = Region(world_id="w", name="A", level=RegionLevel.TOWN, provenance=_prov())
+    b = Region(world_id="w", name="B", level=RegionLevel.TOWN, parent_id=a.id, provenance=_prov())
+    a = a.model_copy(update={"parent_id": b.id})  # a cycle
+    looped = snapshot_of(kg, topo.model_copy(update={"regions": [a, b]}))
+    assert len(level_path_ids(a, looped)) == len(level_path(a, looped)) == 2

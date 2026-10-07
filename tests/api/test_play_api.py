@@ -56,6 +56,7 @@ def test_ex13_region_screen_and_player_routes() -> None:
     assert r.status_code == 200, r.text
     view = r.json()
     assert view["region_name"] == "R1" and view["level_path"] == ["R1"] and view["level"] == "town"
+    assert len(view["level_path_ids"]) == len(view["level_path"])  # V3 (BR-V3-24)
     assert view["facts"] and view["facts"][0]["statement"] == "fact"
     assert view["facts"][0]["statement_ko"] is None  # translation key present, cache-only
     assert view["hearsay"] == [] and view["rumors"] == [] and view["moves"] == []

@@ -389,6 +389,7 @@ class RegionView(LocusModel):
     level: str
     description: str = ""
     level_path: list[str] = Field(default_factory=list)
+    level_path_ids: list[str] = Field(default_factory=list)  # V3: the ids of level_path
     npcs: list[NPC] = Field(default_factory=list)
     facts: list[KnowledgeView] = Field(default_factory=list)  # direct + inherited + global
     hearsay: list[KnowledgeView] = Field(default_factory=list)

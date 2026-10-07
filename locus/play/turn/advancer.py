@@ -883,6 +883,7 @@ class TurnAdvancer(SessionAppService):
                         "deed_id": appraisal.deed_id,
                         "appraisal_id": appraisal.id,
                         "npc_name": teller.name if teller is not None else appraisal.npc_id,
+                        "npc_id": appraisal.npc_id,  # V3: a screen finds the name by id
                         "rumor_id": rumor.id,
                         "region_id": rumor.region_id,
                         "region_name": region_name(names, rumor.region_id),

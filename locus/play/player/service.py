@@ -10,7 +10,7 @@ pre-validates the action for a friendly 400 and hands it to
 from __future__ import annotations
 
 from locus.knowledge.cache import SnapshotSource
-from locus.knowledge.query import level_path
+from locus.knowledge.query import level_path, level_path_ids
 from locus.play.base import SessionAppService
 from locus.play.models import Player, PlayerAction, RegionView, TimelineEntry, TurnRun
 from locus.play.player import movement
@@ -70,6 +70,7 @@ class PlayService(SessionAppService):
             level=str(region.level),
             description=region.description or "",
             level_path=level_path(region, snapshot),
+            level_path_ids=level_path_ids(region, snapshot),
             npcs=list(snapshot.npcs_by_region.get(region.id, [])),
             facts=src.facts,
             hearsay=src.hearsay,

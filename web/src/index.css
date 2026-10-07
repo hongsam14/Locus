@@ -1,63 +1,132 @@
 @import "tailwindcss";
 
-/* Self-hosted Gaegu (Korean handwriting) — no external CDN (SEC-B/D). */
-@import "@fontsource/gaegu/korean-400.css";
-@import "@fontsource/gaegu/latin-400.css";
-@import "@fontsource/gaegu/korean-700.css";
-@import "@fontsource/gaegu/latin-700.css";
+/* Self-hosted fonts, no external CDN (SEC-B/D). Korean faces come in unicode-range
+   pieces, so a screen fetches only the pieces of the letters it shows (V2 NFR-4):
+   Noto Sans KR 400/700 for text, Nanum Myeongjo 700 for headings and narration,
+   IM Fell English SC for the Latin logo only. */
+@import "@fontsource/noto-sans-kr/400.css";
+@import "@fontsource/noto-sans-kr/700.css";
+@import "@fontsource/nanum-myeongjo/700.css";
+@import "@fontsource/im-fell-english-sc/400.css";
 
-/* Design tokens — paper + ink monochrome (FD-X2 Q2=C). Tailwind v4 reads these
-   as theme values, so `bg-paper`, `text-ink`, `font-display`, etc. are usable. */
+/* Design tokens — "lamplit tavern", one dark theme (V2 Q1=B, CQ2=A). Screens use the
+   semantic names only; raw colour values live here and nowhere else (BR-V2-01). The
+   allowed text/ground pairs are in the V2 FD domain-entities § 1.6 and checked by
+   tokens.contrast.test.ts. */
 @theme {
-  --color-paper: #faf6ec;
-  --color-paper-card: #fffdf7;
-  --color-ink: #201e1a;
-  --color-ink-soft: #5b554c;
-  --color-line: #20181722;
-  --color-highlight: #ede3c8;
-  --color-danger: #7a2e22;
+  /* grounds */
+  --color-bg: #17120e;
+  --color-chrome: #1d1712;
+  --color-surface: #231b15;
+  --color-sunken: #2e241c;
+  --color-scrim: rgb(0 0 0 / 0.55);
 
-  --font-display: "Gaegu", "Nanum Pen Script", cursive;
-  --font-body: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo",
-    "Malgun Gothic", sans-serif;
+  /* text */
+  --color-fg: #f0e6d2;
+  --color-muted: #bfaf95;
+  --color-faint: #9c8f7b;
 
-  --radius-doodle: 0.75rem;
-  --shadow-doodle: 2px 3px 0 var(--color-ink);
+  /* lines */
+  --color-line: #4a3b2d;
+  --color-line-strong: #7a6650;
+  --color-divider: #3a2e23;
+
+  /* accent and states */
+  --color-accent: #e2a54b;
+  --color-accent-hover: #f2c47a;
+  --color-on-accent: #1a120a;
+  --color-danger: #ee7a5f;
+  --color-on-danger: #1a120a;
+  --color-success: #a3c77f;
+  --color-event: #e0c46c;
+  --color-info: #86b9cc;
+  --color-info-fg: #d8e8ee;
+  --color-ornament: #c9933f;
+  --color-disabled: #2e241c;
+  --color-disabled-fg: #a49681;
+
+  /* tints (badges, notices) */
+  --color-tint-event: #3a2f14;
+  --color-tint-event-line: #6b5a26;
+  --color-tint-danger: #3d1e17;
+  --color-tint-danger-line: #7a3a2b;
+  --color-tint-success: #26301a;
+  --color-tint-success-line: #4b5e33;
+  --color-tint-info: #1c2c33;
+  --color-tint-info-line: #2e4650;
+
+  /* map */
+  --color-map-sea: #120e0b;
+  --color-map-land: #2a2119;
+  --color-map-land-line: #7a6650;
+  --color-map-cliff: #5c4b3a;
+  --color-map-river: #86b9cc;
+  --color-map-path: #bfaf95;
+  --color-map-blocked: #ee7a5f;
+  --color-map-town: #f0e6d2;
+  --color-map-plate: rgb(23 18 14 / 0.9);
+  --color-map-current: #f2c47a;
+  --color-map-glow: rgb(226 165 75 / 0.22);
+  --color-map-player: #ee7a5f;
+
+  /* fonts by role (FR-D3) */
+  --font-display: "IM Fell English SC", "Nanum Myeongjo", serif;
+  --font-heading: "Nanum Myeongjo", "Noto Serif KR", serif;
+  --font-body: "Noto Sans KR", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic",
+    sans-serif;
+  --font-story: "Nanum Myeongjo", "Noto Serif KR", serif;
+
+  /* shape */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
+  --shadow-panel: inset 0 1px 0 rgb(255 236 200 / 0.06);
+  --shadow-pop: 0 8px 22px rgb(0 0 0 / 0.45);
+
+  /* Old names (X2 "Doodly") kept as aliases until the screens are moved over in
+     V2 Step 12; then they go. */
+  --color-paper: var(--color-bg);
+  --color-paper-card: var(--color-surface);
+  --color-ink: var(--color-fg);
+  --color-ink-soft: var(--color-muted);
+  --color-highlight: var(--color-sunken);
 }
 
 @layer base {
+  :root {
+    color-scheme: dark;
+  }
   html,
   body,
   #root {
     height: 100%;
   }
   body {
-    background: var(--color-paper);
-    color: var(--color-ink);
+    background: var(--color-bg);
+    color: var(--color-fg);
     font-family: var(--font-body);
+    line-height: 1.65;
   }
   h1,
   h2,
-  h3,
-  .font-display {
-    font-family: var(--font-display);
+  h3 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
 }
 
-/* "Doodly" sketch utilities — subtle (FD-X2 Q3=A): slightly irregular border
-   radius + hard offset shadow + hand-drawn underline. */
+/* Old "Doodly" utilities, re-pointed at the new tokens until Step 12 removes them. */
 @layer components {
   .sketch-border {
-    border: 1.5px solid var(--color-ink);
-    border-radius: 14px 11px 15px 10px / 10px 15px 11px 14px;
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-md);
   }
   .sketch-shadow {
-    box-shadow: var(--shadow-doodle);
-  }
-  .ink-underline {
-    text-decoration: underline;
-    text-decoration-style: wavy;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 3px;
+    box-shadow: var(--shadow-panel);
   }
 }

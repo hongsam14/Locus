@@ -96,18 +96,18 @@
 - [x] 3.3 tsc·vitest를 돌려 그대로 GREEN인지 보고 커밋한다(`build(web): Radix dialog and tabs, Noto Sans KR / Nanum Myeongjo / IM Fell English SC, fast-check; Gaegu out (V2 Step 3)`).
 
 ### Step 4 — 토큰·글꼴·테스트 바탕 (FR-D2·D3, BR-V2-04·06·07·09)
-- [ ] 4.1 `web/src/index.css`를 다시 쓴다.
+- [x] 4.1 `web/src/index.css`를 다시 쓴다.
   - `@theme`: FD domain-entities § 1.1~1.5의 색, 지도, 모양 토큰. `--font-display`·`--font-heading`·`--font-body`·`--font-story`.
   - `:root { color-scheme: dark }`, body 바탕과 글을 토큰으로 둔다.
   - `:focus-visible` 고리를 둔다.
   - 글꼴 import: Noto 400·700, 나눔명조 700, IM Fell SC 400.
   - 옛 토큰(`paper`, `ink` …)과 `.sketch-*`, `.ink-underline`은 **Step 12 끝에서** 지운다. 그때까지는 화면이 깨지지 않게 옛 이름을 새 값의 별칭으로 둔다. 예: `--color-paper-card: var(--color-surface)`, `--color-ink: var(--color-fg)`, `.sketch-border` = 새 경계. 뒤집힌 `bg-ink text-paper` 칩은 Step 12에서 손으로 고친다.
-- [ ] 4.2 `src/test/contrast.ts`(순수): WCAG 상대 휘도, 대비, 알파 합성. `__tests__/tokens.contrast.test.ts`(TP-V2-1)는 `index.css`를 읽어 domain-entities § 1.6 허용 쌍 표의 모든 칸을 단언한다.
-- [ ] 4.3 `src/test/render.tsx`: `renderWithShell(ui, {route, capabilities})`는 MemoryRouter, Toaster, capabilities 대역을 감싼다. Toaster는 Step 9에서 생기므로 이 단계에서는 자리만 둔다.
-- [ ] 4.4 `setupTests.ts`:
+- [x] 4.2 `src/test/contrast.ts`(순수): WCAG 상대 휘도, 대비, 알파 합성. `__tests__/tokens.contrast.test.ts`(TP-V2-1)는 `index.css`를 읽어 domain-entities § 1.6 허용 쌍 표의 모든 칸을 단언한다.
+- [x] 4.3 `src/test/render.tsx`: `renderWithShell(ui, {route, capabilities})`는 MemoryRouter, Toaster, capabilities 대역을 감싼다. Toaster는 Step 9에서 생기므로 이 단계에서는 자리만 둔다.
+- [x] 4.4 `setupTests.ts`:
   - fast-check 전역 설정을 둔다. 시드는 `FC_SEED` 환경 변수 또는 난수이고, 출력한다(`fast-check seed: N (re-run: FC_SEED=N npx vitest run)`).
   - `afterEach(clearToasts)`를 둔다. `clearToasts`는 Step 9에서 생기고, 이 단계에서는 import만 준비한다.
-- [ ] 4.5 vitest·tsc를 돌리고 커밋한다(`feat(web): lamplit-tavern tokens, one dark theme, fonts by role, contrast test over the allowed pairs (V2 Step 4)`).
+- [x] 4.5 vitest·tsc를 돌리고 커밋한다(`feat(web): lamplit-tavern tokens, one dark theme, fonts by role, contrast test over the allowed pairs (V2 Step 4)`).
 
 ### Step 5 — 사전과 표기 규칙 (FR-D8, FR-L1, BR-V2-10~14)
 - [ ] 5.1 `web/src/i18n.ts`를 `web/src/i18n/{index,ko,en}.ts`로 나눈다. 상태·`t`·`timelineText`·`logText`는 index에 둔다. import 경로 `./i18n`·`../i18n`는 그대로다(FD § 1.2). 키 일치 테스트를 유지한다.

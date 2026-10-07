@@ -24,7 +24,7 @@ export function LocalizedText({
           type="button"
           data-testid={testId ? `${testId}-toggle` : undefined}
           onClick={() => setShowOriginal((v) => !v)}
-          className="ml-1 text-xs text-ink-soft underline hover:opacity-70"
+          className="ml-1 text-xs text-muted underline hover:text-fg"
         >
           {showOriginal ? t("action.translated") : t("action.original")}
         </button>

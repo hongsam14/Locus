@@ -1,18 +1,7 @@
 import type { HTMLAttributes, ReactNode } from "react";
+import { Card } from "./Card";
 
-export function Panel({
-  title,
-  children,
-  className = "",
-  ...rest
-}: HTMLAttributes<HTMLElement> & { title?: ReactNode }) {
-  return (
-    <section
-      className={`sketch-border sketch-shadow bg-paper-card p-3 ${className}`.trim()}
-      {...rest}
-    >
-      {title != null && <h2 className="font-display text-lg mb-2">{title}</h2>}
-      {children}
-    </section>
-  );
+/** A titled Card as a section (kept for the screens that use it; V9 folds it into Card). */
+export function Panel(props: HTMLAttributes<HTMLElement> & { title?: ReactNode }) {
+  return <Card as="section" {...props} />;
 }

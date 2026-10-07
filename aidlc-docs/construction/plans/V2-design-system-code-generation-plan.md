@@ -170,21 +170,21 @@
 - [x] 8.8 커밋한다(`feat(web): WorldMap — fits its container, matrix-based normalized coordinates, level shapes, plated labels, token edges; MapOverlay is an adapter (V2 Step 8)`).
 
 ### Step 9 — 프리미티브 (FR-D4, FR-S6, BR-V2-07·08·21~23)
-- [ ] 9.1 다시 쓰거나 새로 만드는 것(FD frontend-components § 2):
+- [x] 9.1 다시 쓰거나 새로 만드는 것(FD frontend-components § 2):
   - 다시 씀: `ui/Button`, `Badge`, `Card`(`Panel`은 별칭), `Field`(label 필수), `Range`, `CommitRange`(모양만), `LocalizedText`·`InProgressBadge`(모양만)
   - 새로 만듦: `ui/Textarea`, `Select`(브라우저 `<select>`, testid는 안쪽에), `FileInput`(testid는 숨긴 input에), `Tabs`(Radix), `Dialog`·`ConfirmDialog`(Radix Dialog, `role="dialog"`, `error` 칸), `StatusView`, `InlineError`
-- [ ] 9.2 `ui/toast.ts`(모듈 저장소: `toast`, key 교체, `clearToasts`)와 `ui/Toaster.tsx`를 만든다.
+- [x] 9.2 `ui/toast.ts`(모듈 저장소: `toast`, key 교체, `clearToasts`)와 `ui/Toaster.tsx`를 만든다.
   - `aria-live`를 단다. 위험 알림은 `role="alert"`이고 사람이 닫을 때까지 남는다. 보통 알림은 6초 뒤 닫힌다.
   - testid는 자리 `notification-center`, 카드 `notif-<key|id>`이고 `data-region`을 단다.
-- [ ] 9.3 `ui/index.ts` 내보내기를 고친다. `Modal`·`Toast`·`NotificationCenter`는 아직 지우지 않는다(Step 12에서 쓰는 곳을 바꾼 뒤 지움).
-- [ ] 9.4 `ui/*.test.tsx`(TP-V2-12):
+- [x] 9.3 `ui/index.ts` 내보내기를 고친다. `Modal`·`Toast`·`NotificationCenter`는 아직 지우지 않는다(Step 12에서 쓰는 곳을 바꾼 뒤 지움).
+- [x] 9.4 `ui/*.test.tsx`(TP-V2-12):
   - Dialog 초점·Esc·복귀·busy 두 번, ConfirmDialog의 error
   - Tabs 화살표
   - Select·FileInput의 라벨과 testid 위치
   - Button busy·크기 클래스
   - Toaster: 자동 닫힘, 위험 남음, 같은 key 교체, key 없음 쌓임
   - StatusView 넷
-- [ ] 9.5 커밋한다(`feat(web): primitives on tokens — Button, Badge, Card, Field, Textarea, Select, FileInput, Tabs, Dialog, ConfirmDialog, Toaster, StatusView (V2 Step 9)`).
+- [x] 9.5 커밋한다(`feat(web): primitives on tokens — Button, Badge, Card, Field, Textarea, Select, FileInput, Tabs, Dialog, ConfirmDialog, Toaster, StatusView (V2 Step 9)`).
 
 ### Step 10 — 배치 틀 (FR-D5, BR-V2-17·20)
 - [ ] 10.1 `web/src/layout/` 파일을 만든다.

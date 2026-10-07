@@ -99,6 +99,8 @@ export function EventPanel({
             ))}
           </select>
           <Field
+            label={t("gm.eventDescription")}
+            hideLabel
             data-testid="event-description"
             placeholder={t("gm.eventDescription")}
             value={description}

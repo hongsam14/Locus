@@ -127,7 +127,7 @@ export function DemoCard({
           <Button size="sm" data-testid="demo-reload" onClick={() => { setAskExisting(false); askFresh(); }}>
             {t("demo.reload")}
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => setAskExisting(false)}>{t("action.cancel")}</Button>
+          <Button size="sm" variant="secondary" onClick={() => setAskExisting(false)}>{t("action.cancel")}</Button>
         </div>
       )}
       {startMissing && (

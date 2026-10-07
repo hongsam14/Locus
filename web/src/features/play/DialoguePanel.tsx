@@ -176,6 +176,8 @@ export function DialoguePanel({
         }}
       >
         <Field
+          label={t("dialogue.placeholder")}
+          hideLabel
           data-testid="dialogue-input"
           value={draft}
           disabled={inputOff}

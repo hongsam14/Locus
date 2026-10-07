@@ -1,5 +1,7 @@
 import "@testing-library/jest-dom";
+import { afterEach } from "vitest";
 import fc from "fast-check";
+import { clearToasts } from "./ui/toast";
 
 // Property tests use the run's seed (src/test/globalSetup.ts; V2 NFR-6, PBT-08).
 const seedEnv = (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } })
@@ -16,3 +18,6 @@ if (typeof window !== "undefined" && typeof window.PointerEvent === "undefined")
   }
   (window as unknown as { PointerEvent: typeof MouseEvent }).PointerEvent = PointerEventShim;
 }
+
+// The notification store is module state: no card leaks into the next test (FD review R-10).
+afterEach(() => clearToasts());

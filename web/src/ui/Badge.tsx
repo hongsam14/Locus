@@ -1,13 +1,17 @@
 import type { HTMLAttributes } from "react";
 
-type Tone = "neutral" | "promoted" | "pruned" | "event" | "danger";
+// V2: every tone is a token pair from the allowed table (domain-entities § 1.6).
+type Tone = "neutral" | "event" | "danger" | "success" | "info" | "promoted" | "deed" | "pruned";
 
 const tones: Record<Tone, string> = {
-  neutral: "bg-paper text-ink-soft",
-  promoted: "bg-ink text-paper",
-  pruned: "bg-paper text-ink-soft line-through opacity-70",
-  event: "bg-highlight text-ink",
-  danger: "bg-danger text-paper",
+  neutral: "border-line bg-sunken text-fg",
+  event: "border-tint-event-line bg-tint-event text-event",
+  danger: "border-tint-danger-line bg-tint-danger text-danger",
+  success: "border-tint-success-line bg-tint-success text-success",
+  info: "border-tint-info-line bg-tint-info text-info",
+  promoted: "border-accent bg-accent text-on-accent",
+  deed: "border-danger bg-transparent text-danger",
+  pruned: "border-line bg-sunken text-muted line-through",
 };
 
 export function Badge({
@@ -18,7 +22,7 @@ export function Badge({
   return (
     <span
       className={
-        `sketch-border inline-flex items-center px-1.5 py-0.5 text-xs font-display ` +
+        `inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold ` +
         `${tones[tone]} ${className}`.trim()
       }
       {...rest}

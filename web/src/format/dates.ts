@@ -1,4 +1,4 @@
-import { lang as currentLang, t } from "../i18n";
+import { lang as currentLang, tFor } from "../i18n";
 import type { Lang } from "../types";
 
 const LOCALES: Record<Lang, string> = { ko: "ko-KR", en: "en-US" };
@@ -26,11 +26,11 @@ export function formatDateTime(iso: string, lang: Lang = currentLang(), timeZone
 }
 
 /** The current turn: "4턴째" / "Turn 4". */
-export function turnLabel(n: number): string {
-  return t("unit.turnNow", { n });
+export function turnLabel(n: number, lang: Lang = currentLang()): string {
+  return tFor(lang, "unit.turnNow", { n });
 }
 
 /** A log line's turn: "4턴" / "T4", and 0 is "시작" / "Start". */
-export function turnAt(n: number): string {
-  return n === 0 ? t("unit.turnStart") : t("unit.turnAt", { n });
+export function turnAt(n: number, lang: Lang = currentLang()): string {
+  return n === 0 ? tFor(lang, "unit.turnStart") : tFor(lang, "unit.turnAt", { n });
 }

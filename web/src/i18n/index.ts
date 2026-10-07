@@ -124,7 +124,15 @@ function lookup(key: string): string | undefined {
 /** Translate a key with {param} interpolation: the current language's dictionary,
  * then Korean, then the key itself (a missing key never blanks the screen). */
 export function t(key: string, params?: Params): string {
-  const tpl = lookup(key);
+  return fill(lookup(key), key, params);
+}
+
+/** `t` in a given language rather than the current one (formatters that take `lang`). */
+export function tFor(lang: Lang, key: string, params?: Params): string {
+  return fill(dicts[lang][key] ?? dicts.ko[key], key, params);
+}
+
+function fill(tpl: string | undefined, key: string, params?: Params): string {
   if (tpl == null) return key;
   return tpl.replace(/\{(\w+)\}/g, (_, k) => {
     const v = params?.[k];

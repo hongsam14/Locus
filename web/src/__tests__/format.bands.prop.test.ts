@@ -79,6 +79,15 @@ describe("measure bands (examples)", () => {
     expect(numberWithMeaning("weight", 0.6, "en")).toBe("0.60 · Often used");
   });
 
+  it("the meaning matches the number as shown, at every band edge (review § 2)", () => {
+    for (const kind of Object.keys(BANDS) as MeasureKind[]) {
+      for (const { upTo } of BANDS[kind].slice(0, -1)) {
+        const justBelow = upTo - 0.0001; // shows as the edge itself
+        expect(numberWithMeaning(kind, justBelow, "ko")).toBe(numberWithMeaning(kind, upTo, "ko"));
+      }
+    }
+  });
+
   it("every band has a ko and an en word", async () => {
     const { dicts } = await import("../i18n");
     for (const k of KINDS)

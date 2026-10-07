@@ -24,5 +24,7 @@ describe("dates and turns", () => {
     setLang("en");
     expect(turnLabel(4)).toBe("Turn 4");
     expect(turnAt(0)).toBe("Start");
+    expect(turnLabel(4, "ko")).toBe("4턴째"); // a given language wins (FD, review § 2)
+    expect(turnAt(4, "ko")).toBe("4턴");
   });
 });

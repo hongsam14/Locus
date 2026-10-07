@@ -95,12 +95,14 @@ export function decayWord(pathDecay: number | null | undefined, lang: Lang = cur
   return word(bandOf("decay", pathDecay), lang);
 }
 
-/** "0.42 · 많이 비틀림": the number with its meaning, for the GM and the editor. */
+/** "0.42 · 많이 비틀림": the number with its meaning, for the GM and the editor. The band is
+ * read from the number as shown, so "0.15" never sits beside the band below 0.15 (review § 2). */
 export function numberWithMeaning(
   kind: MeasureKind,
   value: number | null | undefined,
   lang: Lang = currentLang(),
 ): string {
   if (value == null || Number.isNaN(value)) return word(NONE, lang);
-  return `${value.toFixed(2)} · ${word(bandOf(kind, value), lang)}`;
+  const shown = value.toFixed(2);
+  return `${shown} · ${word(bandOf(kind, Number(shown)), lang)}`;
 }

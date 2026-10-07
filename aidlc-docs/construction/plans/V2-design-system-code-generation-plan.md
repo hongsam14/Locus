@@ -211,15 +211,15 @@
 - [x] 12.5 vitest 전부 GREEN, tsc를 보고 커밋한다(`refactor(web): shared dialogs, select and file input; old ink/paper classes mapped to tokens — mechanical (V2 Step 12)`).
 
 ### Step 13 — 검사 테스트와 배치 설정
-- [ ] 13.1 `__tests__/design.grep.test.ts`(TP-V2-2):
+- [x] 13.1 `__tests__/design.grep.test.ts`(TP-V2-2):
   - `web/src`의 `.ts`·`.tsx`(테스트 제외)에 원색 값과 옛 클래스 이름이 0이다.
   - `font-display`는 `layout/AppShell.tsx`·`index.css` 밖에서 0이다.
   - `package.json`에 gaegu가 없다.
   - `index.css`에 `color-scheme: dark`가 있고 `prefers-color-scheme`이 없다.
   - 대비 테스트에 알파 합성 규칙이 들어갔는지 확인한다(NFR R-04).
-- [ ] 13.2 사전 검사: `notice.llmOff*`에 `.env`·`OPENAI`가 없다(BR-V2-20).
-- [ ] 13.3 `web/nginx.conf`: `location /assets/ { … add_header Cache-Control "public, max-age=31536000, immutable"; }`(해시 파일만). `docker build -t locus-web web`으로 설정이 읽히는지 확인한다(compose 기동 없음).
-- [ ] 13.4 커밋한다(`test(web): design grep checks; build(web): immutable cache for hashed assets (V2 Step 13)`).
+- [x] 13.2 사전 검사: `notice.llmOff*`에 `.env`·`OPENAI`가 없다(BR-V2-20).
+- [x] 13.3 `web/nginx.conf`: `location /assets/ { … add_header Cache-Control "public, max-age=31536000, immutable"; }`(해시 파일만). `docker build -t locus-web web`으로 설정이 읽히는지 확인한다(compose 기동 없음).
+- [x] 13.4 커밋한다(`test(web): design grep checks; build(web): immutable cache for hashed assets (V2 Step 13)`).
 
 ### Step 14 — 게이트와 크기
 - [ ] 14.1 `pytest`, `ruff`, `black`, `mypy locus api`(≤ 11), `tsc --noEmit`, `npx vitest run`, `npm audit --omit=dev` 0, dev audit 수(기준선 이하), `pytest tests/test_boundaries.py`를 돌린다.

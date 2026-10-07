@@ -227,11 +227,11 @@
   - 커밋: `feat(web): name map and Korean list field types; list calls carry the display language (V3)`
 
 ### Step 11 — 불변과 경계 (BR-V3-26·27, TP-V3-12)
-- [ ] 11.1 TP-V3-12(R-08a)
+- [x] 11.1 TP-V3-12(R-08a)
   - 시딩 뒤 World File 내보내기에 한글이 없다.
   - **시딩 단계의** 그래프·검색 쓰기 호출이 0이다. 가짜 저장소로 센다.
-- [ ] 11.2 `tests/test_boundaries.py`를 통과한다. world와 localization은 서로 import하지 않는다. 조사 테스트 하나를 더해, 새 파일 `models/i18n.py`가 shared 밖을 import하지 않는지 본다.
-- [ ] 11.3 커밋: `test: V3 invariants — no Korean in the World File, seeding writes no graph (V3, FR-L4)`
+- [x] 11.2 `tests/test_boundaries.py`를 통과한다. world와 localization은 서로 import하지 않는다. 조사 테스트 하나를 더해, 새 파일 `models/i18n.py`가 shared 밖을 import하지 않는지 본다.
+- [x] 11.3 커밋: `test: V3 invariants — no Korean in the World File, seeding writes no graph (V3, FR-L4)`
 
 ### Step 12 — 게이트와 요약
 - [ ] 12.1 게이트를 돌린다: `pytest`, `vitest`(시드 둘), `ruff`, `black --check`, `tsc`, `mypy locus api`(≤ 11), `npm audit --omit=dev`(0), `tests/test_boundaries.py`.

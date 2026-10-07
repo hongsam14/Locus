@@ -14,9 +14,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from fastapi.utils import is_body_allowed_for_status_code
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.deps import Containers, lang_settings
+from api.errors import code_for
 from api.routers import gm as gm_router
 from api.routers import knowledge as knowledge_router
 from api.routers import play as play_router
@@ -149,12 +152,36 @@ def create_app(
     app.state.containers = containers
     app.add_middleware(BodyLimitMiddleware)  # U3, NFR-6: 48 MiB, World File 20 MiB
 
+    @app.exception_handler(StarletteHTTPException)
+    async def _http(_request: Request, exc: StarletteHTTPException) -> Response:
+        """Every HTTP error — a router's ``ApiError``, a plain ``HTTPException``, a route
+        404 / 405 — answers ``{"detail", "code"}`` (V2, FR-D9). A raise without a code gets
+        its status's default; ``detail`` keeps its shape."""
+        headers = getattr(exc, "headers", None)
+        if not is_body_allowed_for_status_code(exc.status_code):
+            return Response(status_code=exc.status_code, headers=headers)
+        code = getattr(exc, "code", None) or code_for(exc.status_code)
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail, "code": code},
+            headers=headers,
+        )
+
     @app.exception_handler(RequestValidationError)
     async def _invalid(_request: Request, exc: RequestValidationError) -> JSONResponse:
         """The default 422 body echoes the input, and a NaN or Infinity input cannot be
         written as JSON (it became a 500). Non-finite numbers are echoed as text (U3,
         U7 review §3)."""
-        return JSONResponse(status_code=422, content={"detail": _finite(exc.errors())})
+        return JSONResponse(
+            status_code=422,
+            content={"detail": _finite(exc.errors()), "code": "validation_failed"},
+        )
+
+    @app.exception_handler(Exception)
+    async def _unhandled(_request: Request, _exc: Exception) -> JSONResponse:
+        """An error nothing caught answers JSON like every other error (V2), never the
+        exception's text; Starlette still re-raises it after this response, so it is logged."""
+        return JSONResponse(status_code=500, content={"detail": "internal error", "code": "error"})
 
     @app.get("/health", tags=["health"])
     def health() -> JSONResponse:

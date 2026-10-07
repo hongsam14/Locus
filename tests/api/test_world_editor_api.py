@@ -175,6 +175,7 @@ def test_region_delete_is_refused_where_a_player_stands() -> None:
     assert plan["blocked_by_sessions"] == [sid] and [n["name"] for n in plan["npcs"]] == ["Ada"]
     r = client.delete(f"/api/world/worlds/w/regions/{w['town'].id}")
     assert r.status_code == 409 and r.json()["detail"]["session_ids"] == [sid]
+    assert r.json()["code"] == "region_in_use"  # V2: the object detail is kept
     assert graph.get_node("w", w["town"].id) is not None  # nothing deleted
 
 

@@ -10,10 +10,10 @@ from __future__ import annotations
 
 from contextlib import ExitStack
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, Query, Response
 
 from api.deps import display_lang, get_localization, get_play_optional, get_world
-from api.errors import http_error
+from api.errors import ApiError, http_error
 from api.schemas import (
     ConnectionSave,
     EditorRegionViewOut,
@@ -45,7 +45,7 @@ _ERRORS = (LookupError, ValueError)
 
 def _editors(w: WorldContainer) -> Editors:
     if w.editors is None:
-        raise HTTPException(status_code=503, detail="world editor unavailable")
+        raise ApiError(503, "world editor unavailable", "service_unavailable")
     return w.editors
 
 
@@ -130,12 +130,13 @@ def delete_region(
         try:
             return regions.delete_region(world_id, region_id, protected=_protected(world_id, play))
         except RegionInUseError as exc:
-            raise HTTPException(
-                status_code=409,
-                detail={
+            raise ApiError(
+                409,
+                {
                     "message": "a player of an open session stands in this region",
                     "session_ids": exc.session_ids,
                 },
+                "region_in_use",
             ) from exc
         except _ERRORS as exc:
             raise http_error(exc) from exc
@@ -287,7 +288,7 @@ def npc_drafts(
 ) -> NpcDraftResult:
     """0–3 drafts from one LLM call, nothing stored (BR-U3-20/21); 503 without an LLM."""
     if w.npc_drafts is None:
-        raise HTTPException(status_code=503, detail="NPC drafts need an LLM provider")
+        raise ApiError(503, "NPC drafts need an LLM provider", "llm_unavailable")
     try:
         return w.npc_drafts.suggest(world_id, region_id, n=n)
     except _ERRORS as exc:
@@ -297,7 +298,7 @@ def npc_drafts(
 # --- wiki evidence ------------------------------------------------------------ #
 def _wiki(w: WorldContainer):
     if w.wiki_admin is None:
-        raise HTTPException(status_code=503, detail="wiki admin unavailable")
+        raise ApiError(503, "wiki admin unavailable", "service_unavailable")
     return w.wiki_admin
 
 

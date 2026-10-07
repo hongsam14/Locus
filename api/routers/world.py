@@ -15,12 +15,12 @@ import re
 from typing import Any
 from urllib.parse import quote
 
-from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, Response, UploadFile
 
 from api import uploads
 from api.deps import get_localization, get_play_optional, get_shared, get_world
 from api.deps import need_service as _need
-from api.errors import http_error
+from api.errors import ApiError, http_error
 from api.routers import world_editor
 from api.schemas import DemoInfoOut, UnignoreIn, WorldInfo, purge_translations
 from locus.localization.wiring import LocalizationContainer
@@ -63,24 +63,26 @@ def _open_sessions(world_id: str, confirm: bool, play: PlayContainer | None) -> 
     # was already gone (code review U4-2 #3, re-framed root cause).
     busy = [sid for sid in open_ids if play.guard.is_running(sid)]
     if busy:
-        raise HTTPException(
-            status_code=409,
-            detail={
+        raise ApiError(
+            409,
+            {
                 "message": f"world {world_id!r} has {len(busy)} session(s) mid-turn; "
                 "retry once their turns finish",
                 "busy_sessions": len(busy),
                 "session_ids": busy,
             },
+            "sessions_busy",
         )
     if open_ids and not confirm:
-        raise HTTPException(
-            status_code=409,
-            detail={
+        raise ApiError(
+            409,
+            {
                 "message": f"world {world_id!r} has {len(open_ids)} open session(s); "
                 "pass confirm=true to close them and replace the world",
                 "open_sessions": len(open_ids),
                 "session_ids": open_ids,
             },
+            "sessions_open",
         )
     return open_ids
 
@@ -198,11 +200,9 @@ def build_world_upload(
         try:
             parsed = json.loads(uploads.read_capped("maps", f, uploads.MAP))
         except (UnicodeDecodeError, ValueError, RecursionError) as exc:  # fixed text (S07)
-            raise HTTPException(
-                status_code=422, detail=f"map {f.filename!r} is not valid JSON"
-            ) from exc
+            raise ApiError(422, f"map {f.filename!r} is not valid JSON", "bad_map_json") from exc
         if not isinstance(parsed, dict):  # a list, string or number is no map (U3 S07)
-            raise HTTPException(status_code=422, detail=f"map {f.filename!r} is not valid JSON")
+            raise ApiError(422, f"map {f.filename!r} is not valid JSON", "bad_map_json")
         structured.append(parsed)
 
     def b64(data: bytes) -> str:
@@ -230,7 +230,7 @@ def build_world_upload(
 def graph_summary(world_id: str, shared: SharedContainer = Depends(get_shared)) -> GraphSummary:
     graph = shared.graph
     if graph is None:
-        raise HTTPException(status_code=503, detail="graph repository unavailable")
+        raise ApiError(503, "graph repository unavailable", "service_unavailable")
     regions = graph.find_nodes(world_id, "Region")
     return GraphSummary(
         world_id=world_id,
@@ -347,8 +347,8 @@ def import_world_file_upload(
     try:
         raw = json.loads(data)
     except (UnicodeDecodeError, ValueError, RecursionError) as exc:  # fixed text (NFR-6, S07)
-        raise HTTPException(
-            status_code=422, detail=f"{file.filename!r} is not a JSON World File"
+        raise ApiError(
+            422, f"{file.filename!r} is not a JSON World File", "bad_world_file"
         ) from exc
     return _import(
         world_id, raw, replace=replace, confirm=confirm, remap=remap, w=w, play=play, loc=loc
@@ -421,7 +421,7 @@ def upsert_prior(
     world_id: str, prior: WikiPrior, w: WorldContainer = Depends(get_world)
 ) -> WikiPrior:
     if prior.world_id != world_id:
-        raise HTTPException(status_code=400, detail="prior.world_id must match path world_id")
+        raise ApiError(400, "prior.world_id must match path world_id", "invalid_request")
     return _need(w.wiki_admin, "wiki admin (LLM provider)").upsert_prior(prior)
 
 
@@ -456,7 +456,7 @@ def get_augmentation(run_id: str, w: WorldContainer = Depends(get_world)) -> Aug
     """Read a kept run again; 404 after a restart (runs live in memory, BR-U3-42)."""
     run = _need(w.augmentation, "augmentation").get_run(run_id)
     if run is None:
-        raise HTTPException(status_code=404, detail=f"augmentation run not found: {run_id}")
+        raise ApiError(404, f"augmentation run not found: {run_id}", "not_found")
     return run
 
 

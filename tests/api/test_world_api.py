@@ -278,6 +278,7 @@ def test_replace_with_open_sessions_needs_confirm_and_closes_only_open() -> None
     raw = _file("w").model_dump(mode="json")
     r = client.post("/api/world/worlds/w/file", json=raw)
     assert r.status_code == 409 and r.json()["detail"]["open_sessions"] == 1
+    assert r.json()["code"] == "sessions_open"  # V2: code beside the same detail
     assert importer.calls == [] and play.sessions.closed == []
     r = client.post("/api/world/worlds/w/file?confirm=true", json=raw)
     assert r.status_code == 200 and r.json()["closed_session_ids"] == ["s-open"]
@@ -299,6 +300,7 @@ def test_replace_with_open_sessions_needs_confirm_and_closes_only_open() -> None
     busy_client = _client(importer=_Importer(), play=play5)
     rbusy = busy_client.post("/api/world/worlds/w/file?confirm=true", json=raw)
     assert rbusy.status_code == 409 and rbusy.json()["detail"]["busy_sessions"] == 1
+    assert rbusy.json()["code"] == "sessions_busy"
     assert play5.sessions.closed == []
     play5.guard.release("s-open")
     assert busy_client.post("/api/world/worlds/w/file?confirm=true", json=raw).status_code == 200

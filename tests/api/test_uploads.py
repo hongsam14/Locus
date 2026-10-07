@@ -76,6 +76,7 @@ def test_bad_map_json_is_a_fixed_text() -> None:
     bad = _files("maps", 1, b"{not json", "m.json", "application/json")
     r = client.post("/api/world/worlds/w/build/upload", files=bad)
     assert r.status_code == 422 and r.json()["detail"] == "map '0-m.json' is not valid JSON"
+    assert r.json()["code"] == "bad_map_json"
 
 
 def test_a_body_over_48_mib_is_refused_before_the_route() -> None:
@@ -83,6 +84,7 @@ def test_a_body_over_48_mib_is_refused_before_the_route() -> None:
     huge = _files("memos", 1, b"x" * (uploads.REQUEST_MAX + 1024))
     r = client.post("/api/world/worlds/w/build/upload", files=huge)
     assert r.status_code == 413 and "48 MiB" in r.json()["detail"]
+    assert r.json()["code"] == "too_large"  # written by the middleware itself
     assert builder.calls == []
 
 
@@ -97,6 +99,7 @@ def test_a_chunked_body_without_length_is_counted() -> None:
         "/api/world/worlds/w/file", content=chunks(), headers={"content-type": "application/json"}
     )
     assert r.status_code == 413 and "21 MiB" in r.json()["detail"]
+    assert r.json()["code"] == "too_large"
 
 
 def test_world_file_routes_have_their_own_limit() -> None:

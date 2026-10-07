@@ -10,8 +10,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TypeVar
 
-from fastapi import HTTPException, Request
+from fastapi import Request
 
+from api.errors import ApiError
 from locus.knowledge.wiring import KnowledgeContainer
 from locus.localization.wiring import LocalizationContainer
 from locus.play.wiring import PlayContainer
@@ -38,7 +39,7 @@ def need_service(service: T | None, name: str) -> T:
     """A boundary service that is None without a provider (NFR-4) answers 503 — the one
     rule every router uses (U3 review C7)."""
     if service is None:
-        raise HTTPException(status_code=503, detail=f"{name} unavailable")
+        raise ApiError(503, f"{name} unavailable", "service_unavailable")
     return service
 
 
@@ -48,7 +49,7 @@ def _containers(request: Request) -> Containers:
 
 def _require(value, name: str):
     if value is None:
-        raise HTTPException(status_code=503, detail=f"{name} boundary unavailable")
+        raise ApiError(503, f"{name} boundary unavailable", "service_unavailable")
     return value
 
 
@@ -97,5 +98,5 @@ def display_lang(request: Request, lang: str | None = None) -> str:
     settings = lang_settings(request)
     chosen = (lang or settings.translation_target_lang).strip().lower()
     if chosen not in settings.supported_langs:
-        raise HTTPException(status_code=400, detail=f"unsupported lang: {chosen}")
+        raise ApiError(400, f"unsupported lang: {chosen}", "unsupported_lang")
     return chosen

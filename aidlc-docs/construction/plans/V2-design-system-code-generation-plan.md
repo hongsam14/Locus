@@ -63,29 +63,29 @@
 - [x] 1.4 오류 본문 전체를 비교하는 pytest가 없는지 다시 확인한다(`grep -rn '== {"detail"' tests`, `.json()["detail"] ==`). 있으면 Step 2에서 함께 고친다.
 
 ### Step 2 — 서버 오류 `code` (FR-D9, BR-V2-15, TP-V2-8)
-- [ ] 2.1 `api/errors.py`:
+- [x] 2.1 `api/errors.py`:
   - `ApiError(HTTPException)`(`code` 속성)를 둔다.
   - 순서 있는 `ERROR_CODES: list[tuple[type[Exception], int, str]]`(FD domain-entities § 5의 1~19줄)와 `DEFAULT_CODES: dict[int, str]`를 둔다.
   - `http_error()`가 표를 위에서부터 보게 한다. 표에 없으면 지금처럼 다시 던진다.
   - `PLAY_ERRORS`는 그대로 둔다.
-- [ ] 2.2 `api/main.py`:
+- [x] 2.2 `api/main.py`:
   - `starlette.exceptions.HTTPException` 처리기를 둔다. 본문은 `{"detail", "code"}`이고 `headers`를 넘긴다.
   - `RequestValidationError` 처리기에 `code: "validation_failed"`를 더한다.
   - `Exception` 처리기는 500 `{"detail": "internal error", "code": "error"}`를 낸다.
   - `/api/health`는 그대로 둔다.
-- [ ] 2.3 직접 던지는 자리에 code를 붙인다(`ApiError(..., code=…)`):
+- [x] 2.3 직접 던지는 자리에 code를 붙인다(`ApiError(..., code=…)`):
   - `routers/world.py`: `sessions_busy`, `sessions_open`, `bad_map_json`, `bad_world_file`, `service_unavailable`, `invalid_request`, `not_found`
   - `routers/world_editor.py`: `region_in_use`(객체 detail 유지), `service_unavailable`, `llm_unavailable`
   - `uploads.py`: `too_large`, `bad_image`, 그리고 `BodyLimitMiddleware`의 직접 `JSONResponse`에 `"code": "too_large"`
   - `deps.py`: `service_unavailable`, `unsupported_lang`
-- [ ] 2.4 `tests/api/test_error_codes.py`(TP-V2-8):
+- [x] 2.4 `tests/api/test_error_codes.py`(TP-V2-8):
   - `ERROR_CODES` 각 줄을 매개변수화해 상태와 code를 단언하고, 하위 클래스가 먼저 맞는지 본다.
   - 라우터 직접 오류를 실제 요청으로 확인한다. `sessions_open`·`region_in_use`는 `session_ids` 객체가 유지되는지 본다.
   - `BodyLimitMiddleware` 413의 code를 확인한다(content-length 초과 요청).
   - 없는 라우트 404와 405의 code를 확인한다.
   - 422 검증 오류의 code와 지금 `detail`을 확인한다.
   - 500 처리기를 `TestClient(app, raise_server_exceptions=False)`로 확인한다.
-- [ ] 2.5 pytest·ruff·black·mypy(≤ 11)를 돌리고 커밋한다(`feat(api): error responses carry a code — ordered ERROR_CODES, Starlette/validation/500 handlers, body-limit 413 (V2 Step 2)`).
+- [x] 2.5 pytest·ruff·black·mypy(≤ 11)를 돌리고 커밋한다(`feat(api): error responses carry a code — ordered ERROR_CODES, Starlette/validation/500 handlers, body-limit 413 (V2 Step 2)`).
 
 ### Step 3 — 의존성 (NFR light § 3)
 - [ ] 3.1 `web/package.json` 의존을 바꾼다.

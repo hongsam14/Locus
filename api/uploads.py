@@ -19,9 +19,10 @@ from collections.abc import Awaitable, Callable, MutableMapping
 from dataclasses import dataclass
 from typing import Any
 
-from fastapi import HTTPException, UploadFile
+from fastapi import UploadFile
 from fastapi.responses import JSONResponse
 
+from api.errors import ApiError
 from locus.world.ingestion.service import (
     CONCEPT_ARTS_MAX,
     MAP_IMAGES_MAX,
@@ -95,7 +96,9 @@ class BodyLimitMiddleware:
         limit = limit_for(scope.get("method", ""), path)
         length = dict(scope.get("headers") or []).get(b"content-length")
         if length is not None and length.isdigit() and int(length) > limit:
-            response = JSONResponse(status_code=413, content={"detail": _too_large(limit)})
+            response = JSONResponse(
+                status_code=413, content={"detail": _too_large(limit), "code": "too_large"}
+            )
             await response(scope, receive, send)
             return
         seen = 0
@@ -106,7 +109,7 @@ class BodyLimitMiddleware:
             if message["type"] == "http.request":
                 seen += len(message.get("body", b""))
                 if seen > limit:  # FastAPI re-raises HTTPException from body parsing
-                    raise HTTPException(status_code=413, detail=_too_large(limit))
+                    raise ApiError(413, _too_large(limit), "too_large")
             return message
 
         await self.app(scope, counted, send)
@@ -117,17 +120,17 @@ class BodyLimitMiddleware:
 # --------------------------------------------------------------------------- #
 def check_count(field: str, files: list[UploadFile], limit: FieldLimit) -> None:
     if len(files) > limit.count:
-        raise HTTPException(status_code=413, detail=f"too many {field} files (limit {limit.count})")
+        raise ApiError(413, f"too many {field} files (limit {limit.count})", "too_large")
 
 
 def read_capped(field: str, file: UploadFile, limit: FieldLimit) -> bytes:
     """The file's bytes, reading at most one byte past the limit."""
     data = file.file.read(limit.file_bytes + 1)
     if len(data) > limit.file_bytes:
-        raise HTTPException(
-            status_code=413,
-            detail=f"{field} file {file.filename!r} is too large "
-            f"(limit {limit.file_bytes // 1024} KiB)",
+        raise ApiError(
+            413,
+            f"{field} file {file.filename!r} is too large (limit {limit.file_bytes // 1024} KiB)",
+            "too_large",
         )
     return data
 
@@ -135,9 +138,10 @@ def read_capped(field: str, file: UploadFile, limit: FieldLimit) -> bytes:
 def read_memo(file: UploadFile) -> str:
     text = read_capped("memos", file, MEMO).decode("utf-8", errors="replace")
     if MEMO.chars is not None and len(text) > MEMO.chars:
-        raise HTTPException(
-            status_code=413,
-            detail=f"memos file {file.filename!r} is too long (limit {MEMO.chars} characters)",
+        raise ApiError(
+            413,
+            f"memos file {file.filename!r} is too long (limit {MEMO.chars} characters)",
+            "too_large",
         )
     return text
 
@@ -147,7 +151,7 @@ def read_image(field: str, file: UploadFile, limit: FieldLimit) -> bytes:
     data = read_capped(field, file, limit)
     is_webp = data[:4] == b"RIFF" and data[8:12] == b"WEBP"
     if not (is_webp or any(data.startswith(m) for m in _IMAGE_MAGIC)):
-        raise HTTPException(
-            status_code=422, detail=f"{field} file {file.filename!r} is not a PNG, JPEG or WebP"
+        raise ApiError(
+            422, f"{field} file {file.filename!r} is not a PNG, JPEG or WebP", "bad_image"
         )
     return data

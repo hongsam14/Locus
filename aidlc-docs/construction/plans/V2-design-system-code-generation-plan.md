@@ -234,7 +234,7 @@
 - [x] 15.3 같은 도구의 네트워크 기록으로 화면별 `woff2` 바이트 합을 잰다(홈은 데모와 새 월드, 플레이 데스크톱·휴대폰). 최악값(전체 조각 합)과 함께 code-summary에 적는다(NFR R-02).
 
 ### Step 16 — 기록
-- [ ] 16.1 `aidlc-docs/construction/V2-design-system/code/code-summary.md`를 쓴다. 담을 것:
+- [x] 16.1 `aidlc-docs/construction/V2-design-system/code/code-summary.md`를 쓴다. 담을 것:
   - 기준선과 결과
   - 단계별 변경
   - 고친 기존 단언
@@ -243,7 +243,7 @@
   - PBT 변이 확인과 시드
   - 실행 메모 처리
   - 남은 일: 화면 배치는 V4·V6·V8, `String(e)` 51곳은 화면 유닛, 옛 키 정리는 V9
-- [ ] 16.2 aidlc-state·audit를 갱신하고 커밋한다(`docs(aidlc): V2 code summary`).
+- [x] 16.2 aidlc-state·audit를 갱신하고 커밋한다(`docs(aidlc): V2 code summary`).
 
 ---
 

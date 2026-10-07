@@ -4721,3 +4721,33 @@ Next: V2 Code Generation Part 1 (plan).
 - R-06 → Accepted risk (execution note: kept testids and the jsdom fallback)
 
 ---
+
+## Code Generation Part 2 — V2 디자인 시스템 — Steps 1–16 complete
+**Timestamp**: 2026-10-07T13:27:12Z
+**User Input**: (none since plan approval)
+**AI Response**: V2 code generated in 14 commits on `feat/follow-up` (`64a8fa1`..`dcef428`, plus this summary).
+- Gates:
+  - pytest 974 (+26), vitest 381 (2 seeds), ruff/black/tsc clean, mypy 11, boundaries pass
+  - runtime npm audit 0; dev audit 5 (unchanged)
+- Sizes:
+  - JS gzip 118.2 kB (budget 125.6)
+  - home fonts 121 kB (370 kB with long Korean world names; budget 760)
+  - CSS gzip 84.7 kB (was 4.2; from the @font-face pieces), reported as a follow-up
+- 390 px: no horizontal scroll except play NPC dialogue (418 px), which is V4.
+- Captures: private Artifact https://claude.ai/artifact/5kbtr4mDxcWmG3DA8xtBsu. A map-size defect found there was fixed (`dcef428`).
+- Deviations, in code-summary § 5:
+  - nine dialogs, not eight
+  - map width in the adapter
+  - Dialog focus return
+  - Dialog testId
+  - AppShell llmOff prop
+  - status→code reuse
+  - test location
+  - WorldFileBar kept
+  - `/health` wording
+  - en capture dropped
+- Test edits, in code-summary § 4. One was outside the FD list: waiting for the toast text because the live region is always present.
+- Summary: `construction/V2-design-system/code/code-summary.md`.
+**Context**: CONSTRUCTION / V2 — Code Generation Part 2 complete; awaiting code approval (code review follows approval, as in U8).
+
+---

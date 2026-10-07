@@ -120,14 +120,14 @@
   - 커밋: `feat(shared): translation entry and file models; source_hash moves to shared (V3)`
 
 ### Step 3 — localization: 키 없는 서비스, `seed`, `carry` (BLM § 2·3·10, BR-V3-02·15·17)
-- [ ] 3.1 `TranslationService(store, translator: Translator | None, …)`(R-08d). `translator`가 `None`이면 `enrich`가 빠진 항목을 예약하지 않는다.
-- [ ] 3.2 `seed(entries, *, lang, current_text, world_id) -> SeedReport`(BLM § 3 의사코드)
+- [x] 3.1 `TranslationService(store, translator: Translator | None, …)`(R-08d). `translator`가 `None`이면 `enrich`가 빠진 항목을 예약하지 않는다.
+- [x] 3.2 `seed(entries, *, lang, current_text, world_id) -> SeedReport`(BLM § 3 의사코드)
   - 넣은 키를 `_in_flight`에서 지운다(R-04).
   - 저장 실패는 기록하고 `seeded=0`이다.
   - `SeedReport`는 `localization/models.py`에 둔다.
-- [ ] 3.3 `carry(sources, target, *, text, langs, session_id) -> int`(R-07). 언어마다 source 행을 읽고, 해시가 `text`와 맞는 첫 행을 target 키로 쓴다.
-- [ ] 3.4 `wiring.py`: 번역이 켜져 있고 SQL 엔진이 있으면 LLM이 없어도 `TranslationService(store, None)`을 만든다. 실행기는 없다. `models.py` 독스트링을 고친다(R-05).
-- [ ] 3.5 테스트:
+- [x] 3.3 `carry(sources, target, *, text, langs, session_id) -> int`(R-07). 언어마다 source 행을 읽고, 해시가 `text`와 맞는 첫 행을 target 키로 쓴다.
+- [x] 3.4 `wiring.py`: 번역이 켜져 있고 SQL 엔진이 있으면 LLM이 없어도 `TranslationService(store, None)`을 만든다. 실행기는 없다. `models.py` 독스트링을 고친다(R-05).
+- [x] 3.5 테스트:
   - TP-V3-2 나머지: 해시 불일치는 `stale`, 빈 원문은 건너뜀
   - TP-V3-6: 키 없는 assemble에서 서비스가 있다. `enrich`가 예약하지 않는다. 꺼짐·엔진 없음은 `None`이다. LLM이 있으면 예약한다(R-08c의 서비스 쪽).
   - `seed`: `unknown`·`stale`·`seeded` 수를 센다. 다시 시딩하면 행이 늘지 않는다. 저장 실패면 0이다.

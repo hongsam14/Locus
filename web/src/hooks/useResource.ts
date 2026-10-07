@@ -19,12 +19,16 @@ function isAbort(err: unknown): boolean {
 }
 
 /** `key` null = not ready to read (no request; state "loading"). The key is compared by
- * value (JSON), so an inline array literal does not read again on every render. */
+ * value (JSON), so an inline array literal does not read again on every render.
+ *
+ * Data from an older key stays while the new key reads (for the layout, BLM § 7.1), but a
+ * failure of the new key does not keep it: `error` never comes with another key's data. A
+ * reload after a failure shows "loading" until it answers (V2 review #14). */
 export function useResource<T>(
   key: readonly unknown[] | null,
   load: (signal: AbortSignal) => Promise<T>,
 ): Resource<T> {
-  const [value, setValue] = useState<{ data?: T; state: ResourceState; error?: DescribedError }>({
+  const [value, setValue] = useState<{ data?: T; dataKey?: string; state: ResourceState; error?: DescribedError }>({
     state: "loading",
   });
   const [tick, setTick] = useState(0);
@@ -35,13 +39,19 @@ export function useResource<T>(
   const keyText = key === null ? null : JSON.stringify(key);
 
   useEffect(() => {
-    if (keyText === null) return;
+    if (keyText === null) {
+      lastKey.current = null; // the next key reads as a new one
+      setValue((v) => (v.state === "loading" ? v : { data: v.data, dataKey: v.dataKey, state: "loading" }));
+      return;
+    }
     const id = ++seq.current;
     const controller = new AbortController();
     const newKey = keyText !== lastKey.current;
     lastKey.current = keyText;
-    // a new key shows "loading" (its old data stays for the layout); a reload keeps the screen
-    if (newKey) setValue((v) => ({ data: v.data, state: "loading" }));
+    // a new key shows "loading" (its old data stays for the layout); a reload keeps the
+    // screen, unless the screen is an error: a retry shows that it is reading
+    if (newKey) setValue((v) => ({ data: v.data, dataKey: v.dataKey, state: "loading" }));
+    else setValue((v) => (v.state === "error" ? { data: v.data, dataKey: v.dataKey, state: "loading" } : v));
     let request: Promise<T>;
     try {
       request = Promise.resolve(loadRef.current(controller.signal));
@@ -50,11 +60,14 @@ export function useResource<T>(
     }
     request.then(
       (data) => {
-        if (seq.current === id && !controller.signal.aborted) setValue({ data, state: "ready" });
+        if (seq.current === id && !controller.signal.aborted) setValue({ data, dataKey: keyText, state: "ready" });
       },
       (err) => {
         if (seq.current !== id || controller.signal.aborted || isAbort(err)) return;
-        setValue((v) => ({ data: v.data, state: "error", error: describeError(err) }));
+        setValue((v) => {
+          const mine = v.dataKey === keyText; // another key's data does not stand beside this error
+          return { data: mine ? v.data : undefined, dataKey: mine ? v.dataKey : undefined, state: "error", error: describeError(err) };
+        });
       },
     );
     return () => controller.abort();

@@ -56,7 +56,8 @@ export function StatusView({
       </div>
     );
   }
-  if (state === "error" && error) return <InlineError error={error} onRetry={onRetry} />;
+  // an error state never falls through to the content, even without a described error
+  if (state === "error") return <InlineError error={error ?? { title: t("error.unknown.title") }} onRetry={onRetry} />;
   if (state === "empty") {
     return (
       <div className="flex flex-col items-start gap-1 p-1 text-sm" data-testid="status-empty">

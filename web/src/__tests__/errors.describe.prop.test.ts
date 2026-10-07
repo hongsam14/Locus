@@ -70,7 +70,11 @@ describe("describeError (examples)", () => {
 
   it("tells a network failure from a bug", () => {
     expect(describeError(new TypeError("Failed to fetch"), "ko").code).toBe("network");
+    expect(describeError(new TypeError("NetworkError when attempting to fetch resource."), "ko").code).toBe("network");
+    expect(describeError(new TypeError("Load failed"), "ko").code).toBe("network");
     expect(describeError(new TypeError("x is undefined"), "ko").code).toBe("unknown");
+    expect(describeError(new TypeError("api.fetchAll is not a function"), "ko").code).toBe("unknown"); // review § 2
+    expect(describeError(new TypeError("network is not defined"), "ko").code).toBe("unknown");
     expect(describeError("Error: 503 Service Unavailable: down", "ko").status).toBe(503);
   });
 

@@ -67,6 +67,19 @@ describe("useCapabilities (BR-U8-23/26)", () => {
     }
   });
 
+  it("a reset drops a read still running: its answer is not cached (review § 2)", async () => {
+    let answer!: (c: { llm: boolean; vlm: boolean; embedding: boolean }) => void;
+    vi.spyOn(api, "capabilities")
+      .mockImplementationOnce(() => new Promise((res) => { answer = res; }))
+      .mockResolvedValue({ llm: true, vlm: true, embedding: true });
+    renderHook(() => useCapabilities());
+    await act(async () => {});
+    resetCapabilities(); // the next test starts here
+    await act(async () => answer({ llm: false, vlm: false, embedding: false })); // the old read lands late
+    const fresh = renderHook(() => useCapabilities());
+    await waitFor(() => expect(fresh.result.current?.llm).toBe(true)); // read again, not the late answer
+  });
+
   it("a read that throws before it returns a promise is unknown too", async () => {
     vi.spyOn(api, "capabilities").mockImplementation(() => {
       throw new TypeError("not a function");

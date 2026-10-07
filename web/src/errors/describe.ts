@@ -51,10 +51,13 @@ function clip(text: string): string {
   return text.length > RAW_MAX ? `${text.slice(0, RAW_MAX)}…` : text;
 }
 
-/** A `fetch` that never reached the server rejects with a TypeError ("Failed to fetch",
- * "NetworkError …", "Load failed"). Other TypeErrors are bugs, not the network. */
+/** A `fetch` that never reached the server rejects with a TypeError whose message is the
+ * browser's own: "Failed to fetch" (Chromium), "NetworkError when attempting to fetch
+ * resource." (Firefox), "Load failed" (Safari), "fetch failed" (Node). Other TypeErrors —
+ * "x.fetchAll is not a function" — are bugs, not the network (V2 review § 2). */
+const NETWORK_MESSAGE = /^(failed to fetch|fetch failed|load failed|networkerror when attempting to fetch resource|network request failed)\b/i;
 function isNetworkFailure(err: unknown): boolean {
-  return err instanceof TypeError && /fetch|network|load failed/i.test(err.message);
+  return err instanceof TypeError && NETWORK_MESSAGE.test(err.message);
 }
 
 export function describeError(err: unknown, lang: Lang = currentLang()): DescribedError {

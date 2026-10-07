@@ -37,10 +37,9 @@ export function useAction<A extends unknown[], R>(
     running.current = true;
     setBusy(true);
     setError(undefined);
+    let result: R;
     try {
-      const result = await runRef.current(...args);
-      if (mounted.current) optsRef.current?.onDone?.(result);
-      return result;
+      result = await runRef.current(...args);
     } catch (err) {
       if (mounted.current) setError(describeError(err));
       return undefined;
@@ -48,6 +47,10 @@ export function useAction<A extends unknown[], R>(
       running.current = false;
       if (mounted.current) setBusy(false);
     }
+    // outside the try: a screen's onDone that throws is its own bug, not a failed write
+    // shown as one (V2 review § 2)
+    if (mounted.current) optsRef.current?.onDone?.(result);
+    return result;
   }, []);
 
   const clearError = useCallback(() => setError(undefined), []);

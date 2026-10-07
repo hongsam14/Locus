@@ -46,9 +46,9 @@ describe("useResource", () => {
         return d.promise;
       }));
     unmount();
-    expect(signal?.aborted).toBe(true);
+    expect(signal?.aborted).toBe(true); // the abort is what drops the late answer
     await act(async () => d.resolve("late"));
-    expect(result.current.data).toBeUndefined();
+    expect(result.current.state).toBe("loading"); // the last render, before unmount
   });
 
   it("keeps the data on screen while it reads again, and reports an error in words", async () => {
@@ -69,6 +69,42 @@ describe("useResource", () => {
     const load = vi.fn(() => Promise.resolve(1));
     renderHook(() => useResource(null, load));
     expect(load).not.toHaveBeenCalled();
+  });
+
+  it("is loading again when the key goes null, and a new key after it reads again (review #14)", async () => {
+    const load = vi.fn((_: AbortSignal) => Promise.resolve(1));
+    const { result, rerender } = renderHook(({ k }: { k: string | null }) => useResource(k === null ? null : [k], load), {
+      initialProps: { k: "a" as string | null },
+    });
+    await waitFor(() => expect(result.current.state).toBe("ready"));
+    rerender({ k: null });
+    expect(result.current.state).toBe("loading");
+    rerender({ k: "a" });
+    await waitFor(() => expect(result.current.state).toBe("ready"));
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("a failure for a new key does not stand beside the old key's data (review #14)", async () => {
+    const { result, rerender } = renderHook(({ k }) =>
+      useResource([k], () => (k === "a" ? Promise.resolve("A") : Promise.reject(new TypeError("Failed to fetch")))),
+      { initialProps: { k: "a" } });
+    await waitFor(() => expect(result.current.data).toBe("A"));
+    rerender({ k: "b" });
+    expect(result.current).toMatchObject({ data: "A", state: "loading" }); // kept for the layout
+    await waitFor(() => expect(result.current.state).toBe("error"));
+    expect(result.current.data).toBeUndefined();
+  });
+
+  it("a reload after a failure shows that it is reading (review #14)", async () => {
+    let n = 0;
+    const again = deferred<number>();
+    const { result } = renderHook(() =>
+      useResource(["x"], () => (++n === 1 ? Promise.reject(new TypeError("Failed to fetch")) : again.promise)));
+    await waitFor(() => expect(result.current.state).toBe("error"));
+    act(() => result.current.reload());
+    expect(result.current.state).toBe("loading");
+    await act(async () => again.resolve(2));
+    expect(result.current).toMatchObject({ data: 2, state: "ready" });
   });
 });
 
@@ -108,6 +144,17 @@ describe("useAction", () => {
     });
     expect(onDone).toHaveBeenCalledWith(7);
     expect(result.current.error).toBeUndefined();
+  });
+
+  it("an onDone that throws is not shown as a failed write (review § 2)", async () => {
+    const { result } = renderHook(() => useAction(async () => 1, { onDone: () => { throw new Error("screen bug"); } }));
+    let thrown: unknown;
+    await act(async () => {
+      await result.current.run().catch((e: unknown) => { thrown = e; });
+    });
+    expect((thrown as Error).message).toBe("screen bug"); // the bug surfaces as itself
+    expect(result.current.error).toBeUndefined(); // not as "the write failed"
+    expect(result.current.busy).toBe(false);
   });
 
   it("does not touch state after unmount", async () => {

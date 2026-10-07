@@ -256,5 +256,8 @@ describe("StatusView", () => {
     expect(screen.getByText(t("action.details"))).toBeInTheDocument();
     rerender(<StatusView state="ready">content</StatusView>);
     expect(screen.getByText("content")).toBeInTheDocument();
+    rerender(<StatusView state="error">content</StatusView>); // no described error: still an error
+    expect(screen.getByRole("alert")).toHaveTextContent(t("error.unknown.title"));
+    expect(screen.queryByText("content")).not.toBeInTheDocument();
   });
 });

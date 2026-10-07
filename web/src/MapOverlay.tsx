@@ -48,7 +48,11 @@ export function MapOverlay({
     }
   }
   return (
-    <WorldMap
+    // the old screens gave the map 800 × 500: keep that width until V6/V8 lay the screens
+    // out again, so the map does not shrink into a narrow column. Bounded by the viewport, not
+    // by the column (a flex column would grow to 800 and scroll sideways on a phone, UX-02).
+    <div style={{ width: "min(800px, calc(100vw - 32px))" }}>
+      <WorldMap
       // "edit" keeps every current use as it was (the GM map's own mode, with no drag,
       // comes with V6 — RE-F05)
       mode="edit"
@@ -65,6 +69,7 @@ export function MapOverlay({
       onMove={(id, p) => onMove(id, p.x, p.y)}
       onAddAt={onBackground ? (p) => onBackground(p.x, p.y) : undefined}
       onSelectConnection={onSelectConnection}
-    />
+      />
+    </div>
   );
 }

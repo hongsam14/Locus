@@ -222,16 +222,16 @@
 - [x] 13.4 커밋한다(`test(web): design grep checks; build(web): immutable cache for hashed assets (V2 Step 13)`).
 
 ### Step 14 — 게이트와 크기
-- [ ] 14.1 `pytest`, `ruff`, `black`, `mypy locus api`(≤ 11), `tsc --noEmit`, `npx vitest run`, `npm audit --omit=dev` 0, dev audit 수(기준선 이하), `pytest tests/test_boundaries.py`를 돌린다.
-- [ ] 14.2 `npx vitest run`을 두 번 다른 시드로 돌려 속성 테스트가 흔들리지 않는지 본다. 시드를 기록한다.
-- [ ] 14.3 JS 크기: `npx vite build --outDir <스크래치>`로 빌드하고 `assets/*.js`의 gzip 합을 잰다. 예산은 125.6 kB다.
-- [ ] 14.4 넘으면 사유를 적고 첫 화면 JS로 판정한다. 필요하면 `GmPage`·`EditorPage`를 `React.lazy`로 나누고 다시 잰다(NFR R-03).
-- [ ] 14.5 Emberleaf 12지역 라벨 겹침 수를 적는다(TP-V2-10 출력). 0이 아니면 후보 간격을 고친다.
+- [x] 14.1 `pytest`, `ruff`, `black`, `mypy locus api`(≤ 11), `tsc --noEmit`, `npx vitest run`, `npm audit --omit=dev` 0, dev audit 수(기준선 이하), `pytest tests/test_boundaries.py`를 돌린다.
+- [x] 14.2 `npx vitest run`을 두 번 다른 시드로 돌려 속성 테스트가 흔들리지 않는지 본다. 시드를 기록한다.
+- [x] 14.3 JS 크기: `npx vite build --outDir <스크래치>`로 빌드하고 `assets/*.js`의 gzip 합을 잰다. 예산은 125.6 kB다.
+- [x] 14.4 넘으면 사유를 적고 첫 화면 JS로 판정한다. 필요하면 `GmPage`·`EditorPage`를 `React.lazy`로 나누고 다시 잰다(NFR R-03).
+- [x] 14.5 Emberleaf 12지역 라벨 겹침 수를 적는다(TP-V2-10 출력). 0이 아니면 후보 간격을 고친다.
 
 ### Step 15 — 캡처와 글꼴 실측 (UOW-Q4=A, NFR-2·4)
-- [ ] 15.1 역공학 때의 스크래치 도구(가짜 API `re-scratch/mock/server.mjs` + headless Chrome `shoot.mjs`)로 새 빌드를 띄운다. 홈·플레이·GM·에디터를 1280·390px로 찍는다. 저장소 밖에서 한다.
-- [ ] 15.2 캡처를 비공개 Artifact 페이지 하나에 올리고 사람에게 링크를 드린다(시안 B와 나란히).
-- [ ] 15.3 같은 도구의 네트워크 기록으로 화면별 `woff2` 바이트 합을 잰다(홈은 데모와 새 월드, 플레이 데스크톱·휴대폰). 최악값(전체 조각 합)과 함께 code-summary에 적는다(NFR R-02).
+- [x] 15.1 역공학 때의 스크래치 도구(가짜 API `re-scratch/mock/server.mjs` + headless Chrome `shoot.mjs`)로 새 빌드를 띄운다. 홈·플레이·GM·에디터를 1280·390px로 찍는다. 저장소 밖에서 한다.
+- [x] 15.2 캡처를 비공개 Artifact 페이지 하나에 올리고 사람에게 링크를 드린다(시안 B와 나란히).
+- [x] 15.3 같은 도구의 네트워크 기록으로 화면별 `woff2` 바이트 합을 잰다(홈은 데모와 새 월드, 플레이 데스크톱·휴대폰). 최악값(전체 조각 합)과 함께 code-summary에 적는다(NFR R-02).
 
 ### Step 16 — 기록
 - [ ] 16.1 `aidlc-docs/construction/V2-design-system/code/code-summary.md`를 쓴다. 담을 것:

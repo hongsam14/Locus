@@ -5065,3 +5065,28 @@ FD BR-V3-13 / BLM § 7 corrected (〔코드 리뷰 01 #1 정정〕). code-summar
 
 ---
 
+## Functional Design — V4 홈·플레이 화면 — Plan started
+**Timestamp**: 2026-10-07T16:08:50Z
+**User Input**: (continues "Continue to Next Stage", V3 → V4)
+**AI Response**: Wrote the FD plan `construction/plans/V4-home-play-functional-design-plan.md`.
+
+Self-decided:
+- V2 mockup row B as the layout base.
+- GM entry only in the top menu.
+- Names through the V3 name map with English fallback; home lists follow the display language.
+- No internal numbers.
+- Closed-session and empty /play notices; blocked moves listed with their reason.
+- A polling cap (RE-F08); gm_busy false until V5.
+- useResource/useAction.
+- V2 carry-overs closed here.
+
+Questions:
+- Q1: demo shown once
+- Q2: the one place for turn results
+- Q3: phone action bar
+- Q4: map role
+- Q5: dialogue placement
+**Context**: CONSTRUCTION / V4 — FD Part 1 (questions).
+
+---
+

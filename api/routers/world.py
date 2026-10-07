@@ -18,22 +18,33 @@ from urllib.parse import quote
 from fastapi import APIRouter, Body, Depends, File, Form, Response, UploadFile
 
 from api import uploads
-from api.deps import display_lang, get_localization, get_play_optional, get_shared, get_world
+from api.deps import (
+    display_lang,
+    get_localization,
+    get_play_optional,
+    get_shared,
+    get_world,
+    lang_settings,
+)
 from api.deps import need_service as _need
 from api.errors import ApiError, http_error
 from api.routers import world_editor
 from api.schemas import (
     DemoInfoOut,
+    DemoLoadOut,
     UnignoreIn,
     WorldInfo,
     WorldNamesOut,
     enrichment_for,
     purge_translations,
+    purge_world_translations,
+    seed_demo_translations,
     world_names,
 )
 from locus.localization.wiring import LocalizationContainer
 from locus.play.errors import TurnInProgressError
 from locus.play.wiring import PlayContainer
+from locus.shared.config import Settings
 from locus.shared.models import (
     BuildReport,
     GraphSummary,
@@ -103,13 +114,14 @@ def _after_replace(
     world_id: str,
 ) -> None:
     """What follows a replace: close the confirmed sessions, and drop the old world's
-    canonical translations (U5 Q4=A). The two are independent — the purge must not sit
-    behind the session step's early return, or the common replace with no open
-    session would skip it (plan review FD R-13). Six routes share five call sites
-    (``file`` and ``file/upload`` go through ``_import``)."""
+    translations (U5 Q4=A; V3 BR-V3-13: every kind of the world, not only knowledge). The
+    two are independent — the purge must not sit behind the session step's early
+    return, or the common replace with no open session would skip it (plan review FD
+    R-13). Six routes share five call sites (``file`` and ``file/upload`` go through
+    ``_import``)."""
     _close_if_replaced(report, open_ids, play)
     if getattr(report, "replaced", False):
-        purge_translations(loc, kind="knowledge", world_id=world_id)
+        purge_world_translations(loc, world_id)
 
 
 def _close_if_replaced(report, open_ids: list[str], play: PlayContainer | None) -> None:
@@ -403,7 +415,7 @@ def list_demos(
     return [DemoInfoOut.of(info, lang) for info in _need(w.demo, "demo worlds").list()]
 
 
-@router.post("/worlds/{world_id}/demo/{name}", response_model=ImportReport)
+@router.post("/worlds/{world_id}/demo/{name}", response_model=DemoLoadOut)
 def load_demo_world(
     world_id: str,
     name: str,
@@ -412,8 +424,10 @@ def load_demo_world(
     w: WorldContainer = Depends(get_world),
     play: PlayContainer | None = Depends(get_play_optional),
     loc: LocalizationContainer | None = Depends(get_localization),
-) -> ImportReport:
-    """Load a packaged demo World File — no LLM call (FR-B3, BR-U2-28)."""
+    settings: Settings = Depends(lang_settings),
+) -> DemoLoadOut:
+    """Load a packaged demo World File — no LLM call (FR-B3, BR-U2-28) — then seed its
+    translations: import → (replace) purge → (ok) seed (V3, BLM § 3, BR-V3-14)."""
     demo = _need(w.demo, "demo worlds")
     try:
         demo.info(name)  # validate the name before the session gate (review #6)
@@ -425,7 +439,14 @@ def load_demo_world(
     except (LookupError, WorldExistsError) as exc:
         raise http_error(exc) from exc
     _after_replace(report, open_ids, play, loc, world_id)
-    return report
+    seeded = seed_demo_translations(
+        loc, demo, name, world_id=world_id, report=report, langs=settings.supported_langs
+    )
+    return DemoLoadOut(
+        **report.model_dump(exclude={"ok"}),  # ``ok`` is computed, not an input
+        translations_seeded=seeded.seeded,
+        translations_stale=seeded.stale,
+    )
 
 
 @router.post("/worlds/{world_id}/demo/{name}/build", response_model=BuildReport)

@@ -45,7 +45,7 @@ def _load_demo(client: TestClient) -> str:
 
 
 def _seed_directly(world, loc, name: str) -> None:
-    """Rows straight into the cache (the load route seeds from Step 8's second commit)."""
+    """Rows straight into the cache, as the load does (idempotent: the same rows again)."""
     demo = world.demo
     entries = demo.translations(name, "ko", target_world_id=name, remapped=False)
     texts = demo.texts(name, target_world_id=name, remapped=False)
@@ -55,13 +55,14 @@ def _seed_directly(world, loc, name: str) -> None:
 
 
 def test_the_name_map_serves_the_cached_korean_by_id() -> None:
-    client, world, loc = _app()
-    name = _load_demo(client)
-    before = client.get(f"/api/world/worlds/{name}/names").json()
-    assert before["regions"] == {} and before["lang"] == "ko"  # nothing cached, no warm
-    _seed_directly(world, loc, name)
+    client, _world, _loc = _app()
+    name = _load_demo(client)  # the load seeds the demo's translations (BR-V3-14)
     names = client.get(f"/api/world/worlds/{name}/names").json()
-    assert names["world_id"] == name and names["world"]["name"] == "엠버리프 섬"
+    assert (
+        names["lang"] == "ko"
+        and names["world_id"] == name
+        and names["world"]["name"] == "엠버리프 섬"
+    )
     assert (
         len(names["regions"]) == 12
         and names["regions"]["region-saltwake"]["name"] == "솔트웨이크 항구"
@@ -101,9 +102,7 @@ def test_without_localization_the_map_is_empty_and_without_a_cache_it_is_503() -
 def test_the_world_list_and_demo_cards_carry_korean() -> None:
     client, world, loc = _app()
     name = _load_demo(client)
-    row = next(w for w in client.get("/api/world/worlds").json() if w["id"] == name)
-    assert row["name_ko"] is None  # not cached yet
-    _seed_directly(world, loc, name)
+    _seed_directly(world, loc, name)  # seeding again changes nothing
     row = next(w for w in client.get("/api/world/worlds").json() if w["id"] == name)
     assert row["name_ko"] == "엠버리프 섬" and row["description_ko"].endswith("다.")
     assert (
@@ -132,10 +131,10 @@ class _LLM:
 
 def test_with_an_llm_the_map_hands_its_misses_to_the_warm() -> None:  # code plan R-08 (c)
     scheduled: list = []
-    service = TranslationService(
-        InMemoryTranslationRepository(), Translator(_LLM()), warm_scheduler=scheduled.append
-    )
+    store = InMemoryTranslationRepository()
+    service = TranslationService(store, Translator(_LLM()), warm_scheduler=scheduled.append)
     client, _world, _loc = _app(loc=LocalizationContainer(translations=service))
     name = _load_demo(client)
+    store.purge(world_id=name)  # as for a world with no translation file
     assert client.get(f"/api/world/worlds/{name}/names").json()["regions"] == {}
     assert scheduled  # the region, NPC, seed and world misses went to the warm

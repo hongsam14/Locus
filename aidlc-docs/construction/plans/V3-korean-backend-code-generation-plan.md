@@ -180,7 +180,7 @@
   - 커밋: `feat(play): level path ids on the region view; npc_id on deed_seeded (V3, additive)`
 
 ### Step 8 — api: 이름표, 목록 칸, 시딩, 지우기, 옮기기 (BLM § 3·7~10, BR-V3-13~17·21~25)
-- [ ] 8.1 `api/schemas.py`에 다섯 가지를 둔다.
+- [x] 8.1 `api/schemas.py`에 다섯 가지를 둔다.
   - `WorldNamesOut`
   - `DemoInfoOut`에 `title_ko`·`description_ko`·`credits_ko`를 더하고, `of(info, lang)`이 카드 문구를 고른다.
   - `WorldInfo`에 `name_ko`·`description_ko`를 더한다.
@@ -189,15 +189,15 @@
     - `seed_demo_translations(loc, demo, name, world_id, report, langs) -> SeedReport`
     - `purge_world_translations(loc, world_id)`
     - `carry_translation(...)`
-- [ ] 8.2 `routers/world.py`
+- [x] 8.2 `routers/world.py`
   - `GET /worlds/{w}/names`: `need_service(w.cache)`(R-03), `display_lang`, BLM § 8.
   - `GET /demos`·`GET /worlds`에 `display_lang`과 칸을 더한다.
   - 데모 불러오기 순서는 "가져오기 → `_after_replace` → `ok`면 시딩"이고, 응답은 `DemoLoadOut`이다.
   - `_after_replace`의 지우기를 `purge_world_translations`로 넓힌다(BR-V3-13).
   - 시딩 언어는 매니페스트 키 ∩ `SUPPORTED_LANGS` − {en}이다.
-- [ ] 8.3 `routers/world_editor.py`: 지역 삭제는 `purge(ids=deleted_ids, world_id=w)`, NPC 삭제는 `purge(kind="npc", ids=[id], world_id=w)`다. 두 라우트에 `get_localization`을 의존으로 더한다(BR-V3-16).
-- [ ] 8.4 `routers/gm.py` `start_seed`: 사건을 만든 뒤 `carry_translation`을 부른다(BR-V3-17, R-07).
-- [ ] 8.5 테스트:
+- [x] 8.3 `routers/world_editor.py`: 지역 삭제는 `purge(ids=deleted_ids, world_id=w)`, NPC 삭제는 `purge(kind="npc", ids=[id], world_id=w)`다. 두 라우트에 `get_localization`을 의존으로 더한다(BR-V3-16).
+- [x] 8.4 `routers/gm.py` `start_seed`: 사건을 만든 뒤 `carry_translation`을 부른다(BR-V3-17, R-07).
+- [x] 8.5 테스트:
   - TP-V3-7: 키 없는 API(메모리 번역 저장소)로 다섯 가지를 본다.
     - 이름표가 전부 ko다.
     - 지역 보기 지식 칸, 월드 목록, 데모 목록 칸이 ko다.

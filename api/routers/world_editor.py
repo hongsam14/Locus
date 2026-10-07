@@ -115,6 +115,7 @@ def delete_region(
     region_id: str,
     w: WorldContainer = Depends(get_world),
     play: PlayContainer | None = Depends(get_play_optional),
+    loc: LocalizationContainer | None = Depends(get_localization),
 ) -> RegionDeleteReport:
     """Q1=A tidy delete. The GM lease of every open session of the world is held over
     the check and the delete, so no move lands in between; a session mid-turn is 409
@@ -128,7 +129,9 @@ def delete_region(
                 except TurnInProgressError as exc:  # the stack releases what it holds
                     raise http_error(exc) from exc
         try:
-            return regions.delete_region(world_id, region_id, protected=_protected(world_id, play))
+            report = regions.delete_region(
+                world_id, region_id, protected=_protected(world_id, play)
+            )
         except RegionInUseError as exc:
             raise ApiError(
                 409,
@@ -140,6 +143,9 @@ def delete_region(
             ) from exc
         except _ERRORS as exc:
             raise http_error(exc) from exc
+    # the region's, its NPCs' and its seeds' translations go with them (V3, BR-V3-16)
+    purge_translations(loc, ids=report.deleted_ids, world_id=world_id)
+    return report
 
 
 # --- connections ------------------------------------------------------------ #
@@ -270,12 +276,19 @@ def upsert_npc(world_id: str, npc_id: str, npc: NPC, w: WorldContainer = Depends
 
 
 @router.delete("/worlds/{world_id}/npcs/{npc_id}", status_code=204)
-def delete_npc(world_id: str, npc_id: str, w: WorldContainer = Depends(get_world)) -> Response:
-    """Conversations with the NPC stay in their sessions (BR-U3-17)."""
+def delete_npc(
+    world_id: str,
+    npc_id: str,
+    w: WorldContainer = Depends(get_world),
+    loc: LocalizationContainer | None = Depends(get_localization),
+) -> Response:
+    """Conversations with the NPC stay in their sessions (BR-U3-17); its translations go
+    (V3, BR-V3-16)."""
     try:
         _editors(w).npcs.delete_npc(world_id, npc_id)
     except _ERRORS as exc:
         raise http_error(exc) from exc
+    purge_translations(loc, kind="npc", ids=[npc_id], world_id=world_id)
     return Response(status_code=204)
 
 

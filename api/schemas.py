@@ -13,6 +13,7 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel, Field
 
+from locus.localization.models import SeedReport
 from locus.localization.service import Enrichment
 from locus.localization.wiring import LocalizationContainer
 from locus.play.models import (
@@ -30,7 +31,7 @@ from locus.play.models import (
     SessionRumor,
     WorldState,
 )
-from locus.shared.models import NPC, KnowledgeView, QueryResult, WorldSnapshot
+from locus.shared.models import NPC, ImportReport, KnowledgeView, QueryResult, WorldSnapshot
 from locus.shared.models.i18n import SOURCE_LANG
 from locus.world.editor.models import WorldSummary
 
@@ -538,3 +539,81 @@ class DemoInfoOut(BaseModel):
             description_ko=card.description if card else None,
             credits_ko=card.credits if card else None,
         )
+
+
+class DemoLoadOut(ImportReport):
+    """``POST /api/world/worlds/{w}/demo/{name}``: the import report plus what the
+    seeding of the demo's translations did (V3, additive, BR-V3-25)."""
+
+    translations_seeded: int = 0
+    translations_stale: int = 0
+
+
+def seed_demo_translations(
+    loc: LocalizationContainer | None,
+    demo: Any,
+    name: str,
+    *,
+    world_id: str,
+    report: Any,
+    langs: Sequence[str],
+) -> SeedReport:
+    """Seed the demo's translation files after a load (V3 BLM § 3, BR-V3-14/15).
+
+    Only after a clean import, only with a translation service (without one the demo's
+    new methods are not even called — code plan memo R-04), and only for the manifest's
+    languages the server takes, never the source language. A side job: a failure is
+    logged and never breaks the load's response."""
+    total = SeedReport()
+    if loc is None or loc.translations is None or not getattr(report, "ok", False):
+        return total
+    try:
+        for lang in demo.translation_langs(name):
+            if lang == SOURCE_LANG or lang not in langs:
+                continue
+            remapped = bool(getattr(report, "remapped", False))
+            entries = demo.translations(name, lang, target_world_id=world_id, remapped=remapped)
+            if not entries:
+                continue
+            texts = demo.texts(name, target_world_id=world_id, remapped=remapped)
+            got = loc.translations.seed(entries, lang=lang, current_text=texts, world_id=world_id)
+            total = SeedReport(
+                seeded=total.seeded + got.seeded,
+                stale=total.stale + got.stale,
+                unknown=total.unknown + got.unknown,
+            )
+    except Exception:
+        _log.exception("seeding the translations of demo %s failed (world %s)", name, world_id)
+    return total
+
+
+def purge_world_translations(loc: LocalizationContainer | None, world_id: str) -> None:
+    """A replaced world's translations go: every row marked with the world, and the
+    world's own name rows, which the world list warms unmarked (V3, BR-V3-13)."""
+    purge_translations(loc, world_id=world_id)
+    purge_translations(loc, kind="world", ids=[world_id])
+
+
+def carry_seed_translation(
+    loc: LocalizationContainer | None,
+    event: SessionEvent,
+    seed_id: str,
+    *,
+    langs: Sequence[str],
+    session_id: str,
+) -> int:
+    """An event started from a seed takes the seed's translation as its description's
+    (V3, BR-V3-17) — no LLM. A side job: a failure is logged and the start stands."""
+    if loc is None or loc.translations is None:
+        return 0
+    try:
+        return loc.translations.carry(
+            [("event_seed", seed_id, "description"), ("event_seed", seed_id, "title")],
+            ("event", event.id, "description"),
+            text=event.description,
+            langs=[lang for lang in langs if lang != SOURCE_LANG],
+            session_id=session_id,
+        )
+    except Exception:
+        _log.exception("carrying seed %s's translation to event %s failed", seed_id, event.id)
+        return 0

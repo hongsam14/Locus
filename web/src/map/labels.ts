@@ -2,12 +2,17 @@
 // BLM § 8.3, BR-V2-19). Greedy and deterministic: labels are placed in a fixed order —
 // the player's region, the selected one, the reachable ones, then the rest, each group by
 // y, x and id — so the same map always gets the same layout whatever the input order.
+//
+// An anchor's `r` is the room its marker takes with every ring around it, and that square
+// is what the other labels keep out of; its own label starts just outside it, so a ringed
+// marker never pushes its own name aside (V2 review #5). A plate that would leave the map
+// (`bounds`) counts as covering something (review #12).
 
 export type Box = { x: number; y: number; w: number; h: number };
 export type Side = "below" | "right" | "left" | "above";
 export type LabelBox = Box & { id: string; side: Side };
 export type LabelAnchor = { id: string; x: number; y: number; r: number; group?: number };
-export type LabelText = { id: string; text: string; size: number };
+export type LabelText = { id: string; text: string; size: number; below?: number }; // below: room under the plate (a badge)
 
 const SIDES: Side[] = ["below", "right", "left", "above"];
 const GAP = 4;
@@ -41,16 +46,32 @@ function candidate(side: Side, a: LabelAnchor, w: number, h: number): Box {
   }
 }
 
+/** How tall a plate is for a label of this size (the box adds `below` under it). */
+export function plateHeight(size: number): number {
+  return size * 1.4;
+}
+
 /** The four places a label may take, in the order they are tried. */
-export function candidateBoxes(anchor: LabelAnchor, text: string, size: number): (Box & { side: Side })[] {
+export function candidateBoxes(anchor: LabelAnchor, text: string, size: number, below = 0): (Box & { side: Side })[] {
   const w = labelWidth(text, size);
-  const h = size * 1.4;
+  const h = plateHeight(size) + below;
   return SIDES.map((side) => ({ ...candidate(side, anchor, w, h), side }));
 }
 
-/** The plate of each label, next to its anchor. `occupied` are the markers and rings
- * already drawn; a label never covers one when any side is free. */
-export function placeLabels(anchors: LabelAnchor[], labels: LabelText[], occupied: Box[]): LabelBox[] {
+/** The square an anchor's marker and rings take. */
+export function markerBox(a: LabelAnchor): Box {
+  return { x: a.x - a.r, y: a.y - a.r, w: a.r * 2, h: a.r * 2 };
+}
+
+export function within(box: Box, bounds: Box): boolean {
+  return box.x >= bounds.x && box.y >= bounds.y && box.x + box.w <= bounds.x + bounds.w && box.y + box.h <= bounds.y + bounds.h;
+}
+
+/** The plate of each label, next to its anchor. Every anchor's marker square and `extra`
+ * (other marks, like the player's pin) are taken; a label takes the first side that covers
+ * none of them and stays inside `bounds`. With no such side it takes the first side inside
+ * `bounds`, else the first side. */
+export function placeLabels(anchors: LabelAnchor[], labels: LabelText[], extra: Box[] = [], bounds?: Box): LabelBox[] {
   const byId = new Map(anchors.map((a) => [a.id, a]));
   const order = labels
     .filter((l) => byId.has(l.id))
@@ -59,13 +80,15 @@ export function placeLabels(anchors: LabelAnchor[], labels: LabelText[], occupie
       const b = byId.get(q.id)!;
       return (a.group ?? 9) - (b.group ?? 9) || a.y - b.y || a.x - b.x || (p.id < q.id ? -1 : p.id > q.id ? 1 : 0);
     });
+  const occupied = [...anchors.map(markerBox), ...extra];
+  const fits = (box: Box) => !bounds || within(box, bounds);
   const placed: LabelBox[] = [];
   for (const l of order) {
     const a = byId.get(l.id)!;
     const taken = [...occupied, ...placed];
-    const options = candidateBoxes(a, l.text, l.size);
-    const free = options.find((box) => !taken.some((t) => overlaps(box, t)));
-    placed.push({ ...(free ?? options[0]), id: l.id });
+    const options = candidateBoxes(a, l.text, l.size, l.below);
+    const free = options.find((box) => fits(box) && !taken.some((t) => overlaps(box, t)));
+    placed.push({ ...(free ?? options.find(fits) ?? options[0]), id: l.id });
   }
   return placed;
 }

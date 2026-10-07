@@ -14,7 +14,7 @@ export {
   toPixels,
 } from "./geometry";
 export type { Matrix, Norm, Point, ViewBox } from "./geometry";
-export { candidateBoxes, labelWidth, overlaps, placeLabels } from "./labels";
+export { candidateBoxes, labelWidth, markerBox, overlaps, placeLabels, plateHeight, within } from "./labels";
 export type { Box, LabelAnchor, LabelBox, LabelText, Side } from "./labels";
 export { WorldMap } from "./WorldMap";
 export type { RegionOverlay, WorldMapProps } from "./WorldMap";

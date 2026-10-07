@@ -20,7 +20,7 @@ import {
   type Norm,
   type ViewBox,
 } from "./geometry";
-import { placeLabels, type Box } from "./labels";
+import { labelWidth, placeLabels, plateHeight, type Box } from "./labels";
 
 export interface RegionOverlay {
   fill?: string; // a CSS colour (a token mix) for the region's marker
@@ -48,6 +48,9 @@ export interface WorldMapProps {
 }
 
 const LABEL_SIZE = 16;
+const PLATE_H = plateHeight(LABEL_SIZE);
+const BADGE_H = 16; // a badge line under the plate, kept clear like the plate (review § 2)
+const HIT_WIDTH = 14; // an invisible wide stroke under each line to press (review § 2)
 const AREA_LEVELS = new Set(["continent", "province"]);
 const RING: Record<NonNullable<RegionOverlay["ring"]>, string> = {
   event: "var(--color-event)",
@@ -72,6 +75,35 @@ function Marker({ level, fill }: { level: string; fill: string }) {
   if (level === "district") return <rect x={-6} y={-6} width={12} height={12} rx={2} style={style} />;
   if (level === "terrain") return <path d="M0 -8 L8 6 L-8 6 Z" style={style} />;
   return <circle r={markerRadius(level)} style={style} />;
+}
+
+const areaSize = (level: string) => (level === "continent" ? 26 : 18);
+const areaSpacing = (level: string) => (level === "continent" ? 8 : 4);
+
+/** The frame around an area name: the accent when selected, the GM state's wash and ring. */
+function AreaFrame({ region, selected, overlay }: { region: Region; selected: boolean; overlay?: RegionOverlay }) {
+  if (!selected && !overlay?.fill && !overlay?.ring) return null;
+  const size = areaSize(region.level);
+  const w = labelWidth(region.name, size) + areaSpacing(region.level) * [...region.name].length;
+  const h = size * 1.5;
+  const stroke = selected ? "var(--color-accent)" : overlay?.ring ? RING[overlay.ring] : "none";
+  return (
+    <rect
+      data-testid={overlay?.fill ? `region-fill-${region.id}` : undefined}
+      x={-w / 2}
+      y={-h / 2}
+      width={w}
+      height={h}
+      rx={6}
+      pointerEvents="none"
+      style={{
+        fill: overlay?.fill ?? "var(--color-map-plate)",
+        fillOpacity: overlay?.fill ? 0.45 : 1,
+        stroke,
+        strokeWidth: selected ? 2.5 : 3,
+      }}
+    />
+  );
 }
 
 export function WorldMap({
@@ -131,18 +163,24 @@ export function WorldMap({
     .filter((r) => !AREA_LEVELS.has(r.level))
     .map((r) => ({ r, p: at(r.id) }))
     .filter((x): x is { r: Region; p: { x: number; y: number } } => x.p != null);
-  const occupied: Box[] = points.map(({ r, p }) => {
-    const rr = markerRadius(r.level) + (r.id === selectedId || reachable.has(r.id) ? 7 : 2);
-    return { x: p.x - rr, y: p.y - rr, w: rr * 2, h: rr * 2 };
-  });
+  // the room a marker takes with its rings: the player's glow, the selected / reachable
+  // ring, a GM state ring (each drawn below at markerRadius + 9 / 6 / 4, plus its stroke)
+  const room = (r: Region): number => {
+    let pad = 2;
+    if (overlay?.[r.id]?.ring) pad = 6;
+    if (r.id === selectedId || reachable.has(r.id)) pad = 8;
+    if (r.id === playerRegionId) pad = 10;
+    return markerRadius(r.level) + pad;
+  };
   const player = playerRegionId ? at(playerRegionId) : undefined;
-  if (player) occupied.push({ x: player.x - 24, y: player.y - 34, w: 16, h: 22 });
+  const pin: Box[] = player ? [{ x: player.x - 24, y: player.y - 36, w: 16, h: 24 }] : [];
   const group = (id: string) => (id === playerRegionId ? 0 : id === selectedId ? 1 : reachable.has(id) ? 2 : 3);
   const plates = new Map(
     placeLabels(
-      points.map(({ r, p }) => ({ id: r.id, x: p.x, y: p.y, r: markerRadius(r.level), group: group(r.id) })),
-      points.map(({ r }) => ({ id: r.id, text: r.name, size: LABEL_SIZE })),
-      occupied,
+      points.map(({ r, p }) => ({ id: r.id, x: p.x, y: p.y, r: room(r), group: group(r.id) })),
+      points.map(({ r }) => ({ id: r.id, text: r.name, size: LABEL_SIZE, below: overlay?.[r.id]?.badge ? BADGE_H : 0 })),
+      pin,
+      MAP_EXTENT,
     ).map((b) => [b.id, b]),
   );
 
@@ -212,7 +250,22 @@ export function WorldMap({
             );
           const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
           return (
-            <g key={`${c.source_region_id}|${c.target_region_id}|${c.kind}`} opacity={faded ? 0.35 : 1}>
+            <g
+              key={`${c.source_region_id}|${c.target_region_id}|${c.kind}`}
+              opacity={faded ? 0.35 : 1}
+              style={{ cursor: onSelectConnection ? "pointer" : undefined }}
+              onClick={onSelectConnection ? () => onSelectConnection(c) : undefined}
+            >
+              {onSelectConnection && (
+                <line
+                  data-testid="connection-hit"
+                  x1={a.x}
+                  y1={a.y}
+                  x2={b.x}
+                  y2={b.y}
+                  style={{ stroke: "transparent", strokeWidth: HIT_WIDTH, strokeLinecap: "round" }}
+                />
+              )}
               <line
                 data-testid="connection-line"
                 x1={a.x}
@@ -225,9 +278,7 @@ export function WorldMap({
                   strokeOpacity: s.opacity,
                   strokeDasharray: s.dash,
                   strokeLinecap: "round",
-                  cursor: onSelectConnection ? "pointer" : undefined,
                 }}
-                onClick={onSelectConnection ? () => onSelectConnection(c) : undefined}
               />
               {s.cross && (
                 <path
@@ -259,14 +310,26 @@ export function WorldMap({
             >
               {area ? (
                 <>
-                  {/* an area name: no marker, a wide-spaced name; a hit area for clicks */}
+                  {/* an area name: no marker, a wide-spaced name. Only the small middle takes
+                      presses, so a wide name does not swallow adding, dragging or a line
+                      under it (review #11); a frame shows selection and the GM state (#10) */}
+                  <AreaFrame
+                    region={r}
+                    selected={r.id === selectedId}
+                    overlay={o}
+                  />
                   <circle r={14} style={{ fill: "transparent" }} />
                   <text
                     textAnchor="middle"
                     dy="0.35em"
-                    fontSize={r.level === "continent" ? 26 : 18}
-                    letterSpacing={r.level === "continent" ? 8 : 4}
-                    style={{ fill: "var(--color-faint)", fontFamily: "var(--font-heading)", fontWeight: 700 }}
+                    fontSize={areaSize(r.level)}
+                    letterSpacing={areaSpacing(r.level)}
+                    pointerEvents="none"
+                    style={{
+                      fill: r.id === selectedId || o?.fill ? "var(--color-fg)" : "var(--color-faint)",
+                      fontFamily: "var(--font-heading)",
+                      fontWeight: 700,
+                    }}
                   >
                     {r.name}
                   </text>
@@ -274,8 +337,9 @@ export function WorldMap({
                     <text
                       data-testid={`region-badge-${r.id}`}
                       textAnchor="middle"
-                      y={r.level === "continent" ? 30 : 24}
+                      y={r.level === "continent" ? 34 : 28}
                       fontSize={13}
+                      pointerEvents="none"
                       style={{ fill: "var(--color-muted)" }}
                     >
                       {o.badge}
@@ -324,19 +388,27 @@ export function WorldMap({
           const strong = r.id === playerRegionId;
           const badge = overlay?.[r.id]?.badge;
           const dim = dimOthers && r.id !== playerRegionId && !reachable.has(r.id);
+          // a name takes a press as its marker does (review #4)
           return (
-            <g key={`label-${r.id}`} opacity={dim ? 0.6 : 1} pointerEvents="none">
+            <g
+              key={`label-${r.id}`}
+              data-testid={`region-label-${r.id}`}
+              opacity={dim ? 0.6 : 1}
+              pointerEvents={onSelect ? undefined : "none"}
+              style={{ cursor: onSelect ? "pointer" : undefined }}
+              onClick={onSelect ? () => onSelect(r.id) : undefined}
+            >
               <rect
                 x={b.x}
                 y={b.y}
                 width={b.w}
-                height={b.h}
+                height={PLATE_H}
                 rx={4}
                 style={{ fill: strong ? "var(--color-accent)" : "var(--color-map-plate)" }}
               />
               <text
                 x={b.x + b.w / 2}
-                y={b.y + b.h / 2}
+                y={b.y + PLATE_H / 2}
                 dy="0.35em"
                 textAnchor="middle"
                 fontSize={LABEL_SIZE}
@@ -351,7 +423,7 @@ export function WorldMap({
                 <text
                   data-testid={`region-badge-${r.id}`}
                   x={b.x + b.w / 2}
-                  y={b.y + b.h + 12}
+                  y={b.y + PLATE_H + 12}
                   textAnchor="middle"
                   fontSize={13}
                   style={{ fill: "var(--color-muted)" }}

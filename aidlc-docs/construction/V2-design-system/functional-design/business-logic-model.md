@@ -91,8 +91,8 @@ api/     http()·HttpError(+code)
 | 역할 | 글꼴 | 굵기 | 쓰는 곳 |
 |---|---|---|---|
 | 장식 `font-display` | IM Fell English SC | 400 | 로고 "Locus"와 라틴 문자 장식 줄. 한글 글자가 없어 한글에는 쓰지 않는다 |
-| 제목 `font-heading` | 나눔명조 | 700, 800 | 화면·패널·대화상자 제목, 지역 이름, 월드 이름 |
-| 본문 `font-body` | Noto Sans KR | 400, 500, 700 | 본문, 버튼, 배지, 입력, 탭, 알림 |
+| 제목 `font-heading` | 나눔명조 | 700 〔Step 1.3 정정: 800 뺌, NFR light § 2.2〕 | 화면·패널·대화상자 제목, 지역 이름, 월드 이름 |
+| 본문 `font-body` | Noto Sans KR | 400, 700 〔Step 1.3 정정: 500 뺌, NFR light § 2.2〕 | 본문, 버튼, 배지, 입력, 탭, 알림 |
 | 이야기 `font-story` | 나눔명조 | 700 | 선언의 결과(내레이션) 본문 |
 
 - 셋 다 SIL OFL이다. 자체 호스팅한다(`@fontsource/*` 패키지, 외부 CDN 없음, NFR-8).

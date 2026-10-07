@@ -98,8 +98,8 @@
 | 토큰 | 글꼴(패키지) | 굵기 | 라이선스 |
 |---|---|---|---|
 | `--font-display` | IM Fell English SC (`@fontsource/im-fell-english-sc`) | 400 | OFL |
-| `--font-heading` | 나눔명조 (`@fontsource/nanum-myeongjo`) | 700, 800 | OFL |
-| `--font-body` | Noto Sans KR (`@fontsource/noto-sans-kr`) | 400, 500, 700 | OFL |
+| `--font-heading` | 나눔명조 (`@fontsource/nanum-myeongjo`) | 700 〔Step 1.3 정정: 800 뺌, NFR light § 2.2〕 | OFL |
+| `--font-body` | Noto Sans KR (`@fontsource/noto-sans-kr`) | 400, 700 〔Step 1.3 정정: 500 뺌, NFR light § 2.2〕 | OFL |
 | `--font-story` | 나눔명조 | 700 | OFL |
 
 글 크기 단계(rem, 본문 16px 기준):

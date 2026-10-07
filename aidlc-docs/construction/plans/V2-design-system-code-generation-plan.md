@@ -58,9 +58,9 @@
 
 ### Step 1 — 기준선과 정리
 - [x] 1.1 진행 기록 커밋: `feat/follow-up`에 남은 문서(audit, state, V1 code-summary, V1 계획 체크, V2 FD·NFR·리뷰, 이 계획)를 커밋한다(`docs(aidlc): V1 complete; V2 functional design and NFR light approved; V2 code plan`).
-- [ ] 1.2 기준선을 잰다: `pytest -q`, `npx vitest run`, `ruff check locus api tests`, `black --check locus api tests`, `npx tsc --noEmit`, `mypy locus api`(11), `npm audit --omit=dev`(0), `npm audit`(dev 포함, 수 기록), JS gzip(96.6 kB). code-summary § 1 표에 적는다.
-- [ ] 1.3 〔Step 1.3 정정〕 FD 글꼴 굵기 두 곳(위 NFR R-01).
-- [ ] 1.4 오류 본문 전체를 비교하는 pytest가 없는지 다시 확인한다(`grep -rn '== {"detail"' tests`, `.json()["detail"] ==`). 있으면 Step 2에서 함께 고친다.
+- [x] 1.2 기준선을 잰다: `pytest -q`, `npx vitest run`, `ruff check locus api tests`, `black --check locus api tests`, `npx tsc --noEmit`, `mypy locus api`(11), `npm audit --omit=dev`(0), `npm audit`(dev 포함, 수 기록), JS gzip(96.6 kB). code-summary § 1 표에 적는다.
+- [x] 1.3 〔Step 1.3 정정〕 FD 글꼴 굵기 두 곳(위 NFR R-01).
+- [x] 1.4 오류 본문 전체를 비교하는 pytest가 없는지 다시 확인한다(`grep -rn '== {"detail"' tests`, `.json()["detail"] ==`). 있으면 Step 2에서 함께 고친다.
 
 ### Step 2 — 서버 오류 `code` (FR-D9, BR-V2-15, TP-V2-8)
 - [ ] 2.1 `api/errors.py`:

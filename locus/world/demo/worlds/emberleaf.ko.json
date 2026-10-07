@@ -1,0 +1,869 @@
+{
+  "format": "locus.translations",
+  "version": 1,
+  "lang": "ko",
+  "world_id": "emberleaf",
+  "entries": [
+    {
+      "kind": "world",
+      "id": "emberleaf",
+      "field": "name",
+      "source": "Emberleaf Isle",
+      "text": "엠버리프 섬"
+    },
+    {
+      "kind": "world",
+      "id": "emberleaf",
+      "field": "description",
+      "source": "An island of tree-top mages, meadow archers, cliff warriors and harbor rogues, split by the Stonebrow cliffs and joined by the Glimmerrun river.",
+      "text": "나무 꼭대기의 마법사, 초원의 궁수, 절벽의 전사, 항구의 도적이 사는 섬이다. 스톤브로 절벽이 섬을 가르고 글리머런 강이 잇는다."
+    },
+    {
+      "kind": "region",
+      "id": "region-ambermeadow",
+      "field": "name",
+      "source": "Ambermeadow",
+      "text": "앰버메도"
+    },
+    {
+      "kind": "region",
+      "id": "region-ambermeadow",
+      "field": "description",
+      "source": "An archers' town among mushroom fields on the Glimmerrun.",
+      "text": "글리머런 강가의 버섯밭 사이에 자리한 궁수들의 마을이다."
+    },
+    {
+      "kind": "region",
+      "id": "region-ashen-dig",
+      "field": "name",
+      "source": "Ashen Dig",
+      "text": "애션 발굴지"
+    },
+    {
+      "kind": "region",
+      "id": "region-ashen-dig",
+      "field": "description",
+      "source": "A dig into ruins older than the island's founders.",
+      "text": "섬의 창건자들보다 오래된 유적을 파 들어가는 발굴지다."
+    },
+    {
+      "kind": "region",
+      "id": "region-emberleaf",
+      "field": "name",
+      "source": "Emberleaf Isle",
+      "text": "엠버리프 섬"
+    },
+    {
+      "kind": "region",
+      "id": "region-emberleaf",
+      "field": "description",
+      "source": "An island split by the Stonebrow cliffs and joined by the Glimmerrun river.",
+      "text": "스톤브로 절벽이 가르고 글리머런 강이 잇는 섬이다."
+    },
+    {
+      "kind": "region",
+      "id": "region-greenreach",
+      "field": "name",
+      "source": "Greenreach",
+      "text": "그린리치"
+    },
+    {
+      "kind": "region",
+      "id": "region-greenreach",
+      "field": "description",
+      "source": "The western woods and meadows the Glimmerrun runs through.",
+      "text": "글리머런 강이 흐르는 서쪽의 숲과 초원이다."
+    },
+    {
+      "kind": "region",
+      "id": "region-gutterlight",
+      "field": "name",
+      "source": "Gutterlight",
+      "text": "거터라이트"
+    },
+    {
+      "kind": "region",
+      "id": "region-gutterlight",
+      "field": "description",
+      "source": "A city of canals and alleys, run at night by the Lantern Guild.",
+      "text": "운하와 골목의 도시로, 밤에는 랜턴 길드가 다스린다."
+    },
+    {
+      "kind": "region",
+      "id": "region-hollowdeep",
+      "field": "name",
+      "source": "Hollowdeep",
+      "text": "할로우딥"
+    },
+    {
+      "kind": "region",
+      "id": "region-hollowdeep",
+      "field": "description",
+      "source": "A quiet town in the deep woods, built over caverns that go down a long way.",
+      "text": "깊은 숲속의 조용한 마을로, 아래로 한참 이어지는 동굴 위에 지어졌다."
+    },
+    {
+      "kind": "region",
+      "id": "region-ironcrag",
+      "field": "name",
+      "source": "Ironcrag",
+      "text": "아이언크래그"
+    },
+    {
+      "kind": "region",
+      "id": "region-ironcrag",
+      "field": "description",
+      "source": "A warriors' town of stone halls on the plateau.",
+      "text": "고원 위에 돌로 지은 전당이 늘어선 전사들의 마을이다."
+    },
+    {
+      "kind": "region",
+      "id": "region-saltmarch",
+      "field": "name",
+      "source": "Saltmarch",
+      "text": "솔트마치"
+    },
+    {
+      "kind": "region",
+      "id": "region-saltmarch",
+      "field": "description",
+      "source": "The southern coast and lowlands, where the island trades.",
+      "text": "섬의 교역이 이루어지는 남쪽 해안과 저지대다."
+    },
+    {
+      "kind": "region",
+      "id": "region-saltwake",
+      "field": "name",
+      "source": "Saltwake Harbor",
+      "text": "솔트웨이크 항구"
+    },
+    {
+      "kind": "region",
+      "id": "region-saltwake",
+      "field": "description",
+      "source": "The harbor where every ship and every newcomer lands.",
+      "text": "모든 배와 새로 온 사람이 내리는 항구다."
+    },
+    {
+      "kind": "region",
+      "id": "region-stonebrow",
+      "field": "name",
+      "source": "Stonebrow",
+      "text": "스톤브로"
+    },
+    {
+      "kind": "region",
+      "id": "region-stonebrow",
+      "field": "description",
+      "source": "The eastern rock plateau above the cliffs.",
+      "text": "절벽 위로 펼쳐진 동쪽의 바위 고원이다."
+    },
+    {
+      "kind": "region",
+      "id": "region-sunstrand",
+      "field": "name",
+      "source": "Sunstrand",
+      "text": "선스트랜드"
+    },
+    {
+      "kind": "region",
+      "id": "region-sunstrand",
+      "field": "description",
+      "source": "A long beach of tide pools east of the harbor.",
+      "text": "항구 동쪽으로 조수 웅덩이가 이어지는 긴 해변이다."
+    },
+    {
+      "kind": "region",
+      "id": "region-sylvarch",
+      "field": "name",
+      "source": "Sylvarch",
+      "text": "실바크"
+    },
+    {
+      "kind": "region",
+      "id": "region-sylvarch",
+      "field": "description",
+      "source": "A mages' town in the crowns of giant trees, around the Glimmerrun's spring.",
+      "text": "글리머런 강의 샘을 둘러싼 거대한 나무 꼭대기에 자리한 마법사들의 마을이다."
+    },
+    {
+      "kind": "npc",
+      "id": "npc-brisa",
+      "field": "name",
+      "source": "Captain Brisa",
+      "text": "브리사 대장"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-brisa",
+      "field": "role",
+      "source": "archer captain",
+      "text": "궁수대장"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-brisa",
+      "field": "description",
+      "source": "Leads the archers who watch the fallen cliff road.",
+      "text": "무너진 절벽 길을 지키는 궁수들을 이끈다."
+    },
+    {
+      "kind": "npc",
+      "id": "npc-coral",
+      "field": "name",
+      "source": "Coral",
+      "text": "코럴"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-coral",
+      "field": "role",
+      "source": "beach guide",
+      "text": "해변 안내인"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-coral",
+      "field": "description",
+      "source": "Guides visitors along the shore and collects glowing shells.",
+      "text": "해안을 따라 손님을 안내하고 빛나는 조개껍데기를 모은다."
+    },
+    {
+      "kind": "npc",
+      "id": "npc-durgan",
+      "field": "name",
+      "source": "Chief Durgan",
+      "text": "더건 족장"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-durgan",
+      "field": "role",
+      "source": "warrior chief",
+      "text": "전사 족장"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-durgan",
+      "field": "description",
+      "source": "Ironcrag's chief, who swore the forge oath forty winters ago.",
+      "text": "아이언크래그의 족장으로, 마흔 해 겨울 전에 대장간 맹세를 했다."
+    },
+    {
+      "kind": "npc",
+      "id": "npc-elowen",
+      "field": "name",
+      "source": "Archmage Elowen",
+      "text": "대마법사 엘로웬"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-elowen",
+      "field": "role",
+      "source": "mage elder",
+      "text": "마법사 원로"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-elowen",
+      "field": "description",
+      "source": "Keeper of the founders' wards; speaks slowly and answers questions with questions.",
+      "text": "창건자들의 결계를 지키는 이로, 느리게 말하고 질문에 질문으로 답한다."
+    },
+    {
+      "kind": "npc",
+      "id": "npc-fenn",
+      "field": "name",
+      "source": "Old Fenn",
+      "text": "펜 영감"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-fenn",
+      "field": "role",
+      "source": "hermit",
+      "text": "은둔자"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-fenn",
+      "field": "description",
+      "source": "A hermit who listens to the caverns and is rarely believed.",
+      "text": "동굴의 소리에 귀 기울이는 은둔자로, 그 말을 믿는 이는 드물다."
+    },
+    {
+      "kind": "npc",
+      "id": "npc-ketta",
+      "field": "name",
+      "source": "Ketta",
+      "text": "케타"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-ketta",
+      "field": "role",
+      "source": "blacksmith",
+      "text": "대장장이"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-ketta",
+      "field": "description",
+      "source": "Tends the Great Forge and hears every rumor that comes up the Dustroad.",
+      "text": "그레이트 포지를 돌보며, 더스트로드를 타고 올라오는 소문을 모두 듣는다."
+    },
+    {
+      "kind": "npc",
+      "id": "npc-marlo",
+      "field": "name",
+      "source": "Marlo",
+      "text": "말로"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-marlo",
+      "field": "role",
+      "source": "fence",
+      "text": "장물아비"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-marlo",
+      "field": "description",
+      "source": "Buys and sells whatever the canals bring, no questions asked.",
+      "text": "운하로 흘러드는 것이면 무엇이든 캐묻지 않고 사고판다."
+    },
+    {
+      "kind": "npc",
+      "id": "npc-nessa",
+      "field": "name",
+      "source": "Nessa",
+      "text": "네사"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-nessa",
+      "field": "role",
+      "source": "innkeeper",
+      "text": "여관 주인"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-nessa",
+      "field": "description",
+      "source": "Keeps the Tide Lantern inn, where travellers trade news.",
+      "text": "여행자들이 소식을 주고받는 타이드 랜턴 여관을 꾸린다."
+    },
+    {
+      "kind": "npc",
+      "id": "npc-olin",
+      "field": "name",
+      "source": "Harbormaster Olin",
+      "text": "항구장 올린"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-olin",
+      "field": "role",
+      "source": "harbormaster",
+      "text": "항구장"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-olin",
+      "field": "description",
+      "source": "Writes down every newcomer's name and every ship's cargo.",
+      "text": "새로 온 사람의 이름과 배의 짐을 하나도 빠짐없이 적는다."
+    },
+    {
+      "kind": "npc",
+      "id": "npc-pell",
+      "field": "name",
+      "source": "Pell",
+      "text": "펠"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-pell",
+      "field": "role",
+      "source": "ferry captain",
+      "text": "나룻배 선장"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-pell",
+      "field": "description",
+      "source": "Runs the ferry to the mainland and carries letters for a coin.",
+      "text": "본토로 가는 나룻배를 몰고, 동전 한 닢에 편지를 날라 준다."
+    },
+    {
+      "kind": "npc",
+      "id": "npc-pip",
+      "field": "name",
+      "source": "Pip",
+      "text": "핍"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-pip",
+      "field": "role",
+      "source": "apprentice mage",
+      "text": "견습 마법사"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-pip",
+      "field": "description",
+      "source": "An apprentice who has not passed the Trial and talks too much about the library.",
+      "text": "아직 시련을 통과하지 못한 견습생으로, 도서관 이야기를 너무 많이 한다."
+    },
+    {
+      "kind": "npc",
+      "id": "npc-rusk",
+      "field": "name",
+      "source": "Foreman Rusk",
+      "text": "러스크 반장"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-rusk",
+      "field": "role",
+      "source": "dig foreman",
+      "text": "발굴 반장"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-rusk",
+      "field": "description",
+      "source": "Runs the dig and keeps the diggers' fears out of his reports.",
+      "text": "발굴을 지휘하며, 인부들의 두려움은 보고서에 넣지 않는다."
+    },
+    {
+      "kind": "npc",
+      "id": "npc-tobbin",
+      "field": "name",
+      "source": "Tobbin",
+      "text": "토빈"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-tobbin",
+      "field": "role",
+      "source": "mushroom farmer",
+      "text": "버섯 농부"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-tobbin",
+      "field": "description",
+      "source": "Farms the east fields and worries about the harvest.",
+      "text": "동쪽 밭을 일구며 수확을 걱정한다."
+    },
+    {
+      "kind": "npc",
+      "id": "npc-vex",
+      "field": "name",
+      "source": "Vex",
+      "text": "벡스"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-vex",
+      "field": "role",
+      "source": "guild master",
+      "text": "길드장"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-vex",
+      "field": "description",
+      "source": "Master of the Lantern Guild, polite and never fully honest.",
+      "text": "랜턴 길드의 우두머리로, 늘 공손하지만 결코 다 털어놓지 않는다."
+    },
+    {
+      "kind": "npc",
+      "id": "npc-ysolde",
+      "field": "name",
+      "source": "Warden Ysolde",
+      "text": "수문장 이졸데"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-ysolde",
+      "field": "role",
+      "source": "gate warden",
+      "text": "수문장"
+    },
+    {
+      "kind": "npc",
+      "id": "npc-ysolde",
+      "field": "description",
+      "source": "Guards the deep gate and trusts no one who wants to go down.",
+      "text": "깊은 문을 지키며, 아래로 내려가려는 자는 누구도 믿지 않는다."
+    },
+    {
+      "kind": "event_seed",
+      "id": "seed-lantern-feud",
+      "field": "title",
+      "source": "The Lantern Guild splits",
+      "text": "랜턴 길드의 분열"
+    },
+    {
+      "kind": "event_seed",
+      "id": "seed-lantern-feud",
+      "field": "description",
+      "source": "Vex's lieutenants turn on each other over the canal tolls; half the city's lanterns go dark.",
+      "text": "벡스의 부하들이 운하 통행세를 두고 서로 등을 돌린다. 도시의 랜턴 절반이 꺼진다."
+    },
+    {
+      "kind": "event_seed",
+      "id": "seed-mushroom-blight",
+      "field": "title",
+      "source": "Blight in the mushroom fields",
+      "text": "버섯밭의 마름병"
+    },
+    {
+      "kind": "event_seed",
+      "id": "seed-mushroom-blight",
+      "field": "description",
+      "source": "Grey spots spread through Ambermeadow's mushroom fields; whole rows are burned and the harvest is in doubt.",
+      "text": "앰버메도의 버섯밭에 잿빛 반점이 번진다. 줄째로 불태워지고 수확이 불투명해진다."
+    },
+    {
+      "kind": "event_seed",
+      "id": "seed-sealed-relic",
+      "field": "title",
+      "source": "A sealed relic unearthed",
+      "text": "봉인된 유물의 발굴"
+    },
+    {
+      "kind": "event_seed",
+      "id": "seed-sealed-relic",
+      "field": "description",
+      "source": "The diggers break into a chamber sealed with the founders' rings and carry out a stone that hums.",
+      "text": "인부들이 창건자들의 고리로 봉인된 방을 뚫고 들어가, 웅웅 울리는 돌을 들고 나온다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-arrivals",
+      "field": "statement",
+      "source": "Newcomers step off the ferry at Saltwake and give their names to Harbormaster Olin.",
+      "text": "새로 온 사람들은 솔트웨이크에서 나룻배를 내려 항구장 올린에게 이름을 댄다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-arrivals",
+      "field": "title",
+      "source": "Arrivals",
+      "text": "새로 온 사람들"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-breathing-caves",
+      "field": "statement",
+      "source": "Old Fenn says the caverns breathe when the seal weakens, and that they breathed last week.",
+      "text": "펜 영감은 봉인이 약해지면 동굴이 숨을 쉰다고 말한다. 지난주에도 숨을 쉬었다고 한다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-breathing-caves",
+      "field": "title",
+      "source": "Breathing caves",
+      "text": "숨 쉬는 동굴"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-cliff-watch",
+      "field": "statement",
+      "source": "Captain Brisa's archers still watch the old cliff road, closed since the rockslide.",
+      "text": "브리사 대장의 궁수들은 산사태로 막힌 옛 절벽 길을 아직도 지킨다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-cliff-watch",
+      "field": "title",
+      "source": "The cliff watch",
+      "text": "절벽 감시"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-dark-districts",
+      "field": "statement",
+      "source": "Vex's lieutenants quarrel over the canal tolls; two lantern districts went dark this week.",
+      "text": "벡스의 부하들이 운하 통행세를 두고 다툰다. 이번 주에 랜턴 구역 두 곳이 어두워졌다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-dark-districts",
+      "field": "title",
+      "source": "Dark districts",
+      "text": "불 꺼진 구역"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-deep-gate",
+      "field": "statement",
+      "source": "Warden Ysolde guards the gate to the caverns below Hollowdeep; no one goes down without her leave.",
+      "text": "수문장 이졸데가 할로우딥 아래 동굴로 가는 문을 지킨다. 수문장의 허락 없이는 아무도 내려가지 못한다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-deep-gate",
+      "field": "title",
+      "source": "The deep gate",
+      "text": "깊은 문"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-elders-library",
+      "field": "statement",
+      "source": "Archmage Elowen keeps the founders' sealing wards in Sylvarch's library; only apprentices who pass the Trial may read them.",
+      "text": "대마법사 엘로웬은 창건자들의 봉인 결계를 실바크의 도서관에 둔다. 시련을 통과한 견습생만 그것을 읽을 수 있다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-elders-library",
+      "field": "title",
+      "source": "The elder's library",
+      "text": "원로의 도서관"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-fallen-road",
+      "field": "statement",
+      "source": "The cliff road down to Ambermeadow fell three winters ago; Ironcrag has only the long Dustroad to the lowlands now.",
+      "text": "앰버메도로 내려가는 절벽 길은 세 해 겨울 전에 무너졌다. 이제 아이언크래그에서 저지대로 가는 길은 먼 더스트로드뿐이다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-fallen-road",
+      "field": "title",
+      "source": "The fallen road",
+      "text": "무너진 길"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-ferry-days",
+      "field": "statement",
+      "source": "Pell's ferry crosses to the mainland every third day, weather allowing.",
+      "text": "펠의 나룻배는 날씨가 허락하면 사흘에 한 번 본토로 건너간다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-ferry-days",
+      "field": "title",
+      "source": "Ferry days",
+      "text": "나룻배 뜨는 날"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-forge-oath",
+      "field": "statement",
+      "source": "Ironcrag's warriors swear an oath at the Great Forge before they may carry a blade outside the town.",
+      "text": "아이언크래그의 전사들은 칼을 차고 마을 밖으로 나가기 전에 그레이트 포지에서 맹세를 한다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-forge-oath",
+      "field": "title",
+      "source": "The forge oath",
+      "text": "대장간 맹세"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-glimmerrun",
+      "field": "statement",
+      "source": "The Glimmerrun rises at Sylvarch's spring and runs past Ambermeadow to the sea at Saltwake; barges carry goods and gossip down it in a day.",
+      "text": "글리머런 강은 실바크의 샘에서 솟아 앰버메도를 지나 솔트웨이크에서 바다로 흘러든다. 바지선이 하루 만에 물건과 소문을 실어 나른다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-glimmerrun",
+      "field": "title",
+      "source": "The Glimmerrun",
+      "text": "글리머런 강"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-glowing-spring",
+      "field": "statement",
+      "source": "The spring under the great tree has glowed faintly every night this month, and the mages will not say why.",
+      "text": "거대한 나무 아래의 샘이 이번 달 내내 밤마다 희미하게 빛났다. 마법사들은 까닭을 말하지 않는다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-glowing-spring",
+      "field": "title",
+      "source": "The spring glows",
+      "text": "빛나는 샘"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-knocking-rock",
+      "field": "statement",
+      "source": "Foreman Rusk stopped the night shift after two diggers heard knocking from inside the rock.",
+      "text": "인부 둘이 바위 안쪽에서 두드리는 소리를 들은 뒤, 러스크 반장은 밤 작업을 멈췄다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-knocking-rock",
+      "field": "title",
+      "source": "Knocking in the rock",
+      "text": "바위 속 두드리는 소리"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-lantern-guild",
+      "field": "statement",
+      "source": "The Lantern Guild runs Gutterlight's night markets and decides which lanterns stay lit.",
+      "text": "랜턴 길드는 거터라이트의 밤 시장을 운영하고, 어느 랜턴을 켜 둘지 정한다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-lantern-guild",
+      "field": "title",
+      "source": "The Lantern Guild",
+      "text": "랜턴 길드"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-mushroom-harvest",
+      "field": "statement",
+      "source": "Ambermeadow's mushroom fields feed half the island; the harvest comes in before the first frost.",
+      "text": "앰버메도의 버섯밭이 섬의 절반을 먹여 살린다. 수확은 첫서리가 내리기 전에 끝난다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-mushroom-harvest",
+      "field": "title",
+      "source": "Mushroom harvest",
+      "text": "버섯 수확"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-older-walls",
+      "field": "statement",
+      "source": "The diggers have reached walls older than the founders, carved with rings like those on the sealing wards.",
+      "text": "인부들은 창건자들보다 오래된 벽에 이르렀다. 벽에는 봉인 결계에 있는 것과 같은 고리 문양이 새겨져 있다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-older-walls",
+      "field": "title",
+      "source": "Older walls",
+      "text": "더 오래된 벽"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-one-harbor",
+      "field": "statement",
+      "source": "Every ship that reaches Emberleaf docks at Saltwake Harbor; there is no other safe landing.",
+      "text": "엠버리프에 닿는 배는 모두 솔트웨이크 항구에 댄다. 안전하게 뭍에 오를 곳은 그곳뿐이다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-one-harbor",
+      "field": "title",
+      "source": "One harbor",
+      "text": "단 하나의 항구"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-salt-tax",
+      "field": "statement",
+      "source": "The harbor raised the salt tax this season, and the fishwives say it will rise again.",
+      "text": "항구가 이번 철에 소금세를 올렸다. 생선 장수들은 또 오를 거라고 말한다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-salt-tax",
+      "field": "title",
+      "source": "The salt tax",
+      "text": "소금세"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-sealed-sorcerer",
+      "field": "statement",
+      "source": "Long ago the five founders sealed the Ashen Sorcerer beneath Emberleaf; the seal holds while the towns keep their oaths.",
+      "text": "아주 먼 옛날 다섯 창건자가 애션 마법사를 엠버리프 아래에 봉인했다. 마을들이 맹세를 지키는 한 봉인은 버틴다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-sealed-sorcerer",
+      "field": "title",
+      "source": "The sealed sorcerer",
+      "text": "봉인된 마법사"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-spotted-caps",
+      "field": "statement",
+      "source": "Tobbin found grey spots on the caps in his east field and burned a whole row.",
+      "text": "토빈은 동쪽 밭 버섯갓에서 잿빛 반점을 찾아내고 한 줄을 통째로 태웠다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-spotted-caps",
+      "field": "title",
+      "source": "Spotted caps",
+      "text": "반점 난 버섯갓"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-stonebrow-pride",
+      "field": "statement",
+      "source": "Stonebrow folk trust their own and half believe any news from below the cliffs.",
+      "text": "스톤브로 사람들은 자기네끼리만 믿고, 절벽 아래에서 온 소식은 반쯤만 믿는다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-stonebrow-pride",
+      "field": "title",
+      "source": "Stonebrow pride",
+      "text": "스톤브로의 자부심"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-tide-pools",
+      "field": "statement",
+      "source": "Sunstrand's tide pools are full of glowing shells, sold as charms in Saltwake.",
+      "text": "선스트랜드의 조수 웅덩이에는 빛나는 조개껍데기가 가득하고, 그 조개껍데기는 솔트웨이크에서 부적으로 팔린다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-tide-pools",
+      "field": "title",
+      "source": "Tide pools",
+      "text": "조수 웅덩이"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-trade-and-smuggling",
+      "field": "statement",
+      "source": "Saltmarch lives on trade; what the harbor does not tax, the Lantern Guild moves through Gutterlight's canals.",
+      "text": "솔트마치는 교역으로 먹고산다. 항구가 세금을 매기지 않는 물건은 랜턴 길드가 거터라이트의 운하로 옮긴다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-trade-and-smuggling",
+      "field": "title",
+      "source": "Trade and smuggling",
+      "text": "교역과 밀수"
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-wreck-guide",
+      "field": "statement",
+      "source": "Coral guides visitors along the beach and knows every wreck on the shore.",
+      "text": "코럴은 해변을 따라 손님을 안내하며, 해안의 난파선을 하나도 빠짐없이 안다."
+    },
+    {
+      "kind": "knowledge",
+      "id": "k-wreck-guide",
+      "field": "title",
+      "source": "The wreck guide",
+      "text": "난파선 안내인"
+    }
+  ]
+}

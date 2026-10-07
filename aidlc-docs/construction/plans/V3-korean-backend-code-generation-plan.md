@@ -159,13 +159,13 @@
   - 커밋: `feat(world): demo card text and translation files in the manifest; the check reports name ≠ world.id (V3, FR-C11)`
 
 ### Step 6 — Emberleaf 한국어판 (domain-entities § 3·4, BR-V3-07, A-1)
-- [ ] 6.1 `locus/world/demo/worlds/emberleaf.ko.json`을 쓴다: 123개, World File 순서, 영어 원문은 파일 그대로.
+- [x] 6.1 `locus/world/demo/worlds/emberleaf.ko.json`을 쓴다: 123개, World File 순서, 영어 원문은 파일 그대로.
   - 고유명사는 음역하고 지형·직함 낱말만 옮긴다(Q1=A).
   - 설명·지식·씨앗은 해라체다. 역할은 마침표 없는 값 이름이다.
   - 번역문은 이 세션이 쓴다(A-1).
   - 원문과 키는 스크래치의 작은 스크립트가 World File에서 뽑아 뼈대를 만든다. 번역문은 손으로 채운다. 스크립트는 저장소에 두지 않는다.
-- [ ] 6.2 `manifest.json` Emberleaf 항목에 둘을 더한다: `i18n.ko`(title·description·credits)와 `translations.ko`.
-- [ ] 6.3 테스트:
+- [x] 6.2 `manifest.json` Emberleaf 항목에 둘을 더한다: `i18n.ko`(title·description·credits)와 `translations.ko`.
+- [x] 6.3 테스트:
   - `check_packaged() == []`
   - 역할 칸에 마침표 없음
   - 영어 원문이 World File과 같음(검사가 이미 보지만 출고 패키지로 한 번 더)

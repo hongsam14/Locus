@@ -178,3 +178,52 @@ def test_entries_move_with_a_remapped_world(folder) -> None:  # BR-V3-18·19·20
     assert world and {e.id for e in world} == {"w2"}  # the world entry is the target id
     region = PACKAGED["regions"][0]["id"]
     assert ("region", remapped_id("w2", region), "name") in keys
+
+
+# --- the packaged Korean version (Step 6, BR-V3-07, Q1=A) ------------------------------ #
+FORBIDDEN_KO = (
+    "메이플",
+    "빅토리아",
+    "헤네시스",
+    "엘리니아",
+    "페리온",
+    "커닝",
+    "리스 항구",
+    "슬리피우드",
+    "노틸러스",
+    "검은 마법사",
+)
+SENTENCE_FIELDS = {
+    ("world", "description"),
+    ("region", "description"),
+    ("npc", "description"),
+    ("event_seed", "description"),
+    ("knowledge", "statement"),
+}
+
+
+def _packaged_entries():
+    demos = DemoWorlds()
+    name = demos.list()[0].name
+    assert "ko" in demos.translation_langs(name)
+    return demos, name, demos.translations(name, "ko", target_world_id=name, remapped=False)
+
+
+def test_the_packaged_demo_is_fully_translated_with_no_problem() -> None:
+    demos, name, entries = _packaged_entries()
+    assert demos.problems == []  # the CI check (check_packaged) is clean
+    assert {e.key for e in entries} == set(demos.texts(name, target_world_id=name, remapped=False))
+    assert demos.card(name, "ko") is not None
+
+
+def test_the_packaged_korean_follows_the_style() -> None:
+    _demos, _name, entries = _packaged_entries()
+    for e in entries:
+        where = f"{e.kind} {e.id}.{e.field}"
+        assert not any(w in e.text for w in FORBIDDEN_KO), where  # BR-U8-10 in Korean too
+        if (e.kind, e.field) in SENTENCE_FIELDS:
+            assert e.text.endswith("다."), where  # story register (V2 Q2=A)
+        else:
+            assert not e.text.endswith("."), where  # names, roles, titles: value names
+        if e.field == "name":
+            assert not any("a" <= c.lower() <= "z" for c in e.text), where  # transliterated

@@ -18,11 +18,19 @@ from urllib.parse import quote
 from fastapi import APIRouter, Body, Depends, File, Form, Response, UploadFile
 
 from api import uploads
-from api.deps import get_localization, get_play_optional, get_shared, get_world
+from api.deps import display_lang, get_localization, get_play_optional, get_shared, get_world
 from api.deps import need_service as _need
 from api.errors import ApiError, http_error
 from api.routers import world_editor
-from api.schemas import DemoInfoOut, UnignoreIn, WorldInfo, purge_translations
+from api.schemas import (
+    DemoInfoOut,
+    UnignoreIn,
+    WorldInfo,
+    WorldNamesOut,
+    enrichment_for,
+    purge_translations,
+    world_names,
+)
 from locus.localization.wiring import LocalizationContainer
 from locus.play.errors import TurnInProgressError
 from locus.play.wiring import PlayContainer
@@ -245,19 +253,49 @@ def graph_summary(world_id: str, shared: SharedContainer = Depends(get_shared)) 
 # --- world list -------------------------------------------------------------- #
 @router.get("/worlds", response_model=list[WorldInfo])
 def list_worlds(
+    lang: str = Depends(display_lang),
     w: WorldContainer = Depends(get_world),
     play: PlayContainer | None = Depends(get_play_optional),
+    loc: LocalizationContainer | None = Depends(get_localization),
 ) -> list[WorldInfo]:
     """Every stored world with its meta (BR-U2-24); pre-U2 worlds show ``name=id``. The
-    rows come from ``WorldCatalog`` (U3, unchanged response); play adds open sessions."""
+    rows come from ``WorldCatalog`` (U3, unchanged response); play adds open sessions,
+    the translation cache the names in the display language (V3, BR-V3-23)."""
     catalog = _need(w.catalog, "world catalog")
+    rows = catalog.list_worlds()
+    names = enrichment_for(loc, rows, kind="world", fields=["name", "description"], lang=lang)
     out: list[WorldInfo] = []
-    for row in catalog.list_worlds():
+    for row in rows:
         open_sessions = None
         if play is not None:
             open_sessions = len(play.sessions.open_sessions(row.id))
-        out.append(WorldInfo(**row.model_dump(), open_sessions=open_sessions))
+        ko = names.get(row.id, {})
+        out.append(
+            WorldInfo(
+                **row.model_dump(),
+                open_sessions=open_sessions,
+                name_ko=ko.get("name"),
+                description_ko=ko.get("description"),
+            )
+        )
     return out
+
+
+@router.get("/worlds/{world_id}/names", response_model=WorldNamesOut)
+def get_world_names(
+    world_id: str,
+    lang: str = Depends(display_lang),
+    w: WorldContainer = Depends(get_world),
+    loc: LocalizationContainer | None = Depends(get_localization),
+) -> WorldNamesOut:
+    """The world's name map in the display language (V3, Q5=A, BLM § 8): region, NPC,
+    event-seed and world text by id, cache only. 404 for a world that is not there."""
+    cache = _need(w.cache, "world cache")  # 503 without one (code plan memo R-03)
+    try:
+        snapshot = cache.get(world_id)
+    except LookupError as exc:
+        raise http_error(exc) from exc
+    return world_names(loc, snapshot, lang=lang)
 
 
 @router.get("/worlds/{world_id}/export")
@@ -357,9 +395,12 @@ def import_world_file_upload(
 
 # --- demo worlds ------------------------------------------------------------- #
 @router.get("/demos", response_model=list[DemoInfoOut])
-def list_demos(w: WorldContainer = Depends(get_world)) -> list[DemoInfoOut]:
-    """The manifest's demos (U8, BR-U8-19): the home screen draws a card for each."""
-    return [DemoInfoOut.of(info) for info in _need(w.demo, "demo worlds").list()]
+def list_demos(
+    lang: str = Depends(display_lang), w: WorldContainer = Depends(get_world)
+) -> list[DemoInfoOut]:
+    """The manifest's demos (U8, BR-U8-19): the home screen draws a card for each, in the
+    display language when the manifest has its text (V3, BR-V3-23)."""
+    return [DemoInfoOut.of(info, lang) for info in _need(w.demo, "demo worlds").list()]
 
 
 @router.post("/worlds/{world_id}/demo/{name}", response_model=ImportReport)

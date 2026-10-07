@@ -30,7 +30,8 @@ from locus.play.models import (
     SessionRumor,
     WorldState,
 )
-from locus.shared.models import NPC, KnowledgeView, QueryResult
+from locus.shared.models import NPC, KnowledgeView, QueryResult, WorldSnapshot
+from locus.shared.models.i18n import SOURCE_LANG
 from locus.world.editor.models import WorldSummary
 
 # --- requests ---------------------------------------------------------------- #
@@ -57,9 +58,25 @@ class EventCreate(BaseModel):
 
 class WorldInfo(WorldSummary):
     """One row of the world list (US-6.4 backend, BR-U2-24): the catalog row plus the
-    open sessions (U3 review C13 — inherits instead of repeating the fields)."""
+    open sessions (U3 review C13 — inherits instead of repeating the fields). V3: the
+    name and description in the display language, from the translation cache."""
 
     open_sessions: int | None = None  # None when the play boundary is not assembled
+    name_ko: str | None = None
+    description_ko: str | None = None
+
+
+class WorldNamesOut(BaseModel):
+    """``GET /api/world/worlds/{w}/names`` (V3, Q5=A, BR-V3-21): the world's region, NPC,
+    event-seed and world text in the display language, ``{id: {field: text}}``. Only
+    translated fields are present; a screen falls back to the English it holds."""
+
+    world_id: str
+    lang: str
+    world: dict[str, str] = Field(default_factory=dict)
+    regions: dict[str, dict[str, str]] = Field(default_factory=dict)
+    npcs: dict[str, dict[str, str]] = Field(default_factory=dict)
+    event_seeds: dict[str, dict[str, str]] = Field(default_factory=dict)
 
 
 class UnignoreIn(BaseModel):
@@ -129,8 +146,7 @@ class RegionViewOut(RegionView):
 
 T = TypeVar("T", bound=BaseModel)
 
-# The language every stored, embedded and searched text is written in (C-1, FR-G2).
-SOURCE_LANG = "en"
+# SOURCE_LANG (the language every stored text is written in, C-1) now lives in shared.
 
 
 def localize(
@@ -279,6 +295,29 @@ def localize_region_view(
     data: dict[str, Any] = view.model_dump()
     data.update(facts=facts, hearsay=hearsay, rumors=rumors)
     return RegionViewOut(**data)
+
+
+def world_names(
+    loc: LocalizationContainer | None, snapshot: WorldSnapshot, *, lang: str
+) -> WorldNamesOut:
+    """The world's name map from the cache only; misses warm when an LLM is there
+    (V3 BLM § 8, BR-V3-22). Empty in the source language or without localization."""
+    w = snapshot.world_id
+
+    def of(items: Sequence[BaseModel], kind: str, fields: list[str]) -> Enrichment:
+        return enrichment_for(loc, items, kind=kind, fields=fields, world_id=w, lang=lang)
+
+    world = of(
+        [snapshot.meta] if snapshot.meta is not None else [], "world", ["name", "description"]
+    )
+    return WorldNamesOut(
+        world_id=w,
+        lang=lang,
+        world=world.get(w, {}),
+        regions=of(snapshot.topo.regions, "region", ["name", "description"]),
+        npcs=of(snapshot.npcs, "npc", ["name", "role", "description"]),
+        event_seeds=of(snapshot.event_seeds, "event_seed", ["title", "description"]),
+    )
 
 
 _log = logging.getLogger(__name__)
@@ -480,9 +519,14 @@ class DemoInfoOut(BaseModel):
     credits: str | None = None
     start_region_id: str
     has_sources: bool = False
+    # V3 (Q4=A, BR-V3-23): the card in the display language, from the manifest
+    title_ko: str | None = None
+    description_ko: str | None = None
+    credits_ko: str | None = None
 
     @classmethod
-    def of(cls, info: DemoInfo) -> DemoInfoOut:
+    def of(cls, info: DemoInfo, lang: str | None = None) -> DemoInfoOut:
+        card = info.i18n.get(lang) if lang else None
         return cls(
             name=info.name,
             title=info.title,
@@ -490,4 +534,7 @@ class DemoInfoOut(BaseModel):
             credits=info.credits,
             start_region_id=info.start_region_id,
             has_sources=info.has_sources,
+            title_ko=card.title if card else None,
+            description_ko=card.description if card else None,
+            credits_ko=card.credits if card else None,
         )

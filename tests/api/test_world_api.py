@@ -358,6 +358,10 @@ def test_demo_list_and_load() -> None:
         "credits": None,
         "start_region_id": "region-riverton",
         "has_sources": False,
+        # V3 intended change (additive, BR-V3-23): the card in the display language
+        "title_ko": None,
+        "description_ko": None,
+        "credits_ko": None,
     }
     r = client.post("/api/world/worlds/w/demo/aldermoor")
     assert r.status_code == 200 and demo.loaded == [("aldermoor", "w", True)]

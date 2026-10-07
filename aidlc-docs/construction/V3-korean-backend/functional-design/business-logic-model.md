@@ -165,7 +165,7 @@ _check_translations(info, file):  (항목은 남음, problem만 더함 — Q3=A)
 
 | 때 | 지우는 것 | 호출 |
 |---|---|---|
-| 월드 교체(`report.replaced`) — 빌드·업로드 빌드·World File 두 경로·데모 불러오기·데모 소스 빌드 | 그 월드의 모든 행 + 월드 이름 행 | `purge(world_id=w)` + `purge(kind="world", ids=[w])` (지금의 `kind="knowledge", world_id=w`를 넓힘) |
+| 월드 교체(`report.replaced`) — 빌드·업로드 빌드·World File 두 경로·데모 불러오기·데모 소스 빌드 | 〔코드 리뷰 01 #1 정정, 2026-10-08〕 새 월드에 없는 id의 행. 새 월드를 읽을 수 없으면 그 월드의 모든 행 + 월드 이름 행 | `prune_world(w, keep_ids)`. 못 읽으면 `purge(world_id=w)` + `purge(kind="world", ids=[w])` |
 | 에디터 지역 삭제 | 지운 지역·NPC·씨앗 | `purge(ids=report.deleted_ids, world_id=w)` |
 | 에디터 NPC 삭제 | 그 NPC | `purge(kind="npc", ids=[npc_id], world_id=w)` |
 | 에디터 지식 삭제, 보강 되돌리기 | 지식 | 지금과 같음 |

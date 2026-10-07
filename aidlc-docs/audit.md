@@ -4992,3 +4992,76 @@ Next: V3 Code Generation Part 1 (NFR SKIP per the unit table).
 
 ---
 
+## Code Generation — V3 — Approval
+**Timestamp**: 2026-10-07T15:35:14Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V3 code approved. Next: V3 code review (as in V2), then V4 홈·플레이 화면.
+**Context**: CONSTRUCTION / V3 — code approved → code review.
+
+---
+
+## Code Review — V3 한국어 표시 백엔드 — Review 01 written
+**Timestamp**: 2026-10-07T15:50:34Z
+**User Input**: (none since code approval)
+**AI Response**: Code review of V3 (`580beb4..c1fc4c9`), review only. Four angles in parallel:
+- localization/CLI
+- world/demo
+- api/web
+- Korean data + test quality (mutation probes in memory)
+
+This session re-read the top candidates. Record: `construction/V3-korean-backend/code/reviews/code-review-01.md`.
+- § 1 has 15 findings: 5 medium, 1 medium-low, 9 low. Verdicts are C, with #6's impact P.
+- § 2 has 10 cleanup items, including a wrong line in code-summary § 6.
+- § 3 has 3 rejected.
+- The medium findings:
+  - #1 a replace wipes a world's hand-made translations (design rule BR-V3-13)
+  - #2 "sealing wards" → 결계 mistranslated
+  - #3 Great Forge glossary split
+  - #4 the keyless no-warm test cannot fail
+  - #5 the world-row-by-id purge is untested
+
+No code changed. Reviewers' pytest runs refreshed gitignored .coverage/.hypothesis only.
+**Context**: CONSTRUCTION / V3 — code review done; awaiting the human's choice of fixes before V4.
+
+---
+
+## Code Review — V3 — Fix choice
+**Timestamp**: 2026-10-07T15:54:51Z
+**User Input**: AskUserQuestion answers:
+- "코드 수정" → "코드·테스트 전부 (Recommended)"
+- "번역문" → "제안 전부 반영 (Recommended)"
+
+**AI Response**: Fixing now:
+- #1: a replace prunes only rows whose id the new world lacks. BR-V3-13 is corrected, and the store gains `purge_world_except`.
+- Tests: #4, #5, #14.
+- Code: #8, #9, #10, #12, #13.
+- § 2 cleanup.
+- The code-summary § 6 correction.
+- Data: #2, #3, #7, #15, plus the card text.
+- Handed on: #6 to V4 as a design condition; #11 as a known limit, with engine timeouts decided at B&T/V9.
+**Context**: CONSTRUCTION / V3 — code review fixes in progress.
+
+---
+
+## Code Review — V3 — Fixes done
+**Timestamp**: 2026-10-07T16:06:08Z
+**User Input**: (none since the fix choice)
+**AI Response**: Fixed V3 review findings in three commits:
+- `eab0901`: world fixes
+- `132a4e8`: replace prune, CLI order, api cleanups, tests
+- `b4682cb`: Korean text
+
+Verification:
+- Each commit was gated alone, with the other changes stashed (`git stash --keep-index`).
+- 12 new tests were run against the pre-fix source and failed there.
+- pytest 1048, mypy 11, check_packaged [].
+
+Handed on:
+- #6 → V4 (home lists follow the display language)
+- #11 → known limit; engine timeouts at V9, live check at B&T
+
+FD BR-V3-13 / BLM § 7 corrected (〔코드 리뷰 01 #1 정정〕). code-summary § 6 wrong line corrected.
+**Context**: CONSTRUCTION / V3 — code review COMPLETE. Next: V4 홈·플레이 화면 (Functional Design).
+
+---
+

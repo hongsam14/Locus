@@ -1,6 +1,9 @@
 # Locus CI (U8 Infra §5): offline backend and frontend checks, the npm audit gate, and
 # the two images with the packaged demo checked inside the installed app. No secrets and
 # no external services: every test mocks its ports.
+# Runner pinned to ubuntu-26.04: the ubuntu-latest switch to 26.04 starts 2026-10-19 and
+# completes 2026-11-19 (actions/runner-images #14748), so CI was checked on 26.04 first;
+# change the four runs-on lines to move it. Actions are on v7 (node24).
 name: CI
 
 on:
@@ -17,10 +20,10 @@ permissions:
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: pip
@@ -38,13 +41,13 @@ jobs:
           pytest -q -p no:cacheprovider --hypothesis-seed="$SEED"
 
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -57,22 +60,22 @@ jobs:
         run: npx vitest run
 
   audit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
       - name: npm audit (runtime dependencies, moderate and up fail)
         run: npm audit --omit=dev --audit-level=moderate
 
   images:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build the app image
         run: docker build -t locus-app .
       - name: Build the web image

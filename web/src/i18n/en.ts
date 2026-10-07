@@ -510,4 +510,6 @@ export const en: Record<Key, string> = {
   "action.wholeMap": "Whole map",
   "action.closeUp": "Close-up",
   "label.map": "World map",
+  "label.eventCategory": "Event category",
+  "label.eventLifecycle": "Lifecycle",
 };

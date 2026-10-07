@@ -1,6 +1,6 @@
 import { t } from "../../i18n";
 import type { ConnectionKey, Region, RegionDeletePlan } from "../../types";
-import { Modal } from "../../ui";
+import { ConfirmDialog } from "../../ui";
 
 const names = (refs: { name: string }[]) => refs.map((r) => r.name).join(", ");
 
@@ -37,10 +37,10 @@ export function ConfirmDelete({
 }) {
   const blocked = (plan?.blocked_by_sessions.length ?? 0) > 0;
   return (
-    <Modal
+    <ConfirmDialog
       open={open}
       title={plan ? t("delete.region.title", { name: plan.region_name }) : (title ?? t("delete.title"))}
-      confirmTone="danger"
+      tone="danger"
       confirmLabel={t("delete.confirm")}
       busy={busy || blocked}
       onConfirm={onConfirm}
@@ -88,6 +88,6 @@ export function ConfirmDelete({
         )}
         {error && <p className="text-danger">{error}</p>}
       </div>
-    </Modal>
+    </ConfirmDialog>
   );
 }

@@ -47,10 +47,10 @@ export function RumorPanel({
                   {t("badge.deed")}
                 </Badge>
               )}
-              <span className="text-ink-soft text-xs">d{r.distortion_degree.toFixed(2)}</span>
+              <span className="text-muted text-xs">d{r.distortion_degree.toFixed(2)}</span>
               <LocalizedText testId={`rumor-text-${r.id}`} ko={r.statement_ko} original={r.statement} />
             </div>
-            <label className="text-xs text-ink-soft flex items-center gap-2 mt-1">
+            <label className="text-xs text-muted flex items-center gap-2 mt-1">
               {t("gm.support")} {r.support.toFixed(2)}
               <CommitRange
                 data-testid={`support-${r.id}`}

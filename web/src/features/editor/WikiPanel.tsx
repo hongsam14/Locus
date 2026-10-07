@@ -47,7 +47,7 @@ export function WikiPanel({
   return (
     <Panel title={t("wiki.title")} data-testid="wiki-panel" className="min-w-80">
       {error && <div className="text-danger text-sm">{error}</div>}
-      {refs?.usages.length === 0 && <div className="text-xs text-ink-soft">{t("wiki.none")}</div>}
+      {refs?.usages.length === 0 && <div className="text-xs text-muted">{t("wiki.none")}</div>}
       <div className="flex flex-col gap-1.5">
         {refs?.usages.map(({ prior, connections, knowledge }) => (
           <Card key={prior.id} data-testid={`prior-${prior.id}`} className="text-sm flex flex-col gap-1">
@@ -56,7 +56,7 @@ export function WikiPanel({
             </div>
             <div className="flex flex-wrap items-center gap-1 text-xs">
               {prior.domains.map((d) => <Badge key={d}>{d}</Badge>)}
-              <span className="text-ink-soft">
+              <span className="text-muted">
                 {t("wiki.confidence")} {prior.confidence.toFixed(2)}
               </span>
               <button type="button" className="underline" data-testid={`prior-refs-${prior.id}`}
@@ -73,7 +73,7 @@ export function WikiPanel({
       </div>
       {(refs?.broken.length ?? 0) > 0 && (
         <div className="mt-2" data-testid="wiki-broken">
-          <h3 className="font-display text-danger">{t("wiki.broken")}</h3>
+          <h3 className="font-heading text-danger">{t("wiki.broken")}</h3>
           {refs?.broken.map((b) => (
             <div key={b.ref_id} className="text-xs">
               <code>{b.ref_id}</code>

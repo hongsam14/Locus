@@ -10,7 +10,7 @@ import { WorldStateOverlay, overlayOf, useWorldState } from "../features/gm/Worl
 import { api } from "../api";
 import { t, useLang } from "../i18n";
 import type { GameSession, Player, WorldExport } from "../types";
-import { Button } from "../ui";
+import { Button, FileInput } from "../ui";
 import { AppShell } from "../layout";
 
 // GameMaster screen (F1): one session, its world map, the session NPC view of the
@@ -120,14 +120,14 @@ export function GmPage() {
             {t("gm.retry")}
           </Button>
           {!session && (
-            <span className="text-xs text-ink-soft">
+            <span className="text-xs text-muted">
               {t("gm.noSessionHint")}
             </span>
           )}
         </div>
       )}
       {!session && !error && (
-        <div className="p-2 text-ink-soft" data-testid="busy">
+        <div className="p-2 text-muted" data-testid="busy">
           {t("gm.loading")}
         </div>
       )}
@@ -142,7 +142,7 @@ export function GmPage() {
         />
       )}
       {session && (
-        <div className="flex flex-wrap items-center gap-3 px-3 py-1 text-xs text-ink-soft">
+        <div className="flex flex-wrap items-center gap-3 px-3 py-1 text-xs text-muted">
           <span data-testid="gm-world">
             {t("gm.world", { world: session.world_id })}
             {data && (
@@ -155,18 +155,12 @@ export function GmPage() {
               </>
             )}
           </span>
-          <label className="inline-flex items-center gap-1">
-            {t("toolbar.pickMap")}
-            <input
-              data-testid="map-file-input"
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) setMapUrl(URL.createObjectURL(f));
-              }}
-            />
-          </label>
+          <FileInput
+            label={t("toolbar.pickMap")}
+            accept="image/*"
+            data-testid="map-file-input"
+            onFiles={([f]) => setMapUrl(URL.createObjectURL(f))}
+          />
         </div>
       )}
       {session && (

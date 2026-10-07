@@ -83,14 +83,6 @@
   --radius-xl: 14px;
   --shadow-panel: inset 0 1px 0 rgb(255 236 200 / 0.06);
   --shadow-pop: 0 8px 22px rgb(0 0 0 / 0.45);
-
-  /* Old names (X2 "Doodly") kept as aliases until the screens are moved over in
-     V2 Step 12; then they go. */
-  --color-paper: var(--color-bg);
-  --color-paper-card: var(--color-surface);
-  --color-ink: var(--color-fg);
-  --color-ink-soft: var(--color-muted);
-  --color-highlight: var(--color-sunken);
 }
 
 @layer base {
@@ -117,16 +109,5 @@
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
-  }
-}
-
-/* Old "Doodly" utilities, re-pointed at the new tokens until Step 12 removes them. */
-@layer components {
-  .sketch-border {
-    border: 1px solid var(--color-line-strong);
-    border-radius: var(--radius-md);
-  }
-  .sketch-shadow {
-    box-shadow: var(--shadow-panel);
   }
 }

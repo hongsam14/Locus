@@ -10,7 +10,7 @@ export function NarrationCard({ narration }: { narration: Narration | null }) {
     <Panel data-testid="narration-card" title={t("play.narrationTitle")} className="max-w-2xl">
       <p className="text-sm whitespace-pre-line">{narration.text}</p>
       {narration.llm_calls === 0 && (
-        <p data-testid="narration-fallback" className="mt-1 text-xs text-ink-soft">
+        <p data-testid="narration-fallback" className="mt-1 text-xs text-muted">
           {t("play.narrationFallback")}
         </p>
       )}

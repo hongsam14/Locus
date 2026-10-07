@@ -6,10 +6,10 @@ import { Button } from "../../ui";
 
 const STEPS = [0, 25, 50, 75, 100]; // ink strength per distortion band (BR-U7-23)
 
-/** Five distortion bands, design tokens only: paper for [0, .2), red ink above. */
+/** Five distortion bands, design tokens only: the plain marker for [0, .2), more danger above. */
 export function distortionColor(d: number): string {
   const band = Math.min(4, Math.max(0, Math.floor(d * 5)));
-  return `color-mix(in srgb, var(--color-danger) ${STEPS[band]}%, var(--color-paper-card))`;
+  return `color-mix(in srgb, var(--color-danger) ${STEPS[band]}%, var(--color-map-town))`;
 }
 
 /** What the map draws for a state: a fill per region and an "active/promoted" badge
@@ -76,11 +76,11 @@ export function WorldStateOverlay({
           {STEPS.map((s, i) => (
             <span
               key={s}
-              className="inline-block h-3 w-4 sketch-border"
+              className="inline-block h-3 w-4 border border-line-strong rounded-md"
               style={{ background: distortionColor(i / 5 + 0.01) }}
             />
           ))}
-          <span className="text-ink-soft">{t("gm.stateLegend")}</span>
+          <span className="text-muted">{t("gm.stateLegend")}</span>
         </span>
       )}
       {on && error && (

@@ -17,7 +17,7 @@ export function DemoCards({ worlds, onLoaded }: { worlds: WorldInfo[] | null; on
   const held = new Set((worlds ?? []).map((w) => w.id));
   return (
     <section className="flex flex-col gap-2" data-testid="demo-cards">
-      <h2 className="font-display text-lg">{t("demo.heading")}</h2>
+      <h2 className="font-heading text-lg">{t("demo.heading")}</h2>
       {demos.map((d) => (
         <DemoCard key={d.name} demo={d} exists={held.has(d.name)} onLoaded={onLoaded} />
       ))}

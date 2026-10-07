@@ -1,5 +1,5 @@
 import { t } from "../../i18n";
-import { Button } from "../../ui";
+import { Button, Select } from "../../ui";
 
 export interface BulkProgress {
   done: number;
@@ -43,22 +43,14 @@ export function ManualTurnPanel({
           title={llmOff ? t("llm.required") : undefined}>
           {t("gm.suggestEvents")}
         </Button>
-        <label className="inline-flex items-center gap-1 text-xs">
-          {t("gm.suggestN")}
-          <select
-            data-testid="suggest-n"
-            value={suggestN}
-            disabled={closed}
-            onChange={(e) => onSuggestN(Number(e.target.value))}
-            className="sketch-border bg-paper-card px-1 py-0.5"
-          >
-            {Array.from({ length: maxSuggest }, (_, i) => i + 1).map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Select
+          label={t("gm.suggestN")}
+          data-testid="suggest-n"
+          value={String(suggestN)}
+          disabled={closed}
+          options={Array.from({ length: maxSuggest }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))}
+          onChange={(v) => onSuggestN(Number(v))}
+        />
         <Button data-testid="generate-all-btn" onClick={onGenerateAll} disabled={closed || bulk || llmOff}
           title={llmOff ? t("llm.required") : undefined}>
           {t("gm.generateAll")}
@@ -67,17 +59,17 @@ export function ManualTurnPanel({
           disabled={closed || bulk || llmOff} title={llmOff ? t("llm.required") : undefined}>
           {t("gm.regenAll")}
         </Button>
-        {llmOff && <span className="text-xs text-ink-soft" data-testid="llm-required">{t("llm.required")}</span>}
+        {llmOff && <span className="text-xs text-muted" data-testid="llm-required">{t("llm.required")}</span>}
       </div>
       {progress && (
         <div data-testid="generate-progress" className="mt-2">
-          <div className="h-1.5 sketch-border overflow-hidden">
+          <div className="h-1.5 border border-line-strong rounded-md overflow-hidden">
             <div
-              className="h-full bg-ink"
+              className="h-full bg-accent"
               style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }}
             />
           </div>
-          <div className="text-xs text-ink-soft mt-0.5">
+          <div className="text-xs text-muted mt-0.5">
             {t("progress.done", { done: progress.done, total: progress.total })}
             {progress.failed ? ` · ${t("progress.failed", { failed: progress.failed })}` : ""}
           </div>

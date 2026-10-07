@@ -50,7 +50,7 @@ export function HomePage() {
         <DemoCards worlds={worlds} onLoaded={loadWorlds} />
         {worlds?.length === 0 && (
           <div className="flex flex-col gap-2" data-testid="home-empty">
-            <span className="text-ink-soft">{t("home.empty")}</span>
+            <span className="text-muted">{t("home.empty")}</span>
             <div className="flex gap-2">
               <Button data-testid="home-build" disabled={busy} onClick={openBuild}>
                 {t("home.buildFromSources")}
@@ -61,11 +61,11 @@ export function HomePage() {
         <div className="flex flex-col gap-1.5">
           {worlds?.map((w) => (
             <Card key={w.id} data-testid={`world-row-${w.id}`} className="flex flex-wrap items-center gap-2">
-              <strong className="font-display">{w.name}</strong>
-              <code className="text-xs text-ink-soft">{w.id}</code>
+              <strong className="font-heading">{w.name}</strong>
+              <code className="text-xs text-muted">{w.id}</code>
               <span className="text-xs">{t("home.regions", { n: w.region_count })}</span>
               {w.updated_at && (
-                <span className="text-xs text-ink-soft">
+                <span className="text-xs text-muted">
                   {t("home.updated", { when: new Date(w.updated_at).toLocaleString() })}
                 </span>
               )}

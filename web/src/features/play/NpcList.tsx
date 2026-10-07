@@ -18,7 +18,7 @@ export function NpcList({
   activeNpcId?: string | null;
   onTalk?: (npcId: string) => void;
 }) {
-  if (npcs.length === 0) return <p className="text-xs text-ink-soft">—</p>;
+  if (npcs.length === 0) return <p className="text-xs text-muted">—</p>;
   return (
     <ul className="flex flex-wrap gap-2" data-testid="npc-list">
       {npcs.map((n) => {
@@ -28,10 +28,10 @@ export function NpcList({
           <li
             key={n.id}
             data-testid={`npc-${n.id}`}
-            className={`sketch-border px-2 py-1 text-sm flex flex-col gap-1 ${active ? "bg-highlight" : "bg-paper"}`}
+            className={`border border-line-strong rounded-md px-2 py-1 text-sm flex flex-col gap-1 ${active ? "bg-sunken" : "bg-bg"}`}
           >
             <span>
-              <b>{n.name}</b> <span className="text-ink-soft">· {n.role}</span>
+              <b>{n.name}</b> <span className="text-muted">· {n.role}</span>
               {count > 0 && (
                 <>
                   {" "}
@@ -39,7 +39,7 @@ export function NpcList({
                 </>
               )}
             </span>
-            {n.description && <span className="text-xs text-ink-soft max-w-60">{n.description}</span>}
+            {n.description && <span className="text-xs text-muted max-w-60">{n.description}</span>}
             {onTalk && (
               <Button
                 size="sm"

@@ -20,18 +20,18 @@ export function RegionScene({
 }) {
   return (
     <Panel data-testid="region-scene" className="max-w-2xl">
-      <h2 className="font-display text-2xl" data-testid="region-title">
+      <h2 className="font-heading text-2xl" data-testid="region-title">
         {view.region_name}
       </h2>
-      <p className="text-xs text-ink-soft" data-testid="region-path">
+      <p className="text-xs text-muted" data-testid="region-path">
         {view.level_path.join(" › ")} · {view.level} · {t("common.turn", { n: view.turn })}
       </p>
       {view.description && <p className="mt-2 text-sm">{view.description}</p>}
 
-      <h3 className="font-display text-lg mt-3">{t("play.npcs")}</h3>
+      <h3 className="font-heading text-lg mt-3">{t("play.npcs")}</h3>
       <NpcList npcs={view.npcs} counts={npcCounts} activeNpcId={activeNpcId} onTalk={onTalk} />
 
-      <h3 className="font-display text-lg mt-3">{t("play.facts")}</h3>
+      <h3 className="font-heading text-lg mt-3">{t("play.facts")}</h3>
       <ul className="space-y-1 text-sm">
         {view.facts.map((f) => (
           <li key={f.knowledge_id} data-testid={`knowledge-item-${f.knowledge_id}`}>
@@ -39,13 +39,13 @@ export function RegionScene({
             <LocalizedText ko={f.statement_ko} original={f.statement} />
           </li>
         ))}
-        {view.facts.length === 0 && <li className="text-xs text-ink-soft">—</li>}
+        {view.facts.length === 0 && <li className="text-xs text-muted">—</li>}
       </ul>
 
       {view.hearsay.length > 0 && (
         <>
-          <h3 className="font-display text-lg mt-3">{t("play.hearsay")}</h3>
-          <p data-testid="hearsay-hint" className="text-xs text-ink-soft mb-1">
+          <h3 className="font-heading text-lg mt-3">{t("play.hearsay")}</h3>
+          <p data-testid="hearsay-hint" className="text-xs text-muted mb-1">
             {t("play.hearsayHint")}
           </p>
           <ul className="space-y-1 text-sm">
@@ -64,7 +64,7 @@ export function RegionScene({
         </>
       )}
 
-      <h3 className="font-display text-lg mt-3">{t("play.rumors")}</h3>
+      <h3 className="font-heading text-lg mt-3">{t("play.rumors")}</h3>
       <ul className="space-y-1 text-sm">
         {view.rumors.map((r) => (
           <li key={r.id} data-testid={`rumor-${r.id}`}>
@@ -82,7 +82,7 @@ export function RegionScene({
             <LocalizedText ko={r.statement_ko} original={r.statement} />
           </li>
         ))}
-        {view.rumors.length === 0 && <li className="text-xs text-ink-soft">—</li>}
+        {view.rumors.length === 0 && <li className="text-xs text-muted">—</li>}
       </ul>
     </Panel>
   );

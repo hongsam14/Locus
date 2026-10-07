@@ -1,6 +1,6 @@
 import { t } from "../../i18n";
 import type { AugAction, AugInput, AugQuestion, NameRef, Region } from "../../types";
-import { Badge, Button, Card, Field } from "../../ui";
+import { Badge, Button, Card, Field, Select as UiSelect } from "../../ui";
 
 /** What a designer typed on one question's card (kept per issue key, U3 review S28). */
 export type Inputs = { statement?: string; title?: string; confidence?: string; region?: string; ref?: string };
@@ -43,7 +43,7 @@ export function AugmentQuestion({
         <div className="flex flex-wrap items-center gap-1" data-testid="augment-target">
           <Badge>{t(`augment.target.${q.target.kind}`)}</Badge>
           <strong>{q.target.name}</strong>
-          {q.target.region_name && <span className="text-xs text-ink-soft">@ {q.target.region_name}</span>}
+          {q.target.region_name && <span className="text-xs text-muted">@ {q.target.region_name}</span>}
           {q.target.field && <code className="text-xs">{q.target.field}</code>}
         </div>
       )}
@@ -89,10 +89,8 @@ function Select({ testId, label, value, options, onChange }: {
   onChange: (v: string) => void;
 }) {
   return (
-    <select data-testid={testId} aria-label={label} value={value ?? ""}
-      onChange={(e) => onChange(e.target.value)} className="sketch-border bg-paper-card px-1 text-xs">
-      <option value="">{label}</option>
-      {options.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-    </select>
+    <UiSelect label={label} hideLabel data-testid={testId} value={value ?? ""}
+      options={[{ value: "", label }, ...options.map((o) => ({ value: o.id, label: o.name }))]}
+      onChange={onChange} />
   );
 }

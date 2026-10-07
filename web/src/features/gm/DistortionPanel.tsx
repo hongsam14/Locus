@@ -22,7 +22,7 @@ export function DistortionPanel({
   useEffect(() => setShown(value), [value]);
   return (
     <>
-      <div className="text-xs text-ink-soft">
+      <div className="text-xs text-muted">
         {t("gm.region")} {regionName}
       </div>
       <label className="text-xs flex items-center gap-2">
@@ -41,7 +41,7 @@ export function DistortionPanel({
         />
       </label>
       {share > 0 && (
-        <div data-testid="distortion-feedback" className="text-xs text-ink-soft">
+        <div data-testid="distortion-feedback" className="text-xs text-muted">
           {t("gm.feedbackShare", { share: share.toFixed(2) })}
         </div>
       )}

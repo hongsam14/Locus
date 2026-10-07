@@ -4,7 +4,7 @@ import { api } from "../../api";
 import { openSessionsOf, statusOf, useReplaceConfirm } from "../../api/http";
 import { t } from "../../i18n";
 import type { DemoInfo } from "../../types";
-import { Button, Card, Modal } from "../../ui";
+import { Button, Card, ConfirmDialog } from "../../ui";
 
 /** One manifest demo (U8, BLM §2, BR-U8-19..22): [play now] loads it if needed, starts a
  * session at its start region and opens the player screen; [view in editor] opens it,
@@ -104,11 +104,11 @@ export function DemoCard({
   return (
     <Card data-testid={`demo-card-${demo.name}`} className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-baseline gap-2">
-        <strong className="font-display text-lg">{demo.title}</strong>
-        {there && <span className="text-xs text-ink-soft">{t("demo.loaded")}</span>}
+        <strong className="font-heading text-lg">{demo.title}</strong>
+        {there && <span className="text-xs text-muted">{t("demo.loaded")}</span>}
       </div>
       {demo.description && <p className="text-sm">{demo.description}</p>}
-      {demo.credits && <p className="text-xs text-ink-soft" data-testid={`demo-credits-${demo.name}`}>{demo.credits}</p>}
+      {demo.credits && <p className="text-xs text-muted" data-testid={`demo-credits-${demo.name}`}>{demo.credits}</p>}
       <div className="flex flex-wrap gap-2">
         <Button variant="primary" data-testid={`demo-play-${demo.name}`} disabled={busy}
           onClick={() => (there ? setAskExisting(true) : play(false))}>
@@ -142,7 +142,7 @@ export function DemoCard({
           {warnings.map((w) => <div key={w} className="text-xs">{w}</div>)}
         </div>
       )}
-      <Modal open={replace.open} confirmTone="danger" busy={busy} title={t("demo.play")}
+      <ConfirmDialog open={replace.open} tone="danger" busy={busy} title={t("demo.play")} confirmLabel={t("action.confirm")}
         onCancel={replace.cancel}
         onConfirm={() => {
           const confirm = replace.answer();
@@ -153,7 +153,7 @@ export function DemoCard({
           {replace.ask === "replace" ? t("demo.replaceConfirm", { title: demo.title })
             : t("demo.closeSessions", { n: replace.sessions })}
         </span>
-      </Modal>
+      </ConfirmDialog>
     </Card>
   );
 }

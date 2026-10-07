@@ -4,7 +4,7 @@ import { conflictKind, needsLlm } from "../../api/http";
 import { llmOff, useCapabilities } from "../../capabilities";
 import { t, useRequestLang } from "../../i18n";
 import type { GameSession, SessionEvent, SessionRumor, TimelineEntry, TurnResult } from "../../types";
-import { Modal, Panel, toast } from "../../ui";
+import { ConfirmDialog, Panel, toast } from "../../ui";
 import { changeSummary, changeTitle } from "../play/summary";
 import { DistortionPanel } from "./DistortionPanel";
 import { EventPanel } from "./EventPanel";
@@ -181,7 +181,7 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
         }}
       />
       {!regionId && (
-        <div data-testid="gm-no-region" className="text-ink-soft text-xs mt-2">
+        <div data-testid="gm-no-region" className="text-muted text-xs mt-2">
           {t("gm.noRegion")}
         </div>
       )}
@@ -207,10 +207,10 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
         </div>
       )}
       <TimelinePanel timeline={timeline} />
-      <Modal
+      <ConfirmDialog
         open={confirm != null}
         title={t("gm.regen")}
-        confirmTone="danger"
+        tone="danger"
         confirmLabel={t("action.confirm")}
         cancelLabel={t("action.cancel")}
         onConfirm={() => {
@@ -220,7 +220,7 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
         onCancel={() => setConfirm(null)}
       >
         {confirm?.message}
-      </Modal>
+      </ConfirmDialog>
     </Panel>
   );
 }

@@ -3,7 +3,7 @@ import { api } from "../../api";
 import { t, useRequestLang } from "../../i18n";
 import type { DeedViewOut } from "../../types";
 import { conflictKind } from "../../api/http";
-import { Badge, Button, Card, LocalizedText, Modal, Panel } from "../../ui";
+import { Badge, Button, Card, LocalizedText, ConfirmDialog, Panel } from "../../ui";
 
 /** The GM's view of the player's deeds (US-5.6): what happened, which NPC judged it and
  * how, where its rumors reached — and a void that undoes the deed and every rumor it
@@ -80,7 +80,7 @@ export function DeedPanel({
         </div>
       )}
       {deeds.length === 0 && !error && (
-        <p data-testid="deed-none" className="text-xs text-ink-soft">
+        <p data-testid="deed-none" className="text-xs text-muted">
           {t("deed.none")}
         </p>
       )}
@@ -91,7 +91,7 @@ export function DeedPanel({
             data-testid={`deed-${v.deed.id}`}
             className={`flex flex-col gap-1 text-sm ${v.deed.voided ? "opacity-50" : ""}`}
           >
-            <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-soft">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
               <Badge tone="event">{t(`deed.kind.${v.deed.kind}`)}</Badge>
               <span>{v.deed.region_name ?? v.deed.region_id}</span>
               <span>t{v.deed.turn}</span>
@@ -106,7 +106,7 @@ export function DeedPanel({
             </div>
             <LocalizedText ko={v.deed.text_ko} original={v.deed.text} />
             {v.deed.declaration && (
-              <span className="text-xs text-ink-soft">
+              <span className="text-xs text-muted">
                 {t("deed.declaration")}: {v.deed.declaration}
               </span>
             )}
@@ -149,10 +149,10 @@ export function DeedPanel({
         ))}
       </div>
       {/* The confirm label is never the Cancel word: both read "취소" in ko (review U6 #2). */}
-      <Modal
+      <ConfirmDialog
         open={confirm != null}
         title={t("deed.voidTitle")}
-        confirmTone="danger"
+        tone="danger"
         confirmLabel={t("deed.voidConfirmBtn")}
         cancelLabel={t("action.cancel")}
         busy={busy}
@@ -164,7 +164,7 @@ export function DeedPanel({
         <span data-testid="void-confirm">
           {confirm ? t("deed.voidConfirm", { n: activeRumors(confirm) }) : ""}
         </span>
-      </Modal>
+      </ConfirmDialog>
     </Panel>
   );
 }

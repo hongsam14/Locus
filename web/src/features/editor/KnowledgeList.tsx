@@ -30,7 +30,7 @@ export function KnowledgeList({
   return (
     <div className="flex flex-col gap-1.5" data-testid="knowledge-list">
       {items.length === 0 && (
-        <div className="text-xs text-ink-soft">{t("editor.knowledge.none")}</div>
+        <div className="text-xs text-muted">{t("editor.knowledge.none")}</div>
       )}
       {items.map(({ knowledge: k, scope_region_ids: scopes }) => (
         <Card key={k.id} data-testid={`editor-knowledge-${k.id}`} className="flex flex-col gap-1 text-sm">
@@ -100,10 +100,10 @@ function TextForm({ initialTitle, initialStatement, busy, onSubmit, onCancel }: 
       <Field label={t("editor.knowledge.titleLabel")} data-testid="knowledge-title" value={title}
         onChange={(e) => setTitle(e.target.value)} />
       <label className="inline-flex flex-col gap-0.5 text-sm">
-        <span className="text-ink-soft">{t("editor.knowledge.statement")}</span>
+        <span className="text-muted">{t("editor.knowledge.statement")}</span>
         <textarea data-testid="knowledge-statement" rows={2} value={statement}
           onChange={(e) => setStatement(e.target.value)}
-          className="sketch-border bg-paper-card px-2 py-1 text-sm" />
+          className="border border-line-strong rounded-md bg-surface px-2 py-1 text-sm" />
       </label>
       <div className="flex gap-1">
         <Button size="sm" onClick={onCancel}>{t("action.cancel")}</Button>

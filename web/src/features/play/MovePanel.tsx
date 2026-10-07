@@ -14,7 +14,7 @@ export function MovePanel({
 }) {
   return (
     <Panel title={t("play.moves")} data-testid="move-panel" className="max-w-2xl">
-      {moves.length === 0 && <p className="text-xs text-ink-soft">—</p>}
+      {moves.length === 0 && <p className="text-xs text-muted">—</p>}
       <ul className="space-y-1">
         {moves.map((m) => (
           <li
@@ -23,7 +23,7 @@ export function MovePanel({
             className={`flex items-center gap-2 text-sm ${m.passable ? "" : "opacity-50"}`}
           >
             <span className="flex-1">
-              <b>{m.region_name}</b> <span className="text-ink-soft">· {m.kind}</span>{" "}
+              <b>{m.region_name}</b> <span className="text-muted">· {m.kind}</span>{" "}
               {m.passable ? (
                 <span>· {t("play.turns", { n: m.cost_turns })}</span>
               ) : (

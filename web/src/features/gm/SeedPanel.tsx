@@ -35,17 +35,17 @@ export function SeedPanel({
   if (seeds == null) return null;
   return (
     <section data-testid="seed-panel" className="mt-2 flex flex-col gap-1">
-      <h3 className="font-display">{t("seed.title")}</h3>
-      {seeds.length === 0 && <div className="text-xs text-ink-soft">{t("seed.none")}</div>}
+      <h3 className="font-heading">{t("seed.title")}</h3>
+      {seeds.length === 0 && <div className="text-xs text-muted">{t("seed.none")}</div>}
       {seeds.map(({ seed, region_name, running_event_id }) => (
         <Card key={seed.id} data-testid={`seed-row-${seed.id}`} className="flex flex-wrap items-center gap-2 text-sm">
           <strong>{seed.title}</strong>
-          <span className="text-xs text-ink-soft">{region_name}</span>
+          <span className="text-xs text-muted">{region_name}</span>
           <Badge>{t("seed.category", { category: seed.category })}</Badge>
           <span className="text-xs">{t("seed.magnitude", { n: seed.magnitude.toFixed(2) })}</span>
           <span className="ml-auto">
             {running_event_id ? (
-              <span className="text-xs text-ink-soft" data-testid={`seed-running-${seed.id}`}>
+              <span className="text-xs text-muted" data-testid={`seed-running-${seed.id}`}>
                 {t("seed.running")}
               </span>
             ) : (

@@ -165,25 +165,25 @@ export function RegionInspector({
     <Panel data-testid="region-inspector" title={view?.region.name ?? t("editor.region.title")}
       className="min-w-80">
       {error && <div className="text-danger text-sm" data-testid="inspector-error">{error}</div>}
-      {!view && !error && <div className="text-ink-soft">{t("common.loading")}</div>}
+      {!view && !error && <div className="text-muted">{t("common.loading")}</div>}
       {view && (
         <div className="flex flex-col gap-3">
           <RegionForm key={JSON.stringify(view.region)} region={view.region} regions={regions}
             busy={busy} onSave={(r) => write(() => api.updateRegion(worldId, r))}
             onDelete={askDeleteRegion} />
-          <h3 className="font-display">{t("editor.connection.title")}</h3>
+          <h3 className="font-heading">{t("editor.connection.title")}</h3>
           <ConnectionList connections={view.connections} busy={busy}
             onChangeKind={(c, kind) => saveConnection(c, { kind })}
             onChangeWeight={(c, weight) => saveConnection(c, { weight })}
             onDelete={(c) => setPending({ kind: "connection", item: c })} />
-          <h3 className="font-display">{t("editor.knowledge.title")}</h3>
+          <h3 className="font-heading">{t("editor.knowledge.title")}</h3>
           <KnowledgeList items={view.knowledge} regions={regions} busy={busy}
             onCreate={(title, statement) => write(() => api.createKnowledge(worldId, regionId,
               { world_id: worldId, title, statement, confidence: 1, provenance: PROV }))}
             onUpdate={(k) => write(() => api.updateKnowledge(worldId, k))}
             onSetScopes={(k, ids) => write(() => api.setScopes(worldId, k.id, ids))}
             onDelete={(k) => setPending({ kind: "knowledge", item: k })} />
-          <h3 className="font-display">{t("editor.npc.title")}</h3>
+          <h3 className="font-heading">{t("editor.npc.title")}</h3>
           <NpcEditorList worldId={worldId} regionId={regionId} npcs={view.npcs} busy={busy}
             onCreate={(f: NpcFields) => write(() => api.createNpc(worldId,
               { ...f, world_id: worldId, home_region_id: regionId, provenance: PROV }))}

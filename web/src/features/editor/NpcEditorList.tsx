@@ -34,7 +34,7 @@ export function NpcEditorList({
   const [adding, setAdding] = useState(false);
   return (
     <div className="flex flex-col gap-1.5" data-testid="npc-list">
-      {npcs.length === 0 && <div className="text-xs text-ink-soft">{t("editor.npc.none")}</div>}
+      {npcs.length === 0 && <div className="text-xs text-muted">{t("editor.npc.none")}</div>}
       {npcs.map((n) =>
         editing === n.id ? (
           <NpcForm key={n.id} initial={n} busy={busy} onCancel={() => setEditing(null)}
@@ -45,7 +45,7 @@ export function NpcEditorList({
         ) : (
           <Card key={n.id} data-testid={`editor-npc-${n.id}`} className="text-sm flex flex-col gap-0.5">
             <strong>{n.name}</strong>
-            <span className="text-xs text-ink-soft">{n.role} · {n.traits.join(", ")}</span>
+            <span className="text-xs text-muted">{n.role} · {n.traits.join(", ")}</span>
             <span className="text-xs">{n.description}</span>
             <div className="flex gap-1">
               <Button size="sm" disabled={busy} data-testid={`npc-edit-${n.id}`}

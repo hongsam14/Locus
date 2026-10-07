@@ -12,7 +12,7 @@ import { WikiPanel } from "../features/editor/WikiPanel";
 import { WorldFileBar } from "../features/editor/WorldFileBar";
 import { t, useLang } from "../i18n";
 import type { ConnectionEdge, ConnectionKind, NameRef, WorldExport, WorldInfo } from "../types";
-import { Button, Toast } from "../ui";
+import { Button, FileInput, toast } from "../ui";
 import { AppShell } from "../layout";
 
 const PROV = { source: "input", generated_by: "designer" };
@@ -35,7 +35,6 @@ export function EditorPage() {
   const [building, setBuilding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
   const [mapUrl, setMapUrl] = useState<string | null>(null);
   const [augRunId, setAugRunId] = useState<string | null>(null);
 
@@ -133,28 +132,23 @@ export function EditorPage() {
         openSessions={info?.open_sessions ?? null} regions={regions} onLoaded={reloadAll}
         onBuild={openBuild} />
       {error && <div className="p-2 text-danger" data-testid="editor-error">{error}</div>}
-      {toast && <Toast onClose={() => setToast(null)}>{toast}</Toast>}
       {missing && (
         <div className="p-3 flex items-center gap-2" data-testid="empty-hint">
-          <span className="text-ink-soft">{t("home.empty")}</span>
+          <span className="text-muted">{t("home.empty")}</span>
           <Button size="sm" variant="primary" onClick={openBuild}>
             {t("home.buildFromSources")}
           </Button>
         </div>
       )}
       {data && (
-        <div data-testid="graph-status" className="px-3 pt-2 text-xs text-ink-soft">
+        <div data-testid="graph-status" className="px-3 pt-2 text-xs text-muted">
           {t("editor.status", { world: data.world_id, regions: regions.length,
             connections: data.connections.length, entities: data.entities?.length ?? 0,
             knowledge: data.knowledge.length })}
-          <label className="ml-3 inline-flex items-center gap-1">
-            {t("toolbar.pickMap")}
-            <input data-testid="map-file-input" type="file" accept="image/*"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) setMapUrl(URL.createObjectURL(f)); // this browser only, as on the GM page
-              }} />
-          </label>
+          <span className="ml-3 inline-flex">
+            <FileInput label={t("toolbar.pickMap")} accept="image/*" data-testid="map-file-input"
+              onFiles={([f]) => setMapUrl(URL.createObjectURL(f))} /* this browser only, as on the GM page */ />
+          </span>
         </div>
       )}
       <div className="flex flex-wrap gap-4 p-3">
@@ -176,9 +170,9 @@ export function EditorPage() {
             (selected ? (
               <RegionInspector key={selected} worldId={worldId} regionId={selected} regions={regions}
                 reloadKey={rev} onChanged={reload}
-                onDeleted={(message) => { setSelected(null); setToast(message); reload(); }} />
+                onDeleted={(message) => { setSelected(null); toast({ title: message }); reload(); }} />
             ) : (
-              <div className="text-ink-soft text-sm">{t("editor.pickRegion")}</div>
+              <div className="text-muted text-sm">{t("editor.pickRegion")}</div>
             ))}
           {tab === "unscoped" && (
             <UnscopedPanel worldId={worldId} regions={regions} reloadKey={rev} onChanged={reload} />

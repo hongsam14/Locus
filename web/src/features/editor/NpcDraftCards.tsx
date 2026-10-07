@@ -45,17 +45,17 @@ export function NpcDraftCards({
           title={noLlm ? t("llm.required") : undefined}>
           {t("editor.npcDraft.suggest")}
         </Button>
-        {noLlm && <span className="text-xs text-ink-soft" data-testid="llm-required">{t("llm.required")}</span>}
+        {noLlm && <span className="text-xs text-muted" data-testid="llm-required">{t("llm.required")}</span>}
       </span>
       {failed && <div className="text-xs text-danger" data-testid="npc-draft-failed">{t("editor.npcDraft.failed")}</div>}
       {error && <div className="text-xs text-danger">{error}</div>}
       {drafts && drafts.length === 0 && !failed && (
-        <div className="text-xs text-ink-soft">{t("editor.npcDraft.none")}</div>
+        <div className="text-xs text-muted">{t("editor.npcDraft.none")}</div>
       )}
       {drafts?.map((d, i) => (
         <Card key={`${d.name}-${i}`} data-testid="npc-draft-card" className="text-sm flex flex-col gap-0.5">
           <strong>{d.name}</strong>
-          <span className="text-xs text-ink-soft">{d.role} · {d.traits.join(", ")}</span>
+          <span className="text-xs text-muted">{d.role} · {d.traits.join(", ")}</span>
           <span className="text-xs">{d.description}</span>
           <Button size="sm" variant="primary" disabled={busy} data-testid="npc-draft-accept"
             onClick={async () => {

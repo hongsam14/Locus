@@ -135,8 +135,8 @@ describe("PlayPage", () => {
     await waitFor(() => expect(api.act).toHaveBeenCalledWith("s1", { type: "move", to_region_id: "b" }));
     await waitFor(() => expect(screen.getByTestId("region-title")).toHaveTextContent("Hollow")); // arrived at once
     expect(screen.getByTestId("turn-progress")).toHaveTextContent(t("play.running", { n: 2 }));
-    await waitFor(() => expect(screen.getByTestId("notification-center")).toBeInTheDocument());
-    expect(screen.getByTestId("notification-center")).toHaveTextContent("Hollow");
+    // V2: the notification area is always there (a live region), so wait for the card itself
+    await waitFor(() => expect(screen.getByTestId("notification-center")).toHaveTextContent("Hollow"));
     expect(screen.getByTestId("notification-center")).toHaveTextContent(t("notif.rumors_added", { n: 2 }));
     // the turn summary is drawn with t(), not the server's English sentences (review U5 #12)
     await waitFor(() => expect(screen.getByTestId("play-narration")).toHaveTextContent(t("notif.rumors_added", { n: 2 })));

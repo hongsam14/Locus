@@ -4,7 +4,7 @@ import { needsLlm, openSessionsOf, statusOf, useReplaceConfirm } from "../../api
 import { llmOff, useCapabilities } from "../../capabilities";
 import { t } from "../../i18n";
 import type { BuildReport } from "../../types";
-import { Button, Field, InProgressBadge, Modal } from "../../ui";
+import { Button, ConfirmDialog, Dialog, Field, FileInput, InProgressBadge } from "../../ui";
 import { BuildReportPanel } from "./BuildReportPanel";
 
 const FIELDS = [
@@ -93,10 +93,9 @@ export function BuildPanel({
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/30 p-4" role="dialog"
-      aria-modal="true" data-testid="build-panel">
-      <div className="sketch-border sketch-shadow bg-paper-card p-4 max-w-lg w-full flex flex-col gap-2">
-        <h2 className="font-display text-lg">{t("build.title")}</h2>
+    // V2 (requirements review R-01): the shared Dialog; Esc or a click outside is [close]
+    <Dialog open title={t("build.title")} size="lg" testId="build-panel" onOpenChange={(o) => !o && close()}>
+      <div className="flex flex-col gap-3">
         {fixedId == null && (
           <Field label={t("build.worldId")} data-testid="build-world-id" value={worldId}
             onChange={(e) => setWorldId(e.target.value)} />
@@ -105,25 +104,24 @@ export function BuildPanel({
         <Field label={t("build.description")} value={description}
           onChange={(e) => setDescription(e.target.value)} />
         <label className="inline-flex flex-col gap-0.5 text-sm">
-          <span className="text-ink-soft">{t("build.memoText")}</span>
+          <span className="text-muted">{t("build.memoText")}</span>
           <textarea data-testid="build-memo" rows={3} value={memo} onChange={(e) => setMemo(e.target.value)}
-            className="sketch-border bg-paper-card px-2 py-1 text-sm" />
+            className="border border-line-strong rounded-md bg-surface px-2 py-1 text-sm" />
         </label>
         {FIELDS.map((f) => (
-          <label key={f.name} className="inline-flex flex-col gap-0.5 text-sm">
-            <span className="text-ink-soft">
+          <FileInput key={f.name} multiple accept={f.accept} data-testid={`build-${f.name}`}
+            label={<>
               {t(f.label)}
               {f.name === "concept_arts" && <> <InProgressBadge note={t("build.conceptArtsWip")} /></>}
-            </span>
-            <input type="file" multiple accept={f.accept} data-testid={`build-${f.name}`}
-              onChange={(e) => setFiles({ ...files, [f.name]: Array.from(e.target.files ?? []) })} />
-          </label>
+            </>}
+            chosen={(files[f.name] ?? []).map((x) => x.name)}
+            onFiles={(picked) => setFiles({ ...files, [f.name]: picked })} />
         ))}
-        {busy && <div className="text-ink-soft text-sm" data-testid="build-working">{t("build.working")}</div>}
+        {busy && <div className="text-muted text-sm" data-testid="build-working">{t("build.working")}</div>}
         {error && <div className="text-danger text-sm" data-testid="build-error">{error}</div>}
         {report && <BuildReportPanel report={report} />}
         <div className="flex items-center justify-end gap-2">
-          {noLlm && <span className="text-xs text-ink-soft" data-testid="llm-required">{t("llm.required")}</span>}
+          {noLlm && <span className="text-xs text-muted" data-testid="llm-required">{t("llm.required")}</span>}
           <Button size="sm" onClick={close}>{t("action.close")}</Button>
           <Button size="sm" variant="primary" data-testid="build-submit"
             disabled={busy || !id || !hasInput || noLlm} title={noLlm ? t("llm.required") : undefined}
@@ -132,14 +130,14 @@ export function BuildPanel({
           </Button>
         </div>
       </div>
-      <Modal open={replaceQ.open} confirmTone="danger" title={t("build.title")}
+      <ConfirmDialog open={replaceQ.open} tone="danger" title={t("build.title")} confirmLabel={t("action.confirm")}
         onCancel={replaceQ.cancel}
         onConfirm={() => void send(true, replaceQ.answer())}>
         <span data-testid="build-confirm">
           {replaceQ.ask === "replace" ? t("build.replaceConfirm")
             : t("build.closeSessions", { n: replaceQ.sessions })}
         </span>
-      </Modal>
-    </div>
+      </ConfirmDialog>
+    </Dialog>
   );
 }

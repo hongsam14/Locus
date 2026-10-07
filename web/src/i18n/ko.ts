@@ -526,6 +526,8 @@ export const ko = {
   "action.wholeMap": "전체 지도",
   "action.closeUp": "가까이",
   "label.map": "월드 지도",
+  "label.eventCategory": "사건 분류",
+  "label.eventLifecycle": "지속 방식",
 };
 
 export type Key = keyof typeof ko;

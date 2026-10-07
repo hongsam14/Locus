@@ -5,7 +5,7 @@ import type { TimelineEntry } from "../../types";
 export function TimelinePanel({ timeline }: { timeline: TimelineEntry[] }) {
   return (
     <>
-      <h4 className="font-display text-base mt-3 mb-1">{t("gm.timeline")}</h4>
+      <h4 className="font-heading text-base mt-3 mb-1">{t("gm.timeline")}</h4>
       <ul data-testid="timeline" className="list-none p-0 m-0 text-xs flex flex-col">
         {timeline.map((entry) => (
           <li key={entry.id} className="border-b border-line py-1">

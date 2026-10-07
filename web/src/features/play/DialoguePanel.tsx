@@ -134,32 +134,32 @@ export function DialoguePanel({
       title={t("dialogue.title", { name: npc.name })}
       className="max-w-2xl"
     >
-      <p className="text-xs text-ink-soft">{npc.role}</p>
+      <p className="text-xs text-muted">{npc.role}</p>
       {!llmAvailable && (
-        <p data-testid="dialogue-no-llm" className="sketch-border bg-highlight px-2 py-1 my-1 text-sm">
+        <p data-testid="dialogue-no-llm" className="border border-line-strong rounded-md bg-sunken px-2 py-1 my-1 text-sm">
           {t("dialogue.noLlm")}
         </p>
       )}
-      {loading && <p className="text-xs text-ink-soft">{t("common.loading")}</p>}
+      {loading && <p className="text-xs text-muted">{t("common.loading")}</p>}
       <ul data-testid="dialogue-messages" className="flex flex-col gap-1.5 my-2 text-sm">
         {messages.map((m) => (
           <li
             key={m.id}
             data-testid={`dialogue-msg-${m.role}`}
-            className={`sketch-border px-2 py-1 max-w-[80%] ${m.role === "player" ? "self-end bg-highlight" : "self-start bg-paper"}`}
+            className={`border border-line-strong rounded-md px-2 py-1 max-w-[80%] ${m.role === "player" ? "self-end bg-sunken" : "self-start bg-bg"}`}
           >
-            <span className="block text-xs text-ink-soft">
+            <span className="block text-xs text-muted">
               {m.role === "player" ? t("dialogue.you") : npc.name}
             </span>
             {m.text}
           </li>
         ))}
         {!loading && (ready || readOnly) && messages.length === 0 && (
-          <li className="text-xs text-ink-soft">{t("dialogue.empty")}</li>
+          <li className="text-xs text-muted">{t("dialogue.empty")}</li>
         )}
       </ul>
       {sending && (
-        <p data-testid="dialogue-sending" className="text-xs text-ink-soft animate-pulse">
+        <p data-testid="dialogue-sending" className="text-xs text-muted animate-pulse">
           {t("dialogue.sending")}
         </p>
       )}

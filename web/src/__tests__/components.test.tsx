@@ -354,8 +354,8 @@ describe("GmHub (GameMaster hub, was SessionPanel)", () => {
     });
     renderWithShell(<GmHub session={OPEN_SESSION} regionId={null} />); // V2: toasts live in the shell
     fireEvent.click(await screen.findByTestId("advance-turn-btn"));
-    await waitFor(() => expect(screen.getByTestId("notification-center")).toBeInTheDocument());
-    expect(screen.getByText(t("notif.title", { region_id: "r1" }))).toBeInTheDocument(); // notif title
+    // V2: the notification area is always there (a live region), so wait for the card itself
+    expect(await screen.findByText(t("notif.title", { region_id: "r1" }))).toBeInTheDocument(); // notif title
     expect(screen.getByText(t("notif.promoted", { n: 1 }))).toBeInTheDocument();
   });
 

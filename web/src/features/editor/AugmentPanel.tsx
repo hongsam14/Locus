@@ -134,7 +134,7 @@ export function AugmentPanel({
       {lost && <div className="text-danger text-sm" data-testid="augment-lost">{t("augment.lost")}</div>}
       {run && !lost && (
         <div className="flex flex-col gap-2 mt-2">
-          <div className="text-xs text-ink-soft" data-testid="augment-status">
+          <div className="text-xs text-muted" data-testid="augment-status">
             {t("augment.status", { status: run.status, answers: run.answers })}
           </div>
           {run.llm_budget_exhausted && <div className="text-xs text-danger">{t("augment.budget")}</div>}
@@ -145,14 +145,14 @@ export function AugmentPanel({
               refOptions={refOptions(q)} busy={busy} onInput={(patch) => set(q.issue_key, patch)}
               onAnswer={(a) => answer(q, a)} />
           ))}
-          {run.history.length > 0 && <h3 className="font-display">{t("augment.changed")}</h3>}
+          {run.history.length > 0 && <h3 className="font-heading">{t("augment.changed")}</h3>}
           {[...run.history].reverse().map((c) => (
             <div key={c.id} className="text-xs flex items-center gap-2" data-testid="augment-change">
               <span className="flex-1">
                 {c.description} {(changed[c.id] ?? []).map((x) => x.name).join(", ")}
               </span>
               {c.reverted ? (
-                <span className="text-ink-soft">{t("augment.reverted")}</span>
+                <span className="text-muted">{t("augment.reverted")}</span>
               ) : (
                 <Button size="sm" data-testid="augment-revert" disabled={busy || latest?.id !== c.id}
                   onClick={() => call(async () => {
@@ -165,7 +165,7 @@ export function AugmentPanel({
               )}
             </div>
           ))}
-          {run.ignored_keys.length > 0 && <h3 className="font-display">{t("augment.ignored")}</h3>}
+          {run.ignored_keys.length > 0 && <h3 className="font-heading">{t("augment.ignored")}</h3>}
           {run.ignored_keys.map((key) => (
             <div key={key} className="text-xs flex items-center gap-2">
               <code className="flex-1 truncate">{key}</code>

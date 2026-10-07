@@ -2,7 +2,7 @@ import { type ReactNode, useState } from "react";
 import { MapOverlay } from "../../MapOverlay";
 import { t } from "../../i18n";
 import type { ConnectionEdge, ConnectionKind, Region } from "../../types";
-import { Button, Field } from "../../ui";
+import { Button, Dialog, Field, Select } from "../../ui";
 
 export type MapTool = "select" | "addRegion" | "connect";
 export const LEVELS = ["continent", "province", "town", "district", "terrain"];
@@ -107,7 +107,7 @@ export function MapCanvas({
             {t(`map.tool.${m}`)}
           </Button>
         ))}
-        <span className="text-xs text-ink-soft ml-2" data-testid="map-hint">
+        <span className="text-xs text-muted ml-2" data-testid="map-hint">
           {hint}
         </span>
       </div>
@@ -150,14 +150,17 @@ export function MapCanvas({
   );
 }
 
-function Dialog({ testId, children }: { testId: string; children: ReactNode }) {
+/** The map's forms on the shared Dialog (V2 BLM § 10): Esc or a click outside cancels. */
+function MapDialog({ testId, title, onCancel, children }: {
+  testId: string;
+  title: ReactNode;
+  onCancel: () => void;
+  children: ReactNode;
+}) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4" role="dialog"
-      aria-modal="true" data-testid={testId}>
-      <div className="sketch-border sketch-shadow bg-paper-card p-4 max-w-sm w-full flex flex-col gap-2">
-        {children}
-      </div>
-    </div>
+    <Dialog open title={title} size="sm" testId={testId} onOpenChange={(open) => !open && onCancel()}>
+      <div className="flex flex-col gap-3">{children}</div>
+    </Dialog>
   );
 }
 
@@ -173,19 +176,14 @@ function NewRegionForm({ regions, busy, onSubmit, onCancel }: {
   const [parent, setParent] = useState("");
   const [desc, setDesc] = useState("");
   return (
-    <Dialog testId="new-region-form">
-      <h2 className="font-display text-lg">{t("editor.region.add")}</h2>
+    <MapDialog testId="new-region-form" title={t("editor.region.add")} onCancel={onCancel}>
       <Field label={t("editor.region.name")} data-testid="new-region-name" value={nm}
         onChange={(e) => setName(e.target.value)} />
-      <select data-testid="new-region-level" value={level} onChange={(e) => setLevel(e.target.value)}
-        className="sketch-border bg-paper-card px-2 py-1 text-sm" aria-label={t("editor.region.level")}>
-        {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
-      </select>
-      <select data-testid="new-region-parent" value={parent} onChange={(e) => setParent(e.target.value)}
-        className="sketch-border bg-paper-card px-2 py-1 text-sm" aria-label={t("editor.region.parent")}>
-        <option value="">{t("editor.region.noParent")}</option>
-        {regions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-      </select>
+      <Select label={t("editor.region.level")} data-testid="new-region-level" value={level}
+        options={LEVELS.map((l) => ({ value: l, label: l }))} onChange={setLevel} />
+      <Select label={t("editor.region.parent")} data-testid="new-region-parent" value={parent}
+        options={[{ value: "", label: t("editor.region.noParent") }, ...regions.map((r) => ({ value: r.id, label: r.name }))]}
+        onChange={setParent} />
       <Field label={t("editor.region.description")} value={desc} onChange={(e) => setDesc(e.target.value)} />
       <div className="flex justify-end gap-2">
         <Button size="sm" onClick={onCancel}>{t("action.cancel")}</Button>
@@ -195,7 +193,7 @@ function NewRegionForm({ regions, busy, onSubmit, onCancel }: {
           {t("editor.region.save")}
         </Button>
       </div>
-    </Dialog>
+    </MapDialog>
   );
 }
 
@@ -214,25 +212,20 @@ export function ConnectionForm({ title, busy, initialKind = "route", initialWeig
   const [weight, setWeight] = useState(existing(initialKind)?.weight ?? initialWeight);
   const old = existing(kind);
   return (
-    <Dialog testId="connection-form">
-      <h2 className="font-display text-lg">
-        {t(old ? "editor.connection.edit" : "editor.connection.add")}: {title}
-      </h2>
+    <MapDialog testId="connection-form" onCancel={onCancel}
+      title={`${t(old ? "editor.connection.edit" : "editor.connection.add")}: ${title}`}>
       {old && (
-        <p className="text-xs text-ink-soft" data-testid="connection-exists">
+        <p className="text-xs text-muted" data-testid="connection-exists">
           {t("editor.connection.exists", { kind, weight: old.weight.toFixed(2) })}
         </p>
       )}
-      <select data-testid="connection-kind" value={kind}
-        onChange={(e) => {
-          const next = e.target.value as ConnectionKind;
+      <Select label={t("editor.connection.kind")} data-testid="connection-kind" value={kind}
+        options={KINDS.map((k) => ({ value: k, label: k }))}
+        onChange={(next) => {
           setKind(next);
           const stored = existing(next);
           if (stored) setWeight(stored.weight); // start from what is saved
-        }}
-        className="sketch-border bg-paper-card px-2 py-1 text-sm" aria-label={t("editor.connection.kind")}>
-        {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
-      </select>
+        }} />
       <label className="text-sm">
         {t("editor.connection.weight")} {weight.toFixed(2)}
         <input type="range" min={0} max={1} step={0.05} value={weight} data-testid="connection-weight"
@@ -245,6 +238,6 @@ export function ConnectionForm({ title, busy, initialKind = "route", initialWeig
           {t("editor.connection.save")}
         </Button>
       </div>
-    </Dialog>
+    </MapDialog>
   );
 }

@@ -3,7 +3,7 @@ import { api } from "./api";
 import { NewSessionForm } from "./features/play/NewSessionForm";
 import { t } from "./i18n";
 import type { GameSession, Region, SessionStartOut } from "./types";
-import { Button } from "./ui";
+import { Button, Select } from "./ui";
 
 interface Props {
   worldId: string;
@@ -95,20 +95,21 @@ export function SessionBar({
       data-testid="session-bar"
       className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2"
     >
-      <strong className="font-display text-lg">{t("session.title")}</strong>
-      <select
+      <strong className="font-heading text-lg">{t("session.title")}</strong>
+      <Select
+        label={t("session.title")}
+        hideLabel
         data-testid="session-select"
         value={sessionId ?? ""}
-        onChange={(e) => onSelect(sessions.find((s) => s.id === e.target.value) ?? null)}
-        className="sketch-border bg-paper-card px-2 py-1 text-sm"
-      >
-        {allowNone && <option value="">{t("session.none")}</option>}
-        {sessions.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.id.slice(0, 8)} · {t("common.turn", { n: s.turn })} · {s.status}
-          </option>
-        ))}
-      </select>
+        options={[
+          ...(allowNone ? [{ value: "", label: t("session.none") }] : []),
+          ...sessions.map((s) => ({
+            value: s.id,
+            label: `${s.id.slice(0, 8)} · ${t("common.turn", { n: s.turn })} · ${s.status}`,
+          })),
+        ]}
+        onChange={(v) => onSelect(sessions.find((s) => s.id === v) ?? null)}
+      />
       <Button size="sm" variant="primary" data-testid="session-new-btn" onClick={start}>
         {t("session.new")}
       </Button>
@@ -137,7 +138,7 @@ export function SessionBar({
         </Button>
       )}
       {variant === "full" && current && (
-        <span data-testid="session-status" className="text-xs text-ink-soft">
+        <span data-testid="session-status" className="text-xs text-muted">
           {t("common.turn", { n: current.turn })} · {current.status}
         </span>
       )}

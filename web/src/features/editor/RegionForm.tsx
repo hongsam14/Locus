@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "../../i18n";
 import type { Region } from "../../types";
-import { Button, Field } from "../../ui";
+import { Button, Field, Select } from "../../ui";
 import { LEVELS } from "./MapCanvas";
 
 /** Regions under ``id`` (its children, theirs, …): a parent must not be one (BR-U3-7). */
@@ -45,26 +45,16 @@ export function RegionForm({
     <div className="flex flex-col gap-1.5" data-testid="region-form">
       <Field label={t("editor.region.name")} data-testid="region-name" value={name}
         onChange={(e) => setName(e.target.value)} />
+      <Select label={t("editor.region.level")} data-testid="region-level" value={level}
+        options={LEVELS.map((l) => ({ value: l, label: l }))} onChange={setLevel} />
+      <Select label={t("editor.region.parent")} data-testid="region-parent" value={parent}
+        options={[{ value: "", label: t("editor.region.noParent") }, ...parents.map((r) => ({ value: r.id, label: r.name }))]}
+        onChange={setParent} />
       <label className="inline-flex flex-col gap-0.5 text-sm">
-        <span className="text-ink-soft">{t("editor.region.level")}</span>
-        <select data-testid="region-level" value={level} onChange={(e) => setLevel(e.target.value)}
-          className="sketch-border bg-paper-card px-2 py-1 text-sm">
-          {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
-        </select>
-      </label>
-      <label className="inline-flex flex-col gap-0.5 text-sm">
-        <span className="text-ink-soft">{t("editor.region.parent")}</span>
-        <select data-testid="region-parent" value={parent} onChange={(e) => setParent(e.target.value)}
-          className="sketch-border bg-paper-card px-2 py-1 text-sm">
-          <option value="">{t("editor.region.noParent")}</option>
-          {parents.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-        </select>
-      </label>
-      <label className="inline-flex flex-col gap-0.5 text-sm">
-        <span className="text-ink-soft">{t("editor.region.description")}</span>
+        <span className="text-muted">{t("editor.region.description")}</span>
         <textarea data-testid="region-description" value={desc} rows={3}
           onChange={(e) => setDesc(e.target.value)}
-          className="sketch-border bg-paper-card px-2 py-1 text-sm" />
+          className="border border-line-strong rounded-md bg-surface px-2 py-1 text-sm" />
       </label>
       <div className="flex gap-2">
         <Button size="sm" variant="primary" data-testid="region-save" disabled={busy || !name.trim()}

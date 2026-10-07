@@ -204,11 +204,11 @@
 - [x] 11.5 vitest 전부 GREEN을 보고 커밋한다(`refactor(web): routes in AppShell; one LLM band; toasts replace the notification lists — mechanical, layouts unchanged (V2 Step 11)`).
 
 ### Step 12 — 화면 갈아 끼우기 2: 대화상자·select·파일 입력·옛 클래스 (FD § 6, 기계적)
-- [ ] 12.1 대화상자 아홉 곳을 `ConfirmDialog`/`Dialog`로 바꾼다: GmHub, DeedPanel, ConfirmDelete, WorldFileBar, BuildPanel, DemoCard(이상 Modal), MapCanvas, NewSessionForm(자체 대화상자). 버튼 이름과 안쪽 testid를 유지한다. 그 뒤 `ui/Modal.tsx`·`Toast.tsx`·`NotificationCenter.tsx`·`LlmNotice.tsx`를 지운다.
-- [ ] 12.2 `<select>` 13곳(9파일)을 `Select`로, 파일 입력 넷(EditorPage, GmPage, BuildPanel, WorldFileBar)을 `FileInput`으로 바꾼다.
-- [ ] 12.3 옛 클래스를 바꾼다(FD BLM § 2.4 표). 뒤집힌 칩·버튼은 손으로 `Button variant="primary"`·`Badge tone="promoted"`로 바꾼다. 원색 값(`viz.ts`는 Step 8에서 끝남)이 남지 않게 한다.
-- [ ] 12.4 `index.css`에서 옛 별칭 토큰과 `.sketch-*`·`.ink-underline`을 지운다.
-- [ ] 12.5 vitest 전부 GREEN, tsc를 보고 커밋한다(`refactor(web): shared dialogs, select and file input; old ink/paper classes mapped to tokens — mechanical (V2 Step 12)`).
+- [x] 12.1 대화상자 아홉 곳을 `ConfirmDialog`/`Dialog`로 바꾼다: GmHub, DeedPanel, ConfirmDelete, WorldFileBar, BuildPanel, DemoCard(이상 Modal), MapCanvas, NewSessionForm(자체 대화상자). 버튼 이름과 안쪽 testid를 유지한다. 그 뒤 `ui/Modal.tsx`·`Toast.tsx`·`NotificationCenter.tsx`·`LlmNotice.tsx`를 지운다.
+- [x] 12.2 `<select>` 13곳(9파일)을 `Select`로, 파일 입력 넷(EditorPage, GmPage, BuildPanel, WorldFileBar)을 `FileInput`으로 바꾼다.
+- [x] 12.3 옛 클래스를 바꾼다(FD BLM § 2.4 표). 뒤집힌 칩·버튼은 손으로 `Button variant="primary"`·`Badge tone="promoted"`로 바꾼다. 원색 값(`viz.ts`는 Step 8에서 끝남)이 남지 않게 한다.
+- [x] 12.4 `index.css`에서 옛 별칭 토큰과 `.sketch-*`·`.ink-underline`을 지운다.
+- [x] 12.5 vitest 전부 GREEN, tsc를 보고 커밋한다(`refactor(web): shared dialogs, select and file input; old ink/paper classes mapped to tokens — mechanical (V2 Step 12)`).
 
 ### Step 13 — 검사 테스트와 배치 설정
 - [ ] 13.1 `__tests__/design.grep.test.ts`(TP-V2-2):

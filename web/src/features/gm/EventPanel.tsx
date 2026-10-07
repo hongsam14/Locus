@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "../../i18n";
 import type { EventCategory, EventLifecycle, SessionEvent } from "../../types";
-import { Badge, Button, Card, Field, LocalizedText, Range } from "../../ui";
+import { Badge, Button, Card, Field, LocalizedText, Range, Select } from "../../ui";
 
 const EVENT_TONE: Record<string, "neutral" | "event" | "danger"> = {
   active: "event",
@@ -47,14 +47,14 @@ export function EventPanel({
   const [lifecycle, setLifecycle] = useState<EventLifecycle | "">("");
   return (
     <>
-      <h4 className="font-display text-base mt-3 mb-1">{t("gm.events")}</h4>
+      <h4 className="font-heading text-base mt-3 mb-1">{t("gm.events")}</h4>
       <div data-testid="events" className="flex flex-col gap-1.5 text-sm">
         {events.map((ev) => (
           <Card key={ev.id} data-testid={`event-${ev.id}`} className="flex flex-wrap items-center gap-1.5">
             <Badge data-testid={`event-status-${ev.id}`} tone={EVENT_TONE[ev.status] ?? "neutral"}>
               {ev.status}
             </Badge>
-            <span className="text-ink-soft text-xs">
+            <span className="text-muted text-xs">
               {regionNames[ev.region_id] ?? ev.region_id} · {ev.category} · m{ev.magnitude.toFixed(2)} ·{" "}
               {ev.lifecycle}
             </span>
@@ -85,19 +85,15 @@ export function EventPanel({
       </div>
       {regionId && (
         <Card data-testid="event-form" className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-          <select
+          <Select
+            label={t("label.eventCategory")}
+            hideLabel
             data-testid="event-category"
             value={category}
             disabled={closed}
-            onChange={(e) => setCategory(e.target.value as EventCategory)}
-            className="sketch-border bg-paper-card px-1.5 py-1"
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+            options={CATEGORIES.map((c) => ({ value: c, label: c }))}
+            onChange={(v) => setCategory(v as EventCategory)}
+          />
           <Field
             label={t("gm.eventDescription")}
             hideLabel
@@ -119,17 +115,19 @@ export function EventPanel({
               onChange={(e) => setMagnitude(Number(e.target.value))}
             />
           </label>
-          <select
+          <Select
+            label={t("label.eventLifecycle")}
+            hideLabel
             data-testid="event-lifecycle"
             value={lifecycle}
             disabled={closed}
-            onChange={(e) => setLifecycle(e.target.value as EventLifecycle | "")}
-            className="sketch-border bg-paper-card px-1.5 py-1"
-          >
-            <option value="">{t("gm.lifecycleDefault")}</option>
-            <option value="one_shot">one_shot</option>
-            <option value="persistent">persistent</option>
-          </select>
+            options={[
+              { value: "", label: t("gm.lifecycleDefault") },
+              { value: "one_shot", label: "one_shot" },
+              { value: "persistent", label: "persistent" },
+            ]}
+            onChange={(v) => setLifecycle(v as EventLifecycle | "")}
+          />
           <Button
             size="sm"
             variant="primary"

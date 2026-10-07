@@ -31,7 +31,7 @@ export function BuildReportPanel({
         data-testid="build-report-unscoped">
         {t("build.report.unscoped", { n: report.unscoped_knowledge_ids.length })}
       </button>
-      <div className="text-xs text-ink-soft">
+      <div className="text-xs text-muted">
         {t("build.report.calls", { llm: report.llm_calls, embedding: report.embedding_calls })}
       </div>
       {report.replaced && (
@@ -41,7 +41,7 @@ export function BuildReportPanel({
         <div className="text-xs">{t("build.report.backup", { path: report.backup_path })}</div>
       )}
       {[...errors, ...warnings].map((w, i) => (
-        <div key={i} className={`text-xs ${w.severity === "error" ? "text-danger" : "text-ink-soft"}`}>
+        <div key={i} className={`text-xs ${w.severity === "error" ? "text-danger" : "text-muted"}`}>
           [{w.stage}] {w.message}
         </div>
       ))}

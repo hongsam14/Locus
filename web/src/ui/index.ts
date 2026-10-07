@@ -17,9 +17,3 @@ export { Textarea } from "./Textarea";
 export { Toaster } from "./Toaster";
 export { clearToasts, dismissToast, toast, useToasts } from "./toast";
 export type { ToastInput, ToastItem, ToastTone } from "./toast";
-// old pieces, gone once the screens move over (V2 Steps 11–12)
-export { LlmNotice } from "./LlmNotice";
-export { Modal } from "./Modal";
-export { NotificationCenter } from "./NotificationCenter";
-export type { Notif } from "./NotificationCenter";
-export { Toast } from "./Toast";

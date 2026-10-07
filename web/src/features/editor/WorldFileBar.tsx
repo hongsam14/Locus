@@ -5,7 +5,7 @@ import { useReplaceConfirm } from "../../api/http";
 import { SessionBar } from "../../SessionBar";
 import { t } from "../../i18n";
 import type { Region } from "../../types";
-import { Button, Modal } from "../../ui";
+import { Button, ConfirmDialog } from "../../ui";
 
 /** The world's bar (US-6.2·6.3, BR-U3-15/36): its name, save as a World File, load one
  * (replacing the world after a yes, closing open sessions after a second), build from
@@ -76,9 +76,9 @@ export function WorldFileBar({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-ink px-3 py-1.5" data-testid="world-file-bar">
-      <strong className="font-display text-lg" data-testid="world-name">{name}</strong>
-      <code className="text-xs text-ink-soft">{worldId}</code>
+    <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-1.5" data-testid="world-file-bar">
+      <strong className="font-heading text-lg" data-testid="world-name">{name}</strong>
+      <code className="text-xs text-muted">{worldId}</code>
       <Button size="sm" data-testid="file-save" onClick={save}>{t("file.save")}</Button>
       <Button size="sm" data-testid="file-load" disabled={busy} onClick={() => input.current?.click()}>
         {t("file.load")}
@@ -108,7 +108,7 @@ export function WorldFileBar({
             onPlay={(out) => navigate(`/play/${encodeURIComponent(out.session.id)}`)} />
         </div>
       )}
-      <Modal open={replace.open} confirmTone="danger" busy={busy} title={t("file.load")}
+      <ConfirmDialog open={replace.open} tone="danger" busy={busy} title={t("file.load")} confirmLabel={t("action.confirm")}
         onCancel={() => {
           replace.cancel();
           setFile(null);
@@ -118,7 +118,7 @@ export function WorldFileBar({
           {replace.ask === "replace" ? t("file.replaceConfirm")
             : t("file.closeSessionsConfirm", { n: replace.sessions })}
         </span>
-      </Modal>
+      </ConfirmDialog>
     </div>
   );
 }

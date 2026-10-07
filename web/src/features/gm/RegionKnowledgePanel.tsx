@@ -50,15 +50,15 @@ export function RegionKnowledgePanel({ worldId, regionId, sessionId }: Props) {
   return (
     <Panel data-testid="region-panel" title={t("region.title")} className="min-w-80">
       {error && <div className="text-danger">{error}</div>}
-      {!result && !error && <div className="text-ink-soft">{t("common.loading")}</div>}
+      {!result && !error && <div className="text-muted">{t("common.loading")}</div>}
       {result && (
         <>
-          <div className="text-xs text-ink-soft mb-2">
+          <div className="text-xs text-muted mb-2">
             {t("region.unique", { n: result.unique_ids.length })} ·{" "}
             {t("region.shared", { n: result.shared_ids.length })}
           </div>
           {result.items.length === 0 && (
-            <div data-testid="region-empty" className="text-xs text-ink-soft">
+            <div data-testid="region-empty" className="text-xs text-muted">
               {t("region.empty")}
             </div>
           )}
@@ -76,7 +76,7 @@ export function RegionKnowledgePanel({ worldId, regionId, sessionId }: Props) {
                     ko={it.statement_ko}
                     original={it.statement}
                   />
-                  <span className="text-ink-soft text-xs">
+                  <span className="text-muted text-xs">
                     {" "}({it.confidence.toFixed(2)}
                     {it.path_decay != null ? ` · ${t("label.decay")} ${it.path_decay.toFixed(2)}` : ""}
                     {it.distortion != null ? ` · d${it.distortion.toFixed(2)}` : ""})

@@ -58,7 +58,7 @@ export function ActionBar({
           {t("play.wait")}
         </Button>
         {running && (
-          <span data-testid="turn-progress" className="text-sm text-ink-soft animate-pulse">
+          <span data-testid="turn-progress" className="text-sm text-muted animate-pulse">
             {t("play.running", { n: running.cost_turns })}
           </span>
         )}
@@ -80,12 +80,12 @@ export function ActionBar({
             disabled={closed || sending}
             maxLength={maxChars * 2}
             onChange={(e) => setDraft(e.target.value)}
-            className="sketch-border bg-paper-card px-2 py-1 text-sm text-ink outline-none focus:bg-highlight"
+            className="border border-line-strong rounded-md bg-surface px-2 py-1 text-sm text-fg outline-none focus:bg-sunken"
           />
           <div className="flex items-center gap-2">
             <span
               data-testid="declare-count"
-              className={`text-xs ${tooLong ? "text-danger" : "text-ink-soft"}`}
+              className={`text-xs ${tooLong ? "text-danger" : "text-muted"}`}
             >
               {t("play.chars", { n: length, max: maxChars })}
             </span>

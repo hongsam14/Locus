@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../../api";
 import { t, useRequestLang } from "../../i18n";
 import type { Knowledge, Region } from "../../types";
-import { Button, Card, LocalizedText, Panel } from "../../ui";
+import { Button, Card, LocalizedText, Panel, Select } from "../../ui";
 import { ConfirmDelete } from "./ConfirmDelete";
 
 /** Knowledge known nowhere (BR-U3-14): what the build could not place and what region
@@ -58,7 +58,7 @@ export function UnscopedPanel({
     <Panel title={t("editor.unscoped.title")} data-testid="unscoped-panel" className="min-w-80">
       {error && <div className="text-danger text-sm">{error}</div>}
       {items?.length === 0 && (
-        <div className="text-xs text-ink-soft">{t("editor.unscoped.none")}</div>
+        <div className="text-xs text-muted">{t("editor.unscoped.none")}</div>
       )}
       <div className="flex flex-col gap-1.5">
         {items?.map((k) => (
@@ -66,13 +66,10 @@ export function UnscopedPanel({
             <strong>{k.title_ko || k.title}</strong>
             <LocalizedText ko={k.statement_ko} original={k.statement} />
             <div className="flex gap-1">
-              <select value={pick[k.id] ?? ""} data-testid={`unscoped-region-${k.id}`}
-                aria-label={t("editor.unscoped.pick")}
-                onChange={(e) => setPick({ ...pick, [k.id]: e.target.value })}
-                className="sketch-border bg-paper-card px-1 text-xs">
-                <option value="">{t("editor.unscoped.pick")}</option>
-                {regions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
+              <Select label={t("editor.unscoped.pick")} hideLabel value={pick[k.id] ?? ""}
+                data-testid={`unscoped-region-${k.id}`}
+                options={[{ value: "", label: t("editor.unscoped.pick") }, ...regions.map((r) => ({ value: r.id, label: r.name }))]}
+                onChange={(v) => setPick({ ...pick, [k.id]: v })} />
               <Button size="sm" variant="primary" data-testid={`unscoped-assign-${k.id}`}
                 disabled={busy || !pick[k.id]}
                 onClick={() => run(() => api.setScopes(worldId, k.id, [pick[k.id]]))}>

@@ -15,6 +15,7 @@ export function Dialog({
   children,
   footer,
   size = "md",
+  testId,
 }: {
   open: boolean;
   onOpenChange(open: boolean): void;
@@ -23,6 +24,7 @@ export function Dialog({
   children?: ReactNode;
   footer?: ReactNode;
   size?: keyof typeof SIZES;
+  testId?: string; // on the dialog element itself (its title and body inside)
 }) {
   const opener = useRef<HTMLElement | null>(null);
   return (
@@ -30,6 +32,7 @@ export function Dialog({
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="fixed inset-0 z-50 bg-scrim" />
         <RadixDialog.Content
+          data-testid={testId}
           className={
             `fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 ` +
             `flex-col gap-3 overflow-y-auto rounded-xl border border-line-strong bg-surface p-6 text-fg shadow-pop ${SIZES[size]}`

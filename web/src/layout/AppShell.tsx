@@ -86,7 +86,10 @@ export function AppShell({
           </div>
         </div>
       )}
-      <div className="flex-1">{children}</div>
+      {/* focus lands here when a dialog's opener is gone (ui/Dialog) */}
+      <main id="main" tabIndex={-1} className="flex-1 outline-none">
+        {children}
+      </main>
       <Toaster />
     </div>
   );

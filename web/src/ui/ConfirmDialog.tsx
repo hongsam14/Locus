@@ -6,8 +6,10 @@ import { Dialog } from "./Dialog";
 import { InlineError } from "./StatusView";
 
 // V2 (FR-D4, BR-V2-21): "are you sure?" on the shared Dialog. While the confirmed request
-// runs (`busy`) the confirm button shows it and cannot be pressed again; a failure stays in
-// the dialog (`error`) instead of closing it.
+// runs (`busy`) the confirm button shows it and cannot be pressed again, and the dialog does
+// not close under it; a failure stays in the dialog (`error`) instead of closing it. A
+// confirmation that cannot go ahead at all (`confirmDisabled`) turns off the confirm button
+// only — cancel, Esc and an outside press still close it (V2 review #1).
 export function ConfirmDialog({
   open,
   title,
@@ -16,6 +18,7 @@ export function ConfirmDialog({
   cancelLabel,
   tone = "default",
   busy = false,
+  confirmDisabled = false,
   error,
   onConfirm,
   onCancel,
@@ -30,6 +33,7 @@ export function ConfirmDialog({
   cancelLabel?: string;
   tone?: "default" | "danger";
   busy?: boolean;
+  confirmDisabled?: boolean;
   error?: DescribedError;
   onConfirm(): void | Promise<void>;
   onCancel(): void;
@@ -54,6 +58,7 @@ export function ConfirmDialog({
             data-testid={confirmTestId}
             variant={tone === "danger" ? "danger" : "primary"}
             busy={busy}
+            disabled={confirmDisabled}
             onClick={() => void onConfirm()}
           >
             {confirmLabel}

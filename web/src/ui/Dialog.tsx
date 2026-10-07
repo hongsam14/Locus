@@ -4,7 +4,10 @@ import { useRef, type ReactNode } from "react";
 // V2 (FR-D4, BR-V2-21): one dialog. Radix moves focus in, keeps it there, brings it back
 // to the opener, closes on Esc and names the dialog by its title. role="dialog". The
 // screens open it from their own buttons, not a Radix Trigger, so the element that had
-// focus is remembered here and given focus back on close (Radix alone would focus nothing).
+// focus is remembered here and given focus back on close (Radix alone would focus nothing);
+// if that element is gone (the confirmed action removed its row) focus goes to the screen's
+// <main>. A press in the notification area is not an outside press: closing a toast must
+// not close the dialog under it (V2 review #3).
 const SIZES = { sm: "max-w-sm", md: "max-w-md", lg: "max-w-2xl" } as const;
 
 export function Dialog({
@@ -42,7 +45,12 @@ export function Dialog({
           }}
           onCloseAutoFocus={(e) => {
             e.preventDefault();
-            opener.current?.focus?.();
+            const back = opener.current;
+            if (back?.isConnected) back.focus();
+            else document.getElementById("main")?.focus();
+          }}
+          onInteractOutside={(e) => {
+            if (e.target instanceof Element && e.target.closest("[data-toaster]")) e.preventDefault();
           }}
           // no description: say so, or Radix warns about a missing one
           {...(description == null ? { "aria-describedby": undefined } : {})}

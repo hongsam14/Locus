@@ -56,6 +56,7 @@ export function Toaster() {
   return (
     <div
       data-testid="notification-center"
+      data-toaster=""
       aria-live="polite"
       className="pointer-events-none fixed right-3 top-3 z-50 flex w-[min(20rem,calc(100%-1.5rem))] flex-col gap-2 [&>*]:pointer-events-auto"
     >

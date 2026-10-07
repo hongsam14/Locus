@@ -55,6 +55,48 @@ describe("Dialog", () => {
   });
 });
 
+describe("Dialog and the world around it", () => {
+  const tick = () => act(() => new Promise((r) => setTimeout(r, 0))); // Radix listens a tick later
+
+  it("a press in the notification area does not close it; any other outside press does (review #3)", async () => {
+    const onOpenChange = vi.fn();
+    render(<><DialogHarness onOpenChange={onOpenChange} /><Toaster /><p>elsewhere</p></>);
+    act(() => void toast({ title: "Turn 3 is done" }));
+    fireEvent.click(screen.getByRole("button", { name: "open it" }));
+    await screen.findByRole("dialog");
+    await tick();
+    const close = screen.getByRole("button", { name: t("action.close") });
+    fireEvent.pointerDown(close);
+    fireEvent.click(close);
+    expect(screen.queryByText("Turn 3 is done")).not.toBeInTheDocument(); // the card closed…
+    expect(screen.getByRole("dialog")).toBeInTheDocument(); // …the dialog did not
+    expect(onOpenChange).not.toHaveBeenCalled();
+    fireEvent.pointerDown(screen.getByText("elsewhere"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("gives focus to <main> when the opener is gone (review § 2)", async () => {
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      const [row, setRow] = useState(true);
+      return (
+        <main id="main" tabIndex={-1}>
+          {row && <button type="button" onClick={() => setOpen(true)}>delete row</button>}
+          <ConfirmDialog open={open} title="Delete?" confirmLabel="Delete" onCancel={() => setOpen(false)}
+            onConfirm={() => { setRow(false); setOpen(false); }} />
+        </main>
+      );
+    }
+    render(<Harness />);
+    const opener = screen.getByRole("button", { name: "delete row" });
+    opener.focus();
+    fireEvent.click(opener);
+    fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("main")));
+  });
+});
+
 describe("ConfirmDialog", () => {
   it("cannot be confirmed twice while busy and keeps a failure inside", () => {
     const onConfirm = vi.fn();
@@ -72,6 +114,19 @@ describe("ConfirmDialog", () => {
     );
     expect(screen.getByRole("alert")).toHaveTextContent("Could not reach the server.");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("a confirmation that cannot go ahead still closes by cancel and Esc (review #1)", async () => {
+    const onCancel = vi.fn();
+    render(<ConfirmDialog open confirmDisabled title="Delete?" confirmLabel="Delete" onConfirm={() => {}} onCancel={onCancel} />);
+    expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Delete" })).not.toHaveAttribute("aria-busy");
+    const cancel = screen.getByRole("button", { name: t("action.cancel") });
+    expect(cancel).toBeEnabled();
+    fireEvent.click(cancel);
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    await waitFor(() => expect(onCancel).toHaveBeenCalledTimes(2));
   });
 });
 

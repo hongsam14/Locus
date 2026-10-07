@@ -42,7 +42,8 @@ export function ConfirmDelete({
       title={plan ? t("delete.region.title", { name: plan.region_name }) : (title ?? t("delete.title"))}
       tone="danger"
       confirmLabel={t("delete.confirm")}
-      busy={busy || blocked}
+      busy={busy}
+      confirmDisabled={blocked}
       onConfirm={onConfirm}
       onCancel={onCancel}
     >

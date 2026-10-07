@@ -241,6 +241,17 @@ describe("ConfirmDelete (BR-U3-9/16)", () => {
     expect(screen.getByTestId("delete-blocked")).toHaveTextContent("s1");
     expect(screen.getByText(t("delete.confirm"))).toBeDisabled();
   });
+
+  it("a blocked delete can still be cancelled (V2 review #1)", () => {
+    const onCancel = vi.fn();
+    render(<ConfirmDelete open plan={{ region_id: "r1", region_name: "Riverton", children: [],
+      connections: [], npcs: [], knowledge_to_unscope: [], knowledge_scope_removed: [],
+      entities_unlocated: [], blocked_by_sessions: ["s1"] }} onConfirm={() => {}} onCancel={onCancel} />);
+    fireEvent.click(screen.getByRole("button", { name: t("action.cancel") }));
+    expect(onCancel).toHaveBeenCalled();
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    expect(onCancel).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("UnscopedPanel (BR-U3-14)", () => {

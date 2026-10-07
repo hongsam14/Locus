@@ -4751,3 +4751,91 @@ Next: V2 Code Generation Part 1 (plan).
 **Context**: CONSTRUCTION / V2 — Code Generation Part 2 complete; awaiting code approval (code review follows approval, as in U8).
 
 ---
+
+## Code Generation — V2 — Approval
+**Timestamp**: 2026-10-07T13:31:04Z
+**User Input**:
+- "그런데 시안과 다르게 지도는 아직 보여지지 않는데 이건 예정된 다음 task가 있어?" — answered: V4 places the small play map (unit-of-work V4 completion, FR-S2). V2 built the WorldMap play mode but no screen uses it yet.
+- "Continue to Next Stage"
+
+**AI Response**: V2 code approved. Next: V2 code review (as in U8), then V3 한국어 표시 백엔드.
+**Context**: CONSTRUCTION / V2 — code approved → code review.
+
+---
+## Code Review — V2 디자인 시스템 — Review 01 written
+**Timestamp**: 2026-10-07T13:45:29Z
+**User Input**: (none since code approval)
+**AI Response**: Ran a code review of V2 (`371554d..0f14710`), review only, in the U8 format.
+- Five angles in parallel:
+  - server error codes
+  - primitives and request helpers
+  - map
+  - mechanical screen swaps
+  - dictionary, format, tests and build
+- Repros were throwaway vitest files and scripts. Nothing was left in the repo.
+- This session re-read each top candidate's code.
+- Record: `construction/V2-design-system/code/reviews/code-review-01.md`.
+  - § 1 lists 15 findings: 1 high, 6 medium, 6 low-medium, 2 low. Verdicts are C, except #4, #9 and #11, which are P.
+  - § 2 lists 22 cleanup and low items.
+  - § 3 lists 3 rejected.
+- Top findings:
+  - #1 high: the blocked delete dialog cannot be closed (`busy || blocked` disables Cancel and Esc).
+  - #2 medium: a no-LLM world build now answers `service_unavailable`, so `needsLlm` is false and the raw error shows (BR-U8-27 regression).
+  - #3 medium: pressing a toast closes an open modal dialog.
+  - #4 medium: map labels do not take clicks.
+  - #5 medium: selected/reachable labels always fall below.
+  - #6 medium: the FileInput hidden input sits in the tab order, and its buttons share one name.
+- No code changed.
+**Context**: CONSTRUCTION / V2 — code review done; awaiting the human's choice of which findings to fix before V3.
+
+---
+
+## Code Review — V2 — Fix choice
+**Timestamp**: 2026-10-07T13:47:12Z
+**User Input**: AskUserQuestion "V2 수정 범위" → "바탕 결함 15건과 정리 일부 (Recommended)"
+**AI Response**: Fixing now: all of § 1 (1–15) and the § 2 items in V2's own code.
+- § 2 items fixed now:
+  - band rounding, turn label lang, network regex, Dialog focus fallback
+  - capabilities reset, Button type in FileInput/StatusView, useAction onDone, StatusView error
+  - contrast-table slips (button hover, toast event text), connection hit stroke, badge room
+  - design grep widening + palette reset, BR-V2-09 check, backend enum cross-check
+  - weak tests, test_error_codes bad-lang
+- nginx: config fixed now; live headers at Build and Test.
+- Deferred to owning units:
+  - delete summary placement (V8), BuildPanel Esc (V8)
+  - ActionBar focus ring (V4), select/map-picker layout (V4/V6/V8)
+  - play close-up image (V4), String(e) screens (screen units)
+  - CLAUDE.md drift (V9)
+- Each fix comes with a repro test, in several commits on `feat/follow-up`.
+**Context**: CONSTRUCTION / V2 — code review fixes in progress.
+
+---
+
+## Code Review — V2 — Fixes done
+**Timestamp**: 2026-10-07T14:10:00Z
+**User Input**: (none since the fix choice)
+**AI Response**: Fixed all 15 findings in § 1 and the § 2 items in V2's own code, in 9 commits (`fbdba50`..`719cbf9`).
+- Each fix has a repro test. The new tests were run against the pre-fix code and failed there:
+  - dialogs 3
+  - map 6
+  - toasts 2
+  - helpers 7
+- Browser checks on a mock API: a real `elementFromPoint` hit test lands on a name plate (#4), and an area name's edges pass through to the map (#11).
+- nginx: checked in a `locus-web` container with no network and no published port. JS gzip 118.8 kB, CSS 85.8 kB, `index.html` no-cache. Compose headers to be checked at Build and Test.
+- Gates:
+  - pytest 974, ruff/black clean, mypy 11
+  - tsc clean, vitest 423 + 1 visible skip (two seeds)
+  - runtime audit 0
+  - JS 118.4 kB / CSS 84.5 kB (gzip -9)
+- Deferred, with owners, in the review record § 6:
+  - V8: delete summary placement, BuildPanel Esc
+  - V4: ActionBar focus ring, play close-up image
+  - V4/V6/V8: select/map-picker layout
+  - screen units: `String(e)`
+  - V9: CLAUDE.md drift
+  - V4: Button busy focus, which was not named in the fix-choice entry and is deferred here
+- Housekeeping: two headless Chrome processes left by the earlier capture runs (scratch profile; the script's `process.exit` skipped its `finally`) were stopped, and the script was fixed.
+**Context**: CONSTRUCTION / V2 — code review COMPLETE. Next: V3 한국어 표시 백엔드 (Functional Design).
+
+---
+

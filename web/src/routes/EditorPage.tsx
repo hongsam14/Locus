@@ -36,6 +36,7 @@ export function EditorPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mapUrl, setMapUrl] = useState<string | null>(null);
+  const [mapName, setMapName] = useState<string | null>(null); // shown beside the picker
   const [augRunId, setAugRunId] = useState<string | null>(null);
 
   async function reload() {
@@ -147,7 +148,8 @@ export function EditorPage() {
             knowledge: data.knowledge.length })}
           <span className="ml-3 inline-flex">
             <FileInput label={t("toolbar.pickMap")} accept="image/*" data-testid="map-file-input"
-              onFiles={([f]) => setMapUrl(URL.createObjectURL(f))} /* this browser only, as on the GM page */ />
+              chosen={mapName ? [mapName] : undefined}
+              onFiles={([f]) => { setMapUrl(URL.createObjectURL(f)); setMapName(f.name); }} /* this browser only, as on the GM page */ />
           </span>
         </div>
       )}

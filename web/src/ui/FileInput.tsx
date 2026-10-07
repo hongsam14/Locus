@@ -4,7 +4,9 @@ import { Button } from "./Button";
 
 // V2 (UX-09): no browser "Choose File / No file chosen" text. The real input stays (hidden)
 // and carries the test id, so a test can still hand it files; it is emptied after each pick
-// so the same file can be picked again.
+// so the same file can be picked again. It is out of the tab order and hidden from assistive
+// tech: the visible button is the one control, named by the field's label and its own word
+// ("Map image Choose file"), and described by what is chosen (BR-V2-07/23, V2 review #6).
 export function FileInput({
   label,
   accept,
@@ -35,10 +37,11 @@ export function FileInput({
           id={id}
           type="file"
           className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
           accept={accept}
           multiple={multiple}
           disabled={disabled}
-          aria-labelledby={`${id}-label`}
           data-testid={testId}
           onChange={(e) => {
             const files = Array.from(e.target.files ?? []);
@@ -46,10 +49,20 @@ export function FileInput({
             if (files.length) onFiles(files);
           }}
         />
-        <Button size="sm" disabled={disabled} aria-describedby={`${id}-label`} onClick={() => input.current?.click()}>
+        <Button
+          type="button"
+          size="sm"
+          id={`${id}-button`}
+          disabled={disabled}
+          aria-labelledby={`${id}-label ${id}-button`}
+          aria-describedby={`${id}-chosen`}
+          onClick={() => input.current?.click()}
+        >
           {t("action.chooseFile")}
         </Button>
-        <span className="text-muted">{chosen && chosen.length ? chosen.join(", ") : t("empty.noFile")}</span>
+        <span id={`${id}-chosen`} className="text-muted">
+          {chosen && chosen.length ? chosen.join(", ") : t("empty.noFile")}
+        </span>
       </div>
       {hint != null && <span className="text-muted">{hint}</span>}
     </div>

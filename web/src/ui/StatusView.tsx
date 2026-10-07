@@ -11,7 +11,7 @@ export function InlineError({ error, onRetry }: { error: DescribedError; onRetry
       <strong className="text-danger">{error.title}</strong>
       {error.action && <span className="text-muted">{error.action}</span>}
       {onRetry && (
-        <Button size="sm" onClick={onRetry}>
+        <Button type="button" size="sm" onClick={onRetry}>
           {t("action.retry")}
         </Button>
       )}

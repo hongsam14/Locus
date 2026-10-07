@@ -164,12 +164,26 @@ describe("Select and FileInput", () => {
     const onFiles = vi.fn();
     render(<FileInput label="Map image" data-testid="pick-file" onFiles={onFiles} />);
     expect(screen.getByText(t("empty.noFile"))).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: t("action.chooseFile") })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: `Map image ${t("action.chooseFile")}` })).toBeInTheDocument();
     const input = screen.getByTestId("pick-file") as HTMLInputElement;
     const file = new File(["x"], "map.png", { type: "image/png" });
     fireEvent.change(input, { target: { files: [file] } });
     expect(onFiles).toHaveBeenCalledWith([file]);
     expect(input.value).toBe("");
+  });
+
+  it("one tab stop per file field, each named by its field and described by its file (review #6)", () => {
+    render(<>
+      <FileInput label="Memos" onFiles={() => {}} chosen={["notes.md"]} />
+      <FileInput label="Maps" onFiles={() => {}} />
+    </>);
+    const buttons = screen.getAllByRole("button");
+    expect(buttons.map((b) => b.getAttribute("type"))).toEqual(["button", "button"]); // no form submit
+    expect(screen.getByRole("button", { name: `Memos ${t("action.chooseFile")}` })).toHaveAccessibleDescription("notes.md");
+    expect(screen.getByRole("button", { name: `Maps ${t("action.chooseFile")}` })).toHaveAccessibleDescription(t("empty.noFile"));
+    for (const input of document.querySelectorAll('input[type="file"]')) {
+      expect(input).toHaveAttribute("tabindex", "-1");
+    }
   });
 });
 

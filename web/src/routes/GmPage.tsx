@@ -25,6 +25,7 @@ export function GmPage() {
   const [data, setData] = useState<WorldExport | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [mapUrl, setMapUrl] = useState<string | null>(null);
+  const [mapName, setMapName] = useState<string | null>(null); // shown beside the picker
   const [error, setError] = useState<string | null>(null);
   const [sessionRev, setSessionRev] = useState(0);
   const [deedRev, setDeedRev] = useState(0); // U6: a void changed rumors on this page
@@ -159,7 +160,11 @@ export function GmPage() {
             label={t("toolbar.pickMap")}
             accept="image/*"
             data-testid="map-file-input"
-            onFiles={([f]) => setMapUrl(URL.createObjectURL(f))}
+            chosen={mapName ? [mapName] : undefined}
+            onFiles={([f]) => {
+              setMapUrl(URL.createObjectURL(f));
+              setMapName(f.name);
+            }}
           />
         </div>
       )}

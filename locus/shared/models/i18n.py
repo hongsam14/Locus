@@ -28,6 +28,9 @@ TRANSLATABLE_FIELDS: dict[str, tuple[str, ...]] = {
     "knowledge": ("statement", "title"),
 }
 
+# The language every stored, embedded and searched text is written in (C-1, FR-L4).
+SOURCE_LANG = "en"
+
 TRANSLATION_FORMAT: Literal["locus.translations"] = "locus.translations"
 TRANSLATION_VERSION: Literal[1] = 1
 

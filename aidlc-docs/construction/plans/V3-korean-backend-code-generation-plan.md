@@ -145,14 +145,14 @@
   - 커밋: `feat(world): translatable texts of a World File; remapped_id is public (V3)`
 
 ### Step 5 — world demo: 매니페스트 칸, FR-C11, 번역 검사, 항목 읽기 (BLM § 5·6, BR-V3-06·08~12·18·19)
-- [ ] 5.1 `DemoCardText`와 `DemoInfo.i18n`·`translations`를 더한다. 키 검증은 `^[a-z]{2}$`, `en` 아님이다(R-06: 모델 검증, 독스트링에 까닭).
-- [ ] 5.2 `_check`에 FR-C11을 더한다: `file.world.id != info.name` → 문제, 항목 빠짐.
-- [ ] 5.3 `_check_translations(worlds_dir, info, file) -> list[str]`: BR-V3-08 (a)~(h)를 보고 BR-V3-09 문장을 만든다. `_read_manifest`는 항목을 넣은 뒤 문제를 `extend`한다(R-06).
-- [ ] 5.4 `DemoWorlds`에 세 메서드를 더한다.
+- [x] 5.1 `DemoCardText`와 `DemoInfo.i18n`·`translations`를 더한다. 키 검증은 `^[a-z]{2}$`, `en` 아님이다(R-06: 모델 검증, 독스트링에 까닭).
+- [x] 5.2 `_check`에 FR-C11을 더한다: `file.world.id != info.name` → 문제, 항목 빠짐.
+- [x] 5.3 `_check_translations(worlds_dir, info, file) -> list[str]`: BR-V3-08 (a)~(h)를 보고 BR-V3-09 문장을 만든다. `_read_manifest`는 항목을 넣은 뒤 문제를 `extend`한다(R-06).
+- [x] 5.4 `DemoWorlds`에 세 메서드를 더한다.
   - `translations(name, lang, *, target_world_id, remapped) -> list[TranslationEntry]`. 읽지 못하면 `[]`과 경고를 낸다. id는 BR-V3-18·19대로 옮긴다.
   - `texts(name, *, target_world_id, remapped) -> dict`
   - `card(name, lang) -> DemoCardText | None`
-- [ ] 5.5 테스트:
+- [x] 5.5 테스트:
   - TP-V3-4: tmp 매니페스트 폴더로 (a)~(h), FR-C11, 키 형식을 하나씩 만든다. 문장에 이름·언어·대상이 있다.
   - TP-V3-5: 실행이 너그러운지 본다. 데모가 목록에 남고, 깨진 JSON이면 `[]`다.
   - TP-V3-3 예: `w2`로 옮긴 항목이 모두 `texts(w2)`의 키다. 월드 항목은 `w2`다.

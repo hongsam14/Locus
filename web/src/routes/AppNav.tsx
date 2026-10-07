@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
-import { LangToggle } from "../features/play/LangToggle";
+import { LangSwitch as LangToggle } from "../layout/LangSwitch";
 import { t, useLang } from "../i18n";
 
 interface Props {

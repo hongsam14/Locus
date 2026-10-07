@@ -187,14 +187,14 @@
 - [x] 9.5 커밋한다(`feat(web): primitives on tokens — Button, Badge, Card, Field, Textarea, Select, FileInput, Tabs, Dialog, ConfirmDialog, Toaster, StatusView (V2 Step 9)`).
 
 ### Step 10 — 배치 틀 (FR-D5, BR-V2-17·20)
-- [ ] 10.1 `web/src/layout/` 파일을 만든다.
+- [x] 10.1 `web/src/layout/` 파일을 만든다.
   - `AppShell.tsx`: 머리띠, 메뉴(월드·플레이·GM·에디터, 잠김 규칙은 지금 AppNav와 같음), 640px 미만은 [메뉴]로 접음, `LangSwitch`, LLM 띠(testid `llm-notice`, `notice.llmOff`), Toaster
   - `SplitView.tsx`: 1024px 기준, `clamp`, 쌓는 순서
   - `Section.tsx`: 버튼, `aria-expanded`, `aria-controls`
   - `LangSwitch.tsx`: 지금 `features/play/LangToggle.tsx`를 옮긴다
-- [ ] 10.2 `layout/*.test.tsx`(TP-V2-15): 세션 없음이면 GM 잠김, 에디터 링크, LLM 꺼짐이면 띠 1개, SplitView 두 영역과 순서. 지금 `components.test.tsx:561-579`의 AppNav 단언을 이리로 옮긴다.
-- [ ] 10.3 `src/test/render.tsx`의 `renderWithShell`을 완성한다.
-- [ ] 10.4 커밋한다(`feat(web): AppShell, SplitView, Section, LangSwitch (V2 Step 10)`).
+- [x] 10.2 `layout/*.test.tsx`(TP-V2-15): 세션 없음이면 GM 잠김, 에디터 링크, LLM 꺼짐이면 띠 1개, SplitView 두 영역과 순서. 지금 `components.test.tsx:561-579`의 AppNav 단언을 이리로 옮긴다.
+- [x] 10.3 `src/test/render.tsx`의 `renderWithShell`을 완성한다.
+- [x] 10.4 커밋한다(`feat(web): AppShell, SplitView, Section, LangSwitch (V2 Step 10)`).
 
 ### Step 11 — 화면 갈아 끼우기 1: 셸·알림·안내 (FD § 6, 기계적)
 - [ ] 11.1 네 라우트(`HomePage`, `PlayPage`, `GmPage`, `EditorPage`)를 `AppShell`로 감싼다. `routes/AppNav.tsx`를 지운다.

@@ -4401,3 +4401,323 @@ Step 0 precondition: PR #4 is still OPEN (mergedAt null), so the human merges it
 **Context**: CONSTRUCTION / V1 — Code Generation Part 2.
 
 ---
+
+## Code Generation Part 2 — V1 — Steps 1.3–4.1
+**Timestamp**: 2026-10-07T10:44:47Z
+**User Input**: (none)
+**AI Response**:
+- Step 1.3: inception docs committed on `feat/follow-up` as `f34b52f` (39 files).
+- Steps 1.4–4.1:
+  - `chore/ci-actions` was created from `origin/main` (`dc8a947`), clean.
+  - ci.yml: checkout@v4→v7 (4), setup-python@v5→v7 (1), setup-node@v4→v7 (2), runs-on ubuntu-latest→ubuntu-26.04 (4).
+  - Header comment, per R-01: "the ubuntu-latest switch to 26.04 starts 2026-10-19 and completes 2026-11-19 (actions/runner-images #14748)".
+- Checks:
+  - The YAML parses; all four jobs are on ubuntu-26.04 with v7 actions.
+  - The grep for old versions finds only the comment line.
+  - `git diff --stat origin/main` → ci.yml only, 14+/11− (R-03).
+- Committed `c2a1077` on `chore/ci-actions`; not pushed.
+- This audit/state write is on `feat/follow-up` only (R-03).
+- Next: the human pushes and opens the PR; CI is watched read-only.
+**Context**: CONSTRUCTION / V1 — Code Generation Part 2.
+
+---
+
+## Code Generation Part 2 — V1 — Steps 4.2–4.3 (push, PR, CI)
+**Timestamp**: 2026-10-07T11:15:49Z
+**User Input**:
+- "! git push -u origin chore/ci-action" failed: no such ref. It was a typo.
+- "! git push -u origin chore/ci-actions" — pushed.
+- "! gh pr create --base main --head chore/ci-actions --title \"ci: move actions to v7 (node24) and pin ubuntu-26.04\" --body-file …/scratchpad/ci-pr-body.md" opened PR #5. The first attempt was split by a line break and failed; no PR was created.
+
+**AI Response**: CI was watched read-only. Both runs on `c2a1077` are **success**: 37612503032 (push) and 37612594534 (pull_request).
+- In each run, all four jobs (audit, frontend, images, backend) pass.
+- Check-runs annotations are 0 on all 8 jobs, so the Node 20 warning is gone (R-02).
+- "Set up job" shows "Image: ubuntu-26.04" on all 8 jobs (image version 20260927.149.1) (R-02).
+- pytest 948 passed. vitest 202 passed (9 files).
+- GitGuardian passes.
+- PR #5 is MERGEABLE / CLEAN.
+
+Next: the human merges PR #5 (Step 5.1).
+**Context**: CONSTRUCTION / V1 — Code Generation Part 2.
+
+---
+
+## Code Generation Part 2 — V1 — Steps 5–6 complete
+**Timestamp**: 2026-10-07T11:28:27Z
+**User Input**: "! gh pr merge 5 --merge" (run by the human in the prompt; no output)
+**AI Response**:
+- PR #5 is MERGED (`d570f00`, 2026-10-07T11:27:22Z).
+- Step 5.2: `feat/follow-up` merged `origin/main` with no conflicts. The merge commit was amended locally to add the co-author line, before any push: `3a13155`.
+- Step 6.1: wrote `construction/V1-ci-actions/code/code-summary.md`. It covers the change, the branches and commits, local and CI checks, R-01..R-04 as execution notes, deviations, and what remains (mypy gate in V9).
+- All plan steps are ticked.
+- No `/code-review` was run: the diff is one YAML file, and both CI runs verified it.
+- Next: code approval gate (Request Changes / Continue to Next Stage → V2).
+**Context**: CONSTRUCTION / V1 — Code Generation Part 2 complete; awaiting approval.
+
+---
+
+## Code Generation — V1 — Approval
+**Timestamp**: 2026-10-07T11:29:48Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V1 code approved. **V1 COMPLETE**: CI is on v7 actions and ubuntu-26.04 on main (`d570f00`); the 10-19 deadline is met. Next: V2 디자인 시스템, starting with Functional Design. The bookkeeping files on `feat/follow-up` stay uncommitted until the human says to commit.
+**Context**: CONSTRUCTION — V1 → V2.
+
+---
+
+## Functional Design — V2 디자인 시스템 — Plan
+**Timestamp**: 2026-10-07T11:34:24Z
+**User Input**: (none)
+**AI Response**: Wrote `construction/plans/V2-design-system-functional-design-plan.md`.
+- 8 steps.
+- Questions:
+  - Q1: which draft.
+  - Q2: copy register.
+- Decided without asking:
+  - Units R-01: `i18n.ts` moves to `i18n/index.ts`, `layout.ts` to `map/autoLayout.ts`.
+  - Units R-05(c): RE-F09 `capabilities.ts` comes into V2.
+  - Draft place names are transliterated; V3 decides the real ones.
+- Started the private Design canvas "Locus 디자인 시안" (https://claude.ai/artifact/MVUpR3nDzrrez29HHg1UmK). It holds three drafts: A parchment, B lamplit tavern, C illuminated codex.
+- Palette contrast was computed for the token pairs: body text ≥ 4.5:1 on every ground; disabled text ≥ 4.5:1 on its ground; strong lines ≥ 3:1.
+**Context**: CONSTRUCTION / V2 — Functional Design Step 1 (drafts).
+
+---
+
+## Functional Design — V2 — Drafts published
+**Timestamp**: 2026-10-07T11:50:48Z
+**User Input**: (none)
+**AI Response**: Published 13 artboards on the private canvas https://claude.ai/artifact/MVUpR3nDzrrez29HHg1UmK (version 15).
+- One side-by-side sheet compares the three drafts.
+- Each of drafts A, B and C has four artboards:
+  - home (1280, fluid)
+  - play (1280, fluid; the side panel stacks when narrow)
+  - phone play (390)
+  - token and primitive kit
+- The demo content is Emberleaf, with illustrative Korean.
+- Copy follows the register in Q2 option A.
+- Next: ask Q1 (draft) and Q2 (register).
+**Context**: CONSTRUCTION / V2 — Functional Design Step 1 done → Step 2 questions.
+
+---
+
+## Functional Design — V2 — Answers
+**Timestamp**: 2026-10-07T11:52:20Z
+**User Input**: Q1 = "B 선술집"; Q2 = "종류마다 나눔 (Recommended)"
+**AI Response**: Recorded in the FD plan.
+- Q1 = B, the lamplit tavern draft, taken as drawn with no changes. Its dark ground is now the single theme (CQ2=A). §9's "dark theme out of scope" meant a second theme, so a light variant is now the deferred one.
+- Q2 = A:
+  - buttons use short verb forms
+  - notices and errors use 해요체
+  - narration and the journey log use 해라체
+- No ambiguity, so no follow-up questions.
+- Next: write the FD artifacts.
+**Context**: CONSTRUCTION / V2 — Functional Design Step 2 done.
+
+---
+
+## Functional Design — V2 — Artifacts
+**Timestamp**: 2026-10-07T12:01:53Z
+**User Input**: (none)
+**AI Response**: Wrote `construction/V2-design-system/functional-design/{business-logic-model,business-rules,domain-entities,frontend-components}.md`.
+- Tokens: draft B values, one dark theme with `color-scheme: dark`. Contrast was computed for every text/ground pair; `faint` was raised to #9C8F7B to clear 4.5:1 on map land.
+- Fonts: IM Fell English SC, 나눔명조 and Noto Sans KR via `@fontsource`; Gaegu is dropped.
+- Register rule: set by the dictionary key prefix.
+- Band tables:
+  - eight measures
+  - the promoted rumor badge is renamed "사실로 굳어짐", away from the draft's "널리 믿음"
+- Enum label tables: 14 kinds. `slant` is removed; it is free text (design correction).
+- ERROR_CODES:
+  - an ordered list of 20 exception rows, plus 11 router raise sites and the per-status defaults
+  - a list replaces the design's dict because subclasses must match first
+- Hooks state machines and the capabilities retry (RE-F09).
+- Map:
+  - viewBox 1000×625, inverse-CTM normalization
+  - greedy label placement, level shapes, edge tokens, a play focus crop
+- Layout values:
+  - side panel 320–420 px; content max 1240 px; gutters 24/16 px; one column below 1024 px
+  - this closes requirements review R-05's width cap
+- File move table (Units R-01):
+  - `i18n.ts` → `i18n/`, `layout.ts` → `map/autoLayout.ts`
+  - `MapOverlay` becomes an adapter until V8
+  - old primitives stay as aliases until V9
+- Shared dialog replacement covers nine sites (requirements review R-01).
+- Test plan TP-V2-1..16. fast-check is adopted as a dev dependency for four property targets (PBT-02/03/09).
+**Context**: CONSTRUCTION / V2 — Functional Design Steps 3–7 done → Step 8 plan review.
+
+---
+
+## Plan Review Requested — Functional Design — V2
+**Timestamp**: 2026-10-07T12:02:03Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1, max 2) on `aidlc-docs/construction/V2-design-system/functional-design/business-logic-model.md` plus the other FD artifacts. Review record: `aidlc-docs/construction/V2-design-system/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — V2 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — V2
+**Timestamp**: 2026-10-07T12:07:18Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 3 Major / 6 Minor; open 9. Record: `aidlc-docs/construction/V2-design-system/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — V2 — next: builder fix + re-review (iteration 2 of 2). The findings are substantive and protect real outcomes: existing vitest breakage, a contradiction in the alias plan, and gaps in the error-code contract. So the in-place fix is the purpose-side path; it is not a backward jump.
+
+---
+
+## Functional Design — V2 — Builder fix (after review iteration 1)
+**Timestamp**: 2026-10-07T12:11:47Z
+**User Input**: (none)
+**AI Response**: Fixed the FD artifacts for R-01..R-09.
+- R-01: existing-assertion table (frontend-components § 8.1) and a `renderWithShell` test helper. Select is the native `<select>` (correction), and FileInput puts its testid on the hidden input.
+- R-02: Modal, Toast and NotificationCenter are deleted in V2 and their call sites replaced directly. Toast key merge is a marked behaviour change with key rules (`turn:<region>`, `play:run|budget|llm|busy`).
+- R-03: the error body is written in four places:
+  - a Starlette HTTPException handler (route 404/405)
+  - the validation handler
+  - a 500 Exception handler
+  - the BodyLimitMiddleware direct 413
+  `region_in_use` leaves ERROR_CODES and keeps its object detail; health 503 is out of scope.
+- R-04: AppNav is deleted in V2, with a shared-file coordination table (§ 1.3).
+- R-05: allowed contrast pairs are the canonical table, recomputed; faint is never on tints, controls never on sunken.
+- R-06: wikiDomain (13) added; npc removed from augmentationTarget; connectionKind vs travelBy usage stated.
+- R-07: `useAction` ref guard; capabilities retries on the next mount after 30 s, with no timer.
+- R-08: conversion table adds border-ink, bg-ink/…, accent-ink and .ink-underline; the font-display check is file-scoped; counts recomputed.
+- R-09: formatDate uses the viewer's time zone, with UTC in tests; placeLabels uses a fixed order and an "at placement time" property; the Emberleaf overlap count moves to a code-stage measurement.
+- Also: ConfirmDialog uses Radix Dialog, not alert-dialog, to keep `role="dialog"`; jsdom CTM fallback for the map.
+**Context**: Functional Design — V2 — next: re-review iteration 2.
+
+---
+
+## Plan Review Requested — Functional Design — V2
+**Timestamp**: 2026-10-07T12:11:47Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 2, max 2) with prior findings R-01..R-09. Review record: `aidlc-docs/construction/V2-design-system/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — V2 — re-review after builder fix.
+
+---
+
+## Plan Review Completed — Functional Design — V2
+**Timestamp**: 2026-10-07T12:13:46Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: 0 Critical / 0 Major / 2 Minor; open 2 (R-10, R-11). R-01..R-09 are Resolved. Record: `aidlc-docs/construction/V2-design-system/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — V2 — next: approval gate (terminal verdict, adversarial). Approval prompt shown.
+
+---
+
+## Functional Design — V2 — Approval
+**Timestamp**: 2026-10-07T12:22:02Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V2 Functional Design approved. R-10 (`clearToasts()` in `setupTests.ts` afterEach) and R-11 (`timeZone?` on formatDate/formatDateTime) are carried into the V2 code plan as execution notes. Next: NFR Requirements + NFR Design (light) for V2.
+**Context**: CONSTRUCTION / V2 — Functional Design → NFR light.
+
+---
+
+## Plan Review Dispositions — Functional Design — V2
+**Timestamp**: 2026-10-07T12:22:02Z
+- R-10 → Accepted risk (close in V2 code plan)
+- R-11 → Accepted risk (close in V2 code plan)
+
+---
+
+## NFR Requirements + NFR Design (light) — V2
+**Timestamp**: 2026-10-07T12:26:34Z
+**User Input**: (none)
+**AI Response**: Wrote `construction/V2-design-system/nfr/nfr-light.md`. Measured in the scratchpad: packages installed with `--ignore-scripts`, nothing installed in the repo.
+- JS:
+  - baseline gzip 96.6 kB (rebuilt to scratch)
+  - Radix Dialog +12.9 kB, Tabs +4.3 kB, Toast+Collapsible +3.8 kB; the last two are not adopted (own Toaster and Section)
+  - expected total ≈ 119–122 kB against a 125.6 kB budget; the fallback is lazy GM/editor routes
+- Fonts:
+  - one Nanum Myeongjo weight (700) and Noto Sans KR 400/700
+  - home ≈ 462 kB (budget < 760; today 762 kB of Gaegu); phone play 590 kB; desktop play 820 kB (not the first screen; noted)
+- Other decisions:
+  - fast-check 4.10.2 as a dev dependency with seed logging
+  - browsers: Tailwind v4 baseline
+  - scratch `npm audit`: 0
+- Intended changes: C-1..C-4.
+**Context**: CONSTRUCTION / V2 — NFR light written → plan review (advisory).
+
+---
+
+## Plan Review Requested — NFR Requirements + NFR Design (light) — V2
+**Timestamp**: 2026-10-07T12:26:34Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class advisory: light note, iteration 1) on `aidlc-docs/construction/V2-design-system/nfr/nfr-light.md`. Review record: `aidlc-docs/construction/V2-design-system/nfr/reviews/nfr-light-review-01.md`.
+**Context**: NFR light — V2 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — NFR Requirements + NFR Design (light) — V2
+**Timestamp**: 2026-10-07T12:28:18Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY** (advisory). Findings: 0 Critical / 1 Major / 4 Minor; open 5. Record: `aidlc-docs/construction/V2-design-system/nfr/reviews/nfr-light-review-01.md`. R-01 asks to amend the approved FD (font weights). Per the global rule this is not changed silently; it is offered at the gate with purpose-side alternatives. Current code uses font-medium 0 times and font-bold 2 times.
+**Context**: NFR light — V2 — next: approval gate. Approval prompt shown.
+
+---
+
+## NFR Requirements + NFR Design (light) — V2 — Approval
+**Timestamp**: 2026-10-07T12:31:06Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V2 NFR light approved with the recommended path. R-01 is closed as a Step 1 correction in the V2 code plan (FD § 2 and BLM font rows → 나눔명조 700, Noto 400/700, marked 〔Step 1 정정〕). R-02..R-05 become code-plan notes:
+- R-02: record the worst case plus a home measurement on a new world
+- R-03: on overrun, record the reason and judge by first-screen JS
+- R-04: composite alpha colours; off-table pairs are an accepted risk
+- R-05: immutable cache header on nginx `/assets/`
+Next: V2 Code Generation Part 1 (plan).
+**Context**: CONSTRUCTION / V2 — NFR light → Code Generation.
+
+---
+
+## Plan Review Dispositions — NFR Requirements + NFR Design (light) — V2
+**Timestamp**: 2026-10-07T12:31:06Z
+- R-01 → Accepted risk (close in V2 code plan Step 1 correction)
+- R-02 → Accepted risk (close in V2 code plan / code-summary)
+- R-03 → Accepted risk (close in V2 code plan)
+- R-04 → Accepted risk (close in V2 code plan)
+- R-05 → Accepted risk (close in V2 code plan)
+
+---
+
+## Code Generation Part 1 — V2 디자인 시스템
+**Timestamp**: 2026-10-07T12:33:25Z
+**User Input**: (none)
+**AI Response**: Wrote `construction/plans/V2-design-system-code-generation-plan.md`.
+- 16 steps: baseline → server codes → deps → tokens → i18n/format → errors → hooks → map → primitives → layout → screen swaps (two mechanical steps) → checks/nginx → gates/size → captures/fonts → summary.
+- Execution notes close FD R-10/R-11, NFR R-01..R-05 and the V2 share of Units R-03.
+- One commit per step on `feat/follow-up`, authorized by plan approval; push stays with the human.
+**Context**: CONSTRUCTION / V2 — Code Generation Part 1.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — V2
+**Timestamp**: 2026-10-07T12:33:25Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1, max 2) on `aidlc-docs/construction/plans/V2-design-system-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V2-design-system-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — V2 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — V2
+**Timestamp**: 2026-10-07T12:35:36Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 4 Minor; open 6. Record: `aidlc-docs/construction/plans/reviews/V2-design-system-code-generation-plan-review-01.md`.
+- R-02 rests on a path the reviewer could not see: the capture tool exists at the session scratchpad `re-scratch/mock/{server.mjs,shoot.mjs}`.
+- R-04: the "nine dialogs" count included the Modal component itself; there are eight sites.
+**Context**: Code Generation Part 1 — V2 — next: approval gate (terminal verdict, adversarial). Approval prompt shown.
+
+---
+
+## Code Generation Part 1 — V2 — Approval
+**Timestamp**: 2026-10-07T12:36:47Z
+**User Input**: "Approve & Continue"
+**AI Response**: V2 code plan approved. The approval also authorizes one commit per step on `feat/follow-up`; push stays with the human. R-01..R-06 are written into the plan as 〔실행 메모〕 notes and followed. Starting Part 2 at Step 1.
+**Context**: CONSTRUCTION / V2 — Code Generation Part 1 approved → Part 2.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — V2
+**Timestamp**: 2026-10-07T12:36:47Z
+- R-01 → Accepted risk (execution note: clearToasts wiring in Step 9.2, renderWithShell first in Step 10)
+- R-02 → Accepted risk (execution note: tool path in the session scratchpad; rebuild recipe if missing)
+- R-03 → Accepted risk (execution note: Gaegu removal moves to Step 4.1)
+- R-04 → Accepted risk (execution note: eight dialog sites; SessionBar owned by V6, V2 select only)
+- R-05 → Accepted risk (execution note: `nginx -t` in the image; no unhashed files under /assets/)
+- R-06 → Accepted risk (execution note: kept testids and the jsdom fallback)
+
+---

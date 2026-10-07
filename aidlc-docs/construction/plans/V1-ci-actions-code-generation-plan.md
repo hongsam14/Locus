@@ -46,33 +46,33 @@
 - [x] 1.1 `git fetch origin`
 - [x] 1.2 `feat/follow-up`을 `origin/main`에서 만든다(`git switch -c feat/follow-up origin/main`). 커밋하지 않은 이번 주기 문서(`aidlc-docs/**`: 역공학, 요구사항, 계획, 설계, 유닛, audit, state, 이 계획)는 작업 트리를 따라온다. 옮긴 뒤 `git status`로 빠진 것이 없는지 확인한다.
 - [x] 1.3 `feat/follow-up`에 이번 주기 Inception 문서를 커밋한다(`docs(aidlc): follow-up cycle inception — RE rerun, requirements, plan, design, units`). **이 계획의 승인이 이 커밋의 허락이다.** 푸시는 사람이 한다.
-- [ ] 1.4 `chore/ci-actions`를 `origin/main`에서 만든다(`git switch -c chore/ci-actions origin/main`). 작업 트리가 깨끗한지 확인한다.
+- [x] 1.4 `chore/ci-actions`를 `origin/main`에서 만든다(`git switch -c chore/ci-actions origin/main`). 작업 트리가 깨끗한지 확인한다.
 
 ### Step 2 — `ci.yml` 수정 (`chore/ci-actions`에서)
-- [ ] 2.1 `actions/checkout@v4`를 `@v7`로 바꾼다(네 잡 모두).
-- [ ] 2.2 `actions/setup-python@v5`를 `@v7`로 바꾼다(backend). 입력(`python-version: "3.11"`, `cache: pip`, `cache-dependency-path`)은 그대로 둔다.
-- [ ] 2.3 `actions/setup-node@v4`를 `@v7`로 바꾼다(frontend, audit). 입력은 그대로 둔다.
-- [ ] 2.4 네 잡의 `runs-on: ubuntu-latest`를 `ubuntu-26.04`로 바꾼다.
-- [ ] 2.5 파일 머리 주석에 한 줄을 더한다: 러너를 명시한 까닭(10-19 `ubuntu-latest` 전환 전에 26.04에서 확인함, 다시 바꿀 때는 이 줄)과 액션 주 버전(node24).
+- [x] 2.1 `actions/checkout@v4`를 `@v7`로 바꾼다(네 잡 모두).
+- [x] 2.2 `actions/setup-python@v5`를 `@v7`로 바꾼다(backend). 입력(`python-version: "3.11"`, `cache: pip`, `cache-dependency-path`)은 그대로 둔다.
+- [x] 2.3 `actions/setup-node@v4`를 `@v7`로 바꾼다(frontend, audit). 입력은 그대로 둔다.
+- [x] 2.4 네 잡의 `runs-on: ubuntu-latest`를 `ubuntu-26.04`로 바꾼다.
+- [x] 2.5 파일 머리 주석에 한 줄을 더한다: 러너를 명시한 까닭(10-19 `ubuntu-latest` 전환 전에 26.04에서 확인함, 다시 바꿀 때는 이 줄)과 액션 주 버전(node24).
 
 ### Step 3 — 로컬 확인
-- [ ] 3.1 YAML 파싱: `python3 -c "import yaml,sys; yaml.safe_load(open('.github/workflows/ci.yml'))"`
-- [ ] 3.2 남은 옛 버전이 없다: `grep -nE '@v[45]\b|ubuntu-latest' .github/workflows/ci.yml`의 결과가 비어야 한다(주석 안의 설명 문장은 예외로 확인한다).
-- [ ] 3.3 바뀐 파일이 `ci.yml` 하나뿐이다: `git diff --stat`.
+- [x] 3.1 YAML 파싱: `python3 -c "import yaml,sys; yaml.safe_load(open('.github/workflows/ci.yml'))"`
+- [x] 3.2 남은 옛 버전이 없다: `grep -nE '@v[45]\b|ubuntu-latest' .github/workflows/ci.yml`의 결과가 비어야 한다(주석 안의 설명 문장은 예외로 확인한다).
+- [x] 3.3 바뀐 파일이 `ci.yml` 하나뿐이다: `git diff --stat`.
 
 ### Step 4 — 커밋과 CI 확인
-- [ ] 4.1 `chore/ci-actions`에 커밋한다(`ci: move actions to v7 (node24) and pin ubuntu-26.04 ahead of the 2026-10-19 runner switch`). 푸시는 하지 않는다.
-- [ ] 4.2 사람에게 명령을 드린다: `git push -u origin chore/ci-actions`, `gh pr create --base main --head chore/ci-actions …`. 사람이 실행한다.
-- [ ] 4.3 Claude가 `gh run list --branch chore/ci-actions` → `gh run watch`(읽기 전용)로 지켜본다. 확인할 것은 셋이다: 네 잡이 GREEN인가, 주석에 Node 20 경고가 없는가, 러너가 `ubuntu-26.04`인가.
-- [ ] 4.4 실패하면 원인을 적는다. ci.yml 안에서 고칠 수 있으면 고쳐 다시 커밋하고 4.2로 돌아간다. 이미지·러너 문제로 바로 고칠 수 없으면, 사람에게 `ubuntu-24.04` 묶음(되돌리기)을 여쭙는다.
+- [x] 4.1 `chore/ci-actions`에 커밋한다(`ci: move actions to v7 (node24) and pin ubuntu-26.04 ahead of the 2026-10-19 runner switch`). 푸시는 하지 않는다.
+- [x] 4.2 사람에게 명령을 드린다: `git push -u origin chore/ci-actions`, `gh pr create --base main --head chore/ci-actions …`. 사람이 실행한다.
+- [x] 4.3 Claude가 `gh run list --branch chore/ci-actions` → `gh run watch`(읽기 전용)로 지켜본다. 확인할 것은 셋이다: 네 잡이 GREEN인가, 주석에 Node 20 경고가 없는가, 러너가 `ubuntu-26.04`인가.
+- [x] 4.4 실패하면 원인을 적는다. ci.yml 안에서 고칠 수 있으면 고쳐 다시 커밋하고 4.2로 돌아간다. 이미지·러너 문제로 바로 고칠 수 없으면, 사람에게 `ubuntu-24.04` 묶음(되돌리기)을 여쭙는다. — 해당 없음: 두 실행 모두 성공.
 
 ### Step 5 — 병합 뒤 정리 (사람의 병합 뒤)
-- [ ] 5.1 사람이 CI PR을 병합한다.
-- [ ] 5.2 `feat/follow-up`으로 돌아와 `git fetch origin && git merge origin/main`으로 새 ci.yml을 받아 들인다(merge 커밋). 충돌은 없다고 본다(`feat/follow-up`은 ci.yml을 고치지 않는다).
+- [x] 5.1 사람이 CI PR을 병합한다.
+- [x] 5.2 `feat/follow-up`으로 돌아와 `git fetch origin && git merge origin/main`으로 새 ci.yml을 받아 들인다(merge 커밋). 충돌은 없다고 본다(`feat/follow-up`은 ci.yml을 고치지 않는다).
 
 ### Step 6 — 기록
-- [ ] 6.1 `aidlc-docs/construction/V1-ci-actions/code/code-summary.md`를 쓴다: 바뀐 줄, 조사한 사실, CI 실행 id와 결과, 남은 일(mypy 단계는 V9).
-- [ ] 6.2 `aidlc-state.md`의 V1 진행을 갱신하고, `audit.md`에 남긴다.
+- [x] 6.1 `aidlc-docs/construction/V1-ci-actions/code/code-summary.md`를 쓴다: 바뀐 줄, 조사한 사실, CI 실행 id와 결과, 남은 일(mypy 단계는 V9).
+- [x] 6.2 `aidlc-state.md`의 V1 진행을 갱신하고, `audit.md`에 남긴다.
 
 ---
 

@@ -40,6 +40,33 @@ describe("useCapabilities (BR-U8-23/26)", () => {
     expect(llmOff({ llm: true, vlm: false, embedding: false })).toBe(false);
   });
 
+  it("a failed read is read again on a later mount, but not within 30 s (RE-F09)", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-10-07T12:00:00Z"));
+      const read = vi
+        .spyOn(api, "capabilities")
+        .mockRejectedValueOnce(new Error("down"))
+        .mockResolvedValue({ llm: true, vlm: false, embedding: false });
+      const first = renderHook(() => useCapabilities());
+      await act(async () => {});
+      expect(first.result.current).toBeNull();
+      vi.setSystemTime(new Date("2026-10-07T12:00:10Z")); // 10 s later: not again yet
+      renderHook(() => useCapabilities());
+      await act(async () => {});
+      expect(read).toHaveBeenCalledTimes(1);
+      vi.setSystemTime(new Date("2026-10-07T12:00:31Z")); // 31 s later: read again
+      const later = renderHook(() => useCapabilities());
+      await waitFor(() => expect(later.result.current?.llm).toBe(true));
+      expect(read).toHaveBeenCalledTimes(2);
+      renderHook(() => useCapabilities()); // a success is kept
+      await act(async () => {});
+      expect(read).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("a read that throws before it returns a promise is unknown too", async () => {
     vi.spyOn(api, "capabilities").mockImplementation(() => {
       throw new TypeError("not a function");

@@ -140,13 +140,13 @@
 - [x] 6.4 커밋한다(`feat(web): HttpError carries code and detail; describeError picks a user sentence by code, then status (V2 Step 6)`).
 
 ### Step 7 — 요청 도우미와 capabilities (FR-C13, BR-V2-24·25)
-- [ ] 7.1 `web/src/hooks/useResource.ts`: AbortController, 요청 번호로 늦은 답 버림, `reload` 중 data 유지, 언마운트 abort.
-- [ ] 7.2 `web/src/hooks/useAction.ts`: **ref 가드**, `busy` 상태는 보이기용, `onDone`, `error = describeError`, `clearError`, 언마운트 뒤 무시.
-- [ ] 7.3 `capabilities.ts`: 실패하면 `pending`을 비우고 실패 시각을 적는다. 다음 마운트에서 30초가 지났으면 다시 읽는다. 성공은 캐시한다. `llmOff`·`resetCapabilities`는 유지한다.
-- [ ] 7.4 테스트:
+- [x] 7.1 `web/src/hooks/useResource.ts`: AbortController, 요청 번호로 늦은 답 버림, `reload` 중 data 유지, 언마운트 abort.
+- [x] 7.2 `web/src/hooks/useAction.ts`: **ref 가드**, `busy` 상태는 보이기용, `onDone`, `error = describeError`, `clearError`, 언마운트 뒤 무시.
+- [x] 7.3 `capabilities.ts`: 실패하면 `pending`을 비우고 실패 시각을 적는다. 다음 마운트에서 30초가 지났으면 다시 읽는다. 성공은 캐시한다. `llmOff`·`resetCapabilities`는 유지한다.
+- [x] 7.4 테스트:
   - `hooks/*.test.tsx`(TP-V2-13): 늦은 첫 답, 언마운트, **같은 틱 두 번 `run()`**, reload 중 data
   - `capabilities.test.ts` 고침(TP-V2-14): 가짜 시계, 실패 → 10초 마운트 요청 없음 → 31초 마운트 요청, 성공 캐시
-- [ ] 7.5 커밋한다(`feat(web): useResource / useAction request helpers; capabilities retries a failed read after 30 s (V2 Step 7, RE-F09)`).
+- [x] 7.5 커밋한다(`feat(web): useResource / useAction request helpers; capabilities retries a failed read after 30 s (V2 Step 7, RE-F09)`).
 
 ### Step 8 — 지도 바탕 (FR-D6·D7, BR-V2-18·19)
 - [ ] 8.1 `web/src/map/geometry.ts`: `normalizeFromMatrix`, `toClient`, `meetMatrix(rect, viewBox)`(CTM이 없을 때), `toPixels`(옮김).

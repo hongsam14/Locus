@@ -1,5 +1,5 @@
 // Every server value the screens show, in one place (V2 BR-V2-11, domain-entities § 4).
-// A value added on the server shows here as a missing label in the exhaustive test.
+// A value added on the server fails format.enums.backend.test.ts, which reads the backend.
 // Sources: locus/shared/models/enums.py, locus/play/models.py, web/src/types.ts,
 // locus/world/augmentation/types.py.
 

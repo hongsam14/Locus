@@ -16,30 +16,40 @@ const LEGACY = new Set([
 
 const prefix = (key: string) => key.split(".")[0];
 const ko = Object.entries(dicts.ko).filter(([k]) => !LEGACY.has(k));
+const lines = (group: string[]) => ko.filter(([k]) => group.includes(prefix(k)));
+
+const CONTROL_END = /[.。]$|요$|다$/;
+const HAEYO = /요[.?]?$/;
+const HAERA = /다\.$/;
 
 describe("register by key", () => {
   it("control names have no sentence ending and no period", () => {
-    for (const [k, v] of ko.filter(([k]) => CONTROL.includes(prefix(k)))) {
-      expect(v, k).not.toMatch(/[.。]$|요$|다$/);
-    }
+    expect(lines(CONTROL).length).toBeGreaterThan(0); // the check checks something (review § 2)
+    for (const [k, v] of lines(CONTROL)) expect(v, k).not.toMatch(CONTROL_END);
   });
 
   it("notices are 해요체", () => {
-    for (const [k, v] of ko.filter(([k]) => NOTICE.includes(prefix(k)))) {
-      expect(v.trim(), k).toMatch(/요[.?]?$/);
-    }
+    expect(lines(NOTICE).length).toBeGreaterThan(0);
+    for (const [k, v] of lines(NOTICE)) expect(v.trim(), k).toMatch(HAEYO);
   });
 
-  it("story lines are 해라체", () => {
-    for (const [k, v] of ko.filter(([k]) => STORY.includes(prefix(k)))) {
-      expect(v.trim(), k).toMatch(/다\.$/);
-    }
+  // no story.* line yet: log.* and timeline.* move over with V4/V6, and this then checks them
+  it.skipIf(lines(STORY).length === 0)("story lines are 해라체", () => {
+    for (const [k, v] of lines(STORY)) expect(v.trim(), k).toMatch(HAERA);
   });
 
   it("value names have no period", () => {
-    for (const [k, v] of ko.filter(([k]) => VALUE.includes(prefix(k)))) {
-      expect(v, k).not.toMatch(/\.$/);
-    }
+    expect(lines(VALUE).length).toBeGreaterThan(0);
+    for (const [k, v] of lines(VALUE)) expect(v, k).not.toMatch(/\.$/);
+  });
+
+  it("the register checks tell the registers apart", () => {
+    expect("소문이 퍼졌다.").toMatch(HAERA);
+    expect("소문이 퍼졌어요.").not.toMatch(HAERA);
+    expect("서버에 닿지 못했어요.").toMatch(HAEYO);
+    expect("서버에 닿지 못했다.").not.toMatch(HAEYO);
+    expect("저장했어요").toMatch(CONTROL_END);
+    expect("저장").not.toMatch(CONTROL_END);
   });
 
   it("the LLM-off notice gives no developer instruction (BR-V2-20)", () => {

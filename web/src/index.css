@@ -14,6 +14,10 @@
    allowed text/ground pairs are in the V2 FD domain-entities § 1.6 and checked by
    tokens.contrast.test.ts. */
 @theme {
+  /* no Tailwind default palette: a class like text-red-600 does not compile, so the tokens
+     below are the only colours (V2 review § 2) */
+  --color-*: initial;
+
   /* grounds */
   --color-bg: #17120e;
   --color-chrome: #1d1712;

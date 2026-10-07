@@ -30,6 +30,24 @@ describe("map coordinates (properties)", () => {
     );
   });
 
+  it("meet: the whole map fits the box, centred, keeping its shape and filling one side", () => {
+    fc.assert(
+      fc.property(rect, (r) => {
+        const m = meetMatrix(r, MAP_EXTENT);
+        const tl = toClient({ x: 0, y: 0 }, m);
+        const br = toClient({ x: 1, y: 1 }, m);
+        const w = br.x - tl.x;
+        const h = br.y - tl.y;
+        const eps = 1e-6;
+        const fits = tl.x >= r.left - eps && tl.y >= r.top - eps && br.x <= r.left + r.width + eps && br.y <= r.top + r.height + eps;
+        const centred = Math.abs(tl.x - r.left - (r.left + r.width - br.x)) < eps && Math.abs(tl.y - r.top - (r.top + r.height - br.y)) < eps;
+        const shape = Math.abs(w / h - MAP_EXTENT.w / MAP_EXTENT.h) < 1e-9;
+        const fills = Math.abs(w - r.width) < eps || Math.abs(h - r.height) < eps;
+        return fits && centred && shape && fills;
+      }),
+    );
+  });
+
   it("a point on the letterbox beside the drawing is outside 0..1", () => {
     fc.assert(
       fc.property(rect, (r) => {

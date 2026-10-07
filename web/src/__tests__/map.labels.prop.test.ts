@@ -14,6 +14,7 @@ import {
   type LabelAnchor,
   type LabelText,
 } from "../map";
+import { webPath } from "../test/paths";
 
 const name = fc.oneof(
   fc.string({ minLength: 1, maxLength: 12 }),
@@ -80,8 +81,8 @@ describe("label placement (properties)", () => {
 
 describe("label placement (the Emberleaf demo)", () => {
   it("records how many plates still touch on the demo map (target 0)", () => {
-    // the demo is data: its World File in the package (vitest runs from web/)
-    const world = JSON.parse(readFileSync("../locus/world/demo/worlds/emberleaf.world.json", "utf8")) as {
+    // the demo is data: its World File in the package
+    const world = JSON.parse(readFileSync(webPath("../locus/world/demo/worlds/emberleaf.world.json"), "utf8")) as {
       regions: { id: string; name: string; level: string; position: { x: number; y: number } | null }[];
     };
     const towns = world.regions.filter((r) => r.position && !["continent", "province"].includes(r.level));

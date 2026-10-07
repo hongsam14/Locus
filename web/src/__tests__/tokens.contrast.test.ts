@@ -4,9 +4,10 @@
 // plate) are composited onto their opaque ground first (NFR light review R-04).
 import { readFileSync } from "node:fs";
 import { colorTokens, composite, contrast, parseColor, type Rgba } from "../test/contrast";
+import { webPath } from "../test/paths";
 
 // vitest runs from web/ (the CI job and npm test both do)
-const css = readFileSync("src/index.css", "utf8");
+const css = readFileSync(webPath("src/index.css"), "utf8");
 const tokens = colorTokens(css);
 
 function color(name: string): Rgba {

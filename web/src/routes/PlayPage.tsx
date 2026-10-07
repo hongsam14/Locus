@@ -19,14 +19,12 @@ import type {
   TimelineEntry,
   TurnRun,
 } from "../types";
-import { Button, LlmNotice, NotificationCenter, Panel } from "../ui";
-import type { Notif } from "../ui";
+import { Button, Panel, toast } from "../ui";
 
 const LOG_LINES = 30; // the log shows the newest 30 lines (U7 review C6)
 const HELD_RETRIES = 5; // re-reads while the session is held but no turn runs (U3 S02)
-import { AppNav } from "./AppNav";
+import { AppShell } from "../layout";
 
-let _notifSeq = 0;
 
 /** Player screen (F3, US-3.2~3.4): the current region, the move options and the
  * wait action. An action answers 202 with a TurnRun; the page refreshes the
@@ -42,7 +40,6 @@ export function PlayPage({ pollMs = 700, heldRetryMs = 1000 }: { pollMs?: number
   const [log, setLog] = useState<TimelineEntry[]>([]);
   const [run, setRun] = useState<TurnRun | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState<Notif[]>([]);
   // The last action's changes; drawn with t() so the summary follows the language toggle
   // (the server's `narration` sentences are English only, review U5 #12). null = none yet.
   const [lastChanges, setLastChanges] = useState<RegionTurnChange[] | null>(null);
@@ -59,14 +56,24 @@ export function PlayPage({ pollMs = 700, heldRetryMs = 1000 }: { pollMs?: number
   // timer stops instead of writing state (or notifications) into a screen that moved on.
   const genRef = useRef(0);
 
-  const addNotif = useCallback(
-    (n: Omit<Notif, "id">) => setNotifications((cur) => [...cur, { ...n, id: `p${_notifSeq++}` }]),
-    [],
-  );
-  const dismissNotif = useCallback(
-    (id: string) => setNotifications((cur) => cur.filter((n) => n.id !== id)),
-    [],
-  );
+  // One notification area for the app (V2 BLM § 10): a region's change replaces its last
+  // card ("turn:<region>"); the play warnings have a key each, so they do not pile up.
+  const addNotif = useCallback((n: { region_id: string; title: string; body: string }) => {
+    const special: Record<string, string> = {
+      run: "play:run",
+      budget: "play:budget",
+      llm: "play:llm",
+      guard: "play:busy",
+      turn: "play:turn",
+    };
+    toast({
+      key: special[n.region_id] ?? `turn:${n.region_id}`,
+      region: n.region_id,
+      title: n.title,
+      body: n.body || undefined,
+      tone: n.region_id === "run" ? "danger" : "event",
+    });
+  }, []);
 
   // Talked-to marks (U5). Best effort: the region screen must not fail with it.
   const loadNpcs = useCallback(async (sid: string) => {
@@ -268,9 +275,7 @@ export function PlayPage({ pollMs = 700, heldRetryMs = 1000 }: { pollMs?: number
   }
 
   return (
-    <div className="min-h-full">
-      <AppNav sessionId={sessionId || null} worldId={session?.world_id} />
-      <NotificationCenter items={notifications} onDismiss={dismissNotif} />
+    <AppShell sessionId={sessionId || null} worldId={session?.world_id} llmOff={view ? !view.llm_available : false}>
       <div className="p-3 flex flex-col gap-3" data-testid="play-page">
         {sessionId && (
           <div className="flex justify-end">
@@ -295,7 +300,6 @@ export function PlayPage({ pollMs = 700, heldRetryMs = 1000 }: { pollMs?: number
         )}
         {view && (
           <>
-            <LlmNotice visible={!view.llm_available} text={t("play.noLlm")} />
             <RegionScene
               view={view}
               npcCounts={npcCounts}
@@ -347,6 +351,6 @@ export function PlayPage({ pollMs = 700, heldRetryMs = 1000 }: { pollMs?: number
           </>
         )}
       </div>
-    </div>
+    </AppShell>
   );
 }

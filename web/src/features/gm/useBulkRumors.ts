@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { api } from "../../api";
 import { t } from "../../i18n";
-import type { Notif } from "../../ui";
 import type { BulkProgress } from "./ManualTurnPanel";
 import { BULK_LIMIT, mapLimit } from "./bulk";
 
@@ -17,7 +16,7 @@ export function useBulkRumors(
     after,
     onCap,
   }: {
-    notify: (n: Omit<Notif, "id">) => void;
+    notify: (n: { region_id: string; title: string; body: string }) => void;
     fail: (message: string | null) => void;
     after: () => Promise<void>;
     onCap: (cap: number) => void;

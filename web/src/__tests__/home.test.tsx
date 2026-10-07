@@ -273,7 +273,8 @@ describe("U8 demo cards", () => {
     (api.listWorlds as Mock).mockResolvedValue([]);
     (api.listDemos as Mock).mockResolvedValue([EMBER]);
     renderHome();
-    expect(await screen.findByTestId("llm-notice")).toHaveTextContent(t("llm.offNotice"));
+    // V2 intended change: one sentence for every screen (BR-V2-20)
+    expect(await screen.findByTestId("llm-notice")).toHaveTextContent(t("notice.llmOff"));
     expect(screen.getByTestId("demo-play-emberleaf")).toBeEnabled();
   });
 

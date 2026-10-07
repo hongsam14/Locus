@@ -159,7 +159,8 @@ describe("PlayPage", () => {
     (api.getRegion as Mock).mockResolvedValue(view({ llm_available: false }));
     renderPlay();
     // U8 intended change: FC §2.2 — LlmBanner became the shared LlmNotice, same words
-    await waitFor(() => expect(screen.getByTestId("llm-notice")).toHaveTextContent(t("play.noLlm")));
+    // V2 intended change: the AppShell band, one sentence for every screen (BR-V2-20)
+    await waitFor(() => expect(screen.getByTestId("llm-notice")).toHaveTextContent(t("notice.llmOff")));
     expect(screen.getByTestId("move-b-btn")).toBeEnabled();
   });
 

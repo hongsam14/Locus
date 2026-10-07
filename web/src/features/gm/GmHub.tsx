@@ -4,8 +4,7 @@ import { conflictKind, needsLlm } from "../../api/http";
 import { llmOff, useCapabilities } from "../../capabilities";
 import { t, useRequestLang } from "../../i18n";
 import type { GameSession, SessionEvent, SessionRumor, TimelineEntry, TurnResult } from "../../types";
-import { LlmNotice, Modal, NotificationCenter, Panel } from "../../ui";
-import type { Notif } from "../../ui";
+import { Modal, Panel, toast } from "../../ui";
 import { changeSummary, changeTitle } from "../play/summary";
 import { DistortionPanel } from "./DistortionPanel";
 import { EventPanel } from "./EventPanel";
@@ -16,7 +15,6 @@ import { SeedPanel } from "./SeedPanel";
 import { TimelinePanel } from "./TimelinePanel";
 import { useBulkRumors } from "./useBulkRumors";
 
-let _notifSeq = 0;
 
 interface Props {
   session: GameSession;
@@ -36,7 +34,6 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
   const [events, setEvents] = useState<SessionEvent[]>([]);
   const [distortions, setDistortions] = useState<Record<string, { degree: number; share: number }>>({});
   const [error, setError] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState<Notif[]>([]);
   const [suggestN, setSuggestN] = useState(1);
   const [confirm, setConfirm] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const closed = session.status === "closed";
@@ -44,14 +41,17 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
   const [seedKey, setSeedKey] = useState(0);
   const displayLang = useRequestLang(); // rumors / events carry translated fields: re-read
 
-  const addNotif = useCallback(
-    (n: Omit<Notif, "id">) => setNotifications((cur) => [...cur, { ...n, id: `n${_notifSeq++}` }]),
-    [],
-  );
-  const dismissNotif = useCallback(
-    (id: string) => setNotifications((cur) => cur.filter((n) => n.id !== id)),
-    [],
-  );
+  // The app's one notification area (V2 BLM § 10): a region's turn change replaces its last
+  // card; the bulk-run line has its own key.
+  const addNotif = useCallback((n: { region_id: string; title: string; body: string }) => {
+    toast({
+      key: n.region_id === "bulk" ? "gm:bulk" : `turn:${n.region_id}`,
+      region: n.region_id,
+      title: n.title,
+      body: n.body || undefined,
+      tone: "event",
+    });
+  }, []);
 
   // Only the latest read may paint (review U5 #11).
   const readSeq = useRef(0);
@@ -144,7 +144,6 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
 
   return (
     <Panel data-testid="session-panel" title={t("gm.title", { turn: session.turn })} className="min-w-80">
-      <LlmNotice visible={noLlm} />
       {error && <div className="text-danger mb-2" data-testid="gm-hub-error">{error}</div>}
       <ManualTurnPanel
         closed={closed}
@@ -222,7 +221,6 @@ export function GmHub({ session, regionId, regionNames = {}, onChanged, reloadKe
       >
         {confirm?.message}
       </Modal>
-      <NotificationCenter items={notifications} onDismiss={dismissNotif} />
     </Panel>
   );
 }

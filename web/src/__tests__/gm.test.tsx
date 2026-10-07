@@ -629,7 +629,10 @@ describe("U8 seeds and LLM-off buttons", () => {
   it("with no LLM the LLM buttons are off and say why; manual events stay on", async () => {
     (api.capabilities as Mock).mockResolvedValue({ llm: false, vlm: false, embedding: false });
     render(<GmHub session={OPEN} regionId="a" />);
-    expect(await screen.findByTestId("llm-notice")).toHaveTextContent(t("llm.offNotice"));
+    // V2 intended change: the LLM-off band is the AppShell's (BR-V2-20); GmHub alone draws
+    // none — its LLM buttons still say why they are off
+    await waitFor(() => expect(screen.getByTestId("suggest-events-btn")).toBeDisabled());
+    expect(screen.queryByTestId("llm-notice")).not.toBeInTheDocument();
     for (const id of ["suggest-events-btn", "generate-all-btn", "regen-all-btn", "generate-btn", "regen-btn"]) {
       expect(screen.getByTestId(id)).toBeDisabled();
       expect(screen.getByTestId(id)).toHaveAttribute("title", t("llm.required"));

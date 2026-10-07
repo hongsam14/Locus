@@ -11,7 +11,7 @@ import { api } from "../api";
 import { t, useLang } from "../i18n";
 import type { GameSession, Player, WorldExport } from "../types";
 import { Button } from "../ui";
-import { AppNav } from "./AppNav";
+import { AppShell } from "../layout";
 
 // GameMaster screen (F1): one session, its world map, the session NPC view of the
 // selected region, and the GameMaster hub (rumors / distortion / turns / events).
@@ -104,8 +104,7 @@ export function GmPage() {
   }
 
   return (
-    <div className="min-h-full">
-      <AppNav worldId={session?.world_id ?? data?.world_id} sessionId={sessionId} />
+    <AppShell worldId={session?.world_id ?? data?.world_id} sessionId={sessionId}>
       {session && (
         <SessionBar
           worldId={session.world_id}
@@ -216,6 +215,6 @@ export function GmPage() {
           </div>
         </div>
       )}
-    </div>
+    </AppShell>
   );
 }

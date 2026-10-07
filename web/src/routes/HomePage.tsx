@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
-import { llmOff, useCapabilities } from "../capabilities";
 import { BuildPanel } from "../features/editor/BuildPanel";
 import { DemoCards } from "../features/home/DemoCards";
 import { NewSessionForm } from "../features/play/NewSessionForm";
 import { t, useLang } from "../i18n";
 import type { Region, WorldInfo } from "../types";
-import { Button, Card, LlmNotice, Panel } from "../ui";
-import { AppNav } from "./AppNav";
+import { Button, Card, Panel } from "../ui";
+import { AppShell } from "../layout";
 
 /** `/` — the demo cards (U8, BR-U8-19: from the server's manifest, shown always) and the
  * world list (US-6.4, BR-U3-34): name, regions, last edit and open sessions, with [edit]
@@ -21,7 +20,6 @@ export function HomePage() {
   const [busy, setBusy] = useState(false);
   const [start, setStart] = useState<{ worldId: string; regions: Region[] } | null>(null);
   const [building, setBuilding] = useState(false);
-  const caps = useCapabilities();
 
   const loadWorlds = () => api.listWorlds().then(setWorlds).catch((e) => setError(String(e)));
   useEffect(() => {
@@ -46,9 +44,7 @@ export function HomePage() {
   const openBuild = () => setBuilding(true);
 
   return (
-    <div className="min-h-full">
-      <AppNav />
-      <LlmNotice visible={llmOff(caps)} />
+    <AppShell>
       <Panel title={t("home.title")} className="m-3" data-testid="home">
         {error && <div className="text-danger text-sm">{error}</div>}
         <DemoCards worlds={worlds} onLoaded={loadWorlds} />
@@ -108,6 +104,6 @@ export function HomePage() {
           // A replace stays on the report (what was replaced, the backup) — U3 review #6
           report.ok && !report.replaced && navigate(`/editor/${encodeURIComponent(worldId)}`)
         } />
-    </div>
+    </AppShell>
   );
 }

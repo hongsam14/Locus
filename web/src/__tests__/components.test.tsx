@@ -1,3 +1,4 @@
+import { renderWithShell } from "../test/render";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,7 +12,6 @@ import { SessionBar } from "../SessionBar";
 import { GmHub } from "../features/gm/GmHub";
 import { App } from "../App";
 import { resetCapabilities } from "../capabilities";
-import { AppNav } from "../routes/AppNav";
 import { t } from "../i18n";
 import type { ConnectionEdge, GameSession, Region } from "../types";
 
@@ -352,7 +352,7 @@ describe("GmHub (GameMaster hub, was SessionPanel)", () => {
         },
       ],
     });
-    render(<GmHub session={OPEN_SESSION} regionId={null} />);
+    renderWithShell(<GmHub session={OPEN_SESSION} regionId={null} />); // V2: toasts live in the shell
     fireEvent.click(await screen.findByTestId("advance-turn-btn"));
     await waitFor(() => expect(screen.getByTestId("notification-center")).toBeInTheDocument());
     expect(screen.getByText(t("notif.title", { region_id: "r1" }))).toBeInTheDocument(); // notif title
@@ -558,7 +558,7 @@ describe("EditorPage demo load (BR-U2-25)", () => {
 // --------------------------------------------------------------------------- //
 // U8: the nav with no world named, and the editor's LLM-off notice
 // --------------------------------------------------------------------------- //
-describe("AppNav and EditorPage after U8", () => {
+describe("EditorPage after U8", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetCapabilities();
@@ -568,19 +568,7 @@ describe("AppNav and EditorPage after U8", () => {
   });
   afterEach(() => resetCapabilities());
 
-  it("the Locus label goes home; with no world the editor link is the world list", () => {
-    // U8 intended change: BR-U8-1 — the editor link no longer falls back to /editor/aldermoor
-    render(<MemoryRouter><AppNav /></MemoryRouter>);
-    expect(screen.getByTestId("nav-home")).toHaveAttribute("href", "/");
-    expect(screen.getByTestId("nav-editor")).toHaveAttribute("href", "/");
-  });
-
-  it("with a world named the editor link opens that world", () => {
-    render(<MemoryRouter><AppNav worldId="emberleaf" sessionId="s1" /></MemoryRouter>);
-    expect(screen.getByTestId("nav-editor")).toHaveAttribute("href", "/editor/emberleaf");
-    expect(screen.getByTestId("nav-play")).toHaveAttribute("href", "/play/s1");
-  });
-
+  // V2: the menu rules moved to layout.test.tsx with AppShell (AppNav is gone)
   it("the editor shows the LLM-off notice and keeps the World File bar", async () => {
     (api.capabilities as Mock).mockResolvedValue({ llm: false, vlm: false, embedding: false });
     (api.exportWorld as Mock).mockResolvedValue({
@@ -592,7 +580,8 @@ describe("AppNav and EditorPage after U8", () => {
         <App />
       </MemoryRouter>,
     );
-    expect(await screen.findByTestId("llm-notice")).toHaveTextContent(t("llm.offNotice"));
+    // V2 intended change: the one band of the AppShell, one sentence for every screen (BR-V2-20)
+    expect(await screen.findByTestId("llm-notice")).toHaveTextContent(t("notice.llmOff"));
     expect(screen.getByTestId("file-input")).toBeEnabled();
   });
 });

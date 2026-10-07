@@ -197,11 +197,11 @@
 - [x] 10.4 커밋한다(`feat(web): AppShell, SplitView, Section, LangSwitch (V2 Step 10)`).
 
 ### Step 11 — 화면 갈아 끼우기 1: 셸·알림·안내 (FD § 6, 기계적)
-- [ ] 11.1 네 라우트(`HomePage`, `PlayPage`, `GmPage`, `EditorPage`)를 `AppShell`로 감싼다. `routes/AppNav.tsx`를 지운다.
-- [ ] 11.2 `LlmNotice`를 쓰는 곳(Home·Play·Editor 라우트, GmHub)에서 안내를 지운다. 띠는 AppShell이 그린다. 버튼의 꺼짐과 까닭 글은 그대로 둔다.
-- [ ] 11.3 `PlayPage`·`GmHub`의 알림 목록 상태와 `NotificationCenter`를 지우고 `toast({key})`로 바꾼다. key 규칙은 FD § 2를 따른다.
-- [ ] 11.4 기존 단언을 고친다(FD § 8.1). `renderWithShell`로 감싸고, `llm.offNotice`·`play.noLlm` → `notice.llmOff`, gm.test:632·648을 바꾸고, `components.test`의 AppNav를 옮긴다. 고친 줄은 code-summary에 적는다.
-- [ ] 11.5 vitest 전부 GREEN을 보고 커밋한다(`refactor(web): routes in AppShell; one LLM band; toasts replace the notification lists — mechanical, layouts unchanged (V2 Step 11)`).
+- [x] 11.1 네 라우트(`HomePage`, `PlayPage`, `GmPage`, `EditorPage`)를 `AppShell`로 감싼다. `routes/AppNav.tsx`를 지운다.
+- [x] 11.2 `LlmNotice`를 쓰는 곳(Home·Play·Editor 라우트, GmHub)에서 안내를 지운다. 띠는 AppShell이 그린다. 버튼의 꺼짐과 까닭 글은 그대로 둔다.
+- [x] 11.3 `PlayPage`·`GmHub`의 알림 목록 상태와 `NotificationCenter`를 지우고 `toast({key})`로 바꾼다. key 규칙은 FD § 2를 따른다.
+- [x] 11.4 기존 단언을 고친다(FD § 8.1). `renderWithShell`로 감싸고, `llm.offNotice`·`play.noLlm` → `notice.llmOff`, gm.test:632·648을 바꾸고, `components.test`의 AppNav를 옮긴다. 고친 줄은 code-summary에 적는다.
+- [x] 11.5 vitest 전부 GREEN을 보고 커밋한다(`refactor(web): routes in AppShell; one LLM band; toasts replace the notification lists — mechanical, layouts unchanged (V2 Step 11)`).
 
 ### Step 12 — 화면 갈아 끼우기 2: 대화상자·select·파일 입력·옛 클래스 (FD § 6, 기계적)
 - [ ] 12.1 대화상자 아홉 곳을 `ConfirmDialog`/`Dialog`로 바꾼다: GmHub, DeedPanel, ConfirmDelete, WorldFileBar, BuildPanel, DemoCard(이상 Modal), MapCanvas, NewSessionForm(자체 대화상자). 버튼 이름과 안쪽 testid를 유지한다. 그 뒤 `ui/Modal.tsx`·`Toast.tsx`·`NotificationCenter.tsx`·`LlmNotice.tsx`를 지운다.

@@ -15,10 +15,13 @@ const item = ({ isActive }: { isActive: boolean }) =>
 export function AppShell({
   worldId,
   sessionId,
+  llmOff: screenSaysOff = false,
   children,
 }: {
   worldId?: string | null;
   sessionId?: string | null;
+  /** The screen's own word that the LLM is off (the play view carries it), besides the server's. */
+  llmOff?: boolean;
   children: ReactNode;
 }) {
   useLang(); // labels follow the display language
@@ -72,7 +75,7 @@ export function AppShell({
           <LangSwitch />
         </div>
       </header>
-      {llmOff(caps) && (
+      {(llmOff(caps) || screenSaysOff) && (
         <div role="status" data-testid="llm-notice" className="border-b border-tint-info-line bg-tint-info">
           <div className="mx-auto flex max-w-[1240px] items-start gap-2 px-4 py-2 text-sm text-info-fg sm:px-6">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" className="mt-0.5 flex-none text-info">

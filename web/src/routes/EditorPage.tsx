@@ -12,8 +12,8 @@ import { WikiPanel } from "../features/editor/WikiPanel";
 import { WorldFileBar } from "../features/editor/WorldFileBar";
 import { t, useLang } from "../i18n";
 import type { ConnectionEdge, ConnectionKind, NameRef, WorldExport, WorldInfo } from "../types";
-import { Button, LlmNotice, Toast } from "../ui";
-import { AppNav } from "./AppNav";
+import { Button, Toast } from "../ui";
+import { AppShell } from "../layout";
 
 const PROV = { source: "input", generated_by: "designer" };
 type Tab = "region" | "unscoped" | "augment" | "wiki";
@@ -128,9 +128,7 @@ export function EditorPage() {
   const entities = (data?.entities ?? []) as NameRef[];
 
   return (
-    <div className="min-h-full">
-      <AppNav worldId={worldId} />
-      <LlmNotice visible={noLlm} />
+    <AppShell worldId={worldId}>
       <WorldFileBar worldId={worldId} name={data?.world?.name ?? info?.name ?? worldId}
         openSessions={info?.open_sessions ?? null} regions={regions} onLoaded={reloadAll}
         onBuild={openBuild} />
@@ -194,6 +192,6 @@ export function EditorPage() {
       </div>
       <BuildPanel open={building} worldId={worldId} exists={data != null}
         onClose={() => setBuilding(false)} onBuilt={() => reloadAll()} />
-    </div>
+    </AppShell>
   );
 }

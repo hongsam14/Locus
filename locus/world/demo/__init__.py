@@ -124,10 +124,6 @@ class DemoWorlds:
     def load_file(self, name: str) -> WorldFile:
         return _parse(self._dir, self.info(name).file)
 
-    def card(self, name: str, lang: str) -> DemoCardText | None:
-        """The demo card's text in ``lang`` from the manifest, or ``None`` (V3)."""
-        return self.info(name).i18n.get(lang)
-
     def translation_langs(self, name: str) -> builtins.list[str]:
         return sorted(self.info(name).translations)
 
@@ -138,16 +134,31 @@ class DemoWorlds:
         the import moved the World File (BR-V3-18/19): when ``remapped``, an id of the file
         becomes ``remapped_id(target, id)``; a ``world`` entry for the file's world always
         becomes ``target_world_id``. Other ids stay and are dropped as unknown when seeded.
-        An unreadable file gives ``[]`` and a warning (Q3=A)."""
+
+        Lenient at run time (Q3=A, BR-V3-10): an entry that fails its model is skipped and
+        the rest are read (code review 01 #8); an unreadable file, or one made for another
+        language or world, gives ``[]`` and a warning (#10) — the check reports all of it."""
         rel = self.info(name).translations.get(lang)
         if rel is None:
             return []
+        file = self.load_file(name)
         try:
-            entries = _read_translations(self._dir, rel).entries
-        except (OSError, ValueError) as exc:
+            tr, skipped = _read_translations_lenient(self._dir, rel)
+        except (OSError, ValueError, RecursionError) as exc:
             logger.warning("demo %s translations %s unreadable: %s", name, lang, exc)
             return []
-        file = self.load_file(name)
+        if tr.lang != lang or tr.world_id != file.world.id:
+            logger.warning(
+                "demo %s translations %s are for lang %r, world %r: not used",
+                name,
+                lang,
+                tr.lang,
+                tr.world_id,
+            )
+            return []
+        if skipped:
+            logger.warning("demo %s translations %s: %d bad entries skipped", name, lang, skipped)
+        entries = tr.entries
         known = file_ids(file)
         out: builtins.list[TranslationEntry] = []
         for entry in entries:
@@ -223,7 +234,7 @@ def check_packaged() -> list[str]:
 def _read_manifest(worlds_dir: Path) -> tuple[list[DemoInfo], list[str]]:
     try:
         raw = json.loads((worlds_dir / "manifest.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, RecursionError) as exc:
         return [], [f"manifest unreadable: {exc}"]
     if not isinstance(raw, list):
         return [], ["manifest must be a list of demo entries"]
@@ -256,7 +267,7 @@ def _check(worlds_dir: Path, info: DemoInfo) -> str | None:
         ):
             if not _path(worlds_dir, rel).is_file():
                 return f"source file missing: {rel}"
-    except (OSError, ValueError, UnsupportedWorldFile) as exc:
+    except (OSError, ValueError, RecursionError, UnsupportedWorldFile) as exc:
         return str(exc)
     if file.world.id != info.name:  # FR-C11: [play now] would start in a remapped world
         return f"{info.file} is world {file.world.id!r}, not {info.name!r}; the names must match"
@@ -288,7 +299,7 @@ def _check_translations(worlds_dir: Path, info: DemoInfo) -> list[str]:
         head = f"translations {lang}"
         try:
             tr = _read_translations(worlds_dir, rel)
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, RecursionError) as exc:
             out.append(f"{head}: {exc}")
             continue
         if tr.lang != lang:
@@ -309,7 +320,7 @@ def _check_translations(worlds_dir: Path, info: DemoInfo) -> list[str]:
         ]
         if stale:
             shown = "; ".join(
-                f"{_key(e.key)}: file {_clip(e.source)!r} ≠ world {_clip(texts[e.key])!r}"
+                "{}: file {!r} ≠ world {!r}".format(_key(e.key), *_diff(e.source, texts[e.key]))
                 for e in stale[:_SHOW]
             )
             out.append(f"{head}: stale {shown}{_more(len(stale))}")
@@ -335,25 +346,59 @@ def _more(n: int, shown: int = _SHOW) -> str:
     return f" and {n - shown} more" if n > shown else ""
 
 
-def _clip(text: str, limit: int = 60) -> str:
-    return text if len(text) <= limit else text[: limit - 1] + "…"
+def _diff(a: str, b: str, limit: int = 60) -> tuple[str, str]:
+    """Both texts cut to ``limit`` around their first difference, so a change late in a
+    long text still shows (code review 01 #13)."""
+    i = next((n for n, (x, y) in enumerate(zip(a, b, strict=False)) if x != y), min(len(a), len(b)))
+    start = max(0, i - limit // 3)
+
+    def cut(t: str) -> str:
+        part = t[start : start + limit]
+        return ("…" if start else "") + part + ("…" if start + limit < len(t) else "")
+
+    return cut(a), cut(b)
+
+
+def _load_json(worlds_dir: Path, rel: str) -> object:
+    path = _path(worlds_dir, rel)  # ValueError outside the folder (BR-V3-06)
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"unreadable {rel}: {exc}") from exc
 
 
 def _read_translations(worlds_dir: Path, rel: str) -> TranslationFile:
-    path = _path(worlds_dir, rel)  # ValueError outside the folder (BR-V3-06)
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"unreadable {rel}: {exc}") from exc
-    return TranslationFile.parse(data)
+    """The whole file, strictly (the check: any bad entry is a problem)."""
+    return TranslationFile.parse(_load_json(worlds_dir, rel))
+
+
+def _read_translations_lenient(worlds_dir: Path, rel: str) -> tuple[TranslationFile, int]:
+    """The file with its bad entries left out (run time), and how many were."""
+    data = _load_json(worlds_dir, rel)
+    if not isinstance(data, dict):
+        raise ValueError("a translation file is a JSON object")
+    raw = data.get("entries")
+    head = TranslationFile.parse({**data, "entries": []})
+    good: list[TranslationEntry] = []
+    skipped = 0
+    for item in raw if isinstance(raw, list) else []:
+        try:
+            good.append(TranslationEntry.model_validate(item))
+        except ValidationError:
+            skipped += 1
+    return head.model_copy(update={"entries": good}), skipped
 
 
 def _path(worlds_dir: Path, rel: str) -> Path:
-    """A manifest path, refused when it leaves the manifest folder (BR-U8-2)."""
+    """A manifest path, refused when it leaves the manifest folder (BR-U8-2) — also
+    through a symbolic link (V3 code review 01 § 2)."""
     pure = PurePosixPath(rel)
     if pure.is_absolute() or ".." in pure.parts or not rel:
         raise ValueError(f"path outside the demo folder: {rel!r}")
-    return worlds_dir.joinpath(*pure.parts)
+    path = worlds_dir.joinpath(*pure.parts)
+    if not path.resolve().is_relative_to(worlds_dir.resolve()):
+        raise ValueError(f"path outside the demo folder: {rel!r}")
+    return path
 
 
 def _parse(worlds_dir: Path, rel: str) -> WorldFile:

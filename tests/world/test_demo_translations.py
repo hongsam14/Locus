@@ -138,10 +138,12 @@ def test_a_bad_language_key_is_a_manifest_error(folder, key: str) -> None:  # BR
 
 def test_card_text_is_capped_like_the_english(folder) -> None:  # BR-V3-12
     assert folder(_full(), i18n={"ko": {"title": "섬" * 61}}).list() == []
-    demos = folder(_full(), i18n={"ko": {"title": "엠버리프 섬", "credits": "독창적인 세계"}})
-    card = demos.card(PACKAGED["world"]["id"], "ko")
+    assert folder(_full(), i18n={"ko": {"title": "섬", "description": "섬" * 301}}).list() == []
+    assert folder(_full(), i18n={"ko": {"title": "섬", "credits": "섬" * 201}}).list() == []
+    demos = folder(_full(), i18n={"ko": {"title": "엠버리프 섬", "credits": "섬" * 200}})
+    card = demos.info(PACKAGED["world"]["id"]).i18n.get("ko")
     assert card is not None and card.title == "엠버리프 섬" and card.description is None
-    assert demos.card(PACKAGED["world"]["id"], "ja") is None
+    assert demos.info(PACKAGED["world"]["id"]).i18n.get("ja") is None
 
 
 # --- run time (TP-V3-5, TP-V3-3) ------------------------------------------------------ #
@@ -189,6 +191,7 @@ FORBIDDEN_KO = (
     "페리온",
     "커닝",
     "리스 항구",
+    "리스항구",
     "슬리피우드",
     "노틸러스",
     "검은 마법사",
@@ -209,11 +212,18 @@ def _packaged_entries():
     return demos, name, demos.translations(name, "ko", target_world_id=name, remapped=False)
 
 
+def test_the_packaged_card_names_no_borrowed_game() -> None:  # the credits are the one mention
+    demos = DemoWorlds()
+    card = demos.info(demos.list()[0].name).i18n["ko"]
+    for text in (card.title, card.description or ""):
+        assert not any(w in text for w in FORBIDDEN_KO), text
+
+
 def test_the_packaged_demo_is_fully_translated_with_no_problem() -> None:
     demos, name, entries = _packaged_entries()
     assert demos.problems == []  # the CI check (check_packaged) is clean
     assert {e.key for e in entries} == set(demos.texts(name, target_world_id=name, remapped=False))
-    assert demos.card(name, "ko") is not None
+    assert demos.info(name).i18n.get("ko") is not None
 
 
 def test_the_packaged_korean_follows_the_style() -> None:
@@ -222,8 +232,47 @@ def test_the_packaged_korean_follows_the_style() -> None:
         where = f"{e.kind} {e.id}.{e.field}"
         assert not any(w in e.text for w in FORBIDDEN_KO), where  # BR-U8-10 in Korean too
         if (e.kind, e.field) in SENTENCE_FIELDS:
-            assert e.text.endswith("다."), where  # story register (V2 Q2=A)
+            # every sentence in the story register (V2 Q2=A): 해라체 "다.", never 합쇼체 "니다."
+            for sentence in [x for x in e.text.split(". ") if x]:
+                ending = sentence if sentence.endswith(".") else sentence + "."
+                assert ending.endswith("다.") and not ending.endswith("니다."), where
         else:
             assert not e.text.endswith("."), where  # names, roles, titles: value names
         if e.field == "name":
             assert not any("a" <= c.lower() <= "z" for c in e.text), where  # transliterated
+
+
+# --- code review 01 ------------------------------------------------------------------ #
+def test_at_run_time_a_bad_entry_is_skipped_and_the_rest_are_read(folder) -> None:  # #8
+    data = _full()
+    data["entries"][5]["text"] = "  "
+    data["entries"][6]["note"] = "an extra key"
+    demos = folder(data)
+    name = PACKAGED["world"]["id"]
+    assert demos.problems  # the check still reports the file
+    got = demos.translations(name, "ko", target_world_id=name, remapped=False)
+    assert len(got) == len(_texts()) - 2
+
+
+def test_at_run_time_a_file_for_another_lang_or_world_is_not_used(folder) -> None:  # #10
+    name = PACKAGED["world"]["id"]
+    ja = folder(_full(lang="ja"))
+    assert ja.translations(name, "ko", target_world_id=name, remapped=False) == []
+    other = folder(_full(world_id="other"))
+    assert other.translations(name, "ko", target_world_id=name, remapped=False) == []
+
+
+def test_a_stale_line_shows_where_the_texts_differ(folder) -> None:  # #13
+    data = _full()
+    entry = next(e for e in data["entries"] if e["kind"] == "world" and e["field"] == "description")
+    entry["source"] = entry["source"].replace("Glimmerrun", "Glimmerrum")
+    text = " | ".join(folder(data).problems)
+    assert "Glimmerrum" in text and "Glimmerrun" in text  # a change late in the text shows
+
+
+def test_a_symbolic_link_out_of_the_folder_is_refused(folder, tmp_path: Path) -> None:  # § 2
+    outside = tmp_path.parent / f"{tmp_path.name}-outside.json"
+    outside.write_text(json.dumps(_full()), encoding="utf-8")
+    (tmp_path / "link.json").symlink_to(outside)
+    demos = folder(_full(), translations={"ko": "link.json"})
+    assert "outside the demo folder" in " ".join(demos.problems)

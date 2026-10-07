@@ -38,6 +38,28 @@ def test_blank_texts_are_not_targets() -> None:
     assert translatable_texts(file) == {("world", "w", "name"): "Isle"}
 
 
+def test_an_empty_knowledge_title_is_the_title_a_screen_shows() -> None:  # review 01 #12
+    from locus.shared.models import fallback_title
+
+    statement = "Newcomers step off the ferry and give their names to the harbormaster."
+    file = WorldFile.model_validate(
+        {
+            "format_version": 1,
+            "world": {"id": "w", "name": "Isle"},
+            "knowledge": [
+                {
+                    "id": "k1",
+                    "world_id": "w",
+                    "statement": statement,
+                    "title": "",
+                    "provenance": {"source": "input"},
+                }
+            ],
+        }
+    )
+    assert translatable_texts(file)[("knowledge", "k1", "title")] == fallback_title(statement)
+
+
 def test_the_packaged_demo_has_123_texts() -> None:
     demos = DemoWorlds()
     file = demos.load_file(demos.list()[0].name)

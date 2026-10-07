@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
+from locus.shared.models import fallback_title
 from locus.shared.models.i18n import TRANSLATABLE_FIELDS
 from locus.world.worldfile.schema import WorldFile
 
@@ -30,6 +31,11 @@ def translatable_texts(file: WorldFile) -> dict[TextKey, str]:
         for item in items:
             for field in TRANSLATABLE_FIELDS[kind]:
                 text = getattr(item, field, None)
+                if kind == "knowledge" and field == "title" and not (text or "").strip():
+                    # read back from the graph an empty title is the statement's (BR-A2):
+                    # that is the title a screen shows, so it is the one to translate
+                    # (code review 01 #12)
+                    text = fallback_title(item.statement)
                 if isinstance(text, str) and text.strip():
                     out[(kind, item.id, field)] = text
     return out

@@ -208,7 +208,7 @@ def test_a_started_seed_reads_in_korean_on_the_next_events_read() -> None:
     (event,) = client.get(f"/api/gm/sessions/{sid}/events").json()
     assert (
         event["description_ko"]
-        == "앰버메도의 버섯밭에 잿빛 반점이 번진다. 줄째로 불태워지고 수확이 불투명해진다."
+        == "앰버메도의 버섯밭에 잿빛 반점이 번진다. 버섯이 줄째 불태워지고 수확이 불투명해진다."
     )
 
 

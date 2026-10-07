@@ -71,7 +71,7 @@ def test_the_name_map_serves_the_cached_korean_by_id() -> None:
     assert set(names["regions"]["region-saltwake"]) == {"name", "description"}
     assert len(names["npcs"]) == 15 and names["npcs"]["npc-brisa"] == {
         "name": "브리사 대장",
-        "role": "궁수대장",
+        "role": "궁수 대장",
         "description": "무너진 절벽 길을 지키는 궁수들을 이끈다.",
     }
     assert len(names["event_seeds"]) == 3

@@ -234,8 +234,8 @@
 - [x] 11.3 커밋: `test: V3 invariants — no Korean in the World File, seeding writes no graph (V3, FR-L4)`
 
 ### Step 12 — 게이트와 요약
-- [ ] 12.1 게이트를 돌린다: `pytest`, `vitest`(시드 둘), `ruff`, `black --check`, `tsc`, `mypy locus api`(≤ 11), `npm audit --omit=dev`(0), `tests/test_boundaries.py`.
-- [ ] 12.2 `aidlc-docs/construction/V3-korean-backend/code/code-summary.md`를 쓴다.
+- [x] 12.1 게이트를 돌린다: `pytest`, `vitest`(시드 둘), `ruff`, `black --check`, `tsc`, `mypy locus api`(≤ 11), `npm audit --omit=dev`(0), `tests/test_boundaries.py`.
+- [x] 12.2 `aidlc-docs/construction/V3-korean-backend/code/code-summary.md`를 쓴다.
   - § 1 기준선과 결과
   - § 2 바꾼 파일과 만든 파일
   - § 3 BR·TP 대응
@@ -249,8 +249,8 @@
   - § 7 V4·V6·V8에 넘기는 것
     - 이름표를 화면에서 한 번 받아 들고 있기(리뷰 제안)
     - 굳은 시간선 이름을 id로 찾기
-- [ ] 12.3 `aidlc-docs/operations/next-cycle.md`에 한 줄을 더한다: "LLM 대사·서술에 이름표를 함께 주기".
-- [ ] 12.4 커밋: `docs(aidlc): V3 code summary`
+- [x] 12.3 `aidlc-docs/operations/next-cycle.md`에 한 줄을 더한다: "LLM 대사·서술에 이름표를 함께 주기".
+- [x] 12.4 커밋: `docs(aidlc): V3 code summary`
 
 ---
 

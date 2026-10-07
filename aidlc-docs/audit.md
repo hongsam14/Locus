@@ -4973,3 +4973,22 @@ Next: V3 Code Generation Part 1 (NFR SKIP per the unit table).
 
 ---
 
+## Code Generation Part 2 — V3 한국어 표시 백엔드 — Steps 1–12 complete
+**Timestamp**: 2026-10-07T15:34:40Z
+**User Input**: (none since plan approval)
+**AI Response**: V3 code generated in 14 commits on `feat/follow-up` (`580beb4`..`8d9a76c`, plus the summary).
+- Gates:
+  - pytest 1034 (+60), vitest 424 + 1 skip (two seeds)
+  - ruff/black/tsc clean, mypy 11, boundaries pass, runtime audit 0
+- Keyless Emberleaf is Korean through the API. Seeding the load gives 123/123:
+  - knowledge fields
+  - world name map
+  - world list
+  - demo cards
+- Step 3's first commit was made while a test was RED: a docstring named a demo region, against the demo-as-data rule. The pipeline hid the exit code. The commit was amended at once, before any push, and later steps used a gate script with pipefail.
+- Deviations, in code-summary § 5: the R-02 table; the upstream table cells got strikethrough, slightly more than "body not edited".
+- Known limits, in § 6: dialogue names (now on next-cycle.md), in-flight warm, cross-world ids, name-map warm cost, keyless schema creation.
+**Context**: CONSTRUCTION / V3 — Code Generation Part 2 complete; awaiting code approval (code review follows approval, as in V2).
+
+---
+

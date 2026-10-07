@@ -34,6 +34,9 @@
 - LangGraph 래퍼(서비스에 연결 안 됨)
 - wiki 순환 구조(쓰인 결과가 prior를 다듬지 않음)
 
+## 후속 주기에서 다룰 것 (Follow-up 주기에서 생김)
+- **LLM 대사·서술에 이름표를 함께 주기**(V3 code-summary § 6): 한국어로 생성되는 NPC 대사·GM 서술·소문 안의 고유명사가 화면의 이름표(음역)와 다를 수 있다. play가 번역을 모르는 경계 규칙을 지키며 주는 방법(합성 루트가 프롬프트 용어집을 넘김 등)을 정한다.
+
 ## 기술 부채
 - CI 액션 버전: `actions/checkout@v4`·`setup-node@v4`·`setup-python@v5`가 Node 20 대상이라 경고가 난다(Node 24로 강제 실행 중). 새 주 버전으로 올린다. `ubuntu-latest`는 2026-10-19부터 Ubuntu 26으로 바뀐다(첫 실행 2026-10-02의 주석).
 - mypy 기준선 11건(`locus/shared/llm/openai_provider.py` 등)

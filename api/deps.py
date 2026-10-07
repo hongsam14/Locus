@@ -35,11 +35,13 @@ class Containers:
 T = TypeVar("T")
 
 
-def need_service(service: T | None, name: str) -> T:
+def need_service(service: T | None, name: str, code: str = "service_unavailable") -> T:
     """A boundary service that is None without a provider (NFR-4) answers 503 — the one
-    rule every router uses (U3 review C7)."""
+    rule every router uses (U3 review C7). A service that is None only for want of an
+    LLM passes ``code="llm_unavailable"``, which the screens read as "needs a key"
+    (BR-U8-27, V2 review #2)."""
     if service is None:
-        raise ApiError(503, f"{name} unavailable", "service_unavailable")
+        raise ApiError(503, f"{name} unavailable", code)
     return service
 
 

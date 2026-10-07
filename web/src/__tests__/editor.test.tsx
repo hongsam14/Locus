@@ -441,9 +441,11 @@ describe("U8 editor", () => {
     expect(screen.getAllByTestId("wip-badge")).toHaveLength(1); // only that field
   });
 
-  it("a build 503 for a missing provider reads 'LLM key required'", async () => {
-    (api.uploadBuild as Mock).mockRejectedValue(new HttpError(503, "Service Unavailable",
-      '{"detail":"world build (LLM provider) unavailable"}'));
+  it.each([
+    ['{"detail":"world build (LLM provider) unavailable","code":"llm_unavailable"}'], // V2 review #2
+    ['{"detail":"world build (LLM provider) unavailable"}'], // a server without codes
+  ])("a build 503 for a missing provider reads 'LLM key required' (%s)", async (body) => {
+    (api.uploadBuild as Mock).mockRejectedValue(new HttpError(503, "Service Unavailable", body));
     build();
     fireEvent.change(screen.getByTestId("build-memo"), { target: { value: "a river town" } });
     fireEvent.click(screen.getByTestId("build-submit"));

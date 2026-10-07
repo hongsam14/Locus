@@ -214,6 +214,7 @@
 | `deps.py` 지원하지 않는 언어 | 400 | `unsupported_lang` | 지원하지 않는 언어예요. |
 | `deps.py`·라우터의 "… unavailable" | 503 | `service_unavailable` | 서버의 일부가 준비되지 않았어요. · 잠시 뒤 다시 해 보세요. |
 | `world_editor.py` NPC 초안 LLM 없음 | 503 | `llm_unavailable` | (위 13과 같음) |
+| `routers/world.py` 월드 빌드·업로드 빌드·데모 소스 빌드의 빌더 없음(`need_service(…, "llm_unavailable")`) 〔코드 리뷰 01 #2 정정: 처음 표는 이 셋을 위 `service_unavailable` 줄에 넣어 화면이 "LLM 키가 필요해요"를 잃었다〕 | 503 | `llm_unavailable` | (위 13과 같음) |
 | 검증 실패 처리기 | 422 | `validation_failed` | 입력 값이 맞지 않아요. · 표시된 칸을 확인하세요. |
 | Starlette 라우트 없음 | 404 | `not_found` | 찾을 수 없어요. |
 | Starlette 메서드 없음 | 405 | `method_not_allowed` | 이 요청은 받지 않아요. |

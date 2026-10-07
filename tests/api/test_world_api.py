@@ -218,14 +218,19 @@ def test_build_upload_multipart_builds_inputs() -> None:
 
 def test_llm_free_container_serves_files_and_demo_but_not_build() -> None:  # R-14
     client = _client(builder=None)
-    assert client.post("/api/world/worlds/w/build", json={"memos": ["x"]}).status_code == 503
+    r = client.post("/api/world/worlds/w/build", json={"memos": ["x"]})
+    # the screens read this code as "needs an LLM key" (BR-U8-27, V2 review #2)
+    assert r.status_code == 503 and r.json()["code"] == "llm_unavailable"
+    r = client.post("/api/world/worlds/w/build/upload", files=[("memos", ("m.txt", b"x"))])
+    assert r.status_code == 503 and r.json()["code"] == "llm_unavailable"
     assert client.post("/api/world/worlds/w/augmentation/runs").status_code == 503
     assert client.get("/api/world/worlds/w/related-priors").status_code == 503
     assert client.get("/api/world/worlds/w/file").status_code == 200
     assert client.get("/api/world/demos").status_code == 200
     assert client.post("/api/world/worlds/w/demo/aldermoor").status_code == 200
     assert client.get("/api/world/worlds").status_code == 200
-    assert client.post("/api/world/worlds/w/demo/aldermoor/build").status_code == 503
+    r = client.post("/api/world/worlds/w/demo/aldermoor/build")
+    assert r.status_code == 503 and r.json()["code"] == "llm_unavailable"
 
 
 # --- World File -------------------------------------------------------------- #

@@ -12,10 +12,11 @@ import asyncio
 import json
 
 import pytest
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException
 from fastapi.testclient import TestClient
 
 from api import uploads
+from api.deps import display_lang
 from api.errors import DEFAULT_CODES, ERROR_CODES, ApiError, code_for, http_error
 from api.main import create_app
 from locus.play.base import SessionClosedError
@@ -77,6 +78,10 @@ def _app_client() -> TestClient:
     def turn() -> None:
         raise http_error(TurnInProgressError("a turn is running"))
 
+    @app.get("/_t/lang")
+    def lang(chosen: str = Depends(display_lang)) -> str:
+        return chosen
+
     @app.get("/_t/boom")
     def boom() -> None:
         raise RuntimeError("secret internals")
@@ -119,9 +124,8 @@ def test_a_missing_boundary_and_a_bad_lang_have_codes() -> None:
     client = _app_client()
     r = client.get("/api/world/worlds")
     assert r.status_code == 503 and r.json()["code"] == "service_unavailable"
-    r = client.get("/api/play/sessions/s1/region?lang=xx")
-    assert r.status_code in (400, 503)
-    assert r.json()["code"] in {"unsupported_lang", "service_unavailable"}
+    r = client.get("/_t/lang?lang=xx")
+    assert r.status_code == 400 and r.json()["code"] == "unsupported_lang"
 
 
 def test_the_body_limit_middleware_writes_its_413_with_a_code() -> None:

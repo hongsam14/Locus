@@ -154,7 +154,7 @@ def build_world(
     loc: LocalizationContainer | None = Depends(get_localization),
 ) -> BuildReport:
     """Build from JSON inputs (images base64-encoded, RE A7)."""
-    builder = _need(w.builder, "world build (LLM provider)")
+    builder = _need(w.builder, "world build (LLM provider)", "llm_unavailable")
     open_ids = _open_sessions(world_id, confirm, play) if replace else []
     try:
         report = builder.build(world_id, inputs, replace=replace)
@@ -185,7 +185,7 @@ def build_world_upload(
 
     A sync route: FastAPI runs it in the threadpool, so a minutes-long build never
     blocks the single worker's event loop (review #10)."""
-    builder = _need(w.builder, "world build (LLM provider)")
+    builder = _need(w.builder, "world build (LLM provider)", "llm_unavailable")
     for field, files, cap in (
         ("memos", memos, uploads.MEMO),
         ("maps", maps, uploads.MAP),
@@ -401,7 +401,7 @@ def build_demo_world_from_sources(
     """Development path: build the demo from its raw sources through the LLM pipeline
     (``with_map=false`` skips the map image / VLM)."""
     demo = _need(w.demo, "demo worlds")
-    _need(w.builder, "world build (LLM provider)")
+    _need(w.builder, "world build (LLM provider)", "llm_unavailable")
     try:
         demo.info(name)
     except LookupError as exc:

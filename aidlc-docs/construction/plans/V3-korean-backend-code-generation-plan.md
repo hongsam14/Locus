@@ -107,14 +107,14 @@
 ## 2. 단계
 
 ### Step 1 — 진행 기록, 기준선, 설계 이탈 메모
-- [ ] 1.1 진행 기록을 커밋한다: audit, state, V2 리뷰 기록 뒤의 문서, V3 FD 계획·산출물·리뷰, 이 계획. 커밋 메시지는 `docs(aidlc): V3 functional design approved; V3 code plan`이다.
-- [ ] 1.2 기준선을 잰다: `pytest -q`(974), `npx vitest run`(423 + skip 1), `ruff`, `black --check`, `npx tsc --noEmit`, `mypy locus api`(11), `npm audit --omit=dev`(0). code-summary § 1에 적는다.
-- [ ] 1.3 〔실행 메모 R-02〕 상류 네 문서의 해당 줄 밑에 〔V3 FD Q5=A 정정, 2026-10-07〕 한 줄 메모를 단다: `component-dependency.md:109`, `component-methods.md` § 2·4·5, `components.md:79`, `unit-of-work.md` V3 완료 조건. 메모는 "→ V3 FD BR-V3-21, 이름표 `GET …/names`"를 가리킨다. 본문은 고치지 않는다. 커밋한다(`docs(aidlc): mark the per-response *_ko contract superseded by the V3 name map`).
+- [x] 1.1 진행 기록을 커밋한다: audit, state, V2 리뷰 기록 뒤의 문서, V3 FD 계획·산출물·리뷰, 이 계획. 커밋 메시지는 `docs(aidlc): V3 functional design approved; V3 code plan`이다.
+- [x] 1.2 기준선을 잰다: `pytest -q`(974), `npx vitest run`(423 + skip 1), `ruff`, `black --check`, `npx tsc --noEmit`, `mypy locus api`(11), `npm audit --omit=dev`(0). code-summary § 1에 적는다.
+- [x] 1.3 〔실행 메모 R-02〕 상류 네 문서의 해당 줄 밑에 〔V3 FD Q5=A 정정, 2026-10-07〕 한 줄 메모를 단다: `component-dependency.md:109`, `component-methods.md` § 2·4·5, `components.md:79`, `unit-of-work.md` V3 완료 조건. 메모는 "→ V3 FD BR-V3-21, 이름표 `GET …/names`"를 가리킨다. 본문은 고치지 않는다. 커밋한다(`docs(aidlc): mark the per-response *_ko contract superseded by the V3 name map`).
 
 ### Step 2 — shared 번역 모델 (domain-entities § 2, BR-V3-01·04·05)
-- [ ] 2.1 `locus/shared/models/i18n.py`를 만든다: `TranslationKind`, `TRANSLATABLE_FIELDS`, `source_hash`, `TranslationEntry`(`field` 검증, `key`·`source_hash` 속성), `TranslationFile`(`parse`, `to_json`). `models/__init__.py`가 다시 내보낸다.
-- [ ] 2.2 `locus/localization/service.py`의 `source_hash`는 shared에서 가져와 다시 내보낸다(이름 유지).
-- [ ] 2.3 테스트:
+- [x] 2.1 `locus/shared/models/i18n.py`를 만든다: `TranslationKind`, `TRANSLATABLE_FIELDS`, `source_hash`, `TranslationEntry`(`field` 검증, `key`·`source_hash` 속성), `TranslationFile`(`parse`, `to_json`). `models/__init__.py`가 다시 내보낸다.
+- [x] 2.2 `locus/localization/service.py`의 `source_hash`는 shared에서 가져와 다시 내보낸다(이름 유지).
+- [x] 2.3 테스트:
   - TP-V3-1: 왕복 PBT(hypothesis), 다른 `format`·`version`은 `ValueError`
   - TP-V3-2 일부: 공백만 다른 원문은 같은 해시, 고정 예(옛 값과 같음), `field` 검증
   - 커밋: `feat(shared): translation entry and file models; source_hash moves to shared (V3)`

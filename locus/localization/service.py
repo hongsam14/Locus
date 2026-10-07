@@ -15,7 +15,6 @@ mapping into response DTOs).
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import threading
 from collections.abc import Callable, Sequence
@@ -25,6 +24,7 @@ from typing import Any
 from locus.localization.models import Translation
 from locus.localization.ports import TranslationKey, TranslationStore
 from locus.localization.translator import Translator
+from locus.shared.models.i18n import source_hash  # moved to shared (V3); re-exported here
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +36,6 @@ WarmScheduler = Callable[[Callable[[], None]], Any]
 
 def _run_inline(fn: Callable[[], None]) -> None:
     fn()
-
-
-def source_hash(text: str) -> str:
-    """Stable hash of the source text (whitespace-normalized). BR-X1-6."""
-    normalized = (text or "").strip()
-    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
 class TranslationService:

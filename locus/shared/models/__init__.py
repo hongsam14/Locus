@@ -31,6 +31,13 @@ from locus.shared.models.graph import (
     fallback_title,
     new_id,
 )
+from locus.shared.models.i18n import (
+    TRANSLATABLE_FIELDS,
+    TranslationEntry,
+    TranslationFile,
+    TranslationKind,
+    source_hash,
+)
 from locus.shared.models.io import (
     ConsensusView,
     IngestionResult,
@@ -74,6 +81,12 @@ __all__ = [
     "WorldMeta",
     "fallback_title",
     "new_id",
+    # i18n (V3)
+    "TRANSLATABLE_FIELDS",
+    "TranslationEntry",
+    "TranslationFile",
+    "TranslationKind",
+    "source_hash",
     # io
     "ConsensusView",
     "IngestionResult",

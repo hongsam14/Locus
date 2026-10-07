@@ -110,25 +110,25 @@
 - [x] 4.5 vitest·tsc를 돌리고 커밋한다(`feat(web): lamplit-tavern tokens, one dark theme, fonts by role, contrast test over the allowed pairs (V2 Step 4)`).
 
 ### Step 5 — 사전과 표기 규칙 (FR-D8, FR-L1, BR-V2-10~14)
-- [ ] 5.1 `web/src/i18n.ts`를 `web/src/i18n/{index,ko,en}.ts`로 나눈다. 상태·`t`·`timelineText`·`logText`는 index에 둔다. import 경로 `./i18n`·`../i18n`는 그대로다(FD § 1.2). 키 일치 테스트를 유지한다.
-- [ ] 5.2 새 키를 더한다(ko·en):
+- [x] 5.1 `web/src/i18n.ts`를 `web/src/i18n/{index,ko,en}.ts`로 나눈다. 상태·`t`·`timelineText`·`logText`는 index에 둔다. import 경로 `./i18n`·`../i18n`는 그대로다(FD § 1.2). 키 일치 테스트를 유지한다.
+- [x] 5.2 새 키를 더한다(ko·en):
   - `enum.<kind>.<value>`: FD domain-entities § 4, 15종
   - `word.<measure>.<band>`: § 3, 8종
   - `error.<code>.title|action`, `error.status.<NNN>`, `error.network`, `error.unknown`: § 5
   - `notice.llmOff`
   - Step 9·10이 쓰는 `action.*`·`empty.*`·`hint.*`
-- [ ] 5.3 `web/src/format/`:
+- [x] 5.3 `web/src/format/`:
   - `enums.ts`: 값 목록 한 곳
   - `labels.ts`: `enumLabel`
   - `bands.ts`: 단계 표, `bandOf`, `degreeWord`, `decayWord`, `numberWithMeaning`
   - `dates.ts`: `formatDate`·`formatDateTime`(`iso, lang?, timeZone?`), `turnLabel`, `turnAt`
-- [ ] 5.4 테스트:
+- [x] 5.4 테스트:
   - `format/enums.test.ts`(TP-V2-3, 전수)
   - `format/bands.prop.test.ts`(TP-V2-4, fast-check: 전부·단조·경계 ± 1e-9·자르기·NaN; 경계 예시)
   - `format/dates.test.ts`(TP-V2-5, UTC 고정)
   - `i18n.style.test.ts`(TP-V2-6: 새 접두어 키의 끝맺음)
   - 속성마다 변이를 한 번 넣어(예: 경계 비교를 `<=`로) 테스트가 잡는지 확인하고 code-summary에 적는다.
-- [ ] 5.5 커밋한다(`feat(web): i18n split into ko/en modules, enum labels, measure bands, locale dates (V2 Step 5)`).
+- [x] 5.5 커밋한다(`feat(web): i18n split into ko/en modules, enum labels, measure bands, locale dates (V2 Step 5)`).
 
 ### Step 6 — 오류 문장 (FR-D9, BR-V2-16)
 - [ ] 6.1 `api/http.ts`:

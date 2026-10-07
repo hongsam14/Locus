@@ -1,0 +1,36 @@
+import { lang as currentLang, t } from "../i18n";
+import type { Lang } from "../types";
+
+const LOCALES: Record<Lang, string> = { ko: "ko-KR", en: "en-US" };
+// "2026년 10월 2일" / "Oct 2, 2026"
+const DAY: Intl.DateTimeFormatOptions = { year: "numeric", month: "short", day: "numeric" };
+
+/** A date in the display language's locale, in the viewer's time zone (UX-07, BR-V2-14).
+ * Tests pass `timeZone: "UTC"` to fix the result. An unreadable string is shown as it is. */
+export function formatDate(iso: string, lang: Lang = currentLang(), timeZone?: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat(LOCALES[lang], { ...DAY, timeZone }).format(d);
+}
+
+/** Date and time, same rules as `formatDate`. */
+export function formatDateTime(iso: string, lang: Lang = currentLang(), timeZone?: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat(LOCALES[lang], {
+    ...DAY,
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone,
+  }).format(d);
+}
+
+/** The current turn: "4턴째" / "Turn 4". */
+export function turnLabel(n: number): string {
+  return t("unit.turnNow", { n });
+}
+
+/** A log line's turn: "4턴" / "T4", and 0 is "시작" / "Start". */
+export function turnAt(n: number): string {
+  return n === 0 ? t("unit.turnStart") : t("unit.turnAt", { n });
+}

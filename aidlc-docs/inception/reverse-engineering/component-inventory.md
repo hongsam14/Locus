@@ -1,69 +1,55 @@
 # Component Inventory
 
-> Reverse Engineering — Purpose Restructure Cycle (2026-09-29). 목적 태그는 `business-overview.md` § 목적 지도를 따른다.
+> Reverse Engineering — Follow-up Cycle (2026-10-07). 기준 커밋 `240e82d`. 2026-09-29 판을 대체한다.
+> 줄 수는 `wc -l`(공백·주석 포함)이다. 2026-09-29 판의 수(개편 전)는 비교용으로 괄호에 적었다.
 
 ## Application Packages
-
-| Package | 줄 수 | Purpose | 목적 태그 | 핵심 산출물 기준 필수도 |
-|---|---|---|---|---|
-| `locus/ingestion` | 758 | 입력 자료 → 후보 구조 | TOPOLOGY, KNOWLEDGE | 메모·구조화 지도는 **필수**, 지도 이미지는 보조, 컨셉아트는 부가 |
-| `locus/topology` | 248 | 지역 계층 + 가중치 연결망 | TOPOLOGY | **필수** (산출물 1) |
-| `locus/ontology` | 657 | 스코핑, 고증, 중복 제거, 정합 | KNOWLEDGE, WIKI | `scope_knowledge`는 **필수**, 나머지는 보조·부가 |
-| `locus/consensus` | 204 | 지역별 "아는 것" 계산 | KNOWLEDGE, NPC-SERVE | **필수** (산출물 2) |
-| `locus/query` | 116 | 월드 로드, 지역 질의, 비교 | NPC-SERVE | **필수** |
-| `locus/services` | 200 | 조립, 편집, 내보내기 | INFRA, DESIGNER | orchestrator는 **필수**, editor·exporter는 보조 |
-| `locus/commonsense_wiki` | 452 | 월드별 상식 prior | WIKI | 부가 (근거 문구와 고증에만 쓰임) |
-| `locus/augmentation` | 571 | 기획자 보강 Q&A | DESIGNER | 부가 (현재 UI에서 동작하지 않음) |
-| `locus/session` | 2,180 | 게임 세션 시뮬레이터 | SIMULATION (+ NPC-SERVE 1) | 별도 제품에 가까운 부가 기능 |
-| `locus/translation` | 209 | 표시용 번역 캐시 | L10N | 부가 (NPC 산출물과 무관) |
-| `api/` | 545 | HTTP 서빙, 조립 | INFRA + 전부 | 필수 (라우터별로 다름) |
-| `web/` | 1,968 (+388 테스트) | 단일 페이지 UI | SIMULATION 51%, INFRA 15%, TOPOLOGY 12%, DESIGNER 9%, KNOWLEDGE 6%, L10N 6% | 보조 |
-| `locus/__main__.py`, `locus/demo.py` | 168 | CLI, 데모 입력 | INFRA | 필수 (현실적인 유일한 진입점) |
+- `locus/world` (6,455줄) - 월드 만들기와 편집이다. 빌드(수집·토폴로지·온톨로지·wiki), 에디터, 보강 Q&A, World File, 매니페스트 데모, NPC 초안을 맡는다.
+- `locus/play` (8,524줄) - 플레이다. 세션, 플레이어 이동, 턴 엔진, NPC 대화·판단, 행적, 소문(생성·전파·동역학), 사건(동역학·제안·씨앗), GM 조작, 세계 상태, PostgreSQL 저장소를 맡는다.
+- `locus/knowledge` (717줄) - 스냅샷 로더, `WorldCache`, 지역별 합의, 질의를 맡는다.
+- `locus/localization` (684줄) - 번역 캐시(읽기·warm·purge)를 맡는다.
+- `api/` (2,544줄) - FastAPI 합성 루트와 라우터 다섯(`world`, `world_editor`, `knowledge`, `play`, `gm`)이다. 라우트는 77개다.
+- `locus/__main__.py` (355줄) - CLI 합성 루트다.
+- `web/` (src 7,851줄, 77파일) - React SPA 네 화면이다(홈·에디터·플레이·GM). 2026-09-29에는 1,968줄이었다.
 
 ## Infrastructure Packages
-
-| Package | Type | Purpose |
-|---|---|---|
-| `docker-compose.yml` | Docker Compose | neo4j, opensearch, postgres, dashboard (기본) / app, web (`service` 프로파일) |
-| `Dockerfile` | Docker | 백엔드 이미지. `api/`를 복사하지 않아 기동하지 못한다 |
-| `web/Dockerfile`, `web/nginx.conf` | Docker + nginx | 프론트 빌드와 `/api` 프록시 |
-| `scripts/setup-volumes.sh` | Shell | `./data` 바인드 마운트 준비 |
-| CDK / Terraform / CloudFormation | – | 없음 |
+- `docker-compose.yml` - Compose - 서비스 여섯(neo4j, opensearch, postgres, dashboard[tools], app[service], web[service])이다. 인프라 포트는 `127.0.0.1`에 묶이고, app·web은 `0.0.0.0`이다.
+- `Dockerfile` - Docker - app 이미지다(`python:3.11-slim`, root로 실행, `api/`는 소스 디렉터리로 import).
+- `web/Dockerfile` + `web/nginx.conf` - Docker/nginx - `node:22-alpine` 빌드 → `nginx:alpine`. 빌드 경로 600초, `/api` 130초, 본문 49m.
+- `.github/workflows/ci.yml` - GitHub Actions - 잡 넷(backend, frontend, audit, images)이다. 2026-09-29에는 CI가 없었다.
+- `scripts/setup-volumes.sh` - bash - `./data` 바인드 폴더를 만든다.
+- `env.example` - 설정 - 필수 비밀값 둘과 조정값 약 50개.
+- CDK, Terraform, CloudFormation은 없다.
 
 ## Shared Packages
-
-| Package | Type | Purpose |
-|---|---|---|
-| `locus/models` (554) | Models | 도메인 어휘 (세션·번역 필드가 섞여 있음) |
-| `locus/config` (121) | Utilities | 설정 (세션·루머·번역 설정이 섞여 있음) |
-| `locus/llm` (274) | Clients | LLM·VLM·임베딩 포트와 OpenAI 어댑터 |
-| `locus/storage` (1,650) | Clients | Neo4j·OpenSearch 어댑터, 매핑, 저장, 스키마 + PostgreSQL 세션 어댑터 (706) |
+- `locus/shared` (3,046줄) - Models/Utilities/Clients - 도메인 모델, 설정·조정값, LLM 포트와 OpenAI 어댑터, 그래프·검색 포트와 Neo4j·OpenSearch 어댑터, SQL 보조, 프롬프트 위생을 담는다.
+- `locus/world/demo/worlds/` - Data - 매니페스트와 Emberleaf World File, 소스(메모·구조화 지도)다. 패키지 데이터로 휠에 들어간다.
+- `web/src/ui/` (14파일) - UI primitives - Button, Panel, Card, Badge, Field, Range, CommitRange, Modal, Toast, NotificationCenter, LocalizedText, LlmNotice, InProgressBadge.
 
 ## Test Packages
-
-| Package | Type | Files | Tests | 비고 |
-|---|---|---|---|---|
-| `tests/session` | Unit + PBT + API + Contract | 14 | 121 | 전체의 44%. 계약 테스트는 인메모리 어댑터만 |
-| `tests/storage` | Unit (mocked) + SQLite | 3 | 26 | PostgreSQL 어댑터는 SQLite로 검증 |
-| `tests/ingestion` | Unit + PBT | 2 | 19 | |
-| `tests/commonsense_wiki` | Unit | 2 | 17 | 교차 월드 테스트가 필터 dict만 확인해서 실환경 결함을 놓친다 |
-| `tests/query` | Unit + API | 3 | 17 | |
-| `tests/ontology` | Unit + PBT | 2 | 15 | |
-| `tests/augmentation` | Unit + API | 2 | 12 | detectors·engine 커버리지 48% |
-| `tests/topology` | Unit + PBT | 1 | 10 | |
-| `tests/translation` | Unit + PBT | 2 | 10 | |
-| `tests/models` | Unit + PBT | 1 | 8 | |
-| `tests/services` | Unit | 1 | 7 | |
-| `tests/consensus` | Unit + PBT | 1 | 6 | |
-| `tests/llm` | Unit | 1 | 4 | |
-| `web/src/__tests__` | Unit + Component | 2 | 24 | 62%가 세션 관련. App, Toolbar, 드래그, 보강 답변은 테스트 없음 |
-
-라이브 통합 테스트(Neo4j, OpenSearch, PostgreSQL, OpenAI)는 없다. 운영자가 직접 돌리는 시나리오 문서만 있다(`construction/build-and-test/**`).
+- `tests/play/` - Unit/Contract/PBT - 29파일, 394 테스트.
+- `tests/world/` - Unit/PBT - 20파일, 224 테스트.
+- `tests/api/` - API(TestClient + 가짜) - 14파일, 120 테스트.
+- `tests/shared/` - Unit/Contract - 8파일, 114 테스트.
+- `tests/localization/` - Unit/PBT - 4파일, 41 테스트.
+- `tests/knowledge/` - Unit/PBT - 4파일, 26 테스트.
+- `tests/` 루트 - Meta - 5파일, 29 테스트(경계 행렬, 패키징, 데모는 데이터, CLI, 라이브 시나리오 분기).
+- `web/src/__tests__/` - Component(vitest + jsdom) - 9파일, 202 테스트.
+- `scripts/live_scenario.py` - Live E2E(운영자가 돌림, CI 밖) - 15단계.
+- 라이브 통합 테스트(실제 Neo4j·OpenSearch·PostgreSQL·OpenAI)는 없다.
 
 ## Total Count
+- **Total Packages**: 18. 백엔드 경계 5 + `api` + CLI + `web` + 인프라 묶음 5(compose, app Dockerfile, web Dockerfile/nginx, CI, scripts) + 테스트 묶음 3(`tests/`, `web/src/__tests__/`, live scenario). 데이터·UI 프리미티브는 위 패키지에 포함해 따로 세지 않았다.
+- **Application**: 7 (`world`, `play`, `knowledge`, `localization`, `api`, CLI, `web`)
+- **Infrastructure**: 5
+- **Shared**: 1 (`locus/shared`)
+- **Test**: 3
+- **코드 규모**:
 
-- **Total Packages**: 35 (아래 넷의 합)
-- **Application**: 13 (ingestion, topology, ontology, consensus, query, services, commonsense_wiki, augmentation, session, translation, api, web, CLI·demo)
-- **Infrastructure**: 4 (compose, 백엔드 Dockerfile, web Dockerfile·nginx, scripts)
-- **Shared**: 4 (models, config, llm, storage)
-- **Test**: 14 (backend 13 + frontend 1)
+  | 영역 | 줄 |
+  |---|---|
+  | `locus/` 전체 | 19,784 (151파일) |
+  | `api/` | 2,544 |
+  | `web/src` | 7,851 |
+  | 백엔드 테스트 | 20,434 |
+  | 프론트 테스트 | 3,742 |

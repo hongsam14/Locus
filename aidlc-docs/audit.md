@@ -4065,3 +4065,339 @@ Docs: `construction/build-and-test/purpose-restructure/` (build, unit, integrati
 **Context**: OPERATIONS (placeholder) — Purpose Restructure cycle close.
 
 ---
+
+## Workspace Detection — Next Cycle (after Purpose Restructure)
+**Timestamp**: 2026-10-07T03:10:27Z
+**User Input**: "aidlc로 @aidlc-docs/operations/next-cycle.md 작업 시작"
+**AI Response**: Started a new AI-DLC cycle over `operations/next-cycle.md`. Workspace detection:
+- `aidlc-state.md` exists; the Purpose Restructure cycle is complete (2026-10-02). This is a new cycle on a brownfield codebase.
+- Branch `feat/purpose-restructure` (clean, HEAD 240e82d). PR #4 to `main` is **open, not merged**.
+- Code now: `locus/` ~19.8k lines, `api/` ~2.5k, `web/src` ~11.6k, `tests/` ~20.5k (362 .py/.ts/.tsx files). Python 3.11+ (setuptools) + React/Vite/TS (npm), Docker Compose, CI workflow.
+- Reverse engineering artifacts exist but are **stale**: snapshot `ee61277` (2026-08-19, analysed 2026-09-29); since then 427 files changed, +49,850 / −9,146 lines (the whole U1~U8 restructure). By `inception/workspace-detection.md` Step 3 the next stage would be a Reverse Engineering rerun.
+- Extensions: security-baseline and property-based-testing opt-in files loaded (rules files not loaded).
+- Decision raised to the human before any rerun: how to refresh the system picture (full RE rerun vs. a light refresh from the U1~U8 code summaries vs. skip with a recorded deviation).
+**Context**: INCEPTION / Workspace Detection — new cycle.
+
+---
+
+## Workspace Detection — Reverse engineering decision
+**Timestamp**: 2026-10-07T03:16:40Z
+**User Input**: "전체 다시 하기" (AskUserQuestion: 역공학 산출물 처리 — 가볍게 갱신(권장) / 전체 다시 하기 / 건너뛰기)
+**AI Response**: Full Reverse Engineering rerun. All nine artifacts in `inception/reverse-engineering/` will be rewritten for the current code (HEAD 240e82d), including a new code quality assessment. The old versions stay in git history (last at 240e82d).
+**Context**: INCEPTION / Workspace Detection → Reverse Engineering (rerun).
+
+---
+
+## Reverse Engineering — Follow-up cycle rerun complete
+**Timestamp**: 2026-10-07T03:49:59Z
+**User Input**: (none since "전체 다시 하기")
+**AI Response**: Rewrote the reverse engineering artifacts for HEAD 240e82d.
+- Four parallel readers: canonical world / play+API / frontend+screens / quality+tooling+deps. Gates were run offline, and defects were reproduced on in-memory fakes, the SQL adapter over SQLite, and a scratch web build against a fake API.
+- Files: the nine standard artifacts, plus `screen-inventory.md` (added for this cycle's screen-polish item) and `screens/*.png` (8 screenshots, 1.4 MB).
+- Gates: pytest 948 (coverage 94%), vitest 202, ruff/black/tsc clean, mypy 11, npm audit runtime 0 / dev 5.
+- Carried items: all still present, except U3 #10, which is closed in code but cannot be tested offline (U8 #9 #10 #11 #12 #13 #14 #15, #5(a), U3 memos 1/2/5, S16, the four in-progress features, tech debt).
+- New findings: RE-W01..W24, RE-P01..P16, RE-F01..F15, RE-T01..T13, UX-01..UX-42. Most purpose-critical: RE-W01, consensus propagation picks the first-found origin, not the best path.
+- Approval prompt shown (Request Changes / Approve & Continue → Requirements Analysis).
+**Context**: INCEPTION / Reverse Engineering — Follow-up cycle.
+
+---
+
+## Reverse Engineering — Approval
+**Timestamp**: 2026-10-07T04:34:04Z
+**User Input**: "Approve & Continue"
+**AI Response**: Reverse Engineering approved. Moving to Requirements Analysis (standard depth). Next: verification questions on scope, screen-polish depth, screen order, Korean display range, defect range, tech-debt range, screen verification, and the two extension opt-ins.
+**Context**: INCEPTION / Reverse Engineering → Requirements Analysis — Follow-up cycle.
+
+---
+
+## Requirements Analysis — Verification answers
+**Timestamp**: 2026-10-07T05:09:10Z
+**User Input** (AskUserQuestion, chat; questions in `inception/requirements/follow-up-verification-questions.md`):
+- Q1 범위: "화면+결함+부채 (Recommended)"
+- Q2 화면 깊이: "디자인 시스템부터 다시"
+- Q3 화면 순서: "홈·플레이 먼저 (Recommended)"
+- Q4 한국어 범위: "화면 문구 + 데모 한국어판 (Recommended)"
+- Q5 결함 범위: "이월 + 결과가 틀리는 것 (Recommended)"
+- Q6 부채 범위: "시한·저비용 묶음 (Recommended)"
+- Q7 화면 검증: "사람이 직접 확인"
+- Q8 Security extension: "No (Recommended)"
+- Q9 PBT extension: "Partial (Recommended)"
+**AI Response**: Recorded Q1=A, Q2=C, Q3=A, Q4=A, Q5=A, Q6=A, Q7=B, Q8=A (No), Q9=A (Partial). No contradictions found.
+- Noted risk: the design system is rebuilt (Q2=C) while the screens are checked only by a person (Q7=B). There is no automated layout gate; this goes into the requirements as an accepted risk.
+- Ambiguity: Q2=C does not yet say what the new design looks like. Clarification file created: `follow-up-clarification-questions.md` (tone, number of themes, how drafts are shown, narrow-screen target).
+- Extensions: Security Baseline = No; Property-Based Testing = Partial (PBT-02/03/07/08/09 enforced, as last cycle). The PBT rules file will be loaded.
+**Context**: INCEPTION / Requirements Analysis — Follow-up cycle.
+
+---
+
+## Requirements Analysis — Clarification answers
+**Timestamp**: 2026-10-07T05:18:16Z
+**User Input** (AskUserQuestion, chat; questions in `inception/requirements/follow-up-clarification-questions.md`):
+- CQ1 톤: "TRPG·판타지 톤"
+- CQ3 시안: "HTML 시안 2~3안 (Recommended)"
+- CQ2 테마 수: "톤 하나만 (Recommended)"
+- CQ4 좁은 화면: "홈·플레이만 휴대폰 (Recommended)"
+**AI Response**: Recorded CQ1=A, CQ2=A, CQ3=A, CQ4=A. No contradictions remain. The Extension Configuration for this cycle is written to the state file (Security No, PBT Partial). Next step: the requirements document.
+**Context**: INCEPTION / Requirements Analysis — Follow-up cycle.
+
+---
+
+## Requirements Analysis — Requirements document
+**Timestamp**: 2026-10-07T05:22:07Z
+**User Input**: (none)
+**AI Response**: Wrote `inception/requirements/follow-up-requirements.md` (Standard depth). It holds 10 FR-D, 6 FR-S, 4 FR-L, 14 FR-C, 7 FR-T and 10 NFRs, plus constraints C-1..C-5, assumptions A-1..A-5, risks R-1..R-3, the out-of-scope list, the traceability table, and a unit draft for Workflow Planning. The document proposes skipping User Stories.
+**Context**: INCEPTION / Requirements Analysis — Step 7.
+
+---
+
+## Plan Review Requested — Requirements Analysis
+**Timestamp**: 2026-10-07T05:22:07Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching product-lead-reviewer (class advisory, iteration 1) on `aidlc-docs/inception/requirements/follow-up-requirements.md`. Review record: `aidlc-docs/inception/requirements/reviews/follow-up-requirements-review-01.md`.
+**Context**: Requirements Analysis — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Requirements Analysis
+**Timestamp**: 2026-10-07T05:23:58Z
+**User Input**: (none)
+**AI Response**: product-lead-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 4 Minor; open 6. Record: `aidlc-docs/inception/requirements/reviews/follow-up-requirements-review-01.md`.
+**Context**: Requirements Analysis — next: approval gate. Approval prompt shown: Request Changes / Add User Stories / Approve & Continue → Workflow Planning.
+
+---
+
+## Requirements Analysis — Approval
+**Timestamp**: 2026-10-07T05:26:56Z
+**User Input**: "Approve & Continue"
+**AI Response**: Requirements approved. User Stories is skipped, as proposed. Next: Workflow Planning. The branch question (R-06 / C-3) is asked first.
+**Context**: INCEPTION / Requirements Analysis → Workflow Planning — Follow-up cycle.
+
+---
+
+## Plan Review Dispositions — Requirements Analysis
+**Timestamp**: 2026-10-07T05:26:56Z
+- R-01 → Accepted risk
+- R-02 → Accepted risk
+- R-03 → Accepted risk
+- R-04 → Accepted risk
+- R-05 → Accepted risk
+- R-06 → Accepted risk
+
+---
+
+## Workflow Planning — Branch decision (R-06 / C-3)
+**Timestamp**: 2026-10-07T05:33:18Z
+**User Input**: "PR #4 병합 후 새 브랜치 (Recommended)" (AskUserQuestion: PR #4 병합 후 새 브랜치 / PR #4 위에 쌓기 / 지금 브랜치에 이어서)
+**AI Response**: Branch plan: PR #4 is merged into main, then `feat/follow-up` is created from main, carrying the uncommitted cycle docs. Merging is outward-facing, so Claude did not merge. It gave the human the command `! gh pr merge 4 --merge` (same merge-commit style as PRs #1–#3) and will create the branch after the human confirms. Meanwhile the execution plan is being written.
+**Context**: INCEPTION / Workflow Planning — Follow-up cycle.
+
+---
+
+## Workflow Planning — Plan presented
+**Timestamp**: 2026-10-07T05:34:49Z
+**User Input**: (none)
+**AI Response**: Wrote `inception/plans/follow-up-execution-plan.md`.
+- Risk High, rollback Moderate, testing Complex.
+- EXECUTE: Application Design (Standard), Units Generation, FD for 7 of 9 units, NFR light for V2 and V5, Code Generation, Build and Test.
+- SKIP: User Stories, Units Planning, Infrastructure Design.
+- Unit draft V1..V9 (CI deadline first). Accepted risks R-01..R-06 are carried with where they will be handled.
+- Approval prompt shown: "Ready to proceed with this plan?" (Request Changes / Add Skipped Stages / Approve & Continue → Application Design).
+**Context**: INCEPTION / Workflow Planning — Follow-up cycle.
+
+---
+
+## Workflow Planning - Approval
+**Timestamp**: 2026-10-07T06:12:32Z
+**AI Prompt**: "Ready to proceed with this plan?"
+**User Response**: "Approve & Continue"
+**Status**: Approved
+**Context**: Workflow plan approved. Application Design (Standard) and Units Generation run next, then units V1..V9 and Build and Test.
+
+---
+
+## Application Design — Answers
+**Timestamp**: 2026-10-07T06:52:20Z
+**User Input** (AskUserQuestion, chat; plan `inception/plans/follow-up-application-design-plan.md`):
+- Q1 GM 줄세우기: "세션별 짧은 쓰기 잠금 (Recommended)"
+- Q2 플레이어 표시: "턴과 GM 작업을 따로 표시 (Recommended)"
+- Q3 다시 빌드: "옛 NPC·씨앗 이어 붙이기 (Recommended)"
+- Q4 데모 카드: "넣는다 (Recommended)"
+- Q5 프리미티브: "headless 라이브러리 + 우리 스타일 (Recommended)"
+- Q6 오류 코드: "서버가 code 칸을 더함 (Recommended)"
+**AI Response**: All six answers are A, with no contradictions or ambiguity. R-02 is closed into scope (demo card text and world name are translated) and R-04 is decided (carry over the old NPCs and seeds). Generating the artifacts in `inception/application-design/follow-up/`.
+**Context**: INCEPTION / Application Design — Follow-up cycle.
+
+---
+
+## Application Design — Artifacts generated
+**Timestamp**: 2026-10-07T06:57:20Z
+**User Input**: (none)
+**AI Response**: Wrote `inception/application-design/follow-up/{components,component-methods,services,component-dependency,application-design}.md`.
+- New pieces: the web design-system layers (tokens, primitives on a headless library, layout, map, format, errors, hooks), TranslationEntry in shared, translation seeding and new kinds, demo i18n and translation files with stronger checks, TurnGuard.short_write and gm_busy, recover_interrupted, the carry_over and backup gate, best_origins, WorldMeta saved last, labeled get/delete, and the API error `code`.
+- Unit adjustment: FR-C11 moves from V7 to V3 (both touch the demo manifest).
+- Plan checkboxes 1–7 ticked.
+**Context**: INCEPTION / Application Design — Step 10.
+
+---
+
+## Plan Review Requested — Application Design
+**Timestamp**: 2026-10-07T06:57:20Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class advisory, iteration 1) on `aidlc-docs/inception/application-design/follow-up/application-design.md`. Review record: `aidlc-docs/inception/application-design/follow-up/reviews/application-design-review-01.md`.
+**Context**: Application Design — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Application Design
+**Timestamp**: 2026-10-07T07:00:01Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 7 Minor; open 9. Record: `aidlc-docs/inception/application-design/follow-up/reviews/application-design-review-01.md`.
+**Context**: Application Design — next: approval gate. Approval prompt shown: Request Changes / Approve & Continue → Units Generation.
+
+---
+
+## Application Design — Approval
+**Timestamp**: 2026-10-07T07:16:36Z
+**User Input**: "Approve & Continue"
+**AI Response**: Application Design approved. The open findings carry forward to where they close: R-01/R-03/R-04 → V5 FD; R-02/R-05/R-06/R-08 → V7 FD; R-07 → V3 FD; R-09 → Units Generation (the proposal is V9). Next: Units Generation.
+**Context**: INCEPTION / Application Design → Units Generation — Follow-up cycle.
+
+---
+
+## Plan Review Dispositions — Application Design
+**Timestamp**: 2026-10-07T07:16:36Z
+- R-01 → Accepted risk (close in V5 FD)
+- R-02 → Accepted risk (close in V7 FD)
+- R-03 → Accepted risk (close in V5 FD)
+- R-04 → Accepted risk (close in V5 FD)
+- R-05 → Accepted risk (close in V7 FD)
+- R-06 → Accepted risk (close in V7 FD)
+- R-07 → Accepted risk (close in V3 FD)
+- R-08 → Accepted risk (close in V7 FD)
+- R-09 → Accepted risk (decide in Units Generation)
+
+---
+
+## Units Generation — Part 1 answers
+**Timestamp**: 2026-10-07T08:42:27Z
+**User Input** (AskUserQuestion, chat; plan `inception/plans/follow-up-unit-of-work-plan.md`):
+- UOW-Q1 유닛 수: "아홉 개 그대로 (Recommended)"
+- UOW-Q2 mypy 게이트: "V9에서 (Recommended)"
+- UOW-Q3 V1 내보내기: "따로 작은 PR로 먼저 (Recommended)"
+- UOW-Q4 중간 확인: "제가 캡처해 보여 드림 (Recommended)"
+**AI Response**: All four answers are A, with no ambiguity. R-09 is closed: the mypy gate goes in V9. Next: the plan approval prompt ("Ready to proceed to generation?").
+**Context**: INCEPTION / Units Generation — Part 1.
+
+---
+
+## Units Generation — Part 1 approval
+**Timestamp**: 2026-10-07T09:02:03Z
+**AI Prompt**: "Unit of work plan complete. Review the plan in aidlc-docs/inception/plans/follow-up-unit-of-work-plan.md. Ready to proceed to generation?"
+**User Response**: "생성 진행 (Recommended)"
+**Status**: Approved
+**Context**: INCEPTION / Units Generation — Part 2 (generation) starts.
+
+---
+
+## Units Generation — Part 2 artifacts
+**Timestamp**: 2026-10-07T09:03:20Z
+**User Input**: (none)
+**AI Response**: Wrote `inception/application-design/follow-up/{unit-of-work,unit-of-work-dependency,unit-of-work-story-map}.md`.
+- Nine units V1..V9, each with scope, code areas, stages (FD for V2–V8; NFR light for V2 and V5), completion criteria and human wait points.
+- Dependency matrix (acyclic), critical path V2→V4→V6→V8, contracts, shared-file coordination.
+- Requirements→units map: 41 FRs, 10 NFRs and all UX items mapped; UX-26 is out of scope. RE-F06..F13 are marked as fixed under the FR-C14 same-code rule, not as new scope.
+- Plan steps 2–5 ticked.
+**Context**: INCEPTION / Units Generation — Part 2.
+
+---
+
+## Plan Review Requested — Units Generation
+**Timestamp**: 2026-10-07T09:03:20Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class advisory, iteration 1) on `aidlc-docs/inception/application-design/follow-up/unit-of-work.md`. Review record: `aidlc-docs/inception/application-design/follow-up/reviews/unit-of-work-review-01.md`.
+**Context**: Units Generation — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Units Generation
+**Timestamp**: 2026-10-07T09:05:09Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 3 Minor; open 5. Record: `aidlc-docs/inception/application-design/follow-up/reviews/unit-of-work-review-01.md`.
+**Context**: Units Generation — next: approval gate. Approval prompt shown: Request Changes / Approve & Continue → CONSTRUCTION PHASE.
+
+---
+
+## Units Generation — Approval
+**Timestamp**: 2026-10-07T09:06:13Z
+**User Input**: "Approve & Continue"
+**AI Response**: Units approved. **INCEPTION COMPLETE** for the Follow-up cycle. The open findings carry forward to where they close: R-02 → V5 code plan; R-01 and R-05(c) → V2 FD; R-05(a)(b) → V6/V8 code plans; R-03 → each unit's code plan; R-04 → V9. Next: CONSTRUCTION, unit V1 (CI deadline). V1 needs PR #4 merged first (human).
+**Context**: INCEPTION → CONSTRUCTION — Follow-up cycle.
+
+---
+
+## Plan Review Dispositions — Units Generation
+**Timestamp**: 2026-10-07T09:06:13Z
+- R-01 → Accepted risk (close in V2 FD)
+- R-02 → Accepted risk (close in V5 code plan)
+- R-03 → Accepted risk (close in each unit's code plan)
+- R-04 → Accepted risk (close in V9)
+- R-05 → Accepted risk (close in V2 FD / V6 / V8 code plans)
+
+---
+
+## Code Generation Part 1 — V1 CI 시한 정리
+**Timestamp**: 2026-10-07T09:07:57Z
+**User Input**: (none)
+**AI Response**: Wrote `construction/plans/V1-ci-actions-code-generation-plan.md` (Steps 0–6).
+- Sources checked with `gh api`: checkout/setup-node/setup-python are at v7 (node24). Label `ubuntu-26.04` exists, with Python 3.11, Node 22 and Docker 29.
+- The plan moves the actions to v7 and pins `ubuntu-26.04`.
+- Branches: PR #4 merge (human) → `feat/follow-up` with the inception docs commit → a separate `chore/ci-actions` PR.
+**Context**: CONSTRUCTION / V1 — Code Generation Part 1.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — V1
+**Timestamp**: 2026-10-07T09:07:57Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1, max 2) on `aidlc-docs/construction/plans/V1-ci-actions-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V1-ci-actions-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — V1
+**Timestamp**: 2026-10-07T09:09:30Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 0 Major / 4 Minor; open 4. Record: `aidlc-docs/construction/plans/reviews/V1-ci-actions-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — V1 — next: approval gate (terminal verdict, adversarial). Approval prompt shown.
+
+---
+
+## Code Generation Part 1 — V1 — Approval
+**Timestamp**: 2026-10-07T10:26:05Z
+**User Input**: "Approve & Continue"
+**AI Response**: V1 code generation plan approved. The approval also authorizes two commits: the inception docs commit on `feat/follow-up` (Step 1.3) and the ci.yml commit on `chore/ci-actions` (Step 4.1). Push, PR and merge stay with the human. R-01..R-04 are applied as execution notes during Part 2 and recorded in the code-summary:
+- R-01: the comment wording is "the switch starts 2026-10-19 and completes 2026-11-19 (runner-images #14748)".
+- R-02: check the annotations through the check-runs API, and the runner through the Image line of "Set up job" in `gh run view --log`.
+- R-03: audit and state writes go only on `feat/follow-up`. Run `git diff --stat origin/main` before commit 4.1.
+- R-04: before switching, check `git diff --stat HEAD origin/main -- aidlc-docs`. If it is not empty, stash, switch, pop.
+Step 0 precondition: PR #4 is still OPEN (mergedAt null), so the human merges it first.
+**Context**: CONSTRUCTION / V1 — Code Generation Part 1 approved → Part 2 (waiting on Step 0).
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — V1
+**Timestamp**: 2026-10-07T10:26:05Z
+- R-01 → Accepted risk (applied as execution note in Step 2.5)
+- R-02 → Accepted risk (applied as execution note in Step 4.3)
+- R-03 → Accepted risk (applied as execution note in Steps 1.4–5.2)
+- R-04 → Accepted risk (applied as execution note in Step 1.2)
+
+---
+
+## Code Generation Part 2 — V1 — Steps 0–1.3
+**Timestamp**: 2026-10-07T10:44:06Z
+**User Input**: "! gh pr merge 4 --merge" (run by the human in the prompt; no output)
+**AI Response**: PR #4 is MERGED (merge commit `dc8a947`, 2026-10-07T10:43:37Z). Ran `git fetch origin`. R-04 check: `git diff --stat HEAD origin/main -- aidlc-docs` was empty, and so was the whole tree, so no stash was needed. Created `feat/follow-up` from `origin/main` and dropped its upstream so the first push names the branch. All 23 uncommitted inception paths moved with the working tree. Committing the inception docs (Step 1.3, authorized by the plan approval). No secret patterns found in the committed paths.
+**Context**: CONSTRUCTION / V1 — Code Generation Part 2.
+
+---

@@ -1,8 +1,8 @@
-import { useState, type ReactNode } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { llmOff, useCapabilities } from "../capabilities";
 import { t, useLang } from "../i18n";
-import { Toaster } from "../ui";
+import { Toaster, clearToasts } from "../ui";
 import { LangSwitch } from "./LangSwitch";
 
 // The frame of every screen (V2 FR-D5, BLM § 9): the top bar with the logo, the menu and the
@@ -27,6 +27,10 @@ export function AppShell({
   useLang(); // labels follow the display language
   const caps = useCapabilities();
   const [menuOpen, setMenuOpen] = useState(false);
+  // a screen's cards end with the screen, as the old per-screen lists did: a danger card
+  // that stays until closed must not follow the player to another screen (V2 review #8)
+  const { pathname } = useLocation();
+  useEffect(() => () => clearToasts(), [pathname]);
   const editorTo = worldId ? `/editor/${encodeURIComponent(worldId)}` : "/";
   return (
     <div className="flex min-h-full flex-col">

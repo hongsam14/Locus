@@ -83,7 +83,7 @@
 | `faint` | bg, surface, sunken, map-sea, map-land | 4.8 | 4.5 |
 | `accent`(글·링크) | bg, chrome, surface, sunken | 7.0 | 4.5 |
 | `danger`(글) | bg, surface, sunken, tint-danger | 5.4 | 4.5 |
-| `event`·`success`·`info` | 자기 tint, bg, surface | 6.7 | 4.5 |
+| `event`·`success`·`info` | 자기 tint, bg, surface (`event`는 sunken도 — 알림 카드 제목 〔코드 리뷰 01 정정〕) | 6.7 | 4.5 |
 | `info-fg` | tint-info | 11.5 | 4.5 |
 | `on-accent` | accent, accent-hover | 8.6 | 4.5 |
 | `on-danger` | danger | 6.7 | 4.5 |

@@ -20,7 +20,7 @@ export function Tabs({
           <RadixTabs.Trigger
             key={tab.value}
             value={tab.value}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-md px-4 text-[15px] text-muted hover:text-fg data-[state=active]:bg-sunken data-[state=active]:font-bold data-[state=active]:text-accent"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-4 text-[15px] text-muted hover:text-fg data-[state=active]:bg-sunken data-[state=active]:font-bold data-[state=active]:text-accent sm:min-h-10"
           >
             {tab.label}
             {tab.badge}

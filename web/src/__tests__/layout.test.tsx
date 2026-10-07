@@ -1,11 +1,13 @@
 // The frame of every screen (V2 BR-V2-17/20, TP-V2-15). The menu rules moved here from
 // AppNav (U8 BR-U8-1).
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { act } from "react";
+import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { api } from "../api";
 import { resetCapabilities } from "../capabilities";
 import { t } from "../i18n";
 import { AppShell, Section, SplitView } from "../layout";
+import { toast } from "../ui";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -23,6 +25,32 @@ function shell(props: { worldId?: string; sessionId?: string } = {}) {
 }
 
 describe("AppShell", () => {
+  it("a screen's cards end with the screen (V2 review #8)", async () => {
+    vi.spyOn(api, "capabilities").mockResolvedValue({ llm: true, vlm: true, embedding: true });
+    render(
+      <MemoryRouter initialEntries={["/play/s1"]}>
+        <Routes>
+          <Route path="/play/:id" element={<AppShell><Link to="/gm/s1">to gm</Link><Link to="/play/s2">other session</Link></AppShell>} />
+          <Route path="/gm/:id" element={<AppShell><p>gm</p></AppShell>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    act(() => void toast({ key: "play:run", tone: "danger", title: "The turn failed" }));
+    expect(screen.getByText("The turn failed")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("other session")); // same screen, another session
+    await waitFor(() => expect(screen.queryByText("The turn failed")).not.toBeInTheDocument());
+    act(() => void toast({ key: "play:run", tone: "danger", title: "Failed again" }));
+    fireEvent.click(screen.getByText("to gm")); // another screen
+    await screen.findByText("gm");
+    expect(screen.queryByText("Failed again")).not.toBeInTheDocument();
+  });
+
+  it("its language buttons are 44 px on a phone (BR-V2-08, review #13)", () => {
+    vi.spyOn(api, "capabilities").mockResolvedValue({ llm: true, vlm: true, embedding: true });
+    shell();
+    expect(screen.getByTestId("lang-ko").className).toMatch(/min-h-11 min-w-11.*sm:min-h-9/);
+  });
+
   it("the logo goes home; with no world the editor link is the world list; GM waits for a session", () => {
     vi.spyOn(api, "capabilities").mockResolvedValue({ llm: true, vlm: true, embedding: true });
     shell();

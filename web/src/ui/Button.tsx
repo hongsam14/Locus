@@ -11,7 +11,7 @@ const base =
 
 const variants: Record<Variant, string> = {
   primary: "border-accent bg-accent text-on-accent hover:border-accent-hover hover:bg-accent-hover",
-  secondary: "border-line-strong bg-surface text-fg hover:bg-sunken",
+  secondary: "border-line-strong bg-surface text-fg hover:border-muted hover:bg-sunken", // line-strong on sunken is 2.8:1
   ghost: "border-transparent bg-transparent text-accent hover:bg-sunken",
   danger: "border-danger bg-danger text-on-danger hover:opacity-90",
 };

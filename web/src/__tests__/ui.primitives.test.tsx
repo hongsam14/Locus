@@ -145,6 +145,7 @@ describe("Tabs", () => {
     first.focus();
     fireEvent.keyDown(first, { key: "ArrowRight" });
     await waitFor(() => expect(screen.getByRole("tab", { name: "Events" })).toHaveFocus());
+    expect(first.className).toMatch(/min-h-11.*sm:min-h-10/); // 44 px on a phone (review #13)
     expect(screen.getByRole("tabpanel")).toBeInTheDocument();
   });
 });
@@ -218,6 +219,25 @@ describe("Toaster", () => {
     expect(screen.getAllByText("Harbor")).toHaveLength(1);
     expect(screen.getAllByText("Event")).toHaveLength(2);
     expect(screen.getByTestId("notification-center")).toHaveAttribute("aria-live", "polite");
+  });
+
+  it("an update replaces the card's content: what the new card leaves out is gone (review #15)", () => {
+    render(<Toaster />);
+    act(() => {
+      toast({ key: "play:busy", title: "A turn is running", body: "wait a moment", action: { label: "Open GM", onClick: () => {} } });
+      toast({ key: "play:busy", title: "The session is closed" });
+    });
+    const card = screen.getByTestId("notif-play:busy");
+    expect(card).toHaveTextContent("The session is closed");
+    expect(card).not.toHaveTextContent("wait a moment");
+    expect(screen.queryByRole("button", { name: "Open GM" })).not.toBeInTheDocument();
+  });
+
+  it("its buttons are 44 px on a phone (BR-V2-08, review #13)", () => {
+    render(<Toaster />);
+    act(() => void toast({ title: "Saved", action: { label: "Undo", onClick: () => {} } }));
+    expect(screen.getByRole("button", { name: t("action.close") }).className).toMatch(/min-h-11 min-w-11.*sm:min-h-8/);
+    expect(screen.getByRole("button", { name: "Undo" }).className).toMatch(/min-h-11.*sm:min-h-0/);
   });
 });
 

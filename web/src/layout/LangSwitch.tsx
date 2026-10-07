@@ -29,7 +29,7 @@ export function LangSwitch() {
           data-testid={`lang-${l}`}
           aria-pressed={l === current}
           onClick={() => setLang(l)}
-          className={`min-h-9 px-3 ${l === current ? "bg-accent font-bold text-on-accent" : "bg-surface text-fg hover:bg-sunken"}`}
+          className={`min-h-11 min-w-11 px-3 sm:min-h-9 ${l === current ? "bg-accent font-bold text-on-accent" : "bg-surface text-fg hover:bg-sunken"}`}
         >
           <span className="hidden sm:inline">{NAMES[l].full}</span>
           <span className="sm:hidden" aria-hidden="true">

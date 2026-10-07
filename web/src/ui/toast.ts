@@ -1,6 +1,8 @@
 // The one notification store (V2 FR-D4, BLM § 10, BR-V2-22). `toast()` adds a card; a card
-// whose `key` is already showing is updated in place (its timer starts again) instead of
-// stacking — an intended change from the old per-screen lists. Without a key cards stack.
+// whose `key` is already showing has its content replaced in place (its timer starts again)
+// instead of stacking — an intended change from the old per-screen lists; a field the new
+// card leaves out is gone, not kept from the old one (V2 review #15). Without a key cards
+// stack. The shell clears every card when the screen changes (review #8).
 import { useSyncExternalStore } from "react";
 
 export type ToastTone = "info" | "event" | "danger";
@@ -32,7 +34,8 @@ export function toast(input: ToastInput): string {
   const tone = input.tone ?? "info";
   const existing = input.key != null ? items.find((i) => i.key === input.key) : undefined;
   if (existing) {
-    items = items.map((i) => (i === existing ? { ...existing, ...input, tone, version: existing.version + 1 } : i));
+    const next: ToastItem = { ...input, tone, id: existing.id, version: existing.version + 1 };
+    items = items.map((i) => (i === existing ? next : i));
     emit();
     return existing.id;
   }

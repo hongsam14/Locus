@@ -32,7 +32,7 @@ function Card({ item }: { item: ToastItem }) {
         <div className={`font-bold ${danger ? "text-danger" : item.tone === "event" ? "text-event" : "text-fg"}`}>{item.title}</div>
         {item.body && <div className="text-muted">{item.body}</div>}
         {item.action && (
-          <button type="button" className="mt-1 font-bold text-accent underline" onClick={item.action.onClick}>
+          <button type="button" className="mt-1 inline-flex min-h-11 items-center font-bold text-accent underline sm:min-h-0" onClick={item.action.onClick}>
             {item.action.label}
           </button>
         )}
@@ -40,7 +40,7 @@ function Card({ item }: { item: ToastItem }) {
       <button
         type="button"
         aria-label={t("action.close")}
-        className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-md text-muted hover:bg-surface hover:text-fg"
+        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted hover:bg-surface hover:text-fg sm:min-h-8 sm:min-w-8"
         onClick={() => dismissToast(item.id)}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">

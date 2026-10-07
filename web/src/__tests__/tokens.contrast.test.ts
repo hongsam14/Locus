@@ -35,7 +35,7 @@ const PAIRS: [string, string[], number][] = [
   ["faint", ["bg", "surface", "sunken", "map-sea", "map-land"], TEXT],
   ["accent", ["bg", "chrome", "surface", "sunken"], TEXT],
   ["danger", ["bg", "surface", "sunken", "tint-danger"], TEXT],
-  ["event", ["tint-event", "bg", "surface"], TEXT],
+  ["event", ["tint-event", "bg", "surface", "sunken"], TEXT], // sunken: a toast title (V2 review § 2)
   ["success", ["tint-success", "bg", "surface"], TEXT],
   ["info", ["tint-info", "bg", "surface"], TEXT],
   ["info-fg", ["tint-info"], TEXT],

@@ -1,11 +1,9 @@
-import { useRef, useState } from "react";
-import { isDrag, toNorm } from "./features/editor/drag";
-import { autoLayout } from "./layout";
+// The old map props on the new WorldMap (V2 Step 8). The screens still pass these; V4, V6
+// and V8 move to WorldMap directly and the adapter goes with V8.
+import { t } from "./i18n";
+import { WorldMap } from "./map";
+import type { RegionOverlay } from "./map";
 import type { ConnectionEdge, Region } from "./types";
-import { edgeStyle } from "./viz";
-
-const W = 800;
-const H = 500;
 
 interface Props {
   regions: Region[];
@@ -42,163 +40,31 @@ export function MapOverlay({
   onSelectConnection,
   selectedConnection,
 }: Props) {
-  const pos = autoLayout(regions);
-  const svgRef = useRef<SVGSVGElement | null>(null);
-  const [drag, setDrag] = useState<{
-    id: string;
-    x: number;
-    y: number;
-    start: { x: number; y: number }; // screen pixels at the press
-    moved: boolean;
-  } | null>(null);
-
-  const coordOf = (id: string) =>
-    drag && drag.id === id && drag.moved ? { x: drag.x, y: drag.y } : pos[id];
-
-  function clientToNorm(e: { clientX: number; clientY: number }) {
-    return toNorm(e, svgRef.current?.getBoundingClientRect());
+  let overlay: Record<string, RegionOverlay> | undefined;
+  if (regionFill || regionBadge) {
+    overlay = {};
+    for (const id of new Set([...Object.keys(regionFill ?? {}), ...Object.keys(regionBadge ?? {})])) {
+      overlay[id] = { fill: regionFill?.[id], badge: regionBadge?.[id] };
+    }
   }
-  const isSelectedConnection = (c: ConnectionEdge) =>
-    selectedConnection != null &&
-    selectedConnection.kind === c.kind &&
-    ((selectedConnection.source_region_id === c.source_region_id &&
-      selectedConnection.target_region_id === c.target_region_id) ||
-      (selectedConnection.source_region_id === c.target_region_id &&
-        selectedConnection.target_region_id === c.source_region_id));
-
   return (
-    <div
-      data-testid="map-overlay"
-      className="relative sketch-border sketch-shadow overflow-hidden bg-paper-card"
-      style={{ width: W, height: H, maxWidth: "100%" }}
-    >
-      {mapImageUrl && (
-        <img
-          src={mapImageUrl}
-          alt="world map"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-      )}
-      <svg
-        ref={svgRef}
-        viewBox={`0 0 ${W} ${H}`}
-        className="absolute inset-0 h-full w-full"
-        onPointerMove={(e) => {
-          if (drag) {
-            const n = clientToNorm(e);
-            const moved = drag.moved || isDrag(drag.start, { x: e.clientX, y: e.clientY });
-            setDrag({ ...drag, x: n.x, y: n.y, moved });
-          }
-        }}
-        onPointerUp={() => {
-          if (drag) {
-            if (drag.moved) onMove(drag.id, drag.x, drag.y); // a click saves nothing (B7)
-            setDrag(null);
-          }
-        }}
-        // a drag the browser took away (a touch scroll, a lost window) ends unsaved; the
-        // capture after a normal release ends nothing, the release already did (U3 S23)
-        onPointerCancel={() => setDrag(null)}
-        onLostPointerCapture={() => setDrag(null)}
-        onClick={(e) => {
-          if (onBackground && e.target === e.currentTarget) {
-            const n = clientToNorm(e);
-            onBackground(n.x, n.y);
-          }
-        }}
-      >
-        {connections.map((c, i) => {
-          const a = coordOf(c.source_region_id);
-          const b = coordOf(c.target_region_id);
-          if (!a || !b) return null;
-          const s = edgeStyle(c.kind, c.weight);
-          const picked = isSelectedConnection(c);
-          return (
-            <line
-              key={i}
-              data-testid="connection-line"
-              x1={a.x * W}
-              y1={a.y * H}
-              x2={b.x * W}
-              y2={b.y * H}
-              stroke={s.color}
-              strokeWidth={picked ? s.width + 3 : s.width}
-              strokeOpacity={s.opacity}
-              strokeDasharray={s.dashed ? "6 4" : undefined}
-              style={onSelectConnection ? { cursor: "pointer" } : undefined}
-              onClick={onSelectConnection ? () => onSelectConnection(c) : undefined}
-            />
-          );
-        })}
-        {regions.map((r) => {
-          const c = coordOf(r.id);
-          if (!c) return null;
-          return (
-            <g
-              key={r.id}
-              data-testid={`region-marker-${r.id}`}
-              transform={`translate(${c.x * W}, ${c.y * H})`}
-              style={{ cursor: draggable ? "grab" : "pointer" }}
-              onPointerDown={(e) => {
-                if (draggable) {
-                  // the marker keeps the pointer: a release outside the map still ends the
-                  // drag, and a click still lands on the marker (U3 review S23)
-                  try {
-                    e.currentTarget.setPointerCapture?.(e.pointerId);
-                  } catch {
-                    // no active pointer (a synthetic event): the svg handlers still apply
-                  }
-                  const start = { x: e.clientX, y: e.clientY };
-                  setDrag({ id: r.id, x: c.x, y: c.y, start, moved: false });
-                }
-              }}
-              onClick={() => onSelect(r.id)}
-            >
-              {markerId === r.id && (
-                <circle
-                  data-testid={`player-marker-${r.id}`}
-                  r={15}
-                  style={{ fill: "none", stroke: "var(--color-danger)" }}
-                  strokeWidth={3}
-                />
-              )}
-              <circle
-                r={10}
-                data-testid={regionFill?.[r.id] ? `region-fill-${r.id}` : undefined}
-                // var() resolves in CSS (style), not in SVG presentation attributes
-                style={{
-                  fill:
-                    selectedId === r.id
-                      ? "var(--color-ink)"
-                      : (regionFill?.[r.id] ?? "var(--color-paper-card)"),
-                  stroke: "var(--color-ink)",
-                }}
-                strokeWidth={2}
-              />
-              <text
-                x={12}
-                y={4}
-                fontSize={13}
-                style={{ fill: "var(--color-ink)", fontFamily: "var(--font-display)" }}
-              >
-                {r.name}
-                {markerId === r.id ? " ●" : ""}
-              </text>
-              {regionBadge?.[r.id] && (
-                <text
-                  data-testid={`region-badge-${r.id}`}
-                  x={12}
-                  y={20}
-                  fontSize={11}
-                  style={{ fill: "var(--color-ink-soft)" }}
-                >
-                  {regionBadge[r.id]}
-                </text>
-              )}
-            </g>
-          );
-        })}
-      </svg>
-    </div>
+    <WorldMap
+      // "edit" keeps every current use as it was (the GM map's own mode, with no drag,
+      // comes with V6 — RE-F05)
+      mode="edit"
+      label={t("label.map")}
+      regions={regions}
+      connections={connections}
+      selectedId={selectedId}
+      playerRegionId={markerId}
+      overlay={overlay}
+      draggable={draggable}
+      selectedConnection={selectedConnection}
+      background={mapImageUrl}
+      onSelect={onSelect}
+      onMove={(id, p) => onMove(id, p.x, p.y)}
+      onAddAt={onBackground ? (p) => onBackground(p.x, p.y) : undefined}
+      onSelectConnection={onSelectConnection}
+    />
   );
 }

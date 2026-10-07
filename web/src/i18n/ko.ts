@@ -523,6 +523,9 @@ export const ko = {
   "unit.turnNow": "{n}턴째",
   "unit.turnAt": "{n}턴",
   "unit.turnStart": "시작",
+  "action.wholeMap": "전체 지도",
+  "action.closeUp": "가까이",
+  "label.map": "월드 지도",
 };
 
 export type Key = keyof typeof ko;

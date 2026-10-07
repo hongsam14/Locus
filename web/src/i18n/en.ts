@@ -507,4 +507,7 @@ export const en: Record<Key, string> = {
   "unit.turnNow": "Turn {n}",
   "unit.turnAt": "T{n}",
   "unit.turnStart": "Start",
+  "action.wholeMap": "Whole map",
+  "action.closeUp": "Close-up",
+  "label.map": "World map",
 };

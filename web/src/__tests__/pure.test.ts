@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoLayout } from "../layout";
-import { edgeStyle, toPixels } from "../viz";
+import { autoLayout, edgeStyle, toPixels } from "../map";
 import type { Region } from "../types";
 
 const region = (id: string, position?: { x: number; y: number }): Region => ({
@@ -31,7 +30,7 @@ describe("viz", () => {
   it("blocked edges are red + dashed", () => {
     const s = edgeStyle("blocked", 0.2);
     expect(s.dashed).toBe(true);
-    expect(s.color).toBe("#c0392b");
+    expect(s.stroke).toBe("var(--color-map-blocked)"); // V2 intended change: a token, not #c0392b
   });
 
   it("weight scales width/opacity", () => {

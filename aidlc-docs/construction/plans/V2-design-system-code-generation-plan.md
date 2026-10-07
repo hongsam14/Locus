@@ -149,25 +149,25 @@
 - [x] 7.5 커밋한다(`feat(web): useResource / useAction request helpers; capabilities retries a failed read after 30 s (V2 Step 7, RE-F09)`).
 
 ### Step 8 — 지도 바탕 (FR-D6·D7, BR-V2-18·19)
-- [ ] 8.1 `web/src/map/geometry.ts`: `normalizeFromMatrix`, `toClient`, `meetMatrix(rect, viewBox)`(CTM이 없을 때), `toPixels`(옮김).
-- [ ] 8.2 `map/labels.ts`: `labelWidth`, `placeLabels`(정해진 처리 순서, 후보 넷, `occupied`에 표식).
-- [ ] 8.3 나머지 지도 파일:
+- [x] 8.1 `web/src/map/geometry.ts`: `normalizeFromMatrix`, `toClient`, `meetMatrix(rect, viewBox)`(CTM이 없을 때), `toPixels`(옮김).
+- [x] 8.2 `map/labels.ts`: `labelWidth`, `placeLabels`(정해진 처리 순서, 후보 넷, `occupied`에 표식).
+- [x] 8.3 나머지 지도 파일:
   - `map/edgeStyle.ts`: 토큰 변수, 같은 쌍 한 번, 막힘 ×
   - `map/autoLayout.ts`: `layout.ts`에서 옮긴다
   - `map/focus.ts`: `focusBox`
-- [ ] 8.4 `map/WorldMap.tsx`(FD frontend-components § 4)를 만든다.
+- [x] 8.4 `map/WorldMap.tsx`(FD frontend-components § 4)를 만든다.
   - viewBox 1000×625를 쓰고 컨테이너 너비를 따른다.
   - 지역 단계마다 모양이 다르다. 라벨은 받침 위에 둔다. 표식, 선택 고리, 플레이어 말을 그린다.
   - 모드: edit(끌기는 `draggable`일 때만, 그림 밖 누름은 무시), gm(`overlay` 고리·배지), play(`focus`·`reachableIds`·흐림).
   - `role="img"`와 `label`을 단다.
-- [ ] 8.5 `web/src/MapOverlay.tsx`를 어댑터로 바꾼다. 지금 props를 `WorldMap` props로 넘긴다(`mapImageUrl` → `background`, `markerId` → `playerRegionId`, `regionFill`·`regionBadge` → `overlay`, `onBackground` → `onAddAt`).
-- [ ] 8.6 `web/src/layout.ts`·`viz.ts`를 지운다. 쓰던 곳(MapOverlay, `pure.test.ts`)의 import를 고친다. `pure.test`의 색 단언은 `var(--color-map-blocked)`로 바꾼다(FD § 8.1).
-- [ ] 8.7 테스트:
+- [x] 8.5 `web/src/MapOverlay.tsx`를 어댑터로 바꾼다. 지금 props를 `WorldMap` props로 넘긴다(`mapImageUrl` → `background`, `markerId` → `playerRegionId`, `regionFill`·`regionBadge` → `overlay`, `onBackground` → `onAddAt`).
+- [x] 8.6 `web/src/layout.ts`·`viz.ts`를 지운다. 쓰던 곳(MapOverlay, `pure.test.ts`)의 import를 고친다. `pure.test`의 색 단언은 `var(--color-map-blocked)`로 바꾼다(FD § 8.1).
+- [x] 8.7 테스트:
   - `map/geometry.prop.test.ts`(TP-V2-9, 왕복과 레터박스 밖 누름)
   - `map/labels.prop.test.ts`(TP-V2-10: 놓는 시점 빈 후보, 입력 순서 무관, 표식 안 가림. Emberleaf 12지역 겹침 수를 출력한다)
   - `map/edgeStyle.test.ts`(TP-V2-11)
   - 지금 MapOverlay 테스트(components·gm·editor.test)가 GREEN이어야 한다. editor.test:681 끌기는 `meetMatrix` 대체 경로로 지금 값을 내야 한다.
-- [ ] 8.8 커밋한다(`feat(web): WorldMap — fits its container, matrix-based normalized coordinates, level shapes, plated labels, token edges; MapOverlay is an adapter (V2 Step 8)`).
+- [x] 8.8 커밋한다(`feat(web): WorldMap — fits its container, matrix-based normalized coordinates, level shapes, plated labels, token edges; MapOverlay is an adapter (V2 Step 8)`).
 
 ### Step 9 — 프리미티브 (FR-D4, FR-S6, BR-V2-07·08·21~23)
 - [ ] 9.1 다시 쓰거나 새로 만드는 것(FD frontend-components § 2):

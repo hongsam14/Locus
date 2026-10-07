@@ -1,4 +1,4 @@
-import type { Coord, Region } from "./types";
+import type { Coord, Region } from "../types";
 
 /**
  * Returns a normalized {x,y} in [0,1] per region: uses region.position when set,

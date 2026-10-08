@@ -86,6 +86,8 @@ export const ko = {
   // progress
   "progress.done": "{done}/{total} 완료",
   "progress.failed": "{failed}건 실패",
+  "progress.noLlm": "AI 키가 없어 {n}",
+  "progress.busy": "바빠서 {n}",
   "notif.noTargets": "생성할 빈 지역이 없습니다",
 
   // player mode (U4)
@@ -515,6 +517,7 @@ export const ko = {
   "action.wholeMap": "전체 지도",
   "action.closeUp": "가까이",
   "label.map": "월드 지도",
+  "label.endedSessions": "끝난 세션",
   "label.eventCategory": "사건 분류",
   "label.eventLifecycle": "지속 방식",
   "label.homeKicker": "솔로 TRPG",

@@ -77,6 +77,8 @@ export const en: Record<Key, string> = {
 
   "progress.done": "{done}/{total} done",
   "progress.failed": "{failed} failed",
+  "progress.noLlm": "{n} without an AI key",
+  "progress.busy": "{n} busy",
   "notif.noTargets": "No empty region to generate for",
 
   "play.npcs": "People here",
@@ -499,6 +501,7 @@ export const en: Record<Key, string> = {
   "action.wholeMap": "Whole map",
   "action.closeUp": "Close-up",
   "label.map": "World map",
+  "label.endedSessions": "Ended sessions",
   "label.eventCategory": "Event category",
   "label.eventLifecycle": "Lifecycle",
   "label.homeKicker": "A solo tabletop RPG",

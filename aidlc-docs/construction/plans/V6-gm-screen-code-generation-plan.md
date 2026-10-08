@@ -234,24 +234,24 @@
 
 이 단계는 새 파일과 호환되는 변경만 한다. 지금의 `GmPage`·`GmHub`는 그대로 동작한다(§ 1.3).
 
-- [ ] 3.1 `features/gm/useGmSession.ts`(새)
+- [x] 3.1 `features/gm/useGmSession.ts`(새)
   - 세션(id 일치), 월드(§ 1.1 R-02의 직전 월드 규칙), 이름표, 세션 목록(R-04)
   - `retry()`: 실패한 것(세션·월드·이름표)을 다시 읽는다. `reloadSession()`, `reloadSessions()`도 둔다.
   - 상태: 세션 또는 월드가 없으면 loading·error다. 이름표와 목록의 실패는 `namesError`·`sessionsError`로 따로 둔다(R-10).
-- [ ] 3.2 `features/gm/useGmData.ts`(새)
+- [x] 3.2 `features/gm/useGmData.ts`(새)
   - 자원: events `[sid, lang]`, timeline `[sid]`, worldState `[sid]`, rumors `[sid, regionId, lang]`(regionId 없으면 읽지 않음), seeds `[sid]`, deeds `[sid, lang]`, player `[sid]`(getPlayer 404 → null, 진행 중 run)
   - loader는 `{ key, value }`를 돌려주고, 화면은 자기 키만 쓴다(R-02).
   - `after(kind)`: BLM § 3 표 = `AFTER` 상수(§ 1.2의 14종).
   - `rumorPatch`·`distPatch`(R-03)
   - `knowledgeRev`: 지식 패널을 다시 읽으라는 신호(턴, 소문 쓰기, 무효화)
-- [ ] 3.3 `features/gm/useBulkRumors.ts`(호환 변경)
+- [x] 3.3 `features/gm/useBulkRumors.ts`(호환 변경)
   - 지금 인자(`notify`, `fail`, `after`, `onCap`)는 그대로 두고, 선택 콜백 `onClosed?`, `onTurnRunning?`을 더한다.
   - 실패 갈래 넷과 첫 닫힘·턴 진행에서의 멈춤(R-06), `useMounted` + `shouldStop`을 넣는다.
   - 끝 알림 본문이 갈래별 문장이 된다.
   - `regenAll(ids)`의 대상은 부르는 쪽이 정한다. 지금의 `GmHub`는 그대로이고, Step 5의 `GmSessionView`는 상태의 지역을 넘긴다.
   - 기존 단언이 끝 알림 글을 보면 이 단계에서 고친다. 대상: `components.test.tsx` GmHub "generate-all fills only empty regions", `gm.test.tsx` "#5".
-- [ ] 3.4 `features/gm/sessionLabel.ts`(새, 순수 함수, § 1.2)
-- [ ] 3.5 테스트(`gm.data.test.tsx`, 새)
+- [x] 3.4 `features/gm/sessionLabel.ts`(새, 순수 함수, § 1.2)
+- [x] 3.5 테스트(`gm.data.test.tsx`, 새)
   - TP-V6-4: § 1.2의 쓰기 14종마다 실제 GET 호출 집합이 BLM § 3 표와 같다(매개변수 테스트, `api` 모듈 대역). 다시 읽기 중 로딩 없음.
   - TP-V6-6(훅 수준): 세션 A → B, B 붙잡기, A의 늦은 답을 풀어도 B의 값에 없다. 지역 A → B도 같다(R-02).
   - TP-V6-7: 503·409 섞인 일괄. 멈춤과 알림 본문. 5개 보낸 뒤 언마운트하면 호출은 5개다.
@@ -260,7 +260,7 @@
   - R-04: 새 세션 뒤 목록에 있다. 턴 뒤 라벨이 바뀐다.
   - R-07: 기록이 준비되지 않았을 때 진행하면 "새로" 집합이 `null`이다.
   - `sessionLabel`: 날짜 없음, 겹침, 끝난 묶음.
-- [ ] 3.6 게이트 GREEN → 커밋 `feat(web): GM session and data hooks — own-key answers only, targeted re-reads, a bulk run that stops on close or a turn (V6, #15, RE-F11)`
+- [x] 3.6 게이트 GREEN → 커밋 `feat(web): GM session and data hooks — own-key answers only, targeted re-reads, a bulk run that stops on close or a turn (V6, #15, RE-F11)`
 
 ### Step 4 — 새 GM 부품 (frontend-components § 4, BR-V6-13·14·26·27·31·33·34)
 

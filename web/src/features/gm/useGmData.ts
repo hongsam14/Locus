@@ -56,20 +56,23 @@ export type GmRead =
   | "player"
   | "knowledge";
 
-/** What each write reads again (BLM § 3; § 1.1 R-04 adds the session list to a turn). */
+/** What each write reads again (BLM § 3; § 1.1 R-04 adds the session list to a turn; code
+ * review 01: a resolve frees a seed (#3), a support save reads its rumors so the region's
+ * text stays translated and an older read cannot undo it (#2, #24), a bulk run touches what
+ * the NPCs know (#33)). */
 export const AFTER: Record<GmWrite, readonly GmRead[]> = {
   turn: ["session", "sessions", "worldState", "events", "timeline", "rumors", "seeds", "deeds", "player", "knowledge"],
   suggest: ["events", "timeline"],
   approve: ["events", "timeline", "worldState"],
   discard: ["events", "timeline"],
-  resolve: ["events", "timeline", "worldState", "rumors"],
+  resolve: ["events", "timeline", "worldState", "rumors", "seeds"],
   create: ["events", "timeline", "worldState"],
   seed: ["seeds", "events", "timeline", "worldState"],
   distortion: ["worldState", "timeline"],
-  support: ["timeline"],
+  support: ["timeline", "rumors"],
   generate: ["rumors", "worldState", "timeline", "knowledge"],
   regen: ["rumors", "worldState", "timeline", "knowledge"],
-  bulk: ["worldState", "rumors", "timeline"],
+  bulk: ["worldState", "rumors", "timeline", "knowledge"],
   void: ["deeds", "rumors", "worldState", "timeline", "knowledge"],
   close: ["session", "sessions"],
 };
@@ -80,6 +83,8 @@ export interface GmRes<T> {
   /** "ready" with data (a failed re-read keeps it and sets `error`), else loading / error. */
   state: "loading" | "ready" | "error";
   error?: DescribedError;
+  /** A read for the current key is out (a re-read keeps `data` meanwhile). */
+  pending?: boolean;
   reload(): void;
 }
 
@@ -89,7 +94,7 @@ function useOwn<T>(key: readonly unknown[] | null, load: () => Promise<T>): GmRe
   const r = useResource(key, async () => ({ k: keyText, v: await load() }));
   const data = r.data && r.data.k === keyText ? r.data.v : undefined;
   const state = data !== undefined ? "ready" : r.state === "error" ? "error" : "loading";
-  return { data, state, error: r.state === "error" ? r.error : undefined, reload: r.reload };
+  return { data, state, error: r.state === "error" ? r.error : undefined, pending: r.pending, reload: r.reload };
 }
 
 export interface PlayerRead {
@@ -112,7 +117,9 @@ export interface GmData {
   /** A region's distortion and feedback share, a write's own answer first. */
   regionState(regionId: string): { distortion: number; feedback_share: number } | undefined;
   after(kind: GmWrite): void;
-  patchRumor(r: SessionRumor): void;
+  /** A saved belief at once, before the rumors are read again (only `support`: the save's
+   * answer carries no translation, code review 01 #2). */
+  patchSupport(rumorId: string, support: number): void;
   patchDistortion(row: RegionDistortion): void;
 }
 
@@ -137,14 +144,15 @@ export function useGmData(
         if (statusOf(e) === 404) return null;
         throw e;
       }),
-      api.listTurnRuns(sessionId, "running").catch(() => [] as TurnRun[]),
+      // a failed runs read is a failed read: the last answer stays, with the error (review #27)
+      api.listTurnRuns(sessionId, "running"),
     ]);
     return { player: p, running: Array.isArray(runs) ? runs : [] };
   });
   const [knowledgeRev, setKnowledgeRev] = useState(0);
 
   // the write's own answers, cleared by the next answer of the same read (R-03)
-  const [rumorPatch, setRumorPatch] = useState<Record<string, SessionRumor>>({});
+  const [rumorPatch, setRumorPatch] = useState<Record<string, number>>({});
   const [distPatch, setDistPatch] = useState<Record<string, { distortion: number; feedback_share: number }>>({});
   useEffect(() => setRumorPatch({}), [rumors.data]);
   useEffect(() => setDistPatch({}), [worldState.data]);
@@ -155,7 +163,9 @@ export function useGmData(
     worldState: worldState.reload,
     events: events.reload,
     timeline: timeline.reload,
-    rumors: regionId ? rumors.reload : undefined,
+    // always the current read: a region chosen while the write ran is read again too
+    // (a reload without a key does nothing; code review 01 #5)
+    rumors: rumors.reload,
     seeds: seeds.reload,
     deeds: deeds.reload,
     player: player.reload,
@@ -165,7 +175,7 @@ export function useGmData(
     for (const read of AFTER[kind]) reloads[read]?.();
   };
 
-  const rumorList = rumors.data?.map((r) => rumorPatch[r.id] ?? r);
+  const rumorList = rumors.data?.map((r) => (rumorPatch[r.id] == null ? r : { ...r, support: rumorPatch[r.id] }));
   const regionState = useCallback(
     (id: string) => {
       if (distPatch[id]) return distPatch[id];
@@ -187,7 +197,7 @@ export function useGmData(
     rumorList,
     regionState,
     after,
-    patchRumor: (r) => setRumorPatch((p) => ({ ...p, [r.id]: r })),
+    patchSupport: (rumorId, support) => setRumorPatch((p) => ({ ...p, [rumorId]: support })),
     patchDistortion: (row) =>
       setDistPatch((p) => ({
         ...p,

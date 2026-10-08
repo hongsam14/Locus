@@ -12,6 +12,7 @@ export function TurnTools({
   closed,
   llmOff = false,
   advancing,
+  regionBusy = false,
   suggesting,
   bulk,
   suggestN,
@@ -25,6 +26,8 @@ export function TurnTools({
   closed: boolean;
   llmOff?: boolean;
   advancing: boolean;
+  /** A region's own rumor write runs: the bulk runs wait for it (code review 01 #7). */
+  regionBusy?: boolean;
   suggesting: boolean;
   bulk: BulkProgress | null;
   suggestN: number;
@@ -37,6 +40,8 @@ export function TurnTools({
 }) {
   const [asking, setAsking] = useState(false);
   const running = bulk != null;
+  // while the GM's own turn runs, the other writes would be refused (code review 01 #35)
+  const bulkOff = closed || running || llmOff || advancing || regionBusy;
   const why = llmOff ? t("llm.required") : undefined;
   return (
     <section data-testid="turn-tools" className="flex flex-col gap-3">
@@ -53,16 +58,16 @@ export function TurnTools({
           options={Array.from({ length: maxSuggest }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))}
           onChange={(v) => onSuggestN(Number(v))}
         />
-        <Button data-testid="suggest-events-btn" busy={suggesting} disabled={closed || llmOff} title={why}
+        <Button data-testid="suggest-events-btn" busy={suggesting} disabled={closed || llmOff || advancing} title={why}
           onClick={onSuggest}>
           {t("action.suggestEvents")}
         </Button>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button data-testid="generate-all-btn" disabled={closed || running || llmOff} title={why} onClick={onGenerateAll}>
+        <Button data-testid="generate-all-btn" disabled={bulkOff} title={why} onClick={onGenerateAll}>
           {t("action.generateEmpty")}
         </Button>
-        <Button variant="danger" data-testid="regen-all-btn" disabled={closed || running || llmOff} title={why}
+        <Button variant="danger" data-testid="regen-all-btn" disabled={bulkOff} title={why}
           onClick={() => setAsking(true)}>
           {t("action.regenAllRumors")}
         </Button>

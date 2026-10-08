@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { enumLabel, numberWithMeaning } from "../../format";
 import { useAction } from "../../hooks";
 import { t } from "../../i18n";
@@ -23,12 +24,20 @@ export function EventCard({
   event: SessionEvent;
   regionName: string;
   closed: boolean;
-  onApprove(): Promise<unknown>;
-  onDiscard(): Promise<unknown>;
-  onResolve(): Promise<unknown>;
+  /** Each resolves true when saved. */
+  onApprove(): Promise<boolean>;
+  onDiscard(): Promise<boolean>;
+  onResolve(): Promise<boolean>;
   onPickRegion(): void;
 }) {
-  const write = useAction((fn: () => Promise<unknown>) => fn());
+  // a saved write keeps the card's buttons off until the re-read brings the event again: in
+  // between the card still shows the old status (code review 01 #29)
+  const [held, setHeld] = useState(false);
+  useEffect(() => setHeld(false), [event]);
+  const write = useAction(async (fn: () => Promise<boolean>) => {
+    if (await fn()) setHeld(true);
+  });
+  const off = closed || held;
   const id = event.id;
   return (
     <Card data-testid={`event-${id}`} className="flex flex-col gap-1.5 text-sm">
@@ -49,18 +58,18 @@ export function EventCard({
       <LocalizedText testId={`event-desc-${id}`} ko={event.description_ko} original={event.description} />
       {event.status === "suggested" && (
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" data-testid={`approve-${id}`} busy={write.busy} disabled={closed}
+          <Button size="sm" data-testid={`approve-${id}`} busy={write.busy} disabled={off}
             onClick={() => void write.run(onApprove)}>
             {t("action.approve")}
           </Button>
-          <Button size="sm" variant="danger" data-testid={`discard-${id}`} busy={write.busy} disabled={closed}
+          <Button size="sm" variant="danger" data-testid={`discard-${id}`} busy={write.busy} disabled={off}
             onClick={() => void write.run(onDiscard)}>
             {t("action.discard")}
           </Button>
         </div>
       )}
       {event.status === "active" && (
-        <Button size="sm" className="self-start" data-testid={`resolve-${id}`} busy={write.busy} disabled={closed}
+        <Button size="sm" className="self-start" data-testid={`resolve-${id}`} busy={write.busy} disabled={off}
           onClick={() => void write.run(onResolve)}>
           {t("action.resolve")}
         </Button>

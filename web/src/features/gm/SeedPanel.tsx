@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { enumLabel, numberWithMeaning } from "../../format";
 import { useAction } from "../../hooks";
 import { t } from "../../i18n";
@@ -21,7 +22,8 @@ export function SeedPanel({
   nameOf?: NameOf;
   closed: boolean;
   busy: boolean; // a bulk run goes
-  onStart(seedId: string): Promise<unknown>;
+  /** Resolves true when the seed started. */
+  onStart(seedId: string): Promise<boolean>;
 }) {
   if (!seeds.data) {
     return <StatusView state={seeds.state === "error" ? "error" : "loading"} error={seeds.error} onRetry={seeds.reload} />;
@@ -36,8 +38,13 @@ export function SeedPanel({
   );
 }
 
-function SeedRow({ view, nameOf, off, onStart }: { view: SeedView; nameOf: NameOf; off: boolean; onStart(id: string): Promise<unknown> }) {
-  const start = useAction(() => onStart(view.seed.id));
+function SeedRow({ view, nameOf, off, onStart }: { view: SeedView; nameOf: NameOf; off: boolean; onStart(id: string): Promise<boolean> }) {
+  // a started seed stays off until the seeds are read again (code review 01 #29)
+  const [held, setHeld] = useState(false);
+  useEffect(() => setHeld(false), [view]);
+  const start = useAction(async () => {
+    if (await onStart(view.seed.id)) setHeld(true);
+  });
   const { seed, region_name, running_event_id } = view;
   return (
     <Card data-testid={`seed-row-${seed.id}`} className="flex flex-wrap items-center gap-2 text-sm">
@@ -53,7 +60,7 @@ function SeedRow({ view, nameOf, off, onStart }: { view: SeedView; nameOf: NameO
             {t("seed.running")}
           </span>
         ) : (
-          <Button size="sm" data-testid={`seed-start-${seed.id}`} busy={start.busy} disabled={off}
+          <Button size="sm" data-testid={`seed-start-${seed.id}`} busy={start.busy} disabled={off || held}
             onClick={() => void start.run()}>
             {t("seed.start")}
           </Button>

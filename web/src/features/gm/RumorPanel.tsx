@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { numberWithMeaning } from "../../format";
-import { useAction } from "../../hooks";
 import { t } from "../../i18n";
 import type { SessionRumor } from "../../types";
 import { Badge, Button, Card, CommitRange, ConfirmDialog, LocalizedText, StatusView } from "../../ui";
@@ -16,6 +15,7 @@ export function RumorPanel({
   closed,
   llmOff = false,
   busy,
+  writing = false,
   onGenerate,
   onRegen,
   onSupport,
@@ -26,23 +26,24 @@ export function RumorPanel({
   closed: boolean;
   llmOff?: boolean;
   busy: boolean; // a bulk run goes
+  /** This region's generate / regenerate runs (the screen holds it, code review 01 #7). */
+  writing?: boolean;
   onGenerate(): Promise<unknown>;
   onRegen(): Promise<unknown>;
   onSupport: (rumorId: string, v: number) => Promise<boolean> | boolean | void;
 }) {
   const [asking, setAsking] = useState(false);
-  const write = useAction((fn: () => Promise<unknown>) => fn());
   const why = llmOff ? t("llm.required") : undefined;
   const off = closed || busy || llmOff;
   return (
     <section className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="flex-1 font-heading text-lg">{t("label.rumors")}</h3>
-        <Button size="sm" variant="primary" data-testid="generate-btn" busy={write.busy} disabled={off} title={why}
-          onClick={() => void write.run(onGenerate)}>
+        <Button size="sm" variant="primary" data-testid="generate-btn" busy={writing} disabled={off} title={why}
+          onClick={() => void onGenerate()}>
           {t("action.generateHere")}
         </Button>
-        <Button size="sm" data-testid="regen-btn" busy={write.busy} disabled={off} title={why}
+        <Button size="sm" data-testid="regen-btn" busy={writing} disabled={off} title={why}
           onClick={() => setAsking(true)}>
           {t("action.regenerate")}
         </Button>
@@ -66,7 +67,7 @@ export function RumorPanel({
         confirmTestId="regen-confirm"
         onConfirm={() => {
           setAsking(false);
-          void write.run(onRegen);
+          void onRegen();
         }}
         onCancel={() => setAsking(false)}
       >

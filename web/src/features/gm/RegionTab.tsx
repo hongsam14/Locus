@@ -27,6 +27,7 @@ export function RegionTab({
   closed,
   llmOff,
   bulkBusy,
+  regionWriting = false,
   knowledgeRev,
   draft,
   onDraft,
@@ -52,6 +53,7 @@ export function RegionTab({
   closed: boolean;
   llmOff: boolean;
   bulkBusy: boolean;
+  regionWriting?: boolean;
   knowledgeRev: number;
   draft: EventDraft;
   onDraft(d: EventDraft): void;
@@ -107,6 +109,7 @@ export function RegionTab({
         closed={closed}
         llmOff={llmOff}
         busy={bulkBusy}
+        writing={regionWriting}
         onGenerate={onGenerate}
         onRegen={onRegen}
         onSupport={onSupport}

@@ -75,14 +75,14 @@ const EXPECTED: Record<GmWrite, string[]> = {
   suggest: ["listEvents", "getTimeline"],
   approve: ["listEvents", "getTimeline", "getWorldState"],
   discard: ["listEvents", "getTimeline"],
-  resolve: ["listEvents", "getTimeline", "getWorldState", "listRumors"],
+  resolve: ["listEvents", "getTimeline", "getWorldState", "listRumors", "listSeeds"], // review #3
   create: ["listEvents", "getTimeline", "getWorldState"],
   seed: ["listSeeds", "listEvents", "getTimeline", "getWorldState"],
   distortion: ["getWorldState", "getTimeline"],
-  support: ["getTimeline"],
+  support: ["getTimeline", "listRumors"], // review #2, #24
   generate: ["listRumors", "getWorldState", "getTimeline", "knowledge"],
   regen: ["listRumors", "getWorldState", "getTimeline", "knowledge"],
-  bulk: ["getWorldState", "listRumors", "getTimeline"],
+  bulk: ["getWorldState", "listRumors", "getTimeline", "knowledge"], // review #33
   void: ["listDeeds", "listRumors", "getWorldState", "getTimeline", "knowledge"],
   close: ["session", "sessions"],
 };
@@ -146,11 +146,11 @@ describe("§ 1.1 R-03: a write's own answer at once, then the next read", () => 
     (api.listRumors as Mock).mockResolvedValueOnce([rumor("r1", 0.5)]);
     const { result } = renderHook(() => useGmData("s1", "a"));
     await waitFor(() => expect(result.current.rumorList?.[0].support).toBe(0.5));
-    act(() => result.current.patchRumor(rumor("r1", 0.9)));
+    act(() => result.current.patchSupport("r1", 0.9));
     expect(result.current.rumorList?.[0].support).toBe(0.9);
+    expect(result.current.rumorList?.[0].statement).toBe("r1"); // only the belief is laid over (review #2)
     (api.listRumors as Mock).mockResolvedValueOnce([rumor("r1", 0.8)]);
-    act(() => result.current.after("support")); // support reads the timeline only
-    act(() => result.current.rumors.reload());
+    act(() => result.current.after("support")); // the save reads its rumors again (review #24)
     await waitFor(() => expect(result.current.rumorList?.[0].support).toBe(0.8));
   });
 
@@ -197,15 +197,17 @@ describe("TP-V6-7: a bulk run counts why it failed and stops (§ 1.1 R-06)", () 
 
   it("no LLM and busy are counted apart; a run that needed the LLM every time says so", async () => {
     (api.regenRumors as Mock).mockRejectedValueOnce(llm()).mockRejectedValueOnce(busy()).mockResolvedValue([]);
+    (api.getWorldState as Mock).mockResolvedValue(state([{}, {}, {}, {}])); // the run reads its targets (review #26)
     const { hook, notify, onError } = setup();
-    await act(async () => hook.result.current.regenAll(["a", "b", "c", "d"]));
+    await act(async () => hook.result.current.regenAll());
     const body = notify.mock.calls[0][0].body as string;
     expect(body).toContain(t("progress.done", { done: 2, total: 4 }));
     expect(body).toContain(t("progress.noLlm", { n: 1 }));
     expect(body).toContain(t("progress.busy", { n: 1 }));
     expect(onError).toHaveBeenLastCalledWith(null);
     (api.regenRumors as Mock).mockReset().mockRejectedValue(llm());
-    await act(async () => hook.result.current.regenAll(["a", "b"]));
+    (api.getWorldState as Mock).mockResolvedValue(state([{}, {}]));
+    await act(async () => hook.result.current.regenAll());
     expect(onError).toHaveBeenLastCalledWith(expect.objectContaining({ title: dicts.ko["error.llm_unavailable.title"] }));
   });
 
@@ -217,7 +219,8 @@ describe("TP-V6-7: a bulk run counts why it failed and stops (§ 1.1 R-06)", () 
       return [];
     });
     const { hook, onClosed, onError } = setup();
-    await act(async () => hook.result.current.regenAll(Array.from({ length: 12 }, (_, i) => `r${i}`)));
+    (api.getWorldState as Mock).mockResolvedValue(state(Array.from({ length: 12 }, () => ({}))));
+    await act(async () => hook.result.current.regenAll());
     expect(calls).toBeLessThanOrEqual(5); // the first five were already out; none after
     expect(onClosed).toHaveBeenCalledTimes(1);
     expect(onError).toHaveBeenLastCalledWith(expect.objectContaining({ title: dicts.ko["error.session_closed.title"] }));
@@ -228,11 +231,12 @@ describe("TP-V6-7: a bulk run counts why it failed and stops (§ 1.1 R-06)", () 
     let i = 0;
     (api.regenRumors as Mock).mockImplementation(() => holds[i++].promise);
     const { hook, notify, after } = setup();
+    (api.getWorldState as Mock).mockResolvedValue(state(Array.from({ length: 10 }, () => ({}))));
     let run: Promise<unknown> = Promise.resolve();
     act(() => {
-      run = hook.result.current.regenAll(Array.from({ length: 10 }, (_, k) => `r${k}`));
+      run = hook.result.current.regenAll();
     });
-    expect(api.regenRumors).toHaveBeenCalledTimes(5);
+    await waitFor(() => expect(api.regenRumors).toHaveBeenCalledTimes(5));
     hook.unmount();
     await act(async () => {
       for (const h of holds.slice(0, 5)) h.resolve([]);

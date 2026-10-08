@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { api } from "../../api";
 import { conflictKind, isBusy, needsLlm } from "../../api/http";
 import { describeError, type DescribedError } from "../../errors";
 import { useMounted } from "../../hooks";
 import { t } from "../../i18n";
+import type { WorldState } from "../../types";
 import { BULK_LIMIT, mapLimit, type BulkProgress } from "./bulk";
 
 type FailKind = "llm" | "closed" | "busy" | "other";
@@ -49,6 +50,9 @@ export function useBulkRumors(
 ) {
   const [progress, setProgress] = useState<BulkProgress | null>(null);
   const mounted = useMounted();
+  // one run at a time, also for two presses in the same tick (state changes only on the next
+  // render; code review 01 #34)
+  const running = useRef(false);
 
   const report = (error: DescribedError | null) => {
     if (onError) onError(error);
@@ -102,35 +106,52 @@ export function useBulkRumors(
     await after();
   }
 
-  // "Generate all" — regions with no canonical rumor (Q5=C / Q6=B). A deed rumor does not
-  // make a region "full" of the world's rumors (U6 review #5). One state read gives the
-  // counts — no per-region rumor read, so no translation warm per region (U7 review C1).
-  async function generateAll() {
-    if (progress != null) return; // in-flight guard (review #2)
-    setProgress({ done: 0, total: 0, failed: 0 }); // gate the button during the pre-scan
+  /** A run over the regions the state read picks: one guard, one pre-scan, the error line
+   * cleared first; a run with no target says so (code review 01 #26, #32). */
+  async function scanAndRun(pick: (state: WorldState) => string[], op: (rid: string) => Promise<unknown>, label: string) {
+    if (running.current) return; // in-flight guard (review #2, code review 01 #34)
+    running.current = true;
+    report(null);
+    setProgress({ done: 0, total: 0, failed: 0 }); // gate the buttons during the pre-scan
     try {
       const state = await api.getWorldState(sessionId);
       if (!mounted.current) return;
       // the cap read on mount may have failed: this read corrects it (U3 review S13)
       if (state.max_event_suggestions) onCap(state.max_event_suggestions);
-      const empty = state.regions
-        .filter((r) => r.active_rumors - r.deed_rumors === 0)
-        .map((r) => r.region_id);
-      if (empty.length === 0) {
+      const ids = pick(state);
+      if (ids.length === 0) {
         setProgress(null);
-        notify({ region_id: "bulk", title: t("gm.generateAll"), body: t("notif.noTargets") });
+        notify({ region_id: "bulk", title: label, body: t("notif.noTargets") });
         return;
       }
-      await runBulk(empty, (rid) => api.generateRumors(sessionId, rid), t("gm.generateAll"));
+      await runBulk(ids, op, label);
     } catch (e) {
       if (!mounted.current) return;
       setProgress(null);
       report(describeError(e));
+    } finally {
+      running.current = false;
     }
   }
 
-  const regenAll = (ids: string[]) =>
-    runBulk(ids, (rid) => api.regenRumors(sessionId, rid), t("gm.regenAll"));
+  // "Make rumors for empty regions" — regions with no canonical rumor (Q5=C / Q6=B). A deed
+  // rumor does not make a region "full" of the world's rumors (U6 review #5). One state read
+  // gives the counts — no per-region rumor read, so no translation warm per region (U7 C1).
+  const generateAll = () =>
+    scanAndRun(
+      (state) => state.regions.filter((r) => r.active_rumors - r.deed_rumors === 0).map((r) => r.region_id),
+      (rid) => api.generateRumors(sessionId, rid),
+      t("action.generateEmpty"),
+    );
+
+  // "Remake every region's rumors" — every region the state lists, read now rather than taken
+  // from the screen, which may not have the state yet (code review 01 #26)
+  const regenAll = () =>
+    scanAndRun(
+      (state) => state.regions.map((r) => r.region_id),
+      (rid) => api.regenRumors(sessionId, rid),
+      t("action.regenAllRumors"),
+    );
 
   return { progress, generateAll, regenAll };
 }

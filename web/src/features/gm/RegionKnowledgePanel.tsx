@@ -42,12 +42,12 @@ export function RegionKnowledgePanel({ worldId, regionId, sessionId, rev = 0 }: 
   }));
   const result = r.data && r.data.k === keyText ? r.data.v : null; // another region's answer never shows
   const reload = r.reload;
-  const first = useRef(true);
+  // read again when `rev` moves — compared with the last one seen, so StrictMode's second
+  // effect run does not read twice (code review 01 #28)
+  const seen = useRef(rev);
   useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
+    if (seen.current === rev) return;
+    seen.current = rev;
     reload();
   }, [rev, reload]);
 

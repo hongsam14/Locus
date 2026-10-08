@@ -222,7 +222,7 @@ describe("EventPanel and the timeline", () => {
     ({ id, session_id: "s1", region_id: "a", category: "war", description: "", magnitude: 0.5, lifecycle: "persistent", status, created_turn: 0, contributions: {} }) as unknown as SessionEvent;
 
   it("a suggestion has approve and discard but never resolve; an active one only resolve", () => {
-    const done = () => Promise.resolve();
+    const done = () => Promise.resolve(true);
     render(
       <EventPanel
         events={{ data: [ev("e1", "suggested"), ev("e2", "active")], state: "ready", reload: vi.fn() }}

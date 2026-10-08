@@ -23,9 +23,9 @@ export function EventPanel({
   events: GmRes<SessionEvent[]>;
   regionName(regionId: string): string;
   closed: boolean;
-  onApprove(eventId: string): Promise<unknown>;
-  onDiscard(eventId: string): Promise<unknown>;
-  onResolve(eventId: string): Promise<unknown>;
+  onApprove(eventId: string): Promise<boolean>;
+  onDiscard(eventId: string): Promise<boolean>;
+  onResolve(eventId: string): Promise<boolean>;
   onPickRegion(regionId: string): void;
 }) {
   const [ended, setEnded] = useState(STEP);

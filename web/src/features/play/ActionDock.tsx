@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DescribedError } from "../../errors";
 import { t } from "../../i18n";
 import type { MoveOption, TurnRun } from "../../types";
@@ -58,9 +58,23 @@ export function ActionDock({
   highlightId?: string | null;
 }) {
   const [declareOpen, setDeclareOpen] = useState(false);
+  // the page keeps room under itself for the bar as tall as it is now — a slow turn or an
+  // error makes it taller (code review 01 #17); without ResizeObserver the layout's 7rem stays
+  const bar = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = bar.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const root = document.documentElement.style;
+    const observer = new ResizeObserver(() => root.setProperty("--dock-h", `${el.offsetHeight}px`));
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      root.removeProperty("--dock-h");
+    };
+  }, []);
   return (
     <>
-      <div data-testid="action-dock"
+      <div ref={bar} data-testid="action-dock"
         className="fixed inset-x-0 bottom-0 z-40 flex flex-col gap-2 border-t border-line-strong bg-surface px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-pop">
         {/* a refused declaration is said in its sheet, which stays open */}
         <TurnStatus running={running} slow={slow} error={error} refusal={declareOpen ? undefined : refusal}
@@ -91,7 +105,8 @@ export function ActionDock({
             return accepted;
           }} />
       </Dialog>
-      <Dialog open={moveOpen} onOpenChange={onMoveOpenChange} variant="sheet" testId="move-sheet"
+      {/* the sheet itself takes focus, not its first [move] (code review 01 #6) */}
+      <Dialog open={moveOpen} onOpenChange={onMoveOpenChange} variant="sheet" testId="move-sheet" initialFocus="content"
         title={t("label.whereToGo")}>
         <MovePanel bare moves={moves} nameOf={nameOf} highlightId={highlightId} disabled={disabled} locked={locked}
           onMove={(id) => {

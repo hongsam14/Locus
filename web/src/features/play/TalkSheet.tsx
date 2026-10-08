@@ -20,7 +20,9 @@ export function TalkSheet({
   children?: ReactNode;
 }) {
   return (
+    // the panel puts focus on [close], then the input — never on [end talk] (review 01 #6)
     <Dialog open={npc != null} onOpenChange={(open) => !open && onClose()} variant="full" testId="talk-sheet"
+      initialFocus="none"
       title={npc ? t("dialogue.title", { name: nameOf("npcs", npc.id, "name", npc.name) }) : ""}>
       {children}
     </Dialog>

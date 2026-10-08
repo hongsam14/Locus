@@ -26,21 +26,21 @@ export function PeopleHere({
   nameOf = english,
   counts,
   activeNpcId = null,
-  talkOff = null,
+  talkNote = null,
   onTalk,
 }: {
   view: RegionView;
   nameOf?: NameOf;
   counts?: Record<string, number>;
   activeNpcId?: string | null;
-  talkOff?: string | null;
+  talkNote?: string | null;
   onTalk?: (npcId: string) => void;
 }) {
   return (
     <section className="flex flex-col gap-2" aria-labelledby="people-here" data-testid="people-here">
       <h2 id="people-here" className="font-heading text-xl">{t("label.peopleHere")}</h2>
       <NpcList npcs={view.npcs} counts={counts} activeNpcId={activeNpcId} onTalk={onTalk} nameOf={nameOf}
-        talkOff={talkOff} />
+        talkNote={talkNote} />
     </section>
   );
 }

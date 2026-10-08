@@ -284,10 +284,15 @@ describe("U6 review carry-overs", () => {
     render(<ActionBar running={null} disabled={false} onWait={() => {}} onDeclare={onDeclare} />);
     fireEvent.change(screen.getByTestId("declare-input"), { target: { value: "I sing" } });
     fireEvent.click(screen.getByTestId("declare-btn"));
-    await waitFor(() => expect(screen.getByTestId("declare-input")).toBeDisabled());
-    expect(screen.getByTestId("declare-btn")).toBeDisabled();
+    // V4 intended change (code review 01 #7, BR-V4-24): read-only and busy, not disabled,
+    // so focus stays; a second press while it is out sends nothing
+    await waitFor(() => expect(screen.getByTestId("declare-input")).toHaveAttribute("readonly"));
+    expect(screen.getByTestId("declare-btn")).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByTestId("declare-btn")).not.toBeDisabled();
+    fireEvent.click(screen.getByTestId("declare-btn"));
+    expect(onDeclare).toHaveBeenCalledTimes(1);
     await act(async () => answer(false));
-    expect(screen.getByTestId("declare-input")).toBeEnabled();
+    expect(screen.getByTestId("declare-input")).not.toHaveAttribute("readonly");
     expect(screen.getByTestId("declare-input")).toHaveValue("I sing");
   });
 

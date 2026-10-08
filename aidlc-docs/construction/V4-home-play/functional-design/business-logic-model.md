@@ -151,12 +151,14 @@ useTurnRun(sessionId)
   닫기([닫기]·Esc): location.state?.talk 이 있으면 navigate(-1)     # 그 칸을 되돌림
   뒤로 가기: 라우터가 이전 칸으로 → state.talk 없음 → 시트 닫힘   # 따로 판정하지 않는다
   지역이 바뀜(이동)·세션이 바뀜·언마운트: state.talk 이 있으면 navigate(location, {replace: true, state: null})
+                                                                    # 코드 리뷰 01 #12: 이 화면이 넣은 칸이면 navigate(-1)로 되돌린다(칸이 쌓이지 않게). 넣지 않은 칸(복원된 탭)만 replace. 언마운트·세션 변경 때는 하지 않는다(R-11)
+  그 NPC가 지역에 없음: 위와 같이 칸을 치운다(코드 리뷰 01 #11)
   넓음으로 바뀜(시트가 열린 채): activeNpcId = state.talk ; navigate(location, {replace: true, state: null})
   넓음에서 좁아짐(열 안 대화 중): navigate(location, {state: {talk: activeNpcId}}) ; activeNpcId = null
 [대화 끝내기]: act({type: "end_talk", npc_id}) → 2.2 흐름 → 결과 띠에 판단 결과 ; 위 규칙으로 닫기
 ```
 
-- 키가 없으면 [말 걸기]가 꺼지고 "AI 키가 없어 대화를 쉬어요"를 보인다(지금은 `dialogue-no-llm`).
+- ~~키가 없으면 [말 걸기]가 꺼지고 "AI 키가 없어 대화를 쉬어요"를 보인다~~ → 코드 리뷰 01 #28(a)로 바뀜: 키가 없어도 [말 걸기]는 열린다. 목록 위에 "AI 키가 없어 지난 대화만 볼 수 있어요"가 있고, 패널은 지난 대화만 보이며 입력을 잠근다(`dialogue-no-llm`). 키 없는 닫힌 세션도 기록을 읽는다(BR-V4-18).
 - 닫힌 세션은 기록만 읽는다(`readOnly`).
 - 대화 중에는 사람 목록이 없으므로, 다른 NPC로 바꾸려면 [닫기] 뒤 다시 고른다.
 

@@ -1,5 +1,5 @@
 import * as RadixDialog from "@radix-ui/react-dialog";
-import { useRef, type ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 
 // V2 (FR-D4, BR-V2-21): one dialog. Radix moves focus in, keeps it there, brings it back
 // to the opener, closes on Esc and names the dialog by its title. role="dialog". The
@@ -29,6 +29,7 @@ export function Dialog({
   footer,
   size = "md",
   variant = "center",
+  initialFocus = "first",
   testId,
 }: {
   open: boolean;
@@ -39,22 +40,34 @@ export function Dialog({
   footer?: ReactNode;
   size?: keyof typeof SIZES;
   variant?: keyof typeof FRAME;
+  /** Where focus goes on open (V4 code review 01 #6): the first control (Radix), the
+   * dialog itself (a list whose first control is an action, e.g. [move]), or nowhere (the
+   * content focuses its own — the talk focuses [close], then the input once ready). */
+  initialFocus?: "first" | "content" | "none";
   testId?: string; // on the dialog element itself (its title and body inside)
 }) {
   const opener = useRef<HTMLElement | null>(null);
+  const content = useRef<HTMLDivElement | null>(null);
+  // the opener is taken before the content's own effects can move focus inside
+  useLayoutEffect(() => {
+    if (open) opener.current = document.activeElement as HTMLElement | null;
+  }, [open]);
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="fixed inset-0 z-50 bg-scrim" />
         <RadixDialog.Content
+          ref={content}
           data-testid={testId}
           data-variant={variant}
           className={
             `fixed z-50 flex flex-col gap-3 overflow-y-auto border-line-strong bg-surface text-fg shadow-pop ` +
             `${FRAME[variant]} ${variant === "center" ? SIZES[size] : ""}`
           }
-          onOpenAutoFocus={() => {
-            opener.current = document.activeElement as HTMLElement | null;
+          onOpenAutoFocus={(e) => {
+            if (initialFocus === "first") return;
+            e.preventDefault();
+            if (initialFocus === "content") content.current?.focus();
           }}
           onCloseAutoFocus={(e) => {
             e.preventDefault();

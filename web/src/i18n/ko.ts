@@ -532,7 +532,7 @@ export const ko = {
   "notice.gmBusy": "GM이 작업 중이에요. 잠시 뒤 다시 해 보세요.",
   "notice.turnSlow": "턴이 오래 걸려요. 잠시 뒤 다시 확인해 보세요.",
   "notice.moveBlocked": "지금은 지나갈 수 없어요.",
-  "notice.talkNeedsKey": "AI 키가 없어 대화를 쉬어요.",
+  "notice.talkNeedsKey": "AI 키가 없어 지난 대화만 볼 수 있어요.",
   "label.declare": "무엇을 할까요?",
   "label.whereToGo": "갈 수 있는 곳",
   "label.journey": "여정 기록",

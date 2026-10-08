@@ -186,7 +186,7 @@
 | 행동 상자(넓음·중간) | 선언 입력(라벨 있음, 초점 고리, 글자 수), [선언하기 · 1턴](primary), [기다리기 · 1턴]. 진행 중에는 "턴을 진행하고 있어요…"와 진행 표시가 나오고 버튼이 `aria-disabled`가 된다 | 선언·기다리기 | `action-bar`, `declare-input`, `declare-count`, `declare-btn`, `wait-btn`, `turn-progress`(유지) |
 | 고정 행동 띠(좁음) | 세 버튼이다. `pb-[env(safe-area-inset-bottom)]`. 열려 있는 동안 페이지 아래 여백을 띠 높이만큼 둔다 | [기다리기]: 바로 / [선언하기]: 선언 시트 / [이동]: 이동 시트 | `action-dock`, `dock-wait`, `dock-declare`, `dock-move`(새) |
 | 선언 시트·이동 시트 | V2 `Dialog`에 더하는 `variant="sheet"`(아래 고정, 너비 꽉 참, 위 모서리만 둥금, 최대 높이 85vh). 제목·초점 가둠·Esc·초점 복귀는 지금 Dialog 그대로다. 내용은 열렸을 때만 렌더한다. 선언 시트는 보내면 닫히고, 이동 시트는 고르면 닫힌다 | | `declare-sheet`, `move-sheet`(새) |
-| 이곳의 사람들 | NPC 카드: 이름표의 이름·역할·설명, 나눈 말 수, [말 걸기]. 키가 없으면 [말 걸기]가 꺼지고 이유를 적는다 | 대화 열기(Q5) | `npc-list`, `npc-<id>`, `npc-<id>-talk-btn`, `npc-<id>-talked`(유지) |
+| 이곳의 사람들 | NPC 카드: 이름표의 이름·역할·설명, 나눈 말 수, [말 걸기]. ~~키가 없으면 [말 걸기]가 꺼지고 이유를 적는다~~ → 코드 리뷰 01 #28(a): 키가 없어도 [말 걸기]는 열리고, 목록 위에 "AI 키가 없어 지난 대화만 볼 수 있어요" 한 줄, 패널은 기록만 보이며 입력을 잠근다(BR-U5-29, BR-V4-18과 맞춤) | 대화 열기(Q5) | `npc-list`, `npc-<id>`, `npc-<id>-talk-btn`, `npc-<id>-talked`(유지) |
 | 대화(넓음) | "이곳의 사람들" 자리를 `DialoguePanel`이 대신한다. [닫기]는 목록으로 돌아가고, [대화 끝내기]는 판단 턴을 시작해 결과 띠에 결과를 낸다 | | `dialogue-panel` 외 유지 |
 | 대화(좁음·중간) | 같은 `DialoguePanel`을 `Dialog variant="full"`(화면 전체)에 담는다. 열림은 **라우터 상태**가 정한다(설계 리뷰 R-06, BLM § 2.5): `navigate(현재 경로, {state: {talk: npcId}})`로 열고, 뒤로 가기·[닫기]·Esc가 닫는다 | | `talk-sheet`(새) |
 | 이곳 사람들이 아는 것 | 지식 `statement_ko` → `statement`. 좁음에서는 3개 + [N개 더 보기] | — | `knowledge-item-<id>`(유지) |

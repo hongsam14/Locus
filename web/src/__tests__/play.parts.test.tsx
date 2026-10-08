@@ -268,10 +268,14 @@ describe("what is known, in words (BR-V4-10)", () => {
     expect(screen.getAllByTestId("log-player_waited")).toHaveLength(8);
   });
 
-  it("without an AI key [talk] is off and says why", () => {
-    render(<NpcList npcs={[MARA]} onTalk={() => {}} talkOff={t("notice.talkNeedsKey")} />);
-    expect(screen.getByTestId("npc-n1-talk-btn")).toBeDisabled();
-    expect(screen.getByTestId("talk-off")).toHaveTextContent(t("notice.talkNeedsKey"));
+  // code review 01 #28 (a): without a key [talk] still opens the past talk (BR-U5-29, BR-V4-18)
+  it("without an AI key [talk] stays on and a line says only past talks can be read", () => {
+    const onTalk = vi.fn();
+    render(<NpcList npcs={[MARA]} onTalk={onTalk} talkNote={t("notice.talkNeedsKey")} />);
+    expect(screen.getByTestId("npc-n1-talk-btn")).toBeEnabled();
+    fireEvent.click(screen.getByTestId("npc-n1-talk-btn"));
+    expect(onTalk).toHaveBeenCalledWith("n1");
+    expect(screen.getByTestId("talk-note")).toHaveTextContent(t("notice.talkNeedsKey"));
   });
 });
 
@@ -283,6 +287,20 @@ describe("TP-V4-13: labels, the focus ring, named sheets", () => {
     expect(box.className).not.toMatch(/outline-none/);
     expect(screen.getByTestId("declare-btn")).toHaveTextContent(`${t("action.declare")} · ${t("unit.turns", { n: 1 })}`);
     expect(screen.getByTestId("wait-btn")).toHaveTextContent(`${t("action.wait")} · ${t("unit.turns", { n: 1 })}`);
+  });
+
+  it("code review 01 #7: [declare] keeps focus while its request is out, then the box gets it back", async () => {
+    let answer: (v: boolean) => void = () => {};
+    render(<ActionBar running={null} disabled={false} onWait={() => {}} onDeclare={() => new Promise<boolean>((r) => (answer = r))} />);
+    fireEvent.change(screen.getByTestId("declare-input"), { target: { value: "I sing" } });
+    const btn = screen.getByTestId("declare-btn");
+    btn.focus();
+    fireEvent.click(btn);
+    expect(btn).not.toBeDisabled(); // busy (aria-disabled), not native: focus stays
+    expect(btn).toHaveFocus();
+    expect(screen.getByTestId("declare-input")).toHaveAttribute("readonly");
+    await act(async () => answer(true));
+    expect(screen.getByTestId("declare-input")).toHaveFocus();
   });
 
   it("the turn's place: running, slow with [check again], a failed check with [check again]", () => {

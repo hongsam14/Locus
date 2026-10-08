@@ -32,6 +32,7 @@ export function DialoguePanel({
   onClosed,
   nameOf = english,
   bare = false,
+  focusOnOpen = false,
 }: {
   sessionId: string;
   npc: NPC;
@@ -46,7 +47,12 @@ export function DialoguePanel({
   onClosed?: () => void;
   nameOf?: NameOf;
   bare?: boolean;
+  /** Opening takes focus (V4 code review 01 #6/#7): [close] first — never [end talk], which
+   * spends a turn — then the input once it can take a line. */
+  focusOnOpen?: boolean;
 }) {
+  const root = useRef<HTMLDivElement | null>(null);
+  const focus = (id: string) => root.current?.querySelector<HTMLElement>(`[data-testid="${id}"]`)?.focus();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false); // `start` succeeded
@@ -116,9 +122,9 @@ export function DialoguePanel({
     setError(null);
     try {
       const reply = await api.say(sessionId, npc.id, text);
+      onSpoke?.(); // the line is saved: the page counts it even if this panel has closed (#19)
       if (!alive.current) return;
       setMessages((m) => [...m, reply.message]);
-      onSpoke?.();
     } catch (e) {
       if (!alive.current) return;
       setMessages((m) => m.filter((x) => x.id !== mine.id));
@@ -136,11 +142,19 @@ export function DialoguePanel({
   }
 
   // Locked while a line is on its way: a failed send puts that line back in the box,
-  // which must not overwrite a next line typed meanwhile (review U5 #9).
-  const inputOff = !llmAvailable || !ready || readOnly || sending;
+  // which must not overwrite a next line typed meanwhile (review U5 #9). Read-only rather
+  // than disabled, so the box keeps its focus (V4 code review 01 #7).
+  const inputOff = !llmAvailable || !ready || readOnly;
+  const canTalk = !inputOff;
+  useEffect(() => {
+    if (focusOnOpen) focus("dialogue-close-btn"); // on open only
+  }, [focusOnOpen]);
+  useEffect(() => {
+    if (focusOnOpen && canTalk) focus("dialogue-input");
+  }, [focusOnOpen, canTalk]);
   const name = nameOf("npcs", npc.id, "name", npc.name);
   const content = (
-    <>
+    <div ref={root} className="flex min-w-0 flex-col gap-2">
       <p className="text-xs text-muted">{nameOf("npcs", npc.id, "role", npc.role)}</p>
       {!llmAvailable && (
         <p data-testid="dialogue-no-llm" className="border border-line-strong rounded-md bg-sunken px-2 py-1 my-1 text-sm">
@@ -148,7 +162,7 @@ export function DialoguePanel({
         </p>
       )}
       {loading && <p className="text-xs text-muted">{t("common.loading")}</p>}
-      <ul data-testid="dialogue-messages" className="flex flex-col gap-1.5 my-2 text-sm">
+      <ul data-testid="dialogue-messages" className="flex flex-col gap-1.5 text-sm">
         {messages.map((m) => (
           <li
             key={m.id}
@@ -189,6 +203,7 @@ export function DialoguePanel({
             data-testid="dialogue-input"
             value={draft}
             disabled={inputOff}
+            readOnly={sending}
             placeholder={t("dialogue.placeholder")}
             onChange={(e) => setDraft(e.target.value)}
             className="w-full min-w-0"
@@ -204,7 +219,7 @@ export function DialoguePanel({
           {t("dialogue.send")}
         </Button>
       </form>
-      <div className="flex gap-2 mt-2">
+      <div className="flex gap-2">
         <Button
           size="sm"
           data-testid="dialogue-end-btn"
@@ -217,11 +232,11 @@ export function DialoguePanel({
           {t("action.close")}
         </Button>
       </div>
-    </>
+    </div>
   );
   if (bare) {
     return (
-      <div data-testid="dialogue-panel" className="flex min-w-0 flex-col gap-2 break-keep">
+      <div data-testid="dialogue-panel" className="min-w-0 break-keep">
         {content}
       </div>
     );

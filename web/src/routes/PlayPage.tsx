@@ -86,16 +86,27 @@ function PlayScreen({ sessionId, pollMs = 700, maxPolls = 120, heldRetryMs = 100
   const closed = session?.status === "closed";
   const locked = turn.running != null || turn.acting || !!view?.turn_running || !!view?.gm_busy;
 
-  // talked-to counts (U5): read per place, best effort; a spoken line adds two (U5 C1)
+  // talked-to counts (U5): read per place and again after each turn, best effort; a spoken
+  // line adds two to the list it was counted against (U5 C1, code review 01 #19)
   const npcs = useResource(regionId ? ["npcs", sessionId, regionId] : null, () => api.listNpcs(sessionId));
-  const [spoken, setSpoken] = useState<Record<string, number>>({});
-  useEffect(() => setSpoken({}), [npcs.data]);
+  const { reload: reloadNpcs } = npcs;
+  useEffect(() => {
+    if (turn.outcome) reloadNpcs();
+  }, [turn.outcome, reloadNpcs]);
+  const [spoken, setSpoken] = useState<{ base: unknown; add: Record<string, number> }>({ base: null, add: {} });
   const counts = useMemo(() => {
-    const base: Record<string, number> = {};
-    for (const n of Array.isArray(npcs.data) ? npcs.data : []) base[n.npc.id] = n.message_count;
-    for (const [id, n] of Object.entries(spoken)) base[id] = (base[id] ?? 0) + n;
-    return base;
+    const out: Record<string, number> = {};
+    for (const n of Array.isArray(npcs.data) ? npcs.data : []) out[n.npc.id] = n.message_count;
+    if (spoken.base === npcs.data) for (const [id, n] of Object.entries(spoken.add)) out[id] = (out[id] ?? 0) + n;
+    return out;
   }, [npcs.data, spoken]);
+  const npcsData = useRef(npcs.data);
+  npcsData.current = npcs.data;
+  const countLine = (npcId: string) =>
+    setSpoken((s) => {
+      const add = s.base === npcsData.current ? s.add : {};
+      return { base: npcsData.current, add: { ...add, [npcId]: (add[npcId] ?? 0) + 2 } };
+    });
 
   // the talk (Q5=A, BLM § 2.5): wide = screen state, no history; narrower = the router's
   // history entry, so back closes the sheet and stays on the page
@@ -103,11 +114,23 @@ function PlayScreen({ sessionId, pollMs = 700, maxPolls = 120, heldRetryMs = 100
   const stateTalk = talkOf(location.state);
   const sheetTalk =
     stateTalk && stateTalk.sessionId === sessionId && stateTalk.regionId === regionId ? stateTalk.npcId : null;
-  const talkNpc = view?.npcs.find((n) => n.id === (wide ? columnTalk : sheetTalk)) ?? null;
+  const talkId = wide ? columnTalk : sheetTalk;
+  const talkNpc = view?.npcs.find((n) => n.id === talkId) ?? null;
   const here = `${location.pathname}${location.search}`;
-  const pushed = useRef(false); // this screen pushed the talk entry: closing pops it
-  const now = useRef({ here, stateTalk, sheetTalk, columnTalk, regionId });
-  now.current = { here, stateTalk, sheetTalk, columnTalk, regionId };
+  const pushed = useRef(false); // this screen pushed the talk entry: clearing it pops it
+  const now = useRef({ here, stateTalk, sheetTalk, columnTalk, regionId, wide });
+  now.current = { here, stateTalk, sheetTalk, columnTalk, regionId, wide };
+  const focusTalkButton = useRef<string | null>(null); // after a column talk closes (#7)
+
+  /** Take the talk's history entry away: pop it when this screen pushed it, so entries never
+   * pile up (code review 01 #12); clear it in place otherwise (a restored tab), so the page
+   * is never left. */
+  function dropTalkEntry() {
+    if (!now.current.stateTalk) return;
+    if (pushed.current) navigate(-1);
+    else navigate(now.current.here, { replace: true, state: null });
+    pushed.current = false;
+  }
 
   function openTalk(npcId: string) {
     if (!regionId) return;
@@ -118,31 +141,41 @@ function PlayScreen({ sessionId, pollMs = 700, maxPolls = 120, heldRetryMs = 100
     }
   }
   function closeTalk() {
-    if (wide) setColumnTalk(null);
-    else if (stateTalk) {
-      // an entry this screen did not push (a restored tab) is cleared in place, so the
-      // close never leaves the page
-      if (pushed.current) navigate(-1);
-      else navigate(here, { replace: true, state: null });
-      pushed.current = false;
-    }
+    if (now.current.wide) {
+      focusTalkButton.current = now.current.columnTalk;
+      setColumnTalk(null);
+    } else dropTalkEntry();
   }
+  // a closed column hands focus back to the NPC's [talk] (code review 01 #7)
+  useEffect(() => {
+    const id = focusTalkButton.current;
+    if (columnTalk || !id) return;
+    focusTalkButton.current = null;
+    document.querySelector<HTMLElement>(`[data-testid="npc-${id}-talk-btn"]`)?.focus();
+  }, [columnTalk]);
 
-  // moving closes the talk (U5 #8) and forgets the pointed-at row
+  // moving closes the talk (U5 #8) and forgets the pointed-at row; a region not known for a
+  // moment (a failed read) is not a move (code review 01 #20)
   const [highlight, setHighlight] = useState<string | null>(null);
   const [moveOpen, setMoveOpen] = useState(false);
   const lastRegion = useRef(regionId);
   useEffect(() => {
+    if (regionId === null) return;
     const prev = lastRegion.current;
     lastRegion.current = regionId;
     if (prev === null || prev === regionId) return;
     setColumnTalk(null);
     setHighlight(null);
-    if (now.current.stateTalk) {
-      navigate(now.current.here, { replace: true, state: null });
-      pushed.current = false;
-    }
-  }, [regionId, navigate]);
+    dropTalkEntry(); // reads the latest values through `now`
+  }, [regionId]);
+
+  // the NPC talked to is not here any more (it left, or a restored entry names one gone):
+  // the talk closes as with [close] (code review 01 #11)
+  useEffect(() => {
+    if (!view || !talkId || talkNpc) return;
+    if (wide) setColumnTalk(null);
+    else dropTalkEntry();
+  }, [view, talkId, talkNpc, wide]);
 
   // a width change carries an open talk across: sheet → column, column → sheet
   const lastWide = useRef(wide);
@@ -152,18 +185,17 @@ function PlayScreen({ sessionId, pollMs = 700, maxPolls = 120, heldRetryMs = 100
     const { here: at, sheetTalk: sheet, columnTalk: column, regionId: rid } = now.current;
     if (wide && sheet) {
       setColumnTalk(sheet);
-      navigate(at, { replace: true, state: null });
-      pushed.current = false;
+      dropTalkEntry();
     } else if (!wide && column && rid) {
       setColumnTalk(null);
       pushed.current = true;
       navigate(at, { state: { talk: { sessionId, regionId: rid, npcId: column } } });
     }
-  }, [wide, navigate, sessionId]);
+  }, [wide]);
 
   async function endTalk(npcId: string) {
-    closeTalk();
-    await turn.act({ type: "end_talk", npc_id: npcId }); // the judgment lands in the result band
+    // closes once the server took it: a refused or mid-turn press keeps the talk (#13)
+    if (await turn.act({ type: "end_talk", npc_id: npcId })) closeTalk(); // the judgment lands in the band
   }
   const move = (id: string) => void turn.act({ type: "move", to_region_id: id });
 
@@ -198,12 +230,13 @@ function PlayScreen({ sessionId, pollMs = 700, maxPolls = 120, heldRetryMs = 100
         npc={talkNpc}
         nameOf={nameOf}
         bare={!wide}
+        focusOnOpen
         llmAvailable={view.llm_available}
         busy={locked}
         readOnly={closed}
         onClose={closeTalk}
         onEndTalk={() => void endTalk(talkNpc.id)}
-        onSpoke={() => setSpoken((c) => ({ ...c, [talkNpc.id]: (c[talkNpc.id] ?? 0) + 2 }))}
+        onSpoke={() => countLine(talkNpc.id)}
         onClosed={play.reload}
       />
     );
@@ -241,7 +274,7 @@ function PlayScreen({ sessionId, pollMs = 700, maxPolls = 120, heldRetryMs = 100
             ),
             people: wide && dialogue ? dialogue : (
               <PeopleHere view={view} nameOf={nameOf} counts={counts} activeNpcId={talkNpc?.id ?? null}
-                talkOff={view.llm_available ? null : t("notice.talkNeedsKey")} onTalk={openTalk} />
+                talkNote={view.llm_available ? null : t("notice.talkNeedsKey")} onTalk={openTalk} />
             ),
             knowledge: <KnownHere view={view} compact={narrow} />,
             log: <PlayLog entries={play.log} nameOf={nameOf} compact={narrow} />,

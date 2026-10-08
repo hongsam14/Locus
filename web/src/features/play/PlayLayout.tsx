@@ -39,8 +39,9 @@ export function PlayLayout({ wide, narrow, s }: { wide: boolean; narrow: boolean
   }
   if (narrow) {
     return (
-      // room under the page for the fixed bar and the phone's safe area
-      <div className="flex flex-col gap-6 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+      // room under the page for the fixed bar as tall as it is (ActionDock measures it,
+      // safe area included); 7rem until it is measured
+      <div className="flex flex-col gap-6 pb-[calc(var(--dock-h,7rem)+1rem)]">
         {s.header}
         {s.result}
         {s.scene}

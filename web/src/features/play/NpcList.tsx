@@ -7,27 +7,28 @@ import { english, type NameOf } from "./names";
  * Taken out of `RegionScene` (U5). `counts` (message count per NPC id, from
  * `GET .../npcs`) marks the NPCs the player has already talked to. The button stays
  * usable without an LLM: the history still opens and `DialoguePanel` locks the input
- * (BR-U5-29). V4: names, roles and descriptions from the name map (`nameOf`); `talkOff` is
- * the reason [talk] is off (no AI key, BLM § 2.5), said once above the cards. */
+ * (BR-U5-29). V4: names, roles and descriptions from the name map (`nameOf`); `talkNote`
+ * says once above the cards what talking can do now (no AI key: past talks only — code
+ * review 01 #28, BR-U5-29 and BR-V4-18 kept). */
 export function NpcList({
   npcs,
   counts = {},
   activeNpcId = null,
   onTalk,
   nameOf = english,
-  talkOff = null,
+  talkNote = null,
 }: {
   npcs: NPC[];
   counts?: Record<string, number>;
   activeNpcId?: string | null;
   onTalk?: (npcId: string) => void;
   nameOf?: NameOf;
-  talkOff?: string | null;
+  talkNote?: string | null;
 }) {
   if (npcs.length === 0) return <p className="text-xs text-muted">—</p>;
   return (
     <>
-      {talkOff && <p className="text-sm text-muted" data-testid="talk-off">{talkOff}</p>}
+      {talkNote && <p className="text-sm text-muted" data-testid="talk-note">{talkNote}</p>}
       <ul className="grid gap-2 sm:grid-cols-2" data-testid="npc-list">
         {npcs.map((n) => {
           const count = counts[n.id] ?? 0;
@@ -55,7 +56,7 @@ export function NpcList({
                 <Button
                   size="sm"
                   data-testid={`npc-${n.id}-talk-btn`}
-                  disabled={active || talkOff != null}
+                  disabled={active}
                   onClick={() => onTalk(n.id)}
                   className="self-start"
                 >

@@ -5,7 +5,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import type { Mock } from "vitest";
 import { resetCapabilities } from "../capabilities";
-import { t } from "../i18n";
+import { configureLangs, setLang, t } from "../i18n";
 import { HttpError } from "../api/http";
 import { PlayPage } from "../routes/PlayPage";
 import type { GameSession, NPC, RegionView, TurnRun } from "../types";
@@ -395,11 +395,14 @@ describe("TP-V4-11: closed, empty, the GM at work", () => {
     expect(api.act).toHaveBeenCalledTimes(1);
   });
 
-  it("without an AI key [talk] is off and says why", async () => {
+  // code review 01 #28 (a): the past talk opens without a key; only a new line needs one
+  it("without an AI key [talk] opens the past talk with the input locked", async () => {
     (api.getRegion as Mock).mockResolvedValue(view({ llm_available: false }));
     renderPlay();
-    expect(await screen.findByTestId("talk-off")).toHaveTextContent(t("notice.talkNeedsKey"));
-    expect(screen.getByTestId("npc-n1-talk-btn")).toBeDisabled();
+    expect(await screen.findByTestId("talk-note")).toHaveTextContent(t("notice.talkNeedsKey"));
+    fireEvent.click(screen.getByTestId("npc-n1-talk-btn"));
+    expect(await screen.findByTestId("dialogue-no-llm")).toBeInTheDocument();
+    expect(screen.getByTestId("dialogue-input")).toBeDisabled();
   });
 });
 
@@ -415,5 +418,155 @@ describe("TP-V4-10: no other session's data", () => {
     expect(screen.getByTestId("status-loading")).toBeInTheDocument();
     await act(async () => answer({ ...AWAY, session_id: "s2" }));
     expect(await screen.findByTestId("region-title")).toHaveTextContent("Hollow");
+  });
+});
+
+describe("code review 01: the talk and focus", () => {
+  it("#6: the talk sheet opens on [close], never on [end talk], then moves to the input", async () => {
+    let start: (c: unknown) => void = () => {};
+    (api.startDialogue as Mock).mockReturnValue(new Promise((r) => (start = r)));
+    renderPlay();
+    fireEvent.click(await screen.findByTestId("npc-n1-talk-btn"));
+    await screen.findByTestId("talk-sheet");
+    await waitFor(() => expect(screen.getByTestId("dialogue-close-btn")).toHaveFocus());
+    expect(screen.getByTestId("dialogue-end-btn")).not.toHaveFocus();
+    await act(async () => start({ id: "c1", session_id: "s1", npc_id: "n1", started_turn: 3, messages: [] }));
+    await waitFor(() => expect(screen.getByTestId("dialogue-input")).toHaveFocus());
+  });
+
+  it("#6: the move sheet takes focus itself, not its first [move]", async () => {
+    width = 390;
+    renderPlay();
+    fireEvent.click(await screen.findByTestId("dock-move"));
+    const sheet = await screen.findByTestId("move-sheet");
+    await waitFor(() => expect(sheet).toHaveFocus());
+  });
+
+  it("#7: a column talk takes focus and gives it back to [talk] when it closes", async () => {
+    width = 1280;
+    renderPlay();
+    fireEvent.click(await screen.findByTestId("npc-n1-talk-btn"));
+    await waitFor(() => expect(screen.getByTestId("dialogue-input")).toHaveFocus());
+    fireEvent.click(screen.getByTestId("dialogue-close-btn"));
+    await waitFor(() => expect(screen.getByTestId("npc-n1-talk-btn")).toHaveFocus());
+  });
+
+  it("#11: the NPC leaving the region closes the talk (wide and narrower)", async () => {
+    width = 1280;
+    const { unmount } = renderPlay();
+    fireEvent.click(await screen.findByTestId("npc-n1-talk-btn"));
+    await screen.findByTestId("dialogue-panel");
+    (api.act as Mock).mockResolvedValue(run("running"));
+    (api.getTurnRun as Mock).mockResolvedValue(done());
+    (api.getRegion as Mock).mockResolvedValue(view({ npcs: [] }));
+    fireEvent.click(screen.getByTestId("wait-btn")); // any re-read; the place is the same
+    await waitFor(() => expect(screen.queryByTestId("dialogue-panel")).not.toBeInTheDocument());
+    unmount();
+  });
+
+  it("#11: a restored entry naming an NPC who is not here is cleared, staying on the page", async () => {
+    renderPlay(["/", { pathname: "/play/s1", state: { talk: { sessionId: "s1", regionId: "a", npcId: "gone" } } }]);
+    await screen.findByTestId("region-title");
+    await waitFor(() => expect(routerState()).toBeNull());
+    expect(path()).toBe("/play/s1");
+  });
+
+  it("#12: moving with the sheet open pops the talk's entry: one back leaves", async () => {
+    (api.act as Mock).mockResolvedValue(run("running"));
+    (api.getTurnRun as Mock).mockResolvedValue(done());
+    renderPlay();
+    fireEvent.click(await screen.findByTestId("npc-n1-talk-btn"));
+    await screen.findByTestId("talk-sheet");
+    (api.getRegion as Mock).mockResolvedValue(AWAY);
+    fireEvent.click(screen.getByTestId("move-b-btn"));
+    await waitFor(() => expect(screen.getByTestId("region-title")).toHaveTextContent("Hollow"));
+    await waitFor(() => expect(routerState()).toBeNull());
+    fireEvent.click(screen.getByTestId("probe-back"));
+    expect(path()).toBe("/");
+  });
+
+  it("#12: width round trips with a talk open leave no extra entries", async () => {
+    width = 800;
+    renderPlay();
+    fireEvent.click(await screen.findByTestId("npc-n1-talk-btn"));
+    await screen.findByTestId("talk-sheet");
+    for (let i = 0; i < 3; i++) {
+      resize(1280);
+      await waitFor(() => expect(screen.queryByTestId("talk-sheet")).not.toBeInTheDocument());
+      resize(800);
+      await screen.findByTestId("talk-sheet");
+    }
+    fireEvent.click(screen.getByTestId("dialogue-close-btn"));
+    await waitFor(() => expect(screen.queryByTestId("talk-sheet")).not.toBeInTheDocument());
+    fireEvent.click(screen.getByTestId("probe-back"));
+    expect(path()).toBe("/");
+  });
+
+  it("#13: a refused [end talk] keeps the talk open", async () => {
+    width = 1280;
+    (api.act as Mock).mockRejectedValue(new HttpError(409, "Conflict", '{"detail":"a turn is running","code":"turn_running"}'));
+    renderPlay();
+    fireEvent.click(await screen.findByTestId("npc-n1-talk-btn"));
+    await screen.findByTestId("dialogue-panel");
+    fireEvent.click(screen.getByTestId("dialogue-end-btn"));
+    await waitFor(() => expect(api.act).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByTestId("notification-center")).toHaveTextContent(t("play.turnInProgress")));
+    expect(screen.getByTestId("dialogue-panel")).toBeInTheDocument();
+  });
+
+  it("#19: the people's counts are read again after a turn, and a line that lands after closing counts", async () => {
+    width = 1280;
+    (api.act as Mock).mockResolvedValue(run("running"));
+    (api.getTurnRun as Mock).mockResolvedValue(done());
+    let reply: (v: unknown) => void = () => {};
+    (api.say as Mock).mockReturnValue(new Promise((r) => (reply = r)));
+    renderPlay();
+    fireEvent.click(await screen.findByTestId("npc-n1-talk-btn"));
+    await waitFor(() => expect(screen.getByTestId("dialogue-input")).toBeEnabled());
+    fireEvent.change(screen.getByTestId("dialogue-input"), { target: { value: "hello" } });
+    fireEvent.click(screen.getByTestId("dialogue-send-btn"));
+    fireEvent.click(screen.getByTestId("dialogue-close-btn")); // closed while the line is out
+    await act(async () => reply({ message: { id: "m2", conversation_id: "c1", role: "npc", text: "Hm.", lang: "ko", turn: 3 }, lang: "ko", llm_calls: 1, context_ids: [] }));
+    expect(await screen.findByTestId("npc-n1-talked")).toHaveTextContent(t("dialogue.has", { n: 2 }));
+    const reads = (api.listNpcs as Mock).mock.calls.length;
+    fireEvent.click(screen.getByTestId("wait-btn"));
+    await screen.findByTestId("result-live");
+    await waitFor(() => expect((api.listNpcs as Mock).mock.calls.length).toBe(reads + 1));
+  });
+
+  it("#20: a failed read after a language switch is not a move: the column talk comes back with the data", async () => {
+    width = 1280;
+    act(() => configureLangs("ko", ["ko", "en"]));
+    try {
+      renderPlay();
+      fireEvent.click(await screen.findByTestId("npc-n1-talk-btn"));
+      await screen.findByTestId("dialogue-panel");
+      (api.getRegion as Mock).mockRejectedValueOnce(new HttpError(502, "Bad Gateway", "proxy"));
+      fireEvent.click(screen.getByTestId("lang-en"));
+      expect(await screen.findByTestId("play-error")).toBeInTheDocument();
+      fireEvent.click(within(screen.getByTestId("play-error")).getByRole("button"));
+      expect(await screen.findByTestId("dialogue-panel")).toBeInTheDocument();
+    } finally {
+      act(() => setLang("ko"));
+    }
+  });
+});
+
+describe("code review 01 #17: the phone's bar keeps room under the page", () => {
+  it("measures itself into --dock-h while it is there", async () => {
+    let fire: () => void = () => {};
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(cb: () => void) { fire = cb; }
+      observe() {}
+      disconnect() {}
+    });
+    width = 390;
+    const { unmount } = renderPlay();
+    const dock = await screen.findByTestId("action-dock");
+    Object.defineProperty(dock, "offsetHeight", { value: 180 });
+    act(() => fire());
+    expect(document.documentElement.style.getPropertyValue("--dock-h")).toBe("180px");
+    unmount();
+    expect(document.documentElement.style.getPropertyValue("--dock-h")).toBe("");
   });
 });

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import type { DescribedError } from "../../errors";
 import { t } from "../../i18n";
 import type { TurnRun } from "../../types";
@@ -103,7 +103,9 @@ export function TurnStatus({
 /** The declaration box (US-4.5): free text, the server's length limit, one turn. It is
  * locked while the request is out (U6 review #12) and restored when the server refuses
  * (400 / 409, review R-14). V4: a visible label and the focus ring (BR-V4-23). `extra` sits
- * beside [declare] (the action box puts [wait] there). */
+ * beside [declare] (the action box puts [wait] there). While the request is out the box is
+ * read-only and [declare] busy, neither natively disabled, so focus stays; once the line is
+ * taken, focus goes back to the box for the next one (V4 code review 01 #7). */
 export function DeclareForm({
   disabled,
   locked = false,
@@ -121,6 +123,7 @@ export function DeclareForm({
 }) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const form = useRef<HTMLFormElement | null>(null);
   const text = draft.replace(EDGE_SPACE, "");
   const length = declaredLength(text);
   const tooLong = length > maxChars;
@@ -133,6 +136,7 @@ export function DeclareForm({
     try {
       const accepted = await onDeclare(text);
       if (!accepted) setDraft(kept); // the box was locked: nothing typed meanwhile is lost
+      else form.current?.querySelector("textarea")?.focus(); // gone with a closed sheet: no-op
     } finally {
       setSending(false);
     }
@@ -140,6 +144,7 @@ export function DeclareForm({
 
   return (
     <form
+      ref={form}
       className="flex flex-col gap-2"
       onSubmit={(e) => {
         e.preventDefault();
@@ -152,8 +157,9 @@ export function DeclareForm({
         value={draft}
         rows={2}
         placeholder={t("play.declarePlaceholder")}
-        // typing goes on during a turn; only the request and a closed session lock it
-        disabled={closed || sending}
+        // typing goes on during a turn; only the request (read-only) and a closed session lock it
+        disabled={closed}
+        readOnly={sending}
         // no cut: the count below turns red past the limit and [declare] goes off
         onChange={(e) => setDraft(e.target.value)}
       />
@@ -162,7 +168,7 @@ export function DeclareForm({
           {t("play.chars", { n: length, max: maxChars })}
         </span>
         <Button type="submit" variant="primary" data-testid="declare-btn" busy={sending}
-          aria-disabled={locked || undefined} disabled={disabled || !text || tooLong}>
+          aria-disabled={locked || undefined} disabled={disabled || (!sending && (!text || tooLong))}>
           {t("action.declare")} · {oneTurn()}
         </Button>
         {extra}

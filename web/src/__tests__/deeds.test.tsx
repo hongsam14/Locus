@@ -205,7 +205,9 @@ describe("DeedPanel (US-5.6)", () => {
     panel([deedView()]);
     expect(screen.getByTestId("deed-appraisals-d1")).toHaveTextContent("Mara");
     expect(screen.getByTestId("deed-appraisals-d1")).toHaveTextContent(`${t("label.slant")}: admiring`);
-    expect(screen.getByTestId("deed-reached-d1")).toHaveTextContent("Riverton · Hollow (1/2)");
+    expect(screen.getByTestId("deed-reached-d1")).toHaveTextContent("Riverton · Hollow");
+    expect(screen.getByTestId("deed-reached-d1")).toHaveTextContent(t("label.rumorsLive", { live: 1, all: 2 })); // review #40
+    expect(screen.getByTestId("deed-appraisals-d1")).toHaveTextContent(t("label.noteworthy"));
   });
 
   it("voids after the confirmation; the two dialog buttons never share a name", async () => {

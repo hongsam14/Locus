@@ -230,9 +230,9 @@ describe("i18n after U8", () => {
       expect(dicts.ko[key]).toBeUndefined();
       expect(dicts.en[key]).toBeUndefined();
     }
-    expect(t("llm.required")).toBe("LLM 키가 필요합니다");
+    expect(t("llm.required")).toBe("AI 키가 있어야 해요"); // V6 code review 01 #38: "AI 키" like the app's band
     setLang("en");
-    expect(t("llm.required")).toBe("An LLM key is required");
+    expect(t("llm.required")).toBe("Needs an AI key");
     expect(t("demo.playerName")).toBe("Traveler");
   });
 });

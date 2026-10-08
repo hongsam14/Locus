@@ -6,7 +6,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { Mock } from "vitest";
 import { resetCapabilities } from "../capabilities";
 import { ENUM_VALUES, numberWithMeaning } from "../format";
-import { t } from "../i18n";
+import { setLang, t } from "../i18n";
 import { GmPage } from "../routes/GmPage";
 import { HomePage } from "../routes/HomePage";
 import { PlayPage } from "../routes/PlayPage";
@@ -174,8 +174,9 @@ describe("TP-V6-12: the GM screen in words", () => {
   ];
   const gmRaw = (text: string) => GM_RAW.filter((v) => new RegExp(`\\b${v}\\b`).test(text));
   // a 0..1 number must carry its meaning right after it ("0.42 · 많이 비틀림")
-  const BARE = /(?<![\d.])[01]\.\d\d(?! · )/;
-  const ABBREV = /(?<![\p{L}\d])[mdt]\d/u; // m0.40, d0.42, t4
+  // one decimal is a number too ("→ 0.4", code review 01 #11); T4 is the en abbreviation (#40)
+  const BARE = /(?<![\d.])[01]\.\d+(?!\d)(?! · )/;
+  const ABBREV = /(?<![\p{L}\d])[mdtMDT]\d/u; // m0.40, d0.42, t4, T4
 
   const regions = ENUM_VALUES.regionLevel.map((level, i) => ({ id: `g${i}`, name: `Place ${i}`, level }));
   const events = ENUM_VALUES.eventCategory.map((category, i) => ({
@@ -192,8 +193,12 @@ describe("TP-V6-12: the GM screen in words", () => {
     (api.getWorldState as Mock).mockResolvedValue({ session_id: "s1", turn: 4, player_region_id: "g0", max_event_suggestions: 3,
       regions: regions.map((r, i) => ({ region_id: r.id, region_name: r.name, distortion: 0.42, feedback_share: i ? 0 : 0.07,
         active_rumors: 2, promoted_rumors: 1, deed_rumors: 1, active_events: 1 })) });
-    (api.getTimeline as Mock).mockResolvedValue(events.map((e, i) => ({ id: `t${i}`, session_id: "s1", turn: i, kind: "event_created",
-      summary: "", payload: { region_id: "g0", region_name: "Place 0", category: e.category } })));
+    (api.getTimeline as Mock).mockResolvedValue([
+      ...events.map((e, i) => ({ id: `t${i}`, session_id: "s1", turn: i, kind: "event_created",
+        summary: "", payload: { region_id: "g0", region_name: "Place 0", category: e.category } })),
+      // a distortion setting carries its degree (code review 01 #11)
+      { id: "td", session_id: "s1", turn: 1, kind: "set_distortion", summary: "", payload: { region_id: "g0", region_name: "Place 0", degree: 0.4 } },
+    ]);
     (api.listEvents as Mock).mockResolvedValue(events);
     (api.listRumors as Mock).mockResolvedValue(rumors);
     (api.listSeeds as Mock).mockResolvedValue(events.map((e) => ({ seed: { id: `sd-${e.id}`, world_id: "w", region_id: "g0",
@@ -210,7 +215,10 @@ describe("TP-V6-12: the GM screen in words", () => {
         is_hearsay: false, confidence: 0.66, path_decay: i === 0 ? 0.31 : null, distortion: i === 1 ? 0.27 : null })) });
   });
 
-  it("every tab, the head and each region level: no raw value, no bare or abbreviated number", async () => {
+  afterEach(() => setLang("ko"));
+
+  it.each(["ko", "en"] as const)("%s: every tab, the head and each region level: no raw value, no bare or abbreviated number", async (lang) => {
+    setLang(lang);
     render(
       <MemoryRouter initialEntries={["/gm/s1"]}>
         <Routes><Route path="/gm/:sessionId" element={<GmPage />} /></Routes>
@@ -222,7 +230,8 @@ describe("TP-V6-12: the GM screen in words", () => {
       fireEvent.mouseDown(screen.getByTestId(`gm-tab-${name}`).closest('[role="tab"]') as HTMLElement, { button: 0 });
     };
     for (const r of regions) {
-      fireEvent.click(screen.getByTestId(`region-marker-${r.id}`));
+      // the world comes after the session: wait for its map (code review 01 #21)
+      fireEvent.click(await screen.findByTestId(`region-marker-${r.id}`));
       await screen.findByTestId("region-heading");
       seen.push(visibleText());
     }
@@ -246,7 +255,8 @@ describe("TP-V6-12: the GM screen in words", () => {
     seen.push(visibleText());
     const all = seen.join("\n");
     expect(gmRaw(all)).toEqual([]);
-    expect(all.match(BARE)).toBeNull();
+    const bare = all.match(BARE);
+    expect(bare && all.slice(Math.max(0, (bare.index ?? 0) - 60), (bare.index ?? 0) + 20)).toBeNull();
     expect(all.match(ABBREV)).toBeNull();
     expect(all).toContain(numberWithMeaning("distortion", 0.42)); // numbers are there, with meanings
   });

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ENUM_VALUES, enumLabel, turnAt } from "../../format";
+import { ENUM_VALUES, enumLabel, numberWithMeaning, turnAt } from "../../format";
 import { t, timelineText } from "../../i18n";
 import type { TimelineEntry } from "../../types";
 import { Badge, Button, StatusView } from "../../ui";
@@ -10,11 +10,13 @@ const STEP = 20;
 const CATEGORIES: readonly string[] = ENUM_VALUES.eventCategory;
 
 /** A line's payload as the screen reads it: names by id, an event's category in words (an
- * event line carries the server's raw `category`, FR-D8). */
+ * event line carries the server's raw `category`, FR-D8), a distortion with its meaning. */
 function readable(payload: Record<string, unknown>, nameOf: NameOf): Record<string, unknown> {
   const out = namedPayload(payload, nameOf);
   const category = out.category;
   if (typeof category === "string" && CATEGORIES.includes(category)) out.category = enumLabel("eventCategory", category);
+  // a distortion setting carries its number: with its meaning, like everywhere else (review #11)
+  if (typeof out.degree === "number") out.degree = numberWithMeaning("distortion", out.degree);
   return out;
 }
 

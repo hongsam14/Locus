@@ -210,7 +210,8 @@ export function GmSessionView({
   };
   const region = session && selected ? gm.world?.regions.find((r) => r.id === selected) : undefined;
   const row = selected ? data.worldState.data?.regions.find((r) => r.region_id === selected) : undefined;
-  const worldName = gm.names.names?.world?.name ?? gm.worldId ?? "";
+  // the names map is empty in the source language: the world file's own name before its id (#12)
+  const worldName = gm.names.names?.world?.name ?? gm.world?.world?.name ?? gm.worldId ?? "";
   const suggested = data.events.data?.filter((e) => e.status === "suggested").length ?? 0;
 
   return (

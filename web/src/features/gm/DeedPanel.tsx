@@ -64,7 +64,8 @@ export function DeedPanel({
             <ul data-testid={`deed-appraisals-${v.deed.id}`} className="flex flex-col text-xs">
               {v.appraisals.map((a) => (
                 <li key={a.id}>
-                  <b>{nameOf("npcs", a.npc_id, "name", a.npc_name ?? a.npc_id)}</b> {a.noteworthy ? "✓" : "✗"}{" "}
+                  <b>{nameOf("npcs", a.npc_id, "name", a.npc_name ?? a.npc_id)}</b>{" "}
+                  {a.noteworthy ? t("label.noteworthy") : t("label.notNoteworthy")}{" · "}
                   {t("label.salience")} {numberWithMeaning("salience", a.salience)}
                   {a.slant ? ` · ${t("label.slant")}: ${a.slant}` : ""}
                   {a.retelling && (
@@ -80,8 +81,9 @@ export function DeedPanel({
           {v.reached_region_names.length > 0 && (
             <span data-testid={`deed-reached-${v.deed.id}`} className="text-xs">
               {t("deed.reached")}:{" "}
-              {v.reached_region_ids.map((id, i) => nameOf("regions", id, "name", v.reached_region_names[i] ?? id)).join(" · ")}{" "}
-              ({activeRumors(v)}/{v.rumors.length})
+              {v.reached_region_ids.map((id, i) => nameOf("regions", id, "name", v.reached_region_names[i] ?? id)).join(" · ")}
+              {" — "}
+              {t("label.rumorsLive", { live: activeRumors(v), all: v.rumors.length })}
             </span>
           )}
           {!v.deed.voided && (

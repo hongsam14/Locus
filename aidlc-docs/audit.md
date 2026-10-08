@@ -5276,3 +5276,10 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V4 — code review 01; fixing all findings next.
 
 ---
+
+## Code Review — V4 — Fixed
+**Timestamp**: 2026-10-08T05:57:25Z
+**AI Response**: All 27 findings and #28 (a) fixed in `cb8a22a` (turn loop), `63429ff` (play screen, FD § 2.5/§ 3.3 amended), `8937f2b` (home), `3f497c2` + `56953ec` (tests). vitest 550 (two seeds), tsc clean, audit 0, no Python changed (pytest 1048). First-screen JS 114.83 kB. Captures re-shot, Artifact v2 at the same URL. Record `code/reviews/code-review-01.md` § 6; code-summary updated.
+**Context**: CONSTRUCTION / V4 — code review 01 fixed; V4 COMPLETE. Next: V5 (GM write correctness) Functional Design.
+
+---

@@ -5090,3 +5090,166 @@ Questions:
 
 ---
 
+## Functional Design — V4 — Answers
+**Timestamp**: 2026-10-08T00:23:20Z
+**User Input**: AskUserQuestion answers:
+- Q1 → "데모 카드가 맡음 (Recommended)"
+- Q2 → "지역명 아래 결과 띠 (Recommended)"
+- Q3 → "아래 고정 띠 + 시트 (Recommended)"
+- Q4 → "보기 전용 + 목록에서 이동 (Recommended)"
+- Q5 → "1280 왼쪽 열 안, 390 전체 시트 (Recommended)"
+
+**AI Response**: Q1..Q5 = A; no ambiguity. Writing the V4 FD artifacts next.
+**Context**: CONSTRUCTION / V4 — FD Part 2.
+
+---
+
+## Plan Review Requested — Functional Design — V4 홈·플레이 화면
+**Timestamp**: 2026-10-08T00:27:45Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Wrote the V4 FD artifacts:
+- `frontend-components.md`: layouts 1280/390, elements, tree, props, API, testids
+- `business-logic-model.md`
+- `business-rules.md`: BR-V4-01..24, TP-V4-1..13, capture plan
+
+Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/V4-home-play/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/V4-home-play/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — V4 홈·플레이 화면
+**Timestamp**: 2026-10-08T00:33:18Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 4 Major / 6 Minor; open 10. Record: `aidlc-docs/construction/V4-home-play/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — next: builder fix + re-review (iteration 2).
+
+---
+
+## Plan Review Requested — Functional Design — V4 홈·플레이 화면 (iteration 2)
+**Timestamp**: 2026-10-08T00:36:23Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Builder fixed R-01..R-10 in the three FD artifacts:
+- R-01: session-id/world-id data guard; reload() after actions; poll alongside reload.
+- R-02: a per-width presence table with PlayLayout; BR-V4-25, one testid per DOM.
+- R-03: card from region_count + name map; client filters and sorts sessions; read-failure state; no full export on home.
+- R-04: visible ghost reload button; 409-only ask flow; the list of changed tests.
+- R-05: Dialog variants, Button busy contract (BR-V4-26).
+- R-06: router location state for the talk sheet.
+- R-07: AppShell Link fix; AppNav note.
+- R-08: notification allowlist, poll-error path, gm_busy re-read cap.
+- R-09: TP-V4-14 enum iteration; exact grep patterns; capture-only 390 check stated.
+- R-10: 768 captures and the medium branch in TP-V4-8.
+
+Dispatching architecture-reviewer (class adversarial, iteration 2) on `aidlc-docs/construction/V4-home-play/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/V4-home-play/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — re-review after builder fix.
+
+---
+
+## Plan Review Completed — Functional Design — V4 홈·플레이 화면 (iteration 2)
+**Timestamp**: 2026-10-08T00:38:02Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: R-01..R-10 Resolved; R-11 Major New (talk-sheet cleanup on unmount can navigate back to /play). Open 1. Record: `aidlc-docs/construction/V4-home-play/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — next: approval gate (artifacts frozen).
+
+---
+
+## Functional Design — V4 — Approval prompt
+**Timestamp**: 2026-10-08T00:38:02Z
+**AI Response**: Asked for V4 FD approval with the review brief (R-11 open).
+**Context**: CONSTRUCTION / V4 — FD gate.
+
+---
+
+## Functional Design — V4 — Approval
+**Timestamp**: 2026-10-08T00:41:51Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V4 FD approved. R-11 → Accepted risk. It is carried into the V4 code plan as 실행 메모: no navigate on unmount or route exit; a stale state.talk that does not match the session and region is ignored; the replace clean-up stays only for in-page region and width changes; TP-V4-8 asserts the destination survives. Next: V4 Code Generation Part 1 (NFR SKIP).
+**Context**: CONSTRUCTION / V4 — FD approved.
+
+---
+
+## Plan Review Dispositions — Functional Design — V4
+**Timestamp**: 2026-10-08T00:41:51Z
+- R-11 → Accepted risk
+
+---
+
+## Code Generation Part 1 — V4 — Plan written
+**Timestamp**: 2026-10-08T00:43:20Z
+**User Input**: (none since FD approval)
+**AI Response**: Wrote `construction/plans/V4-home-play-code-generation-plan.md`: 10 steps, web only. R-11 is 실행 메모 § 1.1.
+**Context**: CONSTRUCTION / V4 — Code Generation Part 1.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — V4 홈·플레이 화면
+**Timestamp**: 2026-10-08T00:43:20Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/V4-home-play-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — V4 홈·플레이 화면
+**Timestamp**: 2026-10-08T00:46:11Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 3 Major / 7 Minor; open 10. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — next: builder fix + re-review (iteration 2).
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — V4 (iteration 2)
+**Timestamp**: 2026-10-08T00:47:48Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Builder fixed R-01..R-10 in the plan:
+- R-01: Step 6 adds only new parts and optional props, and Step 7 switches the visible changes.
+- R-02: hint.gmLocked in 해요체 (ko/en); call sites.
+- R-03: busy click guard also stops implicit submit. A trial run (reverted) found two broken tests, ui.primitives Button and gm #13/C1.
+- R-04: keys per step.
+- R-05: NewSessionForm optional worldId with an effect; SessionBar untouched.
+- R-06: override line, transitions restated, new tests.
+- R-07: play-only svg background.
+- R-08: data-over-error rule; types gm_busy?.
+- R-09: named tests for BR-V4-06/20/22.
+- R-10: capture tooling and separate fix commits.
+
+Dispatching architecture-reviewer (class adversarial, iteration 2). Review record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generation-plan-review-02.md`.
+**Context**: Code Generation Part 1 — re-review after builder fix.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — V4 (iteration 2)
+**Timestamp**: 2026-10-08T00:52:59Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**.
+- R-01..R-10: Resolved.
+- R-11, Minor New: gm.test renders PlayPage, including a play-gm-btn click, a file the plan does not list.
+- R-12, Minor New: ActionBar label/focus listed in both Step 6.7 and 7.1a; a busy button needs aria-disabled styling.
+
+Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generation-plan-review-02.md`.
+**Context**: Code Generation Part 1 — approval gate (plan frozen).
+
+---
+
+## Code Generation Part 1 — V4 — Approval prompt
+**Timestamp**: 2026-10-08T00:52:59Z
+**AI Response**: Asked for approval of the V4 code plan with the review brief (R-11, R-12 open, Minor).
+**Context**: CONSTRUCTION / V4 — code plan gate.
+
+---
+
+## Code Generation Part 1 — V4 — Approval
+**Timestamp**: 2026-10-08T01:08:34Z
+**User Input**: "Approve & Continue"
+**AI Response**: V4 code plan approved. It authorizes the plan's commits on `feat/follow-up`, with no push. R-11 and R-12 become 실행 메모 § 1.3. Starting Code Generation Part 2.
+**Context**: CONSTRUCTION / V4 — Code Generation Part 1 approved.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — V4
+**Timestamp**: 2026-10-08T01:08:34Z
+- R-11 → Accepted risk
+- R-12 → Accepted risk
+
+---
+

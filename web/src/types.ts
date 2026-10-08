@@ -595,6 +595,7 @@ export interface RegionView {
   rumors: SessionRumor[];
   moves: MoveOption[];
   turn_running: boolean;
+  gm_busy?: boolean; // V5 adds it: a GM write holds the session (V4 reads it as false when absent)
   llm_available: boolean;
   declare_max_chars?: number; // U6: the server's declaration limit
 }

@@ -134,14 +134,14 @@
 - [x] 3.4 커밋: `fix(web): the editor menu item is not active on the world list; play log lines in the story register (V4, UX-13)`
 
 ### Step 4 — 플레이 도우미 셋 (BLM § 2.1·2.2, BR-V4-16·17·19, R-11 무관)
-- [ ] 4.1 `hooks/useWorldNames.ts`: 키는 `[worldId, requestLang]`이다. `names.world_id !== worldId`면 null이다. `nameOf(kind, id, field, fallback)`.
-- [ ] 4.2 `hooks/usePlaySession.ts`
+- [x] 4.1 `hooks/useWorldNames.ts`: 키는 `[worldId, requestLang]`이다. `names.world_id !== worldId`면 null이다. `nameOf(kind, id, field, fallback)`.
+- [x] 4.2 `hooks/usePlaySession.ts`
   - `useResource([sessionId, requestLang], …getSession·getRegion·getLog(30))`
   - `session.id !== sessionId`면 data는 null이다.
   - `reload()`
   - **data와 오류의 우선(코드 계획 리뷰 01 R-08)**: data가 있으면 오류가 와도 data를 그대로 그리고, 그 위에 `InlineError` 한 줄과 [다시 시도]를 둔다. data가 없을 때만 오류 화면이다. 스켈레톤은 data도 오류도 없이 읽는 중일 때다.
-- [ ] 4.2a `web/src/types.ts`: `RegionView`에 `gm_busy?: boolean`을 더한다(V5가 서버 칸을 더한다. 그전에는 없음 = 거짓).
-- [ ] 4.3 `hooks/useTurnRun.ts`
+- [x] 4.2a `web/src/types.ts`: `RegionView`에 `gm_busy?: boolean`을 더한다(V5가 서버 칸을 더한다. 그전에는 없음 = 거짓).
+- [x] 4.3 `hooks/useTurnRun.ts`
   - `act`: 409는 진행 중(알림 `play:busy`)·닫힘(reload)으로 나뉘고, 400은 false다.
   - `act` 뒤 `reload()`와 폴링을 나란히 시작한다.
   - 폴링: 상한이 넘으면 `slow`, 예외면 `error` + reload. 실패는 알림 `play:run`, 예산·LLM은 알림.
@@ -149,13 +149,14 @@
   - 화면에 들어오면 `listTurnRuns(running)`으로 재진입한다.
   - 세션이 바뀌거나 언마운트되면 멈춘다.
   - run 없이 `turn_running`·`gm_busy`면 1초 × 5번 다시 읽는다.
-- [ ] 4.4 테스트(`play.turn.test.tsx`, `hooks.test.tsx`)
+- [x] 4.4 테스트(`play.turn.test.tsx`, `hooks.test.tsx`)
   - TP-V4-9: 가짜 타이머로 상한·`slow`·`recheck`
   - 폴링 예외 경로
   - 409 두 갈래
   - TP-V4-10: B를 읽는 동안 A data 없음, 늦은 답 버림, 행동 뒤 스켈레톤 없음
   - 이름표의 `world_id` 가드
-- [ ] 4.5 커밋: `feat(web): play session, turn run and world name hooks — late answers dropped, polling capped (V4, RE-F08)`
+  - 실행 기록: 테스트는 모두 `play.turn.test.tsx` 한 파일에 두었다(12개). 상한은 가짜 타이머 대신 `pollMs=1`·`maxPolls=3`으로 재고, 1초 × 5번 다시 읽기만 가짜 타이머를 쓴다. 400 거절(false + 오류)도 확인한다. 상한·세션 가드·월드 가드를 하나씩 지우면 테스트가 하나씩 실패한다.
+- [x] 4.5 커밋: `feat(web): play session, turn run and world name hooks — late answers dropped, polling capped (V4, RE-F08)`
 
 ### Step 5 — 홈 (FR-S1, BR-V4-05~09·12, TP-V4-1~4)
 - [ ] 5.1 `features/home/HomeHero.tsx`: 사전 `label.homeKicker`, `story.homeTagline`, `story.homeLead`.

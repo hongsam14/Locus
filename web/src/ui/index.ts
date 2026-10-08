@@ -12,8 +12,10 @@ export { Panel } from "./Panel";
 export { Range } from "./Range";
 export { Select } from "./Select";
 export { InlineError, StatusView } from "./StatusView";
-export { Tabs } from "./Tabs";
 export { Textarea } from "./Textarea";
 export { Toaster } from "./Toaster";
 export { clearToasts, dismissToast, toast, useToasts } from "./toast";
 export type { ToastInput, ToastItem, ToastTone } from "./toast";
+// Tabs is imported from "./ui/Tabs" directly, not from here (V6): a re-export here put the
+// Radix tabs code (~4.5 kB gzip) into the first screen's bundle, though only the GM screen
+// (a lazy chunk) uses it.

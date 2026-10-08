@@ -2,7 +2,8 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { t } from "../i18n";
-import { Button, ConfirmDialog, Dialog, FileInput, Select, StatusView, Tabs, Toaster, toast } from "../ui";
+import { Button, ConfirmDialog, Dialog, FileInput, Select, StatusView, Toaster, toast } from "../ui";
+import { Tabs } from "../ui/Tabs";
 
 describe("Button", () => {
   it("shows work in progress, keeps its focus and cannot be pressed while busy (V4 BR-V4-24)", () => {

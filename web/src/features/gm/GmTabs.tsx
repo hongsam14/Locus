@@ -1,6 +1,7 @@
 import type { ReactNode, Ref } from "react";
 import { t } from "../../i18n";
-import { Badge, Tabs } from "../../ui";
+import { Badge } from "../../ui";
+import { Tabs } from "../../ui/Tabs";
 
 export type GmTab = "region" | "events" | "seeds" | "timeline" | "deeds";
 

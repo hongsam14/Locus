@@ -5253,3 +5253,10 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 
 ---
 
+
+## Code Generation Part 2 — V4 — Done
+**Timestamp**: 2026-10-08T05:07:07Z
+**AI Response**: V4 code generation finished (Steps 1–10) on `feat/follow-up`, not pushed. Commits `d7e8318`, `6565326`, `7fed45f`, `bf77030`, `4be9a24`, `231b136`, `1a565b3`, `9cbc9c8` (capture fixes), `2086092` (editor and GM lazy-loaded, NFR-4), and the summary. Gates: tsc clean, vitest 518 (two seeds), pytest 1048, ruff/black clean, mypy 11, audit 0; first-screen JS 113.33 kB gzip (budget 125.6). Captures: 18 shots, no sideways scroll at 1280/768/390, private Artifact https://claude.ai/artifact/2J77c8EciUacCd1Cv4FHGP. User paused before Step 6 and said "다시 시작"; the session's scratchpad had been cleared in between, so the capture tools were rebuilt. Summary `construction/V4-home-play/code/code-summary.md`.
+**Context**: CONSTRUCTION / V4 — Code Generation Part 2 complete; next the code approval gate.
+
+---

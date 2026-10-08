@@ -99,8 +99,8 @@
 ## 2. 단계
 
 ### Step 1 — 진행 기록과 기준선
-- [ ] 1.1 진행 기록을 커밋한다: audit, state, V4 FD 계획(체크), FD 산출물·리뷰 둘, 이 계획(`docs(aidlc): V4 functional design approved; V4 code plan`).
-- [ ] 1.2 기준선을 잰다: `npx vitest run`(424 + skip 1), `npx tsc --noEmit`, `pytest -q`(1048), `npm audit --omit=dev`(0), JS gzip(`vite build` 결과의 gzip 값). 390px 가로 스크롤은 V2 캡처의 기록 값을 옮겨 적는다(홈 0, 플레이 대화 418; 다시 찍지 않음). code-summary § 1에 적는다.
+- [x] 1.1 진행 기록을 커밋한다: audit, state, V4 FD 계획(체크), FD 산출물·리뷰 둘, 이 계획(`docs(aidlc): V4 functional design approved; V4 code plan`).
+- [x] 1.2 기준선을 잰다: `npx vitest run`(424 + skip 1), `npx tsc --noEmit`, `pytest -q`(1048), `npm audit --omit=dev`(0), JS gzip(`vite build` 결과의 gzip 값). 390px 가로 스크롤은 V2 캡처의 기록 값을 옮겨 적는다(홈 0, 플레이 대화 418; 다시 찍지 않음). code-summary § 1에 적는다.
 
 ### Step 2 — 공유 바탕: `useMedia`, `Dialog` 변형, `Button busy` (BR-V4-24·26, frontend-components § 4.1·5)
 - [x] 2.1 `hooks/useMedia.ts`: `matchMedia` 구독이다. 없으면 false다. `hooks/index.ts`가 내보낸다.
@@ -313,7 +313,7 @@
 - [x] 8.3 커밋: `test(web): home and play show no raw enum, number or error text (V4, FR-D8)`
 
 ### Step 9 — 캡처 (사람 확인, BR-V4-01, 캡처 계획)
-- [ ] 9.1 `v4/cap/`(세션 scratchpad, 코드 계획 리뷰 01 R-10)
+- [x] 9.1 `v4/cap/`(세션 scratchpad, 코드 계획 리뷰 01 R-10)
   - 출발점은 V2의 `v2/cap/server-v2.mjs`(가짜 API + 정적 서버, node 22)와 `v2/cap/shoot-v2.mjs`(headless `google-chrome`, CDP)다. 둘을 `v4/cap/`으로 복사해 늘린다.
   - 세션이 바뀌어 없으면 같은 방식으로 다시 만든다. 저장소에는 두지 않는다.
   - 가짜 API에 더할 것
@@ -322,12 +322,18 @@
     - `act` 202 → `turn-runs/{id}` done(결과·선언 포함)
   - 촬영: 1280·768·390. 상태는 FD 캡처 계획 표대로다. `vite build` 산출물을 쓴다.
   - 각 장의 `document.documentElement.scrollWidth/clientWidth`를 잰다.
-- [ ] 9.2 비공개 Artifact 한 장에 1280·768·390 쌍과 잰 값을 싣는다(V2 캡처 형식).
-- [ ] 9.3 390·768에서 가로 스크롤이 있거나 캡처에서 결함이 보이면 고치고 다시 찍는다. 고친 것은 따로 커밋한다(`fix(web): … (V4 capture)`). 앞 단계 커밋을 고치지 않는다.
+- [x] 9.2 비공개 Artifact 한 장에 1280·768·390 쌍과 잰 값을 싣는다(V2 캡처 형식).
+- [x] 9.3 390·768에서 가로 스크롤이 있거나 캡처에서 결함이 보이면 고치고 다시 찍는다. 고친 것은 따로 커밋한다(`fix(web): … (V4 capture)`). 앞 단계 커밋을 고치지 않는다.
+- 실행 기록(Step 9)
+  - 세션 scratchpad가 비워져 `v4/cap/{server.mjs,shoot.mjs,page.py}`를 다시 만들었다(같은 방식: node 22 가짜 API + 정적 서버, headless `google-chrome`을 CDP로). 데이터는 `emberleaf.world.json`·`emberleaf.ko.json`·`manifest.json`이다. 열린 세션은 막힌 길이 보이도록 앰버메도에 둔다. 홈은 키 없음, 플레이는 대화·서술을 보이려고 키 있음으로 찍었다.
+  - 18장(홈 5, 플레이 13). 모든 장 `scrollWidth == clientWidth`다(V2의 390 대화 418 → 390).
+  - 캡처에서 고친 것(`9cbc9c8`): 한국어 낱말 가운데 줄바꿈(`keep-all`), 휴대폰 열린 세션 배지 늘어남, 넓은 화면 열 안 대화 폭.
+  - 고치지 않고 사람에게 알린 것: 작은 지도가 이웃 분포 때문에 거의 전체 지도이고 지명이 작음, 옛 키의 말투(합니다체·합쇼체·GM 말투), 데모 카드 한 장의 두 칸 격자, 키 없을 때 [말 걸기] 꺼짐(BR-U5-29와 어긋남).
+  - Artifact(비공개): https://claude.ai/artifact/2J77c8EciUacCd1Cv4FHGP
 
 ### Step 10 — 게이트와 요약
-- [ ] 10.1 게이트: `tsc`, `vitest`(시드 둘), `npm audit --omit=dev`(0), `pytest`(1048, 백엔드 그대로), `ruff`·`black`(바뀐 파이썬 없음 확인), JS gzip(V2 예산 125.6 kB 이내).
-- [ ] 10.2 `construction/V4-home-play/code/code-summary.md`를 쓴다.
+- [x] 10.1 게이트: `tsc`, `vitest`(시드 둘), `npm audit --omit=dev`(0), `pytest`(1048, 백엔드 그대로), `ruff`·`black`(바뀐 파이썬 없음 확인), JS gzip(V2 예산 125.6 kB 이내).
+- [x] 10.2 `construction/V4-home-play/code/code-summary.md`를 쓴다.
   - § 1 기준선과 결과
   - § 2 파일
   - § 3 BR·TP 대응
@@ -335,7 +341,10 @@
   - § 5 이탈
   - § 6 알려진 한계
   - § 7 V5·V6·V8에 넘기는 것
-- [ ] 10.3 커밋: `docs(aidlc): V4 code summary`
+- 실행 기록(Step 1·10)
+  - Step 1.1은 `b7db475`, 1.2의 기준선 값(vitest 424 + skip 1, pytest 1048, audit 0, JS gzip 119.87 kB, 390 가로 스크롤 홈 0·대화 418)은 code-summary § 1에 옮겼다. 처음 적어 둔 scratchpad 메모는 scratchpad가 비워져 없어졌다.
+  - 10.1: tsc clean, vitest 518(시드 둘), audit 0, pytest 1048, ruff·black clean, mypy 11, 바뀐 파이썬 없음. JS는 한 덩어리 127.6 kB로 예산을 넘어, V2 NFR-4의 처방대로 에디터·GM을 지연 적재했다(`2086092`). 첫 화면 113.33 kB.
+- [x] 10.3 커밋: `docs(aidlc): V4 code summary`
 
 ---
 

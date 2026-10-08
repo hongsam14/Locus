@@ -113,8 +113,11 @@ class InterleaveGate:
     the gate while the first is held, so the first is let go by the timeout and the two
     run in order. Code without the fix: both read, meet here, then both write.
 
-    ``met`` says whether two threads were inside together; ``arrivals`` counts the
-    threads that reached the gate. Use as a context manager, or call ``close``.
+    ``met`` says whether the second thread arrived while the first was still held —
+    both had read before either went on. With the fix in place a gate *inside* the
+    section is never met (the second waits on the lock until the first has gone).
+    ``arrivals`` counts the threads that reached the gate. Use as a context manager,
+    or call ``close``.
     """
 
     def __init__(self, repo: Any, method: str, *, wait_s: float = 0.5) -> None:
@@ -122,6 +125,7 @@ class InterleaveGate:
         self.wait_s = wait_s
         self.arrivals = 0
         self.met = False
+        self._waiting = False  # the first thread is held at the gate
         self._seen: set[int] = set()
         self._cond = threading.Condition()
         self._patch = _StorePatch(repo, [method], self._wrap)
@@ -143,10 +147,14 @@ class InterleaveGate:
             self._seen.add(me)
             self.arrivals += 1
             if self.arrivals == 2:
-                self.met = True
+                self.met = self._waiting  # the first is still held: both read first
                 self._cond.notify_all()
                 return
-            self._cond.wait_for(lambda: self.arrivals >= 2, timeout=self.wait_s)
+            self._waiting = True
+            try:
+                self._cond.wait_for(lambda: self.arrivals >= 2, timeout=self.wait_s)
+            finally:
+                self._waiting = False
 
     def close(self) -> None:
         self._patch.close()
@@ -193,7 +201,9 @@ class FailingTimeline:
 class BlockingDrafts:
     """A fake LLM for ``RumorGenerator`` and ``EventSuggester``: every draft waits until
     ``release()`` (or ``timeout_s``), and ``max_inside`` records the most drafts that were
-    in flight at once. ``entered`` is set when the first draft starts."""
+    in flight at once. ``entered`` is set when the first draft starts. ``on_first``, when
+    set, runs once on the caller's thread when the next draft starts — another write
+    finishing in the middle of this one's drafts, in a fixed order."""
 
     def __init__(
         self,
@@ -210,6 +220,7 @@ class BlockingDrafts:
         self.calls = 0
         self.inside = 0
         self.max_inside = 0
+        self.on_first: Callable[[], Any] | None = None
         self._open = threading.Event()
         if not blocked:
             self._open.set()
@@ -238,7 +249,10 @@ class BlockingDrafts:
             self.inside += 1
             self.max_inside = max(self.max_inside, self.inside)
         self.entered.set()
+        hook, self.on_first = self.on_first, None
         try:
+            if hook is not None:
+                hook()  # its own drafts pass: the hook is already taken
             if not self._open.wait(self.timeout_s):
                 raise TimeoutError("BlockingDrafts was never released")
             if schema is EventDraftList:

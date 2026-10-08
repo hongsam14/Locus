@@ -4,8 +4,8 @@
 **daemon** worker thread (serial across sessions; the guard prevents two runs
 of one session). ``shutdown(timeout)`` stops accepting work and waits at most
 ``timeout`` seconds for the queue to drain; a hung LLM call cannot block process
-exit because the worker is a daemon (the next startup marks its run
-``interrupted``). ``SyncTurnExecutor`` runs inline (tests).
+exit because the worker is a daemon (the next startup compensates its run like a
+failed one, V5 ``recover_interrupted``). ``SyncTurnExecutor`` runs inline (tests).
 """
 
 from __future__ import annotations

@@ -51,6 +51,9 @@ def test_v5_gm_write_wait_defaults_loads_and_must_be_positive(
     monkeypatch.setenv("GM_WRITE_WAIT_S", "0")
     with pytest.raises(ValidationError):
         _settings()
+    monkeypatch.setenv("GM_WRITE_WAIT_S", "inf")  # "wait forever" is refused (review 01 #5)
+    with pytest.raises(ValidationError):
+        _settings()
 
 
 @pytest.mark.parametrize(

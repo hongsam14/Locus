@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 
 from locus.knowledge.cache import SnapshotSource
-from locus.play.base import SessionAppService, SessionClosedError
+from locus.play.base import SESSION_CLOSED, SessionAppService, SessionClosedError
 from locus.play.deeds.caps import LINE_MAX, SLANT_MAX, cap
 from locus.play.deeds.service import DeedService
 from locus.play.errors import (
@@ -313,7 +313,7 @@ class NpcDialogueService(SessionAppService):
             # inside the transaction so a closed session never gains lines (review U5 #4).
             current = u.sessions.get_session(session.id)
             if current is None or current.status == SessionStatus.CLOSED.value:
-                raise SessionClosedError(f"session is closed: {session.id}")
+                raise SessionClosedError(SESSION_CLOSED)
             if conv is None:
                 conv = u.conversations.create_conversation(
                     Conversation(session_id=session.id, npc_id=npc_id, started_turn=session.turn)

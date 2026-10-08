@@ -102,9 +102,10 @@ class GuardMachine(RuleBasedStateMachine):
 
     @invariant()
     def a_turn_is_alone(self) -> None:
+        """Read from the guard itself, not the model (code review 01 #24)."""
         for s in SESSIONS:
-            if self.turn[s]:
-                assert not self.leases[s] and not self.closes[s]
+            if self.guard.turn_running(s):
+                assert not self.guard.gm_busy(s)
 
     def teardown(self) -> None:
         for s in SESSIONS:

@@ -134,6 +134,7 @@ class SessionService:
                                 payload={},
                             )
                         )
+        self._guard.forget(session_id)  # its sections are over (code review 01 #10)
         return closed
 
     def get_session(self, session_id: str) -> GameSession:

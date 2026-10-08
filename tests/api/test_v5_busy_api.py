@@ -138,6 +138,10 @@ def test_tp_v5_14_a_turn_started_while_a_close_waits_is_refused_as_closed() -> N
     assert p.repo.get_session(sid).status == "closed"
     assert _closed_lines(p, sid) == 1
     assert p.repo.list_runs(sid) == []  # the refused turn left no run
+    assert sid not in p.guard._writes  # its short-write lock is dropped (review 01 #10)
+    closed = _act(client, sid)  # and once closed: still no session id (code review 01 #6)
+    assert closed.status_code == 409 and closed.json()["code"] == "session_closed"
+    _clean(closed.json(), sid)
 
 
 def test_tp_v5_14_two_overlapping_closes_keep_turns_out_and_write_one_line() -> None:
@@ -249,3 +253,19 @@ def test_tp_v5_15_a_replace_during_a_gm_generate_closes_and_the_generate_gets_40
     generated = result[0]
     assert generated.status_code == 409 and generated.json()["code"] == "session_closed"
     assert p.repo.list_rumors(sid, include_pruned=True) == []
+
+
+# --- rumor_inactive over HTTP (code review 01 #4) ---------------------------------- #
+def test_a_support_change_on_a_switched_off_rumor_answers_409_rumor_inactive() -> None:
+    p, client = _app()
+    sid = _start(client)
+    made = client.post(f"/api/gm/sessions/{sid}/regions/r1/rumors")
+    assert made.status_code == 200, made.text
+    rumor = p.repo.get_rumor(sid, made.json()[0]["id"])
+    p.repo.upsert_rumor(rumor.model_copy(update={"active": False}))  # a void meanwhile
+    r = client.put(f"/api/gm/sessions/{sid}/rumors/{rumor.id}/support", json={"support": 0.9})
+    assert r.status_code == 409 and r.json() == {
+        "detail": "the rumor is no longer active",
+        "code": "rumor_inactive",
+    }
+    assert p.repo.get_rumor(sid, rumor.id).support == rumor.support

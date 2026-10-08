@@ -377,7 +377,7 @@ class InMemoryPlayRepository:
     def list_runs(self, session_id: str, status: str | None = None) -> list[TurnRun]:
         runs = self._runs.get(session_id, {}).values()
         out = [deepcopy(r) for r in runs if status is None or r.status == status]
-        out.sort(key=lambda r: (r.started_at or datetime.min.replace(tzinfo=timezone.utc), r.id))
+        out.sort(key=lambda r: (r.started_at or _EPOCH, r.id))
         return out
 
     @_synchronized
@@ -388,7 +388,7 @@ class InMemoryPlayRepository:
             for r in runs.values()
             if r.status == TurnRunStatus.RUNNING.value
         ]
-        out.sort(key=lambda r: (r.started_at or datetime.min.replace(tzinfo=timezone.utc), r.id))
+        out.sort(key=lambda r: (r.started_at or _EPOCH, r.id))
         return out
 
     # --- conversations (U5) ---

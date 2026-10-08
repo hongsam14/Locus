@@ -105,12 +105,20 @@ class TurnGuard:
         """
         with self._lock:
             lock = self._writes.setdefault(session_id, threading.RLock())
-        if not lock.acquire(timeout=max(0.0, timeout_s)):
+        # clamped: a timeout past TIMEOUT_MAX raises OverflowError (code review 01 #5)
+        if not lock.acquire(timeout=min(max(0.0, timeout_s), threading.TIMEOUT_MAX)):
             raise GmBusyError(GM_BUSY)
         try:
             yield
         finally:
             lock.release()
+
+    def forget(self, session_id: str) -> None:
+        """Drop a closed session's short-write lock (code review 01 #10). A writer still
+        holding the old lock finds the session closed in its section and writes
+        nothing, so a fresh lock beside it is harmless."""
+        with self._lock:
+            self._writes.pop(session_id, None)
 
     @contextmanager
     def closing(self, session_id: str) -> Iterator[None]:

@@ -105,8 +105,11 @@ class _EventApplication(LocusModel):
     resolved_ids: list[str] = Field(default_factory=list)
     # primary target regions of applied events (where rumors are drafted next)
     target_regions: set[str] = Field(default_factory=set)
-    # every region whose distortion moved (drives support auto-evolution)
+    # every region an applied event moved (drives support auto-evolution)
     influenced_regions: set[str] = Field(default_factory=set)
+    # V5: regions given back by an event whose region left the world — their rows are
+    # saved, but they are not "moved by an event" (no support boost, code review 01 #1)
+    restored_regions: set[str] = Field(default_factory=set)
     # event id -> primary region id (for X1 region_changes shaping)
     event_regions: dict[str, str] = Field(default_factory=dict)
     # post-event distortion per region row read (U4; feeds the rumor drafts)
@@ -511,40 +514,73 @@ class TurnAdvancer(SessionAppService):
             u.runs.update_run(run)
 
     def recover_interrupted(self) -> list[str]:
-        """Compensate every run a restart cut, in every session, like a failed one
-        (V5 FR-C3, BR-V5-18) — called once at API start, before any request. Returns
-        the ids compensated.
+        """Settle every run a restart cut, in every session, like a failed one (V5 FR-C3,
+        BR-V5-18) — called once at API start, before any request. Returns the ids
+        settled.
 
-        A run whose compensation fails is marked failed with ``interrupted_uncompensated``
-        in a unit of work of its own and logged at ERROR for an operator; the others go on
-        (code plan § 1.1 R-01). If even that mark fails (storage down) the run stays
-        ``running`` and is tried again on the next start.
+        - A run whose session a turn holds right now is left alone: it is not cut, this
+          engine is running it (code review 01 #13).
+        - A run whose turns all committed lost only its result: it is marked
+          ``interrupted`` with nothing to undo and no line (code review 01 #12).
+        - Otherwise it is compensated (``_compensate``).
+        - A session with more than one ``running`` run (a run whose failure could not be
+          recorded, then a later one) cannot be settled turn by turn: only its newest run
+          is, the older ones are marked ``interrupted_uncompensated`` for an operator
+          (code review 01 #11).
+        - A run whose compensation fails is marked ``interrupted_uncompensated`` in a
+          unit of work of its own and logged at ERROR; the others go on (code plan § 1.1
+          R-01). If even that mark fails (storage down) the run stays ``running`` and is
+          tried again on the next start.
         """
+        by_session: dict[str, list[TurnRun]] = {}
+        for run in self._repo.list_running_runs():  # oldest first
+            if self._guard.turn_running(run.session_id):
+                continue
+            by_session.setdefault(run.session_id, []).append(run)
         done: list[str] = []
-        for run in self._repo.list_running_runs():
+        for runs in by_session.values():
+            *older, newest = runs
+            for run in older:
+                logger.error(
+                    "turn run %s (session %s) was left running before a later run; "
+                    "check the player's position and turn charge",
+                    run.id,
+                    run.session_id,
+                )
+                self._mark_failed(run, RUN_UNCOMPENSATED)
             try:
-                self._compensate(run, error_type=RUN_INTERRUPTED_TYPE, error=RUN_INTERRUPTED)
-                done.append(run.id)
+                if self._advanced_turns(newest) >= newest.cost_turns:
+                    self._mark_failed(newest, RUN_INTERRUPTED, quiet=False)
+                else:
+                    self._compensate(newest, error_type=RUN_INTERRUPTED_TYPE, error=RUN_INTERRUPTED)
+                done.append(newest.id)
             except Exception:
                 logger.error(
                     "could not compensate interrupted turn run %s (session %s); "
                     "check the player's position and turn charge",
-                    run.id,
-                    run.session_id,
+                    newest.id,
+                    newest.session_id,
                     exc_info=True,
                 )
-                try:
-                    with self._repo.uow() as u:
-                        run.status = TurnRunStatus.FAILED
-                        run.error = RUN_UNCOMPENSATED
-                        run.finished_at = datetime.now(timezone.utc)
-                        u.runs.update_run(run)
-                except Exception:
-                    logger.exception(
-                        "could not mark turn run %s failed; it is retried on the next start",
-                        run.id,
-                    )
+                self._mark_failed(newest, RUN_UNCOMPENSATED)
         return done
+
+    def _mark_failed(self, run: TurnRun, error: str, *, quiet: bool = True) -> None:
+        """Mark a run failed with ``error`` and nothing else, in its own unit of work.
+        ``quiet`` swallows a storage failure (logged; the run stays ``running`` for the
+        next start)."""
+        try:
+            with self._repo.uow() as u:
+                run.status = TurnRunStatus.FAILED
+                run.error = error
+                run.finished_at = datetime.now(timezone.utc)
+                u.runs.update_run(run)
+        except Exception:
+            if not quiet:
+                raise
+            logger.exception(
+                "could not mark turn run %s failed; it is retried on the next start", run.id
+            )
 
     def _fail(self, run: TurnRun, exc: BaseException) -> None:
         """A run whose turns raised: compensated, with only the exception class kept in
@@ -692,7 +728,8 @@ class TurnAdvancer(SessionAppService):
             # map read before the multi-second LLM phase silently overwrote a concurrent
             # GM distortion edit and cost one upsert per region per turn
             # (code review U4-2 #8).
-            for rid in sorted(events.influenced_regions):  # each is a key (C9)
+            # each is a key (C9); restored rows too (V5), as a GM resolve would write them
+            for rid in sorted(events.influenced_regions | events.restored_regions):
                 u.distortions.set_region_distortion(session.id, rid, events.distortions[rid])
             for entry in events.timeline:
                 u.timeline.append_timeline(entry)
@@ -969,7 +1006,8 @@ class TurnAdvancer(SessionAppService):
         V5 (FR-C4, Q1=A, BR-V5-20/21): first, an event whose region the world no longer
         has ends — as if the GM had resolved it before this turn. Its contributions are
         restored on the regions still there (no row for the gone one), the restored
-        neighbours are saved with the turn (code plan § 1.1 R-04), and its line says
+        neighbours' rows are saved with the turn (code plan § 1.1 R-04) without counting
+        as moved by an event (no support boost, code review 01 #1), and its line says
         ``reason: "region_removed"``. It is not applied.
         """
         topo = snapshot.topo
@@ -990,7 +1028,7 @@ class TurnAdvancer(SessionAppService):
             ev.resolve(session.turn + 1)  # ends this turn, like a one_shot
             out.resolved_ids.append(ev.id)
             out.event_updates.append(ev)
-            out.influenced_regions |= set(restored)
+            out.restored_regions |= set(restored)
             out.timeline.append(
                 self._entry(
                     session,

@@ -43,6 +43,8 @@ from locus.shared.models.util import clamp01
 if TYPE_CHECKING:  # wired by assemble_play
     from locus.play.deeds.service import DeedService
 
+SUGGESTED_BY = "llm:event"  # SessionEvent.provenance.generated_by of an LLM suggestion
+
 
 class EventService(SnapshotNames, SessionAppService):
     """Create / resolve / discard events and run the suggest->approve gate."""
@@ -95,42 +97,71 @@ class EventService(SnapshotNames, SessionAppService):
         from (U8, BR-U8-17); a GM's own event keeps the defaults."""
         session = self._require_open(session_id)
         name = require_region(self._snapshots, session.world_id, region_id).name  # C16
+        with self.section.open(session_id) as (u, session):  # the row and its line (RE-P05)
+            return self.create_in(
+                u,
+                session,
+                region_id,
+                name,
+                category=category,
+                magnitude=magnitude,
+                description=description,
+                lifecycle=lifecycle,
+                provenance=provenance,
+                timeline_extra=timeline_extra,
+            )
+
+    def create_in(
+        self,
+        u: PlayUnitOfWork,
+        session: GameSession,
+        region_id: str,
+        region_name: str,
+        *,
+        category: EventCategory,
+        magnitude: float,
+        description: str = "",
+        lifecycle: EventLifecycle | None = None,
+        provenance: Provenance | None = None,
+        timeline_extra: Mapping[str, str] | None = None,
+    ) -> SessionEvent:
+        """Save an ACTIVE event and its line inside the caller's open section — the
+        region was checked and named before it (a started seed, code review 01 #7)."""
         cat = EventCategory(category)
         extra = dict(timeline_extra or {})
         summary = (
-            f"started seed {extra['seed_title']!r} in {name}"
+            f"started seed {extra['seed_title']!r} in {region_name}"
             if "seed_title" in extra
-            else f"created {cat.value} event in {name}"
+            else f"created {cat.value} event in {region_name}"
         )
-        with self.section.open(session_id) as (u, session):  # the row and its line (RE-P05)
-            event = SessionEvent(
-                session_id=session_id,
-                region_id=region_id,
-                category=cat,
-                description=description,
-                magnitude=clamp01(magnitude),
-                lifecycle=lifecycle or default_lifecycle(cat),
-                status=EventStatus.ACTIVE,
-                created_turn=session.turn,
-                provenance=provenance
-                or Provenance(source=SourceKind.SIMULATION, generated_by="gm:event"),
+        event = SessionEvent(
+            session_id=session.id,
+            region_id=region_id,
+            category=cat,
+            description=description,
+            magnitude=clamp01(magnitude),
+            lifecycle=lifecycle or default_lifecycle(cat),
+            status=EventStatus.ACTIVE,
+            created_turn=session.turn,
+            provenance=provenance
+            or Provenance(source=SourceKind.SIMULATION, generated_by="gm:event"),
+        )
+        saved = u.events.create_event(event)
+        u.timeline.append_timeline(
+            self._entry(
+                session,
+                TimelineKind.EVENT_CREATED,
+                summary,
+                {
+                    "event_id": saved.id,
+                    "region_id": region_id,
+                    "region_name": region_name,
+                    "category": cat.value,
+                    "magnitude": saved.magnitude,
+                    **extra,
+                },
             )
-            saved = u.events.create_event(event)
-            u.timeline.append_timeline(
-                self._entry(
-                    session,
-                    TimelineKind.EVENT_CREATED,
-                    summary,
-                    {
-                        "event_id": saved.id,
-                        "region_id": region_id,
-                        "region_name": name,
-                        "category": cat.value,
-                        "magnitude": saved.magnitude,
-                        **extra,
-                    },
-                )
-            )
+        )
         return saved
 
     def resolve_event(self, session_id: str, event_id: str) -> SessionEvent:
@@ -249,6 +280,9 @@ class EventService(SnapshotNames, SessionAppService):
         matched = [(d, ctx.match_region(d.region_id, every)) for d in drafts]
         kept = [(d, rid) for d, rid in matched if rid is not None]  # BR-P2-10
         if not kept:
+            # nothing to save, but a session closed during the call still answers 409
+            # (BLM § 2, code review 01 #8)
+            self._require_open(session_id)
             return []
         out: list[SessionEvent] = []
         # V5 (BR-V5-01/02, RE-P05): the LLM ran outside; the rows and their lines are
@@ -265,7 +299,7 @@ class EventService(SnapshotNames, SessionAppService):
                     lifecycle=default_lifecycle(cat),
                     status=EventStatus.SUGGESTED,
                     created_turn=session.turn,
-                    provenance=Provenance(source=SourceKind.SIMULATION, generated_by="llm:event"),
+                    provenance=Provenance(source=SourceKind.SIMULATION, generated_by=SUGGESTED_BY),
                 )
                 saved = u.events.create_event(event)
                 out.append(saved)
@@ -294,11 +328,16 @@ class EventService(SnapshotNames, SessionAppService):
         if event.is_resolved():
             raise ValueError(f"only SUGGESTED events can be approved: {event_id}")
         name = self._region_name(session, event.region_id)
-        # V5 (RE-P06, BR-V5-07): read again in the section. Approved meanwhile → the
-        # event as it is, no second line; discarded meanwhile → 404; resolved → 400.
+        # V5 (RE-P06, BR-V5-07): read again in the section. A suggestion approved
+        # meanwhile → the event as it is, no second line; discarded meanwhile → 404;
+        # anything else that is not a suggestion (resolved, or created ACTIVE by the GM or
+        # a seed) → 400 (code review 01 #9).
         with self.section.open(session_id) as (u, session):
             event = self._fresh_event(u, session_id, event_id)
-            if EventStatus(event.status) is EventStatus.ACTIVE:
+            if (
+                EventStatus(event.status) is EventStatus.ACTIVE
+                and event.provenance.generated_by == SUGGESTED_BY
+            ):
                 return event
             if not event.is_suggested():
                 raise ValueError(f"only SUGGESTED events can be approved: {event_id}")

@@ -18,6 +18,7 @@ from locus.play.models import (
     MoveAction,
     Player,
     SessionEvent,
+    SessionRumor,
     TimelineKind,
 )
 from locus.play.turn.advancer import RUN_UNCOMPENSATED
@@ -140,6 +141,44 @@ def test_tp_v5_5_when_even_the_mark_fails_the_run_stays_for_the_next_start() -> 
     assert repo.get_player(sid).region_id == "a"
 
 
+def test_tp_v5_5_two_running_runs_in_one_session_settle_only_the_newest() -> None:
+    """Code review 01 #11: the older run's turns cannot be told from the newer one's, so
+    only the newest is compensated; the older goes to an operator."""
+    repo, gm = _container()
+    sid, older = _cut_move(repo, gm)  # a → b, left running
+    newer = gm.turns.begin(sid, MoveAction(to_region_id="c")).id  # b → c, then cut
+    gm.guard.release(sid)
+    assert gm.turns.recover_interrupted() == [newer]
+    assert repo.get_run(sid, newer).error == "interrupted"
+    assert repo.get_run(sid, older).error == RUN_UNCOMPENSATED
+    player = repo.get_player(sid)
+    assert player.region_id == "b" and player.turns_spent == 2  # only the newer undone
+
+
+def test_tp_v5_5_a_run_whose_turns_all_ran_is_closed_with_nothing_to_undo() -> None:
+    """Code review 01 #12: only its result was lost — no refund, no undo, no line."""
+    repo, gm = _container()
+    sid, rid = _cut_move(repo, gm, advanced=2)
+    assert gm.turns.recover_interrupted() == [rid]
+    run = repo.get_run(sid, rid)
+    assert run.status == "failed" and run.error == "interrupted"
+    player = repo.get_player(sid)
+    assert player.region_id == "b" and player.turns_spent == 2
+    assert _failed_lines(repo, sid) == []
+
+
+def test_tp_v5_5_a_run_this_engine_is_running_is_left_alone() -> None:
+    """Code review 01 #13: a turn holds the session — the run is live, not cut."""
+    repo, gm = _container()
+    sid, rid = _cut_move(repo, gm)
+    gm.guard.acquire(sid, rid)  # its turn is running in this process
+    try:
+        assert gm.turns.recover_interrupted() == []
+    finally:
+        gm.guard.release(sid)
+    assert repo.get_run(sid, rid).status == "running"
+
+
 def test_tp_v5_5_the_api_start_compensates_before_any_request() -> None:
     repo, gm = _container()
     sid, rid = _cut_move(repo, gm)
@@ -209,9 +248,52 @@ def test_tp_v5_6_a_gm_resolve_makes_no_row_for_a_region_the_world_lost() -> None
     )
     sid = repo.create_session(WORLD).id
     repo.set_region_distortion(sid, "y", 0.45)
+    repo.set_region_distortion(sid, "x", 0.5)  # its row from before the delete stays
     event = repo.create_event(_war(sid, "x", {"x": 0.2, "y": 0.15}))
     gm.events.resolve_event(sid, event.id)
     assert repo.get_region_distortion(sid, "y") == pytest.approx(0.3)
-    assert repo.get_region_distortion(sid, "x") is None  # BR-V5-21: no row made
+    assert repo.get_region_distortion(sid, "x") == 0.5  # BR-V5-21: not written (#18)
     (line,) = _resolved_lines(repo, sid)
     assert line.payload["restored"] == {"y": 0.15} and "reason" not in line.payload
+
+
+def _gone_region_with_a_neighbour_rumor():
+    """x's war built up on y once; a rumor sits in y; then x leaves the world."""
+    repo = InMemoryPlayRepository()
+    snapshots = StaticSnapshots(_two_region_world("x", "y"))
+    gm = compose_play(repo, CountingGenerator(), snapshots, executor=_HeldExecutor())
+    sid = repo.create_session(WORLD).id
+    repo.set_region_distortion(sid, "x", 0.3)
+    repo.set_region_distortion(sid, "y", 0.3)
+    event = repo.create_event(_war(sid, "x"))
+    gm.turns.advance(sid)
+    rumor = SessionRumor(
+        session_id=sid,
+        region_id="y",
+        distorted_from_id="k",
+        statement="they say",
+        support=0.5,
+        provenance=Provenance(source=SourceKind.SIMULATION),
+    )
+    repo.upsert_rumor(rumor)
+    snapshots.snapshot = _two_region_world("y")
+    return repo, gm, sid, event.id, rumor.id
+
+
+def test_tp_v5_6_the_turn_end_matches_a_gm_resolve_then_a_turn() -> None:
+    """BLM § 6 (code review 01 #1): the neighbour's rumor is not boosted as if an event
+    had moved its region — the same support and promotion as GM resolve → turn."""
+    repo, gm, sid, _eid, rid = _gone_region_with_a_neighbour_rumor()
+    gm.turns.advance(sid)  # the turn ends the event
+    by_turn = repo.get_rumor(sid, rid)
+
+    repo2, gm2, sid2, eid2, rid2 = _gone_region_with_a_neighbour_rumor()
+    gm2.events.resolve_event(sid2, eid2)
+    gm2.turns.advance(sid2)
+    by_gm = repo2.get_rumor(sid2, rid2)
+
+    assert by_turn.support == pytest.approx(by_gm.support)
+    assert by_turn.promoted == by_gm.promoted
+    assert repo.get_region_distortion(sid, "y") == pytest.approx(
+        repo2.get_region_distortion(sid2, "y")
+    )

@@ -270,6 +270,28 @@ def test_v5_short_write_is_re_entrant_in_one_thread_and_released_on_error() -> N
     assert seen == [True]  # the raising section let go
 
 
+def test_v5_a_huge_wait_is_clamped_not_an_overflow() -> None:
+    """Code review 01 #5: past ``threading.TIMEOUT_MAX`` the lock would raise."""
+    guard = TurnGuard()
+    with guard.short_write("s", timeout_s=float("inf")):
+        pass
+    with guard.short_write("s", timeout_s=1e12):
+        pass
+
+
+def test_v5_a_closed_session_s_lock_is_forgotten() -> None:
+    """Code review 01 #10: one lock per session ever written would only grow."""
+    guard = TurnGuard()
+    with guard.short_write("s", timeout_s=0.1):
+        pass
+    assert "s" in guard._writes
+    guard.forget("s")
+    assert "s" not in guard._writes
+    guard.forget("never")  # idempotent
+    with guard.short_write("s", timeout_s=0.1):  # a later writer gets a fresh one
+        pass
+
+
 def test_v5_the_old_guard_methods_are_gone() -> None:
     """BR-V5-25: callers use turn_running / gm_busy / closing."""
     for name in ("is_running", "running_run_id", "assert_idle"):

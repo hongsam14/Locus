@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from locus.play.base import SessionClosedError
+from locus.play.base import SESSION_CLOSED, SessionClosedError
 from locus.play.models import GameSession, SessionStatus
 from locus.play.ports import PlayRepository, PlayUnitOfWork
 from locus.play.turn.guard import TurnGuard
@@ -53,5 +53,5 @@ class WriteSection:
                 if session is None:
                     raise LookupError(f"session not found: {session_id}")
                 if session.status == SessionStatus.CLOSED.value:
-                    raise SessionClosedError(f"session is closed: {session_id}")
+                    raise SessionClosedError(SESSION_CLOSED)
                 yield u, session

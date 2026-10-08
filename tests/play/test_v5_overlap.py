@@ -11,6 +11,7 @@ from __future__ import annotations
 import threading
 import time
 from collections.abc import Callable
+from contextlib import contextmanager
 from typing import Any
 
 import pytest
@@ -18,7 +19,7 @@ import pytest
 from locus.play import InMemoryPlayRepository
 from locus.play.base import SessionClosedError
 from locus.play.errors import GmBusyError, RumorInactiveError, SeedAlreadyRunningError
-from locus.play.event.suggester import EventSuggester
+from locus.play.event.suggester import EventDraft, EventDraftList, EventSuggester
 from locus.play.models import Deed, EventCategory, EventStatus, SessionEvent, TimelineKind
 from locus.play.rumor.generator import RumorGenerator
 from locus.play.turn.executor import SyncTurnExecutor
@@ -52,6 +53,7 @@ SEED = EventSeed(
 
 
 REGIONS = [f"r{i}" for i in range(5)]
+_FAILED_LINE = "timeline write failed"  # FailingTimeline's sentence
 
 
 def _world() -> WorldSnapshot:
@@ -138,23 +140,57 @@ def test_tp_v5_1_two_resolves_that_overlap_restore_both(threaded_repo) -> None:
     threaded_repo.set_region_distortion(sid, "r1", 0.51)  # 0.3 + 0.15 + 0.06
     first = _active_event(threaded_repo, sid, "r1", {"r1": 0.15})
     second = _active_event(threaded_repo, sid, "r1", {"r1": 0.06})
-    with InterleaveGate(threaded_repo, "list_region_distortions"):
+    with InterleaveGate(threaded_repo, "list_region_distortions") as gate:
         out = _together(
             lambda: gm.events.resolve_event(sid, first),
             lambda: gm.events.resolve_event(sid, second),
         )
     assert all(EventStatus(e.status) is EventStatus.RESOLVED for e in out), out
-    degrees = {d.region_id: d.distortion_degree for d in threaded_repo.list_region_distortions(sid)}
-    assert degrees["r1"] == pytest.approx(0.3)
+    assert threaded_repo.get_region_distortion(sid, "r1") == pytest.approx(0.3)
     assert len(_lines(threaded_repo, sid, TimelineKind.EVENT_RESOLVED)) == 2
+    assert not gate.met  # the section put the second read after the first write (#23)
+
+
+def test_tp_v5_1_one_event_resolved_twice_at_once_restores_once(threaded_repo) -> None:
+    """BR-V5-05 (code review 01 #3): a double click — both read it ACTIVE outside; the
+    second finds it resolved in the section and gives it back with no line."""
+    gm = _gm(threaded_repo)
+    sid = threaded_repo.create_session(WORLD).id
+    threaded_repo.set_region_distortion(sid, "r1", 0.45)
+    eid = _active_event(threaded_repo, sid, "r1", {"r1": 0.15})
+    with InterleaveGate(threaded_repo, "get_event") as gate:  # both read it as ACTIVE
+        out = _together(
+            lambda: gm.events.resolve_event(sid, eid), lambda: gm.events.resolve_event(sid, eid)
+        )
+    assert gate.met and all(isinstance(o, SessionEvent) for o in out), out
+    assert threaded_repo.get_region_distortion(sid, "r1") == pytest.approx(0.3)
+    assert len(_lines(threaded_repo, sid, TimelineKind.EVENT_RESOLVED)) == 1
+
+
+def test_a_resolve_restores_from_the_event_as_it_is_in_the_section(threaded_repo) -> None:
+    """U3 review #10 kept by V5 (code review 01 #17): a GM set between the resolve's
+    first read and its section cleared r1's contribution, so r1 keeps the GM's value."""
+    gm = _gm(threaded_repo)
+    sid = threaded_repo.create_session(WORLD).id
+    threaded_repo.set_region_distortion(sid, "r1", 0.45)
+    eid = _active_event(threaded_repo, sid, "r1", {"r1": 0.15})
+    undo = _after_first_read(
+        threaded_repo, lambda: gm.distortions.set_region_distortion(sid, "r1", 0.7)
+    )
+    try:
+        gm.events.resolve_event(sid, eid)
+    finally:
+        undo()
+    assert threaded_repo.get_region_distortion(sid, "r1") == pytest.approx(0.7)
 
 
 # --- TP-V5-2 (#12): one seed start wins ---------------------------------------- #
 def test_tp_v5_2_two_starts_of_one_seed_make_one_event(threaded_repo) -> None:
     gm = _gm(threaded_repo)
     sid = threaded_repo.create_session(WORLD).id
-    with InterleaveGate(threaded_repo, "list_events"):  # right after "is it running?"
+    with InterleaveGate(threaded_repo, "list_events") as gate:  # after "is it running?"
         out = _together(lambda: gm.seeds.start(sid, SEED.id), lambda: gm.seeds.start(sid, SEED.id))
+    assert not gate.met  # the check sits in the section now
     started = [o for o in out if isinstance(o, SessionEvent)]
     refused = [o for o in out if isinstance(o, SeedAlreadyRunningError)]
     assert len(started) == 1 and len(refused) == 1, out
@@ -173,11 +209,11 @@ def test_tp_v5_9_two_approves_that_overlap_write_one_line(threaded_repo) -> None
     gm = _gm(threaded_repo)
     sid = threaded_repo.create_session(WORLD).id
     eid = _suggested(gm, sid)
-    with InterleaveGate(threaded_repo, "get_event"):  # both read it as a suggestion
+    with InterleaveGate(threaded_repo, "get_event") as gate:  # both read a suggestion
         out = _together(
             lambda: gm.events.approve_event(sid, eid), lambda: gm.events.approve_event(sid, eid)
         )
-    assert all(isinstance(o, SessionEvent) for o in out), out
+    assert gate.met and all(isinstance(o, SessionEvent) for o in out), out
     assert EventStatus(threaded_repo.get_event(sid, eid).status) is EventStatus.ACTIVE
     assert len(threaded_repo.list_events(sid, EventStatus.ACTIVE.value)) == 1
     assert len(_lines(threaded_repo, sid, TimelineKind.EVENT_APPROVED)) == 1
@@ -217,6 +253,26 @@ def test_tp_v5_9_approve_first_then_the_discard_is_refused(threaded_repo) -> Non
     assert len(_lines(threaded_repo, sid, TimelineKind.EVENT_APPROVED)) == 1
 
 
+def test_tp_v5_9_approved_and_resolved_meanwhile_the_approve_is_refused(threaded_repo) -> None:
+    """BR-V5-07 (code review 01 #16): resolved → 400, never ACTIVE again, no second line."""
+    gm = _gm(threaded_repo)
+    sid = threaded_repo.create_session(WORLD).id
+    eid = _suggested(gm, sid)
+
+    def approve_then_resolve() -> None:
+        gm.events.approve_event(sid, eid)
+        gm.events.resolve_event(sid, eid)
+
+    undo = _after_first_read(threaded_repo, approve_then_resolve)
+    try:
+        with pytest.raises(ValueError):  # 400
+            gm.events.approve_event(sid, eid)
+    finally:
+        undo()
+    assert EventStatus(threaded_repo.get_event(sid, eid).status) is EventStatus.RESOLVED
+    assert len(_lines(threaded_repo, sid, TimelineKind.EVENT_APPROVED)) == 1
+
+
 def test_tp_v5_9_discard_first_then_the_approve_finds_nothing(threaded_repo) -> None:
     gm = _gm(threaded_repo)
     sid = threaded_repo.create_session(WORLD).id
@@ -244,15 +300,16 @@ def test_tp_v5_12e_a_failed_line_leaves_no_event_row(threaded_repo) -> None:
             TimelineKind.EVENT_APPROVED,
             TimelineKind.EVENT_SUGGESTED,
         ],
-    ):
-        with pytest.raises(RuntimeError):
+    ) as failing:
+        with pytest.raises(RuntimeError, match=_FAILED_LINE):
             gm.events.create_event(sid, "r1", category=EventCategory.WAR, magnitude=0.4)
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError, match=_FAILED_LINE):
             gm.events.approve_event(sid, pending)
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError, match=_FAILED_LINE):
             gm.events.suggest_events(sid)
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError, match=_FAILED_LINE):
             gm.seeds.start(sid, SEED.id)
+    assert failing.raised == 4  # each failed on its line, not on something else (#20)
     events = threaded_repo.list_events(sid)
     assert [e.id for e in events] == [pending]  # nothing created by the four
     assert EventStatus(events[0].status) is EventStatus.SUGGESTED  # the approve rolled back
@@ -285,20 +342,141 @@ def test_tp_v5_13_a_write_past_the_wait_is_refused_and_writes_nothing(threaded_r
     assert threaded_repo.list_events(sid) == [] and threaded_repo.list_timeline(sid) == []
 
 
-def test_tp_v5_13_a_seed_start_enters_its_section_again_without_a_deadlock(
+def test_tp_v5_13_a_seed_start_is_one_section_and_reads_the_world_before_it(
     threaded_repo,
 ) -> None:
+    """BR-V5-04/06 (code review 01 #7): the check and the create share one section; the
+    world (a graph round trip behind the cache) is read before it, never inside."""
     gm = _gm(threaded_repo, tuning=PlayTuning(gm_write_wait_s=0.1))
     sid = threaded_repo.create_session(WORLD).id
-    event = gm.seeds.start(sid, SEED.id)  # lock → create_event's section (BR-V5-04)
+    inside: list[bool] = []
+    reads_inside: list[bool] = []
+    real_open = gm.events.section.open
+    snapshots = gm.events._snapshots
+    real_get = snapshots.get
+
+    @contextmanager
+    def watched(session_id: str):
+        with real_open(session_id) as pair:
+            inside.append(True)
+            try:
+                yield pair
+            finally:
+                inside.pop()
+
+    gm.events.section.open = watched
+    snapshots.get = lambda world_id: (reads_inside.append(bool(inside)), real_get(world_id))[1]
+    try:
+        event = gm.seeds.start(sid, SEED.id)
+    finally:
+        del gm.events.section.open
+        del snapshots.get
     assert EventStatus(event.status) is EventStatus.ACTIVE
     assert len(_lines(threaded_repo, sid, TimelineKind.EVENT_CREATED)) == 1
+    assert reads_inside and not any(reads_inside)
 
 
 def test_the_sections_share_the_container_guard() -> None:
-    """Wiring (code plan R-03): the event service and the seeds use the shared guard."""
+    """Wiring (code plan R-03, code review 01 #2): every GM write and the close use the
+    one guard of the container."""
     gm = _gm(InMemoryPlayRepository())
-    assert gm.events.section.guard is gm.guard
+    for service in (gm.events, gm.rumors, gm.deeds, gm.distortions):
+        assert service.section.guard is gm.guard
+    assert gm.sessions._guard is gm.guard and gm.turns.guard is gm.guard
+
+
+def test_every_gm_save_waits_on_the_container_s_short_write(threaded_repo) -> None:
+    """The same, by behaviour: while the container's short write is held, each write
+    gives up after the wait with 409 gm_busy and saves nothing (code review 01 #2)."""
+    gm = _gm(threaded_repo, tuning=PlayTuning(gm_write_wait_s=0.05))
+    sid = threaded_repo.create_session(WORLD).id
+    deed_id, rumor_id = _deed_with_rumor(threaded_repo, sid)
+    lines = len(threaded_repo.list_timeline(sid))
+    held = threading.Event()
+    done = threading.Event()
+
+    def hold() -> None:
+        with gm.guard.short_write(sid, timeout_s=1):
+            held.set()
+            done.wait(5)
+
+    t = threading.Thread(target=hold)
+    t.start()
+    try:
+        assert held.wait(5)
+        writes = [
+            lambda: gm.events.create_event(sid, "r1", category=EventCategory.WAR, magnitude=0.4),
+            lambda: gm.rumors.generate_rumors(sid, "r1"),
+            lambda: gm.rumors.adjust_support(sid, rumor_id, 0.9),
+            lambda: gm.deeds.void(sid, deed_id),
+            lambda: gm.distortions.set_region_distortion(sid, "r1", 0.6),
+            lambda: gm.seeds.start(sid, SEED.id),
+            lambda: gm.sessions.close_session(sid),
+        ]
+        for write in writes:
+            with pytest.raises(GmBusyError):
+                write()
+    finally:
+        done.set()
+        t.join(5)
+    assert len(threaded_repo.list_timeline(sid)) == lines
+    assert threaded_repo.get_session(sid).status == "open"
+
+
+def test_a_section_takes_the_short_write_before_its_unit_of_work() -> None:
+    """BR-V5-04 lock order (code review 01 #21): lease → short write → unit of work."""
+    repo = InMemoryPlayRepository()
+    gm = _gm(repo)
+    sid = repo.create_session(WORLD).id
+    order: list[str] = []
+    real_write, real_uow = gm.guard.short_write, repo.uow
+
+    @contextmanager
+    def short_write(session_id: str, *, timeout_s: float):
+        order.append("short write")
+        with real_write(session_id, timeout_s=timeout_s):
+            yield
+
+    def uow():
+        order.append("unit of work")
+        return real_uow()
+
+    gm.guard.short_write = short_write
+    repo.uow = uow
+    try:
+        gm.events.create_event(sid, "r1", category=EventCategory.WAR, magnitude=0.4)
+    finally:
+        del gm.guard.short_write
+        del repo.uow
+    assert order == ["short write", "unit of work"]
+
+
+def test_a_suggestion_that_matches_no_region_still_says_the_session_closed() -> None:
+    """BLM § 2 (code review 01 #8): closed during the LLM call → 409 even with nothing
+    to save."""
+    repo = InMemoryPlayRepository()
+    sid = repo.create_session(WORLD).id
+
+    class ClosesMeanwhile:
+        def structured(self, prompt, schema, *, system=None):
+            repo.close_session(sid)  # a close or a world replace during the call
+            return EventDraftList(
+                drafts=[EventDraft(region_id="nowhere", category=EventCategory.WAR, magnitude=0.5)]
+            )
+
+        def complete(self, prompt, *, system=None):  # pragma: no cover
+            return ""
+
+    gm = compose_play(
+        repo,
+        RumorGenerator(ClosesMeanwhile()),
+        StaticSnapshots(_world()),
+        suggester=EventSuggester(ClosesMeanwhile()),
+        executor=SyncTurnExecutor(),
+    )
+    with pytest.raises(SessionClosedError):
+        gm.events.suggest_events(sid)
+    assert repo.list_events(sid) == []
 
 
 # --- TP-V5-4 (RE-P02): a close while the drafts are made ------------------------ #
@@ -319,6 +497,7 @@ def test_tp_v5_4_a_close_during_a_generate_ends_at_once_and_the_generate_saves_n
     finally:
         llm.release()
         t.join(5)
+    assert not t.is_alive() and len(result) == 1
     assert isinstance(result[0], SessionClosedError), result
     assert threaded_repo.list_rumors(sid, include_pruned=True) == []
     assert _lines(threaded_repo, sid, TimelineKind.GENERATE) == []
@@ -340,6 +519,7 @@ def test_tp_v5_7_five_generates_draft_together_and_all_save(threaded_repo) -> No
     finally:
         llm.release()
         t.join(10)
+    assert not t.is_alive() and len(out) == len(REGIONS)
     assert together and llm.max_inside >= 2
     assert all(isinstance(o, list) and o for o in out), out  # no 409, every region drafted
     regions = {r.region_id for r in threaded_repo.list_rumors(sid)}
@@ -377,6 +557,7 @@ def test_tp_v5_11_of_two_regenerates_the_last_one_s_set_stays(threaded_repo) -> 
     finally:
         llm.release()
         t.join(10)
+    assert not t.is_alive() and len(out) == 2
     fresh = [{r.id for r in res.fresh} for res in out]
     assert all(fresh), out
     lines = _lines(threaded_repo, sid, TimelineKind.REGENERATE)
@@ -388,39 +569,30 @@ def test_tp_v5_11_of_two_regenerates_the_last_one_s_set_stays(threaded_repo) -> 
     assert set(lines[-1].payload["deactivated"]) == earlier  # it replaced the first's
 
 
-def test_tp_v5_11_a_generate_beside_a_regenerate_comes_out_in_order(threaded_repo) -> None:
-    """Code plan § 1.1 R-03: generate after → the regenerate's set plus the generate's;
-    regenerate after → the regenerate's set only."""
+@pytest.mark.parametrize("last", ["regenerate", "generate"])
+def test_tp_v5_11_a_generate_beside_a_regenerate_comes_out_in_order(
+    threaded_repo, last: str
+) -> None:
+    """Code plan § 1.1 R-03: the other write finishes while this one drafts (a fixed
+    order, code review 01 #19). Regenerate saves last → its set only; generate saves
+    last → the regenerate's set plus the generate's."""
     llm = BlockingDrafts(blocked=False)
     gm = _gm(threaded_repo, llm=llm)
     sid = threaded_repo.create_session(WORLD).id
-    gm.rumors.generate_rumors(sid, "r1")
-    llm.block()
-    out: list[Any] = []
-    t = threading.Thread(
-        target=lambda: out.extend(
-            _together(
-                lambda: gm.rumors.generate_rumors(sid, "r1"),
-                lambda: gm.rumors.regenerate_region(sid, "r1"),
-            )
-        )
-    )
-    t.start()
-    try:
-        assert llm.wait_entered(2)
-    finally:
-        llm.release()
-        t.join(10)
-    generated, regenerated = out
-    gen_ids = {r.id for r in generated}
-    regen_ids = {r.id for r in regenerated.fresh}
-    kinds = [
-        e.kind
-        for e in threaded_repo.list_timeline(sid)
-        if e.kind in (TimelineKind.GENERATE.value, TimelineKind.REGENERATE.value)
-    ]
-    expected = regen_ids | gen_ids if kinds[-1] == TimelineKind.GENERATE.value else regen_ids
+    before = {r.id for r in gm.rumors.generate_rumors(sid, "r1")}
+    done: dict[str, Any] = {}
+    if last == "regenerate":
+        llm.on_first = lambda: done.update(gen=gm.rumors.generate_rumors(sid, "r1"))
+        done["regen"] = gm.rumors.regenerate_region(sid, "r1")
+    else:
+        llm.on_first = lambda: done.update(regen=gm.rumors.regenerate_region(sid, "r1"))
+        done["gen"] = gm.rumors.generate_rumors(sid, "r1")
+    gen_ids = {r.id for r in done["gen"]}
+    regen_ids = {r.id for r in done["regen"].fresh}
+    assert gen_ids and regen_ids
+    expected = regen_ids if last == "regenerate" else regen_ids | gen_ids
     assert _canonical(threaded_repo, sid, "r1") == expected
+    assert before.isdisjoint(_canonical(threaded_repo, sid, "r1"))
 
 
 # --- TP-V5-12 (RE-P05), the rumor side ------------------------------------------- #
@@ -432,13 +604,14 @@ def test_tp_v5_12r_a_failed_line_leaves_the_rumors_as_they_were(threaded_repo) -
     with FailingTimeline(
         threaded_repo,
         kinds=[TimelineKind.GENERATE, TimelineKind.REGENERATE, TimelineKind.ADJUST_SUPPORT],
-    ):
-        with pytest.raises(RuntimeError):
+    ) as failing:
+        with pytest.raises(RuntimeError, match=_FAILED_LINE):
             gm.rumors.generate_rumors(sid, "r2")
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError, match=_FAILED_LINE):
             gm.rumors.regenerate_region(sid, "r1")
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError, match=_FAILED_LINE):
             gm.rumors.adjust_support(sid, rumor_id, 0.9)
+    assert failing.raised == 3
     after = {r.id: r.support for r in threaded_repo.list_rumors(sid, include_pruned=True)}
     assert after == before  # no r2 rumor, r1 not swapped, the support unchanged
     assert all(r.active for r in threaded_repo.list_rumors(sid, include_pruned=True))
@@ -486,8 +659,9 @@ def test_tp_v5_3_two_voids_that_overlap_write_one_line(threaded_repo) -> None:
     gm = _gm(threaded_repo)
     sid = threaded_repo.create_session(WORLD).id
     deed_id, rumor_id = _deed_with_rumor(threaded_repo, sid)
-    with InterleaveGate(threaded_repo, "get_deed"):  # both read it as not yet voided
+    with InterleaveGate(threaded_repo, "get_deed") as gate:  # both read it as not voided
         out = _together(lambda: gm.deeds.void(sid, deed_id), lambda: gm.deeds.void(sid, deed_id))
+    assert gate.met
     assert sorted(len(o.deactivated_rumor_ids) for o in out) == [0, 1], out
     assert threaded_repo.get_deed(sid, deed_id).voided
     assert len(_lines(threaded_repo, sid, TimelineKind.DEED_VOIDED)) == 1
@@ -498,7 +672,7 @@ def test_tp_v5_10_two_sets_of_one_region_record_the_share_once(threaded_repo) ->
     gm = _gm(threaded_repo)
     sid = threaded_repo.create_session(WORLD).id
     threaded_repo.set_region_distortion(sid, "r1", 0.5, feedback_share=0.2)
-    with InterleaveGate(threaded_repo, "list_region_distortions"):  # right after the read
+    with InterleaveGate(threaded_repo, "list_region_distortions") as gate:  # after the read
         out = _together(
             lambda: gm.distortions.set_region_distortion(sid, "r1", 0.4),
             lambda: gm.distortions.set_region_distortion(sid, "r1", 0.6),
@@ -507,8 +681,8 @@ def test_tp_v5_10_two_sets_of_one_region_record_the_share_once(threaded_repo) ->
         e.payload["feedback_share_cleared"]
         for e in _lines(threaded_repo, sid, TimelineKind.SET_DISTORTION)
     )
-    assert shares == [0.0, 0.2]
-    for row in out:  # the service gives back the row it saved
+    assert shares == [0.0, 0.2] and not gate.met
+    for row, degree in zip(out, (0.4, 0.6), strict=True):  # each gets the row it saved
         assert row.region_id == "r1" and row.feedback_share == 0.0
-        assert row.distortion_degree in (0.4, 0.6)
+        assert row.distortion_degree == degree
     assert threaded_repo.get_region_distortion(sid, "r1") in (0.4, 0.6)  # the later one

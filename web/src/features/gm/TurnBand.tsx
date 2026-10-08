@@ -40,13 +40,15 @@ export function TurnBand({
   onClose(): void;
 }) {
   return (
-    <div role="status" data-testid="turn-band-live">
+    // empty, it takes back the layout's gap (review 43(g))
+    <div role="status" data-testid="turn-band-live" className="empty:-mt-4">
       {outcome && (
         <section data-testid="turn-band"
           className="flex flex-col gap-2 rounded-lg border border-accent/60 bg-sunken p-3 shadow-panel">
           <div className="flex items-start gap-2">
             <h2 className="flex-1 font-heading text-lg">
-              {outcome.quiet ? t("notice.quietTurnGm") : t("notice.turnPassedGm", { n: outcome.turn })}
+              {/* the turn is named in both: a second quiet turn is a new line (review #41) */}
+              {outcome.quiet ? t("notice.quietTurnGm", { n: outcome.turn }) : t("notice.turnPassedGm", { n: outcome.turn })}
             </h2>
             <Button size="sm" variant="ghost" data-testid="turn-band-close" onClick={onClose}>
               {t("action.close")}

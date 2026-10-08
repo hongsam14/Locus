@@ -40,11 +40,12 @@ export function TimelinePanel({
   const newest = [...timeline.data].reverse(); // the server sends turn order, oldest first
   return (
     <div className="flex flex-col gap-2">
+      <h2 className="sr-only">{t("tab.timeline")}</h2>
       <ul data-testid="timeline" className="m-0 flex list-none flex-col p-0 text-sm">
         {newest.slice(0, shown).map((entry) => (
           <li key={entry.id} className="flex flex-wrap items-baseline gap-x-2 border-b border-line py-1.5">
             <b className="text-xs text-muted">{turnAt(entry.turn)}</b>
-            <span className="flex-1">{timelineText(entry.kind, readable(entry.payload, nameOf), entry.turn, entry.summary)}</span>
+            <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{timelineText(entry.kind, readable(entry.payload, nameOf), entry.turn, entry.summary)}</span>
             {newIds.has(entry.id) && (
               <Badge tone="event" data-testid={`timeline-new-${entry.id}`}>{t("label.newLine")}</Badge>
             )}

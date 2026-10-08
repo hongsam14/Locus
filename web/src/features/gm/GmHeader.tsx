@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { DescribedError } from "../../errors";
 import { useAction } from "../../hooks";
 import { t } from "../../i18n";
@@ -9,7 +9,9 @@ import type { SessionOption } from "./sessionLabel";
 /** The GM screen's head (V6 frontend-components § 4, BR-V6-13/26): the world, the session
  * picker in words with ended sessions apart, a session without a player, and an end that
  * asks first — an ended session cannot be opened again (RE-F04, UX-35). While a bulk run
- * goes (`locked`) neither a new session nor an end can start (code plan § 1.1 R-06). */
+ * goes (`locked`) neither a new session nor an end can start (code plan § 1.1 R-06).
+ * Choosing in the picker moves nowhere: [open] does (code review 01 #9, WCAG 3.2.2 — an
+ * arrow key on a closed select changes it in some browsers). */
 export function GmHeader({
   session,
   worldName,
@@ -36,6 +38,8 @@ export function GmHeader({
   const newSession = useAction(onNew);
   const end = useAction(onEnd, { onDone: () => setAsking(false) });
   const open = session != null && session.status !== "closed";
+  const [picked, setPicked] = useState(session?.id ?? "");
+  useEffect(() => setPicked(session?.id ?? ""), [session?.id]);
   return (
     <section data-testid="gm-header" className="flex flex-col gap-2">
       <div className="flex flex-wrap items-end gap-3">
@@ -43,11 +47,15 @@ export function GmHeader({
         <Select
           label={t("label.session")}
           data-testid="session-select"
-          value={session?.id ?? ""}
+          value={picked}
           placeholder={session ? undefined : t("label.loading")}
           options={options}
-          onChange={onPick}
+          onChange={setPicked}
         />
+        <Button data-testid="session-open-btn" disabled={!picked || picked === session?.id}
+          onClick={() => onPick(picked)}>
+          {t("action.openSession")}
+        </Button>
         <Button data-testid="session-new-btn" busy={newSession.busy} disabled={locked}
           onClick={() => void newSession.run()}>
           {t("action.newGmSession")}
@@ -90,7 +98,8 @@ export function GmHeader({
 /** An ended session: said once under the head; the record stays readable (BR-V6-12). */
 export function ClosedBanner() {
   return (
-    <div role="status" data-testid="gm-closed-banner"
+    // focusable: the end-session dialog leaves the focus here (code review 01 #1)
+    <div role="status" tabIndex={-1} data-testid="gm-closed-banner"
       className="rounded-lg border border-line bg-sunken px-4 py-3 text-sm">
       {t("notice.sessionEnded")}
     </div>

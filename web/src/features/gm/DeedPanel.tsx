@@ -33,11 +33,12 @@ export function DeedPanel({
   }
   return (
     <section data-testid="deed-panel" className="flex flex-col gap-1.5">
+      <h2 className="sr-only">{t("tab.deeds")}</h2>
       {deeds.data.length === 0 && (
         <p data-testid="deed-none" className="text-sm text-muted">{t("empty.deeds")}</p>
       )}
       {deeds.data.map((v) => (
-        <Card key={v.deed.id} data-testid={`deed-${v.deed.id}`}
+        <Card key={v.deed.id} data-testid={`deed-${v.deed.id}`} tabIndex={-1}
           className={`flex flex-col gap-1 text-sm ${v.deed.voided ? "opacity-60" : ""}`}>
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
             <Badge tone="event">{t(`deed.kind.${v.deed.kind}`)}</Badge>

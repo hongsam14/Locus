@@ -40,7 +40,7 @@ export function EventCard({
   const off = closed || held;
   const id = event.id;
   return (
-    <Card data-testid={`event-${id}`} className="flex flex-col gap-1.5 text-sm">
+    <Card data-testid={`event-${id}`} tabIndex={-1} className="flex flex-col gap-1.5 text-sm">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
         <Badge data-testid={`event-status-${id}`} tone={TONE[event.status] ?? "neutral"}>
           {enumLabel("eventStatus", event.status)}

@@ -105,12 +105,15 @@ function RumorCard({
           {t("label.distortion")} {numberWithMeaning("distortion", r.distortion_degree)}
         </span>
       </div>
-      <LocalizedText testId={`rumor-text-${r.id}`} ko={r.statement_ko} original={r.statement} />
+      <span id={`rumor-say-${r.id}`}>
+        <LocalizedText testId={`rumor-text-${r.id}`} ko={r.statement_ko} original={r.statement} />
+      </span>
       <label className="flex flex-col gap-1 text-xs">
         <span data-testid={`support-label-${r.id}`} className="text-muted">
           {t("label.support")} {numberWithMeaning("support", shown)}
         </span>
         <CommitRange
+          aria-describedby={`rumor-say-${r.id}`} // which rumor this belief is (review 43(d))
           data-testid={`support-${r.id}`}
           min={0}
           max={1}

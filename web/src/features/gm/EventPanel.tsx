@@ -49,7 +49,7 @@ export function EventPanel({
       />
     ));
   const group = (id: string, title: string, list: SessionEvent[], empty: string) => (
-    <section data-testid={`events-${id}`} className="flex flex-col gap-1.5">
+    <section data-testid={`events-${id}`} tabIndex={-1} className="flex flex-col gap-1.5">
       <h3 className="font-heading text-lg">
         {title} <span className="text-sm text-muted">{list.length}</span>
       </h3>
@@ -62,9 +62,10 @@ export function EventPanel({
   );
   return (
     <div data-testid="events" className="flex flex-col gap-4">
+      <h2 className="sr-only">{t("tab.events")}</h2>
       {group("suggested", t("label.eventsSuggested"), of("suggested"), t("empty.eventsSuggested"))}
       {group("active", t("label.eventsActive"), of("active"), t("empty.eventsActive"))}
-      <div data-testid="events-resolved">
+      <div data-testid="events-resolved" tabIndex={-1}>
         <Section level={3} collapsible defaultOpen={false}
           title={<>{t("label.eventsResolved")} <span className="text-sm text-muted">{resolved.length}</span></>}>
           {resolved.length === 0 ? (

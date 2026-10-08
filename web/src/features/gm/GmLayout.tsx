@@ -31,13 +31,17 @@ export function GmLayout({ wide, s }: { wide: boolean; s: GmSections }) {
         {head}
         <div className="grid grid-cols-[minmax(0,1fr)_400px] items-start gap-6">
           <div className="min-w-0">{s.map}</div>
-          <aside aria-label={t("label.gmPanel")}
-            className="sticky top-4 flex max-h-[calc(100vh-2rem)] min-w-0 flex-col gap-4 overflow-y-auto pr-1">
-            {s.tools}
-            {s.error}
-            {s.band}
+          {/* the GM's main controls: a named region, not a side note (<aside>, review 43(c)); the
+              tools, the error line and the band stay at its top while the tabs scroll (#42) */}
+          <section aria-label={t("label.gmPanel")}
+            className="sticky top-4 flex max-h-[calc(100vh-2rem)] min-w-0 flex-col overflow-y-auto pr-1">
+            <div data-testid="gm-panel-top" className="sticky top-0 z-10 flex flex-col gap-4 bg-bg pb-4">
+              {s.tools}
+              {s.error}
+              {s.band}
+            </div>
             {s.tabs}
-          </aside>
+          </section>
         </div>
       </div>
     );

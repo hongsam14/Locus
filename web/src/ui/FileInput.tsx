@@ -60,7 +60,7 @@ export function FileInput({
         >
           {t("action.chooseFile")}
         </Button>
-        <span id={`${id}-chosen`} className="text-muted">
+        <span id={`${id}-chosen`} className="min-w-0 text-muted [overflow-wrap:anywhere]">
           {chosen && chosen.length ? chosen.join(", ") : t("empty.noFile")}
         </span>
       </div>

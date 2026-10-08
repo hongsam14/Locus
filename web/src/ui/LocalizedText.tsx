@@ -17,7 +17,7 @@ export function LocalizedText({
   const hasKo = ko != null && ko !== "" && ko !== original;
   const text = hasKo && !showOriginal ? (ko as string) : original;
   return (
-    <span data-testid={testId}>
+    <span data-testid={testId} className="[overflow-wrap:anywhere]">
       {text}
       {hasKo && (
         <button

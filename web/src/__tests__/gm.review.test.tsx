@@ -471,3 +471,104 @@ describe("writes (code review 01)", () => {
     await waitFor(() => expect(api.sessionKnowledge).toHaveBeenCalledTimes(2));
   });
 });
+
+describe("focus and keyboard (code review 01)", () => {
+  const focused = () => document.activeElement?.getAttribute("data-testid");
+
+  it("#1: ending a session leaves the focus on the ended-session line, not <body>", async () => {
+    (api.closeSession as Mock).mockResolvedValue({ ...OPEN, status: "closed" });
+    renderGm();
+    await ready();
+    fireEvent.click(screen.getByTestId("session-close-btn"));
+    (api.getSession as Mock).mockImplementation(async (sid: string) => ({ ...OPEN, id: sid, status: "closed" }));
+    await act(async () => fireEvent.click(screen.getByTestId("session-close-confirm")));
+    await waitFor(() => expect(focused()).toBe("gm-closed-banner"));
+  });
+
+  it("#1: voiding a deed leaves the focus on its card", async () => {
+    const deed = { id: "d1", session_id: "s1", player_id: "p", region_id: "a", turn: 0, kind: "arrival", text: "Ari came.",
+      witnessed_npc_ids: [], voided: false, region_name: "A", witness_names: [] };
+    (api.listDeeds as Mock).mockResolvedValueOnce([{ deed, appraisals: [], rumors: [], reached_region_ids: [], reached_region_names: [] }])
+      .mockResolvedValue([{ deed: { ...deed, voided: true }, appraisals: [], rumors: [], reached_region_ids: [], reached_region_names: [] }]);
+    (api.voidDeed as Mock).mockResolvedValue({ deed_id: "d1", deactivated_rumor_ids: [] });
+    renderGm();
+    await ready();
+    openTab("deeds");
+    fireEvent.click(await screen.findByTestId("void-d1"));
+    await act(async () => fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: t("deed.voidConfirmBtn") })));
+    await waitFor(() => expect(focused()).toBe("deed-d1"));
+  });
+
+  it("#1: confirming [remake every region's rumors] leaves the focus on the progress line", async () => {
+    const hold = deferred<unknown>();
+    (api.regenRumors as Mock).mockReturnValue(hold.promise);
+    renderGm();
+    await ready();
+    fireEvent.click(screen.getByTestId("regen-all-btn"));
+    await act(async () => fireEvent.click(screen.getByTestId("regen-all-confirm")));
+    await waitFor(() => expect(focused()).toBe("generate-progress"));
+    await act(async () => hold.resolve([]));
+  });
+
+  it("#8: an approved card leaves the focus on the group it moved to; a closed band hands it to [advance]", async () => {
+    (api.listEvents as Mock).mockResolvedValueOnce([{ id: "e1", session_id: "s1", region_id: "b", category: "war", description: "x",
+      magnitude: 0.5, lifecycle: "persistent", status: "suggested", created_turn: 1, contributions: {} }])
+      .mockResolvedValue([{ id: "e1", session_id: "s1", region_id: "b", category: "war", description: "x",
+        magnitude: 0.5, lifecycle: "persistent", status: "active", created_turn: 1, contributions: {} }]);
+    (api.approveEvent as Mock).mockResolvedValue({});
+    (api.advanceTurn as Mock).mockResolvedValue(TURN);
+    renderGm();
+    await ready();
+    openTab("events");
+    await act(async () => fireEvent.click(await screen.findByTestId("approve-e1")));
+    await waitFor(() => expect(screen.getByTestId("events-active")).toContainElement(screen.getByTestId("event-e1")));
+    expect(focused()).toBe("events-active");
+    await act(async () => fireEvent.click(screen.getByTestId("advance-turn-btn")));
+    fireEvent.click(await screen.findByTestId("turn-band-close"));
+    await waitFor(() => expect(focused()).toBe("advance-turn-btn"));
+  });
+
+  it("#8: an event card's region name hands the focus to the region's heading", async () => {
+    (api.listEvents as Mock).mockResolvedValue([{ id: "e1", session_id: "s1", region_id: "b", category: "war", description: "x",
+      magnitude: 0.5, lifecycle: "persistent", status: "active", created_turn: 1, contributions: {} }]);
+    renderGm();
+    await ready();
+    openTab("events");
+    fireEvent.click(await screen.findByTestId("event-region-e1"));
+    await waitFor(() => expect(focused()).toBe("region-heading"));
+  });
+
+  it("#9: the picker moves nowhere until [open]; the next session's picker has the focus", async () => {
+    (api.listSessions as Mock).mockResolvedValue([OPEN, { ...OPEN, id: "s2", turn: 1 }]);
+    renderGm();
+    await ready();
+    const select = screen.getByTestId("session-select");
+    await waitFor(() => expect(within(select).getAllByRole("option").length).toBe(2));
+    fireEvent.change(select, { target: { value: "s2" } });
+    expect(api.getSession).not.toHaveBeenCalledWith("s2");
+    fireEvent.click(screen.getByTestId("session-open-btn"));
+    await waitFor(() => expect(api.getSession).toHaveBeenCalledWith("s2"));
+    await ready();
+    await waitFor(() => expect(focused()).toBe("session-select"));
+  });
+
+  it("#10: any region can be chosen without the map", async () => {
+    renderGm();
+    await ready();
+    const picker = await screen.findByTestId("region-select");
+    fireEvent.change(picker, { target: { value: "b" } });
+    expect(await screen.findByTestId("region-heading")).toHaveTextContent("Hollow");
+    expect(screen.getByTestId("region-select")).toHaveValue("b");
+  });
+
+  it("#44: the knowledge fold says how much is known once read; the map picture says it stays here", async () => {
+    (api.sessionKnowledge as Mock).mockResolvedValue({ world_id: "w", region_id: "a", shared_ids: [], unique_ids: [],
+      items: [{ knowledge_id: "k1", statement: "x", scope_type: "direct", is_hearsay: false, confidence: 0.6 }] });
+    renderGm();
+    await ready();
+    expect(screen.getByText(t("hint.mapPictureLocal"))).toBeInTheDocument();
+    await chooseRegion("a");
+    fireEvent.click(screen.getByRole("button", { name: t("label.knows") }));
+    expect(await screen.findByRole("button", { name: t("label.knowsCount", { n: 1 }) })).toBeInTheDocument();
+  });
+});

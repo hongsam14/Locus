@@ -1,8 +1,9 @@
-import { enumLabel } from "../../format";
+import { useEffect, useState } from "react";
+import { ENUM_VALUES, enumLabel } from "../../format";
 import { t } from "../../i18n";
 import { Section } from "../../layout";
 import type { Region, RegionState, SessionRumor } from "../../types";
-import { StatusView } from "../../ui";
+import { Select, StatusView } from "../../ui";
 import { english, type NameOf } from "../play/names";
 import { DistortionPanel } from "./DistortionPanel";
 import { EventForm, type EventDraft, type NewEvent } from "./EventForm";
@@ -28,6 +29,8 @@ export function RegionTab({
   llmOff,
   bulkBusy,
   regionWriting = false,
+  regions = [],
+  onPickRegion,
   knowledgeRev,
   draft,
   onDraft,
@@ -54,6 +57,9 @@ export function RegionTab({
   llmOff: boolean;
   bulkBusy: boolean;
   regionWriting?: boolean;
+  /** The world's regions: a picker reaches any of them without the map (review #10). */
+  regions?: Region[];
+  onPickRegion?(regionId: string): void;
   knowledgeRev: number;
   draft: EventDraft;
   onDraft(d: EventDraft): void;
@@ -67,17 +73,39 @@ export function RegionTab({
   onRegen(): Promise<unknown>;
   onCreateEvent(body: NewEvent): Promise<boolean>;
 }) {
+  const [known, setKnown] = useState<number | null>(null);
+  useEffect(() => setKnown(null), [regionId]);
+  // by level, then by name: one group per level (the map is not reached by keyboard, FR-S6)
+  const levels: readonly string[] = ENUM_VALUES.regionLevel;
+  const options = [...regions]
+    .map((r) => ({ r, name: nameOf("regions", r.id, "name", r.name) }))
+    .sort((a, b) => levels.indexOf(a.r.level) - levels.indexOf(b.r.level) || a.name.localeCompare(b.name))
+    .map(({ r, name }) => ({ value: r.id, label: name, group: enumLabel("regionLevel", r.level) }));
+  const picker = onPickRegion && options.length > 0 && (
+    <Select
+      label={t("label.regionPicker")}
+      data-testid="region-select"
+      value={regionId && region ? regionId : ""}
+      placeholder={t("session.pickRegion")}
+      options={options}
+      onChange={(id) => onPickRegion(id)}
+    />
+  );
   if (!regionId || !region) {
     return (
-      <p data-testid="gm-no-region" className="text-sm text-muted">
-        {t("empty.noRegionChosen")}
-      </p>
+      <div className="flex flex-col gap-3">
+        {picker}
+        <p data-testid="gm-no-region" className="text-sm text-muted">
+          {t("empty.noRegionChosen")}
+        </p>
+      </div>
     );
   }
   return (
     <div data-testid="gm-region" className="flex flex-col gap-4">
+      {picker}
       <div className="flex flex-wrap items-baseline gap-2">
-        <h2 data-testid="region-heading" className="font-heading text-xl">
+        <h2 data-testid="region-heading" tabIndex={-1} className="font-heading text-xl">
           {nameOf("regions", region.id, "name", region.name)}
         </h2>
         <span className="text-sm text-muted">{enumLabel("regionLevel", region.level)}</span>
@@ -120,8 +148,11 @@ export function RegionTab({
         </Section>
       </div>
       <div data-testid="knowledge-toggle">
-        <Section level={3} collapsible title={t("label.knows")} open={knowledgeOpen} onOpenChange={onKnowledgeOpen}>
-          {worldId && <RegionKnowledgePanel worldId={worldId} regionId={regionId} sessionId={sessionId} rev={knowledgeRev} />}
+        <Section level={3} collapsible open={knowledgeOpen} onOpenChange={onKnowledgeOpen}
+          title={known == null ? t("label.knows") : t("label.knowsCount", { n: known })}>
+          {worldId && (
+            <RegionKnowledgePanel worldId={worldId} regionId={regionId} sessionId={sessionId} rev={knowledgeRev} onCount={setKnown} />
+          )}
         </Section>
       </div>
     </div>

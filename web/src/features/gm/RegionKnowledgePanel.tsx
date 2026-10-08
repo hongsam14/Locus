@@ -12,6 +12,8 @@ interface Props {
   sessionId?: string | null; // when set, show the session NPC view (FR-R5.1)
   /** Bumped when what the NPCs know may have changed: read again, keeping what is shown. */
   rev?: number;
+  /** How many things are known here, once read (the fold's title says it, FE § 4.1). */
+  onCount?(n: number): void;
 }
 
 // Badge text (U1 §11.4): canonical hearsay vs. session rumor vs. scope — in words (V6 FR-D8).
@@ -31,7 +33,7 @@ function badgeTone(it: KnowledgeView): "neutral" | "event" | "promoted" {
  * knowledge is edited in the world editor only (U3 BR-U3-33). V6: it sits in a fold of the
  * region tab and reads when opened; a new `rev` reads again without unmounting, so the list
  * stays on screen until the answer comes (UX-42). Numbers carry their meaning (FR-D8). */
-export function RegionKnowledgePanel({ worldId, regionId, sessionId, rev = 0 }: Props) {
+export function RegionKnowledgePanel({ worldId, regionId, sessionId, rev = 0, onCount }: Props) {
   const lang = useRequestLang(); // translated fields differ per language: re-read
   // Q3=A: in a session, use the session NPC view; otherwise the canonical query.
   const key = ["knowledge", worldId, regionId, sessionId ?? null, lang];
@@ -42,6 +44,11 @@ export function RegionKnowledgePanel({ worldId, regionId, sessionId, rev = 0 }: 
   }));
   const result = r.data && r.data.k === keyText ? r.data.v : null; // another region's answer never shows
   const reload = r.reload;
+  const count = result?.items.length;
+  useEffect(() => {
+    if (count != null) onCount?.(count);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onCount is a notifier
+  }, [count]);
   // read again when `rev` moves — compared with the last one seen, so StrictMode's second
   // effect run does not read twice (code review 01 #28)
   const seen = useRef(rev);

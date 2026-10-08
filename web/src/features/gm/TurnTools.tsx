@@ -44,7 +44,7 @@ export function TurnTools({
   const bulkOff = closed || running || llmOff || advancing || regionBusy;
   const why = llmOff ? t("llm.required") : undefined;
   return (
-    <section data-testid="turn-tools" className="flex flex-col gap-3">
+    <section data-testid="turn-tools" tabIndex={-1} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end gap-2">
         <Button variant="primary" data-testid="advance-turn-btn" busy={advancing} disabled={closed || running}
           onClick={onAdvance}>
@@ -73,7 +73,7 @@ export function TurnTools({
         </Button>
       </div>
       {bulk && (
-        <div data-testid="generate-progress">
+        <div data-testid="generate-progress" tabIndex={-1} role="status">
           <div className="h-1.5 overflow-hidden rounded-md border border-line-strong">
             <div className="h-full bg-accent" style={{ width: `${bulk.total ? (bulk.done / bulk.total) * 100 : 0}%` }} />
           </div>

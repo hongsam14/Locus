@@ -352,7 +352,8 @@ describe("EditorPage demo load (BR-U2-25)", () => {
     expect(screen.getByText(t("empty.noFile"))).toBeInTheDocument();
     fireEvent.change(screen.getByTestId("map-file-input"), { target: { files: [image] } });
     expect(made).toHaveBeenCalledWith(image);
-    expect(screen.getByAltText("world map")).toHaveAttribute("src", "blob:map");
+    // V6 (code review 01 43(e)): the backdrop is decorative — the map beside it has the name
+    expect(screen.getByTestId("map-overlay").querySelector("img")).toHaveAttribute("src", "blob:map");
     expect(screen.getByText("map.png")).toBeInTheDocument(); // the picker says what it holds (V2 review #7)
   });
 });

@@ -64,7 +64,8 @@ export function MapPane({
     return out;
   }, [overlayOn, state]);
   return (
-    <section data-testid="gm-map" aria-label={t("label.map")} className="flex flex-col gap-2">
+    // no name of its own: the map inside carries "월드 지도" (review 43(b))
+    <section data-testid="gm-map" className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
         <Button size="sm" data-testid="gm-state-toggle" aria-pressed={overlayOn} onClick={onToggle}>
           {t("gm.stateToggle")}
@@ -83,7 +84,7 @@ export function MapPane({
           </span>
         )}
         <span className="ml-auto">
-          <FileInput label={t("toolbar.pickMap")} accept="image/*" data-testid="map-file-input"
+          <FileInput label={t("label.mapPicture")} hint={t("hint.mapPictureLocal")} accept="image/*" data-testid="map-file-input"
             chosen={mapName ? [mapName] : undefined} onFiles={([f]) => f && onMapFile(f)} />
         </span>
       </div>

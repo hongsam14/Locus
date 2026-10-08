@@ -71,8 +71,15 @@ export function Dialog({
           }}
           onCloseAutoFocus={(e) => {
             e.preventDefault();
+            // the screen already put the focus where the confirmed action left things (V6 code
+            // review 01 #1): Radix calls this a tick after closing, so do not take it back
+            const now = document.activeElement;
+            if (now && now !== document.body && now.isConnected) return;
             const back = opener.current;
-            if (back?.isConnected) back.focus();
+            // an opener the confirmed action took away or turned off cannot hold focus: it
+            // would fall to <body> (V6 code review 01 #1); the screen may move it on later
+            const off = back instanceof HTMLButtonElement && back.disabled;
+            if (back?.isConnected && !off) back.focus();
             else document.getElementById("main")?.focus();
           }}
           onInteractOutside={(e) => {

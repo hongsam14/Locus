@@ -203,8 +203,8 @@ export function WorldMap({
       style={{ aspectRatio: `${viewBox.w} / ${viewBox.h}` }}
     >
       {background && mode !== "play" && (
-        // the alt text moves into the dictionary with the editor screen (V8)
-        <img src={background} alt="world map" className="absolute inset-0 h-full w-full object-cover opacity-70" />
+        // a backdrop behind the labelled map: no text of its own (V6 code review 01 43(e))
+        <img src={background} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-70" />
       )}
       <svg
         ref={svgRef}

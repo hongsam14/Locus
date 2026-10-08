@@ -81,6 +81,8 @@ describe("GmHeader (BR-V6-13/26, TP-V6-10)", () => {
     const select = screen.getByTestId("session-select");
     expect(within(select).getByRole("group", { name: "끝난 세션" })).toBeInTheDocument();
     fireEvent.change(select, { target: { value: "s0" } });
+    expect(p.onPick).not.toHaveBeenCalled(); // choosing moves nowhere (review #9)
+    fireEvent.click(screen.getByTestId("session-open-btn"));
     expect(p.onPick).toHaveBeenCalledWith("s0");
     fireEvent.click(within(screen.getByTestId("sessions-error")).getByRole("button"));
     expect(p.onRetrySessions).toHaveBeenCalled();
@@ -230,7 +232,7 @@ describe("TurnBand (Q2=A, BR-V6-07)", () => {
 
   it("a turn that changed nothing reads as quiet", () => {
     render(<TurnBand outcome={outcomeOf(result({ region_changes: [change("a")] }))} onPickRegion={vi.fn()} onClose={vi.fn()} />);
-    expect(screen.getByTestId("turn-band")).toHaveTextContent(t("notice.quietTurnGm"));
+    expect(screen.getByTestId("turn-band")).toHaveTextContent(t("notice.quietTurnGm", { n: 5 }));
   });
 });
 
@@ -320,8 +322,9 @@ describe("GmTabs and GmLayout (BR-V6-02/03/04/34, TP-V6-14)", () => {
     render(<Tabbed />);
     const list = screen.getByRole("tablist", { name: t("label.gmTabs") });
     const tabs = within(list).getAllByRole("tab");
-    expect(tabs.map((x) => x.textContent?.replace(/\d+$/, ""))).toEqual(["region", "events", "seeds", "timeline", "deeds"].map((k) => t(`tab.${k}`)));
+    expect(tabs.map((x) => x.querySelector("[data-testid^='gm-tab-']")?.textContent)).toEqual(["region", "events", "seeds", "timeline", "deeds"].map((k) => t(`tab.${k}`)));
     expect(screen.getByTestId("events-badge")).toHaveTextContent("2");
+    expect(screen.getByTestId("events-badge").textContent).toBe(`${t("label.waitingSuggestions")} 2`); // the number says what (43(f))
     expect(screen.getByRole("tabpanel")).toHaveTextContent("R");
     tabs[0].focus();
     fireEvent.keyDown(tabs[0], { key: "ArrowRight" });
@@ -337,7 +340,7 @@ describe("GmTabs and GmLayout (BR-V6-02/03/04/34, TP-V6-14)", () => {
 
   it("wide: the map beside a panel of tools, error, band and tabs", () => {
     render(<GmLayout wide s={s} />);
-    const aside = screen.getByRole("complementary", { name: t("label.gmPanel") });
+    const aside = screen.getByRole("region", { name: t("label.gmPanel") });
     for (const id of ["L-tools", "L-error", "L-band", "L-tabs"]) expect(aside).toContainElement(screen.getByTestId(id));
     expect(aside).not.toContainElement(screen.getByTestId("L-map"));
     expect(order()).toEqual(["L-header", "L-player", "L-map", "L-tools", "L-error", "L-band", "L-tabs"]);
@@ -345,7 +348,7 @@ describe("GmTabs and GmLayout (BR-V6-02/03/04/34, TP-V6-14)", () => {
 
   it("narrow: one column — head, player, tools, band, map, tabs", () => {
     render(<GmLayout wide={false} s={s} />);
-    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: t("label.gmPanel") })).not.toBeInTheDocument();
     expect(order()).toEqual(["L-header", "L-player", "L-tools", "L-error", "L-band", "L-map", "L-tabs"]);
   });
 });

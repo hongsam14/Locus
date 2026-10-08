@@ -149,7 +149,7 @@ describe("TP-V6-1: two widths, each part once (BR-V6-02/03)", () => {
     wide = true;
     renderGm();
     await ready();
-    const aside = screen.getByRole("complementary", { name: t("label.gmPanel") });
+    const aside = screen.getByRole("region", { name: t("label.gmPanel") }); // review 43(c): not an <aside>
     for (const id of ["turn-tools", "turn-band-live", "gm-tabs"]) expect(aside).toContainElement(screen.getByTestId(id));
     expect(aside).not.toContainElement(screen.getByTestId("gm-map"));
     for (const id of ["advance-turn-btn", "gm-tabs", "gm-map", "session-select"]) expect(screen.getAllByTestId(id)).toHaveLength(1);
@@ -158,7 +158,7 @@ describe("TP-V6-1: two widths, each part once (BR-V6-02/03)", () => {
   it("narrower: one column — head, tools, band, map, tabs", async () => {
     renderGm();
     await ready();
-    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: t("label.gmPanel") })).not.toBeInTheDocument();
     expect(order()).toEqual(["gm-header", "turn-tools", "turn-band-live", "gm-map", "gm-tabs"]);
     for (const id of ["advance-turn-btn", "gm-tabs", "gm-map"]) expect(screen.getAllByTestId(id)).toHaveLength(1);
   });

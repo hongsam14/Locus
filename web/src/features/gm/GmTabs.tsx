@@ -44,7 +44,12 @@ export function GmTabs({
         label={t("label.gmTabs")}
         tabs={[
           item("region", region),
-          item("events", events, suggested > 0 ? <Badge data-testid="events-badge">{suggested}</Badge> : undefined),
+          item("events", events, suggested > 0 ? (
+            <Badge data-testid="events-badge">
+              <span className="sr-only">{t("label.waitingSuggestions")} </span>
+              {suggested}
+            </Badge>
+          ) : undefined),
           item("seeds", seeds),
           item("timeline", timeline),
           item("deeds", deeds),

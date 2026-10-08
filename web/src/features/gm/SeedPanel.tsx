@@ -30,6 +30,7 @@ export function SeedPanel({
   }
   return (
     <section data-testid="seed-panel" className="flex flex-col gap-1.5">
+      <h2 className="sr-only">{t("tab.seeds")}</h2>
       {seeds.data.length === 0 && <p className="text-sm text-muted">{t("empty.seeds")}</p>}
       {seeds.data.map((view) => (
         <SeedRow key={view.seed.id} view={view} nameOf={nameOf} off={closed || busy} onStart={onStart} />
@@ -47,7 +48,7 @@ function SeedRow({ view, nameOf, off, onStart }: { view: SeedView; nameOf: NameO
   });
   const { seed, region_name, running_event_id } = view;
   return (
-    <Card data-testid={`seed-row-${seed.id}`} className="flex flex-wrap items-center gap-2 text-sm">
+    <Card data-testid={`seed-row-${seed.id}`} tabIndex={-1} className="flex flex-wrap items-center gap-2 text-sm">
       <strong>{nameOf("event_seeds", seed.id, "title", seed.title)}</strong>
       <span className="text-xs text-muted">{nameOf("regions", seed.region_id, "name", region_name)}</span>
       <Badge>{enumLabel("eventCategory", seed.category)}</Badge>

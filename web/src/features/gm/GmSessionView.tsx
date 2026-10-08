@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { HttpError, conflictKind, statusOf } from "../../api/http";
 import { llmOff, useCapabilities } from "../../capabilities";
@@ -82,6 +82,38 @@ export function GmSessionView({
   const [suggestN, setSuggestN] = useState(1);
   const [cap, setCap] = useState<number | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+
+  // Where the focus goes after a write took away the control that had it (code review 01 #1,
+  // #8, #9): a test id, focused once the element is there and no dialog is open (re-reads
+  // and the dialog's own close come later, on no render of ours), tried for three seconds so
+  // it never jumps away from what the GM did next.
+  const [focusTo, setFocusTo] = useState<string | null>(
+    (location.state as { focus?: string } | null)?.focus ?? null,
+  );
+  useEffect(() => {
+    if (!focusTo) return;
+    const tryFocus = () => {
+      if (document.querySelector('[role="dialog"]')) return false;
+      const el = document.querySelector<HTMLElement>(`[data-testid="${focusTo}"]`);
+      if (!el || (el instanceof HTMLButtonElement && el.disabled)) return false;
+      el.focus();
+      return true;
+    };
+    if (tryFocus()) {
+      setFocusTo(null);
+      return;
+    }
+    const started = Date.now();
+    const timer = setInterval(() => {
+      if (tryFocus() || Date.now() - started > 3000) {
+        clearInterval(timer);
+        setFocusTo(null);
+      }
+    }, 50);
+    return () => clearInterval(timer);
+  }, [focusTo]);
+  const go = (id: string) => navigate(`/gm/${encodeURIComponent(id)}`, { state: { focus: "session-select" } });
   const maxSuggest = cap ?? data.worldState.data?.max_event_suggestions ?? 5;
 
   useEffect(() => {
@@ -159,9 +191,11 @@ export function GmSessionView({
   const holding = advance.busy;
   const writesOff = closed || holding;
 
-  function pickRegion(regionId: string, from: "map" | "band" | "card") {
+  function pickRegion(regionId: string, from: "map" | "band" | "card" | "select") {
     onSelect(regionId);
     setTab("region");
+    // the event card that was pressed goes with its tab: the region's name takes the focus
+    if (from === "card") setFocusTo("region-heading");
     if (from === "band" && !wide) {
       // one column: the tabs are below the map — bring them into view and say where (R-08)
       const root = tabsRef.current;
@@ -192,15 +226,18 @@ export function GmSessionView({
             locked={bulkBusy || holding}
             onRetrySessions={gm.reloadSessions}
             onPick={(id) => {
-              if (id && id !== sessionId) navigate(`/gm/${encodeURIComponent(id)}`);
+              if (id && id !== sessionId) go(id);
             }}
             onNew={async () => {
               if (!gm.worldId) return;
               const created = await api.startSession(gm.worldId);
               gm.reloadSessions(); // the list knows the new session (R-04, review #4)
-              if (mounted.current) navigate(`/gm/${encodeURIComponent(created.id)}`);
+              if (mounted.current) go(created.id);
             }}
-            onEnd={() => gmWrite("close", () => api.closeSession(sessionId), { inDialog: true })}
+            onEnd={async () => {
+              await gmWrite("close", () => api.closeSession(sessionId), { inDialog: true });
+              setFocusTo("gm-closed-banner");
+            }}
           />
         ),
         banner: session?.status === "closed" ? <ClosedBanner /> : null,
@@ -234,8 +271,14 @@ export function GmSessionView({
             onSuggestN={setSuggestN}
             onAdvance={() => void advance.run()}
             onSuggest={() => void suggest.run()}
-            onGenerateAll={() => void bulk.generateAll()}
-            onRegenAll={() => void bulk.regenAll()}
+            onGenerateAll={() => {
+              setFocusTo("generate-progress"); // the pressed button turns off while it runs
+              void bulk.generateAll();
+            }}
+            onRegenAll={() => {
+              setFocusTo("generate-progress");
+              void bulk.regenAll();
+            }}
           />
         ),
         error: writeError ? (
@@ -243,7 +286,17 @@ export function GmSessionView({
             <InlineError error={writeError} />
           </div>
         ) : null,
-        band: <TurnBand outcome={outcome} nameOf={nameOf} onPickRegion={(id) => pickRegion(id, "band")} onClose={() => setOutcome(null)} />,
+        band: (
+          <TurnBand
+            outcome={outcome}
+            nameOf={nameOf}
+            onPickRegion={(id) => pickRegion(id, "band")}
+            onClose={() => {
+              setOutcome(null);
+              setFocusTo(closed || bulkBusy ? "turn-tools" : "advance-turn-btn");
+            }}
+          />
+        ),
         tabs: (
           <GmTabs
             rootRef={tabsRef}
@@ -265,6 +318,8 @@ export function GmSessionView({
                 llmOff={noLlm}
                 bulkBusy={bulkBusy}
                 regionWriting={regionWrite.busy}
+                regions={gm.world?.regions ?? []}
+                onPickRegion={(id) => pickRegion(id, "select")}
                 knowledgeRev={data.knowledgeRev}
                 draft={draft}
                 onDraft={setDraft}
@@ -296,9 +351,22 @@ export function GmSessionView({
                 events={data.events}
                 regionName={regionName}
                 closed={writesOff}
-                onApprove={(id) => saved("approve", () => api.approveEvent(sessionId, id))}
-                onDiscard={(id) => saved("discard", () => api.discardEvent(sessionId, id))}
-                onResolve={(id) => saved("resolve", () => api.resolveEvent(sessionId, id))}
+                onApprove={async (id) => {
+                  const ok = await saved("approve", () => api.approveEvent(sessionId, id));
+                  // the card moves to the running group once read again: that group stays put
+                  if (ok) setFocusTo("events-active");
+                  return ok;
+                }}
+                onDiscard={async (id) => {
+                  const ok = await saved("discard", () => api.discardEvent(sessionId, id));
+                  if (ok) setFocusTo("events-suggested");
+                  return ok;
+                }}
+                onResolve={async (id) => {
+                  const ok = await saved("resolve", () => api.resolveEvent(sessionId, id));
+                  if (ok) setFocusTo("events-resolved"); // ended cards are folded
+                  return ok;
+                }}
                 onPickRegion={(id) => pickRegion(id, "card")}
               />
             }
@@ -308,7 +376,11 @@ export function GmSessionView({
                 nameOf={nameOf}
                 closed={writesOff}
                 busy={bulkBusy}
-                onStart={(id) => saved("seed", () => api.startSeed(sessionId, id))}
+                onStart={async (id) => {
+                  const ok = await saved("seed", () => api.startSeed(sessionId, id));
+                  if (ok) setFocusTo(`seed-row-${id}`); // its button becomes "running"
+                  return ok;
+                }}
               />
             }
             timeline={<TimelinePanel timeline={data.timeline} newIds={newIds} nameOf={nameOf} />}
@@ -317,7 +389,10 @@ export function GmSessionView({
                 deeds={data.deeds}
                 closed={writesOff}
                 nameOf={nameOf}
-                onVoid={(id) => gmWrite("void", () => api.voidDeed(sessionId, id), { inDialog: true })}
+                onVoid={async (id) => {
+                  await gmWrite("void", () => api.voidDeed(sessionId, id), { inDialog: true });
+                  setFocusTo(`deed-${id}`);
+                }}
               />
             }
           />

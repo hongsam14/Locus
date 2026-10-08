@@ -218,7 +218,7 @@ def test_u4_sql_player_and_run_round_trip(repo: PostgresPlayRepository) -> None:
     assert saved.status == "done" and saved.result.turns[0].turn == 1
     assert repo.get_run("other", run.id) is None
     assert [r.id for r in repo.list_runs(s.id, "done")] == [run.id]
-    assert repo.fail_stale_runs(reason="interrupted") == 0
+    assert repo.list_running_runs() == []  # V5: nothing a restart cut
 
 
 def test_u4_sql_uow_rolls_back_everything(repo: PostgresPlayRepository) -> None:

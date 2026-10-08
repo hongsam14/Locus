@@ -159,19 +159,19 @@
 - [x] 6.4 커밋: `fix(play): a voided deed's rumor stays voided under a support change; a distortion set records the feedback share once (V5, RE-P01)`
 
 ### Step 7 — 턴: 끊긴 run 복구와 지운 지역의 사건 (BLM § 5·6, BR-V5-18~21, § 1.1 R-01·R-04·R-06)
-- [ ] 7.1 포트 `TurnRunStore.list_running_runs()`를 더하고, `fail_stale_runs`를 없앤다(인메모리, SQL, 포트).
-- [ ] 7.2 `TurnAdvancer`
+- [x] 7.1 포트 `TurnRunStore.list_running_runs()`를 더하고, `fail_stale_runs`를 없앤다(인메모리, SQL, 포트).
+- [x] 7.2 `TurnAdvancer`
   - `_fail` 본문을 `_compensate(run, *, error_type, error)`로 옮긴다. `_fail`은 그것을 부른다.
   - `recover_interrupted() -> list[str]`: 보상 → 실패면 `interrupted_uncompensated` 표시와 ERROR 로그(§ 1.1 R-01).
-- [ ] 7.3 `api/main.py` lifespan: `containers.play.turns.recover_interrupted()`.
-- [ ] 7.4 `_compute_events`: 적용 전에 대상 지역이 없는 ACTIVE 사건을 해소한다.
+- [x] 7.3 `api/main.py` lifespan: `containers.play.turns.recover_interrupted()`.
+- [x] 7.4 `_compute_events`: 적용 전에 대상 지역이 없는 ACTIVE 사건을 해소한다.
   - 복원은 있는 지역만, `event_updates`·`resolved_ids`·`influenced_regions`에 넣고, 줄의 `reason`은 `region_removed`다.
-- [ ] 7.5 시험(새 `tests/play/test_v5_turns.py`, 계약은 `tests/play/test_repository_contract.py`)
+- [x] 7.5 시험(새 `tests/play/test_v5_turns.py`, 계약은 `tests/play/test_repository_contract.py`)
   - TP-V5-5: 0턴 이동, 1/2턴, 보상 실패, 다음 복구.
   - TP-V5-6: 다음 턴에 다시 해소되지 않음, GM 해소도 없는 지역 행을 만들지 않음.
   - 계약 시험 `list_running_runs`(`any_repo`).
   - `fail_stale_runs` 시험 3곳을 고친다.
-- [ ] 7.6 커밋: `fix(play): a run cut by a restart is compensated like a failed one; an event whose region is gone ends (V5, FR-C3, FR-C4)`
+- [x] 7.6 커밋: `fix(play): a run cut by a restart is compensated like a failed one; an event whose region is gone ends (V5, FR-C3, FR-C4)`
 
 ### Step 8 — 운영 문서
 - [ ] 8.1 `aidlc-docs/operations/operations.md`

@@ -890,16 +890,19 @@ def test_a_closed_session_stops_the_turn_loop_at_the_next_boundary() -> None:
 
 
 def test_a_region_deleted_from_the_world_does_not_wedge_the_turn_engine() -> None:
-    """#4: drafting for a vanished region raised on every later turn."""
+    """#4: drafting for a vanished region raised on every later turn. V5 (FR-C4): the
+    event of a vanished region now ends before the turn applies it, so nothing is
+    drafted there at all."""
     repo, gm, turns, session, _player = _engine()
-    gm.events.create_event(session.id, "b", category=EventCategory.WAR, magnitude=0.5)
+    event = gm.events.create_event(session.id, "b", category=EventCategory.WAR, magnitude=0.5)
     turns.advance(session.id)  # works while b exists
     smaller = build_snapshot(["a"], [])  # the editor removed b
     turns._snapshots = _Snap(smaller)
     turns._rumors._snapshots = _Snap(smaller)
     result = turns.advance(session.id)  # must not raise
     assert result.session.turn == 2
-    assert "b" in result.turns[0].rumors_skipped_regions
+    assert result.turns[0].resolved_event_ids == [event.id]
+    assert "b" not in result.turns[0].rumors_skipped_regions
 
 
 def test_a_turn_only_writes_the_distortions_its_events_moved() -> None:

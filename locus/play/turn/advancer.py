@@ -90,6 +90,11 @@ if TYPE_CHECKING:  # wired by assemble_play; imported for types only (no cycles)
 logger = logging.getLogger(__name__)
 
 RUN_FAILED_MESSAGE = "turn processing failed"  # fixed one-liner (NFR-6)
+# V5 (BR-V5-18): a run a restart cut — its `error` and its line's `error_type`
+RUN_INTERRUPTED = "interrupted"
+RUN_INTERRUPTED_TYPE = "Interrupted"
+# V5 (code plan § 1.1 R-01): its compensation failed too; an operator checks the player
+RUN_UNCOMPENSATED = "interrupted_uncompensated"
 
 
 class _EventApplication(LocusModel):
@@ -505,9 +510,50 @@ class TurnAdvancer(SessionAppService):
             run.finished_at = datetime.now(timezone.utc)
             u.runs.update_run(run)
 
+    def recover_interrupted(self) -> list[str]:
+        """Compensate every run a restart cut, in every session, like a failed one
+        (V5 FR-C3, BR-V5-18) — called once at API start, before any request. Returns
+        the ids compensated.
+
+        A run whose compensation fails is marked failed with ``interrupted_uncompensated``
+        in a unit of work of its own and logged at ERROR for an operator; the others go on
+        (code plan § 1.1 R-01). If even that mark fails (storage down) the run stays
+        ``running`` and is tried again on the next start.
+        """
+        done: list[str] = []
+        for run in self._repo.list_running_runs():
+            try:
+                self._compensate(run, error_type=RUN_INTERRUPTED_TYPE, error=RUN_INTERRUPTED)
+                done.append(run.id)
+            except Exception:
+                logger.error(
+                    "could not compensate interrupted turn run %s (session %s); "
+                    "check the player's position and turn charge",
+                    run.id,
+                    run.session_id,
+                    exc_info=True,
+                )
+                try:
+                    with self._repo.uow() as u:
+                        run.status = TurnRunStatus.FAILED
+                        run.error = RUN_UNCOMPENSATED
+                        run.finished_at = datetime.now(timezone.utc)
+                        u.runs.update_run(run)
+                except Exception:
+                    logger.exception(
+                        "could not mark turn run %s failed; it is retried on the next start",
+                        run.id,
+                    )
+        return done
+
     def _fail(self, run: TurnRun, exc: BaseException) -> None:
-        """Mark the run failed, undo the immediate state the turns never paid for, and
-        keep only the exception class in the timeline (NFR-6).
+        """A run whose turns raised: compensated, with only the exception class kept in
+        the timeline (NFR-6)."""
+        self._compensate(run, error_type=type(exc).__name__, error=RUN_FAILED_MESSAGE)
+
+    def _compensate(self, run: TurnRun, *, error_type: str, error: str) -> None:
+        """Mark the run failed and undo the immediate state the turns never paid for —
+        the one rule for a failed run and one a restart cut (V5 BR-V5-18).
 
         The move and the turn charge commit in their own transaction before the loop
         starts (Q4=A), so without compensation a failing loop left the player moved and
@@ -518,7 +564,7 @@ class TurnAdvancer(SessionAppService):
         advanced = self._advanced_turns(run)
         with self._repo.uow() as u:
             run.status = TurnRunStatus.FAILED
-            run.error = RUN_FAILED_MESSAGE
+            run.error = error
             run.finished_at = datetime.now(timezone.utc)
             u.runs.update_run(run)
             player = u.players.get_player(run.session_id)
@@ -545,7 +591,7 @@ class TurnAdvancer(SessionAppService):
                         RUN_FAILED_MESSAGE,
                         {
                             "run_id": run.id,
-                            "error_type": type(exc).__name__,
+                            "error_type": error_type,
                             "turns_advanced": advanced,
                             "turns_refunded": max(0, run.turns_charged - advanced),
                             # where the player stands again — the player log follows it
@@ -919,6 +965,12 @@ class TurnAdvancer(SessionAppService):
         Canonical topology is read-only (NFR-P2). one_shot events auto-resolve
         (BR-P2-4); persistent ones accumulate contributions for later restore
         (BR-P2-3/5). Nothing is written here: the unit of work persists the result.
+
+        V5 (FR-C4, Q1=A, BR-V5-20/21): first, an event whose region the world no longer
+        has ends — as if the GM had resolved it before this turn. Its contributions are
+        restored on the regions still there (no row for the gone one), the restored
+        neighbours are saved with the turn (code plan § 1.1 R-04), and its line says
+        ``reason: "region_removed"``. It is not applied.
         """
         topo = snapshot.topo
         names = {r.id: r.name for r in topo.regions}
@@ -928,7 +980,31 @@ class TurnAdvancer(SessionAppService):
             for rd in self._repo.list_region_distortions(session.id)
         }
         out = _EventApplication()
+        live: list[SessionEvent] = []
         for ev in active:
+            if ev.region_id in names:
+                live.append(ev)
+                continue
+            restored = {rid: d for rid, d in ev.contributions.items() if rid in names}
+            cur = dynamics.restore_contributions(cur, restored)
+            ev.resolve(session.turn + 1)  # ends this turn, like a one_shot
+            out.resolved_ids.append(ev.id)
+            out.event_updates.append(ev)
+            out.influenced_regions |= set(restored)
+            out.timeline.append(
+                self._entry(
+                    session,
+                    TimelineKind.EVENT_RESOLVED,
+                    f"{ev.category} event in a removed region ended",
+                    {
+                        "event_id": ev.id,
+                        "restored": restored,
+                        "region_id": ev.region_id,
+                        "reason": "region_removed",
+                    },
+                )
+            )
+        for ev in live:
             base = dynamics.distortion_delta(ev.magnitude, max_delta=self._params.event_max_delta)
             deltas = dynamics.propagate_delta(
                 ev.region_id, base, topo.connections, min_weight=self._params.event_propagate_min

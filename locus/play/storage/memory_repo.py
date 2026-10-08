@@ -381,17 +381,15 @@ class InMemoryPlayRepository:
         return out
 
     @_synchronized
-    def fail_stale_runs(self, *, reason: str) -> int:
-        count = 0
-        now = self._now()
-        for runs in self._runs.values():
-            for r in runs.values():
-                if r.status == TurnRunStatus.RUNNING.value:
-                    r.status = TurnRunStatus.FAILED.value  # type: ignore[assignment]
-                    r.error = reason
-                    r.finished_at = now
-                    count += 1
-        return count
+    def list_running_runs(self) -> list[TurnRun]:
+        out = [
+            deepcopy(r)
+            for runs in self._runs.values()
+            for r in runs.values()
+            if r.status == TurnRunStatus.RUNNING.value
+        ]
+        out.sort(key=lambda r: (r.started_at or datetime.min.replace(tzinfo=timezone.utc), r.id))
+        return out
 
     # --- conversations (U5) ---
     @_synchronized

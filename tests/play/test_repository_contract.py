@@ -235,18 +235,6 @@ def test_u4_turn_run_crud_is_session_scoped() -> None:
         repo.update_run(TurnRun(session_id=a.id))
 
 
-def test_u4_fail_stale_runs_marks_running_only() -> None:
-    _, TurnRun, TurnRunStatus = _u4_imports()
-    repo = _repo()
-    s = repo.create_session("w")
-    running = repo.create_run(TurnRun(session_id=s.id))
-    done = repo.create_run(TurnRun(session_id=s.id, status=TurnRunStatus.DONE))
-    assert repo.fail_stale_runs(reason="interrupted") == 1
-    stale = repo.get_run(s.id, running.id)
-    assert stale.status == "failed" and stale.error == "interrupted" and stale.finished_at
-    assert repo.get_run(s.id, done.id).status == "done"
-
-
 def test_u4_uow_commits_on_clean_exit_and_rolls_back_on_error() -> None:
     """EX-19: nothing written inside a failing unit of work survives."""
     Player, TurnRun, _ = _u4_imports()
@@ -634,3 +622,18 @@ def test_u7_seed_candidates_match_the_seed_rule(any_repo) -> None:
     )
     got = any_repo.seed_candidates(s.id, min_salience=0.5)
     assert [(d.id, a.npc_id) for d, a in got] == [(first.id, "n1"), (second.id, "n1")]
+
+
+# --- V5 runs a restart cut — both adapters (Step 7, NFR review R-02) ------------------ #
+def test_v5_list_running_runs_spans_every_session_and_only_running(any_repo) -> None:
+    _, TurnRun, TurnRunStatus = _u4_imports()
+    a = any_repo.create_session("w")
+    b = any_repo.create_session("other-world")
+    first = any_repo.create_run(TurnRun(session_id=a.id))
+    second = any_repo.create_run(TurnRun(session_id=b.id))
+    any_repo.create_run(TurnRun(session_id=a.id, status=TurnRunStatus.DONE))
+    any_repo.create_run(TurnRun(session_id=b.id, status=TurnRunStatus.FAILED))
+    running = any_repo.list_running_runs()
+    assert {(r.session_id, r.id) for r in running} == {(a.id, first.id), (b.id, second.id)}
+    assert all(r.status == "running" for r in running)
+    assert not hasattr(any_repo, "fail_stale_runs")  # V5 code plan § 1.1 R-01

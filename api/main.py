@@ -118,13 +118,13 @@ def create_app(
         if do_assemble:
             assemble_all(containers)
         app.state.containers = containers
-        if containers.play is not None:  # U4 BR-U4-15: runs interrupted by a restart
-            try:
-                stale = containers.play.repo.fail_stale_runs(reason="interrupted")
-                if stale:
-                    logger.warning("marked %d interrupted turn run(s) failed", stale)
+        if containers.play is not None:  # runs a restart cut (U4 BR-U4-15, V5 BR-V5-18)
+            try:  # compensated like a failed run, before any request
+                recovered = containers.play.turns.recover_interrupted()
+                if recovered:
+                    logger.warning("compensated %d interrupted turn run(s)", len(recovered))
             except Exception:  # pragma: no cover - storage down: play routes will tell
-                logger.exception("could not clean up stale turn runs")
+                logger.exception("could not recover interrupted turn runs")
         try:
             yield
         finally:

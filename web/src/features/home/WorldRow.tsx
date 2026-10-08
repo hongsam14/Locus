@@ -55,7 +55,7 @@ export function WorldRow({
         </div>
         <span className="text-xs text-muted">{facts.join(" · ")}</span>
       </div>
-      {openCount > 0 && <Badge data-testid={`world-open-${id}`}>{t("label.openSessions", { n: openCount })}</Badge>}
+      {openCount > 0 && <Badge className="self-start sm:self-auto" data-testid={`world-open-${id}`}>{t("label.openSessions", { n: openCount })}</Badge>}
       <div className="flex flex-wrap gap-2">
         {openCount > 0 && (
           <Button variant="primary" busy={going} data-testid={`world-continue-${id}`} onClick={resume}>

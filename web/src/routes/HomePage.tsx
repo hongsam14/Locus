@@ -54,7 +54,7 @@ export function HomePage() {
 
   return (
     <AppShell>
-      <div data-testid="home" className="mx-auto flex w-full max-w-[1240px] flex-col gap-8 px-4 pb-12">
+      <div data-testid="home" className="mx-auto flex w-full max-w-[1240px] flex-col gap-8 break-keep px-4 pb-12 [overflow-wrap:break-word]">
         <HomeHero />
         {error && <InlineError error={error} />}
         <DemoCards demos={demos} worlds={worlds.data} onLoaded={reloadLists} />

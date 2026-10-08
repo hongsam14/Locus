@@ -221,13 +221,13 @@ export function DialoguePanel({
   );
   if (bare) {
     return (
-      <div data-testid="dialogue-panel" className="flex min-w-0 flex-col gap-2">
+      <div data-testid="dialogue-panel" className="flex min-w-0 flex-col gap-2 break-keep">
         {content}
       </div>
     );
   }
   return (
-    <Panel data-testid="dialogue-panel" title={t("dialogue.title", { name })} className="max-w-2xl">
+    <Panel data-testid="dialogue-panel" title={t("dialogue.title", { name })} className="break-keep">
       {content}
     </Panel>
   );

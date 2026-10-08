@@ -52,7 +52,7 @@ export function PlayPage(knobs: Knobs) {
   if (!sessionId) {
     return (
       <AppShell>
-        <div data-testid="play-page" className="mx-auto w-full max-w-[1240px] px-4 pt-6">
+        <div data-testid="play-page" className="mx-auto w-full max-w-[1240px] break-keep px-4 pt-6 [overflow-wrap:break-word]">
           <section data-testid="play-empty" className="flex max-w-xl flex-col items-start gap-3">
             <h1 className="font-heading text-2xl">{t("empty.noSession")}</h1>
             <p className="text-muted">{t("hint.startFromDemo")}</p>
@@ -252,7 +252,8 @@ function PlayScreen({ sessionId, pollMs = 700, maxPolls = 120, heldRetryMs = 100
 
   return (
     <AppShell sessionId={sessionId} worldId={worldId} llmOff={view ? !view.llm_available : false}>
-      <div data-testid="play-page" className="mx-auto w-full max-w-[1240px] px-4 pb-12 pt-4">
+      {/* Korean breaks between words, not inside one; a long unbroken token still wraps */}
+      <div data-testid="play-page" className="mx-auto w-full max-w-[1240px] break-keep px-4 pb-12 pt-4 [overflow-wrap:break-word]">
         {body}
       </div>
     </AppShell>

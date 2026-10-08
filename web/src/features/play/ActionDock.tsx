@@ -3,7 +3,7 @@ import type { DescribedError } from "../../errors";
 import { t } from "../../i18n";
 import type { MoveOption, TurnRun } from "../../types";
 import { Button, Dialog } from "../../ui";
-import { DeclareForm, TurnStatus, lockedProps } from "./ActionBar";
+import { DeclareForm, TurnStatus, lockedProps, type Held } from "./ActionBar";
 import { MovePanel } from "./MovePanel";
 import { english, type NameOf } from "./names";
 
@@ -19,6 +19,9 @@ export function ActionDock({
   error,
   refusal,
   onRecheck,
+  held = null,
+  onHeldRecheck,
+  onClearRefusal,
   disabled,
   locked = false,
   closed = false,
@@ -37,6 +40,10 @@ export function ActionDock({
   error?: DescribedError;
   refusal?: DescribedError;
   onRecheck?: () => void;
+  held?: Held;
+  onHeldRecheck?: () => void;
+  /** A refusal belongs to the action it answered: opening the declare sheet clears it. */
+  onClearRefusal?: () => void;
   disabled: boolean; // the session closed
   locked?: boolean; // a turn runs: the actions keep their focus (BR-V4-24)
   closed?: boolean;
@@ -57,13 +64,16 @@ export function ActionDock({
         className="fixed inset-x-0 bottom-0 z-40 flex flex-col gap-2 border-t border-line-strong bg-surface px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-pop">
         {/* a refused declaration is said in its sheet, which stays open */}
         <TurnStatus running={running} slow={slow} error={error} refusal={declareOpen ? undefined : refusal}
-          onRecheck={onRecheck} />
+          onRecheck={onRecheck} held={held} onHeldRecheck={onHeldRecheck} className="empty:-mt-2" />
         <div className="grid grid-cols-3 gap-2">
           <Button data-testid="dock-wait" disabled={disabled} {...lockedProps(locked, onWait)}>
             {t("action.wait")}
           </Button>
           <Button variant="primary" data-testid="dock-declare" disabled={closed}
-            onClick={() => setDeclareOpen(true)}>
+            onClick={() => {
+              onClearRefusal?.();
+              setDeclareOpen(true);
+            }}>
             {t("action.declare")}
           </Button>
           <Button data-testid="dock-move" disabled={closed} onClick={() => onMoveOpenChange(true)}>

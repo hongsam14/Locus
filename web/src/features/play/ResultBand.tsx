@@ -17,10 +17,19 @@ export function ResultBand({
   nameOf?: NameOf;
   onClose: () => void;
 }) {
-  if (!outcome) return null;
+  // the live region is always there and only its content changes, so a screen reader hears
+  // the result when it lands (code review 01 #26); empty, it takes back the layout's gap
+  return (
+    <div role="status" data-testid="result-live" className="empty:-mt-6">
+      {outcome && <Band outcome={outcome} nameOf={nameOf} onClose={onClose} />}
+    </div>
+  );
+}
+
+function Band({ outcome, nameOf, onClose }: { outcome: TurnOutcome; nameOf: NameOf; onClose: () => void }) {
   const { declaration } = outcome;
   return (
-    <section role="status" data-testid="result-band"
+    <section data-testid="result-band"
       className="flex flex-col gap-2 rounded-lg border border-accent/60 bg-sunken p-3 shadow-panel">
       <div className="flex items-start gap-2">
         <h2 className="flex-1 font-heading text-lg">

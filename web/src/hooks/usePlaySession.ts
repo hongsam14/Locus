@@ -16,6 +16,8 @@ export interface PlaySession {
   /** "loading" only without data; with data a failed re-read keeps "ready" and sets `error`. */
   state: "loading" | "ready" | "error";
   error?: DescribedError;
+  /** A read is out (the held re-reads wait for it rather than cut it short). */
+  pending: boolean;
   reload(): void;
 }
 
@@ -37,6 +39,7 @@ export function usePlaySession(sessionId: string, logLines = 30): PlaySession {
     log: data?.log ?? [],
     state,
     error: r.state === "error" ? r.error : undefined,
+    pending: r.pending,
     reload: r.reload,
   };
 }

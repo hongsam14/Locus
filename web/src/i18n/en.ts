@@ -507,7 +507,7 @@ export const en: Record<Key, string> = {
   "label.startAt": "Starts at {name}",
   "hint.worldIdChars": "Use lowercase letters, digits and -, up to 40 characters.",
   "empty.noWorlds": "No world of your own yet.",
-  "story.turnPassed": "Turn {n} has passed.",
+  "story.turnPassed": "It is now turn {n}.",
   "story.quietTurn": "The time passed quietly.",
   "action.showMore": "Show {n} more",
   "action.recheck": "Check again",
@@ -532,4 +532,5 @@ export const en: Record<Key, string> = {
   "unit.turns": "{n} turn(s)",
   "empty.noSession": "No session here.",
   "hint.startFromDemo": "You can start right away from a demo card on the home screen.",
+  "notice.sessionHeld": "Waiting for other work on this session to finish.",
 };

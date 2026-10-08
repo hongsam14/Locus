@@ -121,10 +121,13 @@ describe("useTurnRun", () => {
     });
     expect(ok).toBe(false);
     expect(hook.result.current.toasts.map((x) => [x.key, x.title])).toEqual([["play:busy", t("play.turnInProgress")]]);
+    // code review 01 #1: mid-turn also re-reads (the hold shows) and looks for the run
+    expect(reload).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(api.listTurnRuns).toHaveBeenCalledTimes(2)); // the entry's, and this one
     clearToasts();
     (api.act as Mock).mockRejectedValueOnce(new HttpError(409, "Conflict", '{"detail":"session is closed","code":"session_closed"}'));
     await act(async () => void (await hook.result.current.turn.act({ type: "wait" })));
-    expect(reload).toHaveBeenCalledTimes(1);
+    expect(reload).toHaveBeenCalledTimes(2);
     expect(hook.result.current.toasts).toEqual([]);
     (api.act as Mock).mockRejectedValueOnce(new HttpError(400, "Bad Request", '{"detail":"no such connection"}'));
     await act(async () => {
@@ -156,6 +159,85 @@ describe("useTurnRun", () => {
   });
 });
 
+describe("useTurnRun after code review 01", () => {
+  it("#2: one loop at a time — [check again] holds the run, and a superseded loop writes nothing", async () => {
+    const runA = run("running", { id: "A" });
+    const runB = run("running", { id: "B" });
+    (api.act as Mock).mockResolvedValueOnce(runA);
+    (api.getTurnRun as Mock).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const { hook } = setup();
+    await act(async () => void (await hook.result.current.turn.act({ type: "wait" })));
+    await waitFor(() => expect(hook.result.current.turn.error).toBeDefined());
+    let finishA: (r: TurnRun) => void = () => {};
+    let finishB: (r: TurnRun) => void = () => {};
+    (api.getTurnRun as Mock).mockImplementation((_s: string, id: string) =>
+      new Promise<TurnRun>((r) => (id === "A" ? (finishA = r) : (finishB = r))),
+    );
+    act(() => hook.result.current.turn.recheck());
+    expect(hook.result.current.turn.running?.id).toBe("A"); // checked again: the actions stay off
+    (api.act as Mock).mockResolvedValueOnce(runB);
+    await act(async () => void (await hook.result.current.turn.act({ type: "wait" })));
+    await waitFor(() => expect(api.getTurnRun).toHaveBeenCalledWith("s1", "B"));
+    await act(async () => finishA(done(3)));
+    expect(hook.result.current.turn.outcome).toBeNull(); // A's loop gave way: no old result
+    expect(hook.result.current.turn.running?.id).toBe("B");
+    await act(async () => finishB(done(1)));
+    await waitFor(() => expect(hook.result.current.turn.outcome?.changes).toHaveLength(1));
+  });
+
+  it("#3: a second press before the answer sends nothing", async () => {
+    let answer: (r: TurnRun) => void = () => {};
+    (api.act as Mock).mockReturnValueOnce(new Promise<TurnRun>((r) => (answer = r)));
+    (api.getTurnRun as Mock).mockResolvedValue(done(0));
+    const { hook } = setup();
+    let first: Promise<boolean> = Promise.resolve(false);
+    let second = true;
+    act(() => {
+      first = hook.result.current.turn.act({ type: "wait" });
+    });
+    expect(hook.result.current.turn.acting).toBe(true);
+    await act(async () => {
+      second = await hook.result.current.turn.act({ type: "wait" });
+    });
+    expect(second).toBe(false);
+    expect(api.act).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      answer(run("running"));
+      await first;
+    });
+    expect(hook.result.current.turn.acting).toBe(false);
+  });
+
+  it("an action started before the entry's resume answers keeps its own run", async () => {
+    let list: (r: TurnRun[]) => void = () => {};
+    (api.listTurnRuns as Mock).mockReturnValueOnce(new Promise<TurnRun[]>((r) => (list = r)));
+    (api.act as Mock).mockResolvedValue(run("running", { id: "B" }));
+    (api.getTurnRun as Mock).mockImplementation(() => new Promise(() => {}));
+    const { hook } = setup();
+    await act(async () => void (await hook.result.current.turn.act({ type: "wait" })));
+    await act(async () => list([run("running", { id: "A" })]));
+    expect(hook.result.current.turn.running?.id).toBe("B");
+    expect(api.getTurnRun).not.toHaveBeenCalledWith("s1", "A");
+  });
+
+  it("a failed run says so without the server's English; a declared turn is not quiet; a refusal keeps the result", async () => {
+    (api.act as Mock).mockResolvedValue(run("running"));
+    (api.getTurnRun as Mock).mockResolvedValueOnce(run("failed", { error: "turn processing failed" }));
+    const { hook } = setup();
+    await act(async () => void (await hook.result.current.turn.act({ type: "wait" })));
+    await waitFor(() => expect(hook.result.current.toasts.some((x) => x.key === "play:run")).toBe(true));
+    const failed = hook.result.current.toasts.find((x) => x.key === "play:run");
+    expect(failed?.body).toBeUndefined();
+    (api.getTurnRun as Mock).mockResolvedValueOnce(done(0, { declaration: "광장이 술렁인다." }));
+    await act(async () => void (await hook.result.current.turn.act({ type: "declare", text: "sing" })));
+    await waitFor(() => expect(hook.result.current.turn.outcome).not.toBeNull());
+    expect(hook.result.current.turn.outcome?.quiet).toBe(false);
+    (api.act as Mock).mockRejectedValueOnce(new HttpError(400, "Bad Request", '{"detail":"no"}'));
+    await act(async () => void (await hook.result.current.turn.act({ type: "wait" })));
+    expect(hook.result.current.turn.outcome?.declaration?.text).toBe("광장이 술렁인다.");
+  });
+});
+
 describe("useHeldRereads (BR-V4-19)", () => {
   it("re-reads every interval while held, at most max times", async () => {
     vi.useFakeTimers();
@@ -168,6 +250,29 @@ describe("useHeldRereads (BR-V4-19)", () => {
       rerender({ held: true }); // held again: counts afresh
       await act(async () => vi.advanceTimersByTime(1000));
       expect(reload).toHaveBeenCalledTimes(6);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("waits for a read still out, says it is stuck past the cap, and [check again] counts afresh", async () => {
+    vi.useFakeTimers();
+    try {
+      const reload = vi.fn();
+      const { result, rerender } = renderHook(({ pending }) => useHeldRereads(true, reload, 1000, 2, pending), {
+        initialProps: { pending: true },
+      });
+      await act(async () => vi.advanceTimersByTime(3000));
+      expect(reload).not.toHaveBeenCalled(); // the read is out: not cut short (#21)
+      rerender({ pending: false });
+      for (let i = 0; i < 4; i++) await act(async () => vi.advanceTimersByTime(1000));
+      expect(reload).toHaveBeenCalledTimes(2);
+      expect(result.current.stuck).toBe(true); // #1: the screen offers [check again]
+      act(() => result.current.retry());
+      expect(reload).toHaveBeenCalledTimes(3);
+      expect(result.current.stuck).toBe(false);
+      await act(async () => vi.advanceTimersByTime(1000));
+      expect(reload).toHaveBeenCalledTimes(4);
     } finally {
       vi.useRealTimers();
     }

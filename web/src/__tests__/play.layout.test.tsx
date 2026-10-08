@@ -6,6 +6,7 @@ import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-rou
 import type { Mock } from "vitest";
 import { resetCapabilities } from "../capabilities";
 import { t } from "../i18n";
+import { HttpError } from "../api/http";
 import { PlayPage } from "../routes/PlayPage";
 import type { GameSession, NPC, RegionView, TurnRun } from "../types";
 import { clearToasts } from "../ui";
@@ -287,7 +288,9 @@ describe("R-11: the talk's history entry", () => {
 });
 
 describe("TP-V4-5 and BR-V4-22: one result band", () => {
-  it("the result is in the band only; the next action empties it; [close] folds it", async () => {
+  // code review 01 #16: the band empties when the next turn starts (its 202), so a refused
+  // action keeps the last result
+  it("the result is in the band only; the next turn empties it, a refusal keeps it; [close] folds it", async () => {
     (api.act as Mock).mockResolvedValue(run("running"));
     (api.getTurnRun as Mock).mockResolvedValue(done({
       session: { ...session("s1"), turn: 4 },
@@ -299,12 +302,20 @@ describe("TP-V4-5 and BR-V4-22: one result band", () => {
     const band = await screen.findByTestId("result-band");
     expect(band).toHaveTextContent(t("story.turnPassed", { n: 4 }));
     expect(screen.getByTestId("notification-center")).not.toHaveTextContent(t("notif.rumors_added", { n: 1 }));
-    let answer: (r: TurnRun) => void = () => {};
-    (api.act as Mock).mockReturnValueOnce(new Promise<TurnRun>((r) => (answer = r)));
     await waitFor(() => expect(screen.getByTestId("wait-btn")).not.toHaveAttribute("aria-disabled"));
+    (api.act as Mock).mockRejectedValueOnce(new HttpError(400, "Bad Request", '{"detail":"no"}'));
     fireEvent.click(screen.getByTestId("wait-btn"));
-    expect(screen.queryByTestId("result-band")).not.toBeInTheDocument(); // the next action empties it
+    expect(await screen.findByTestId("action-error")).toBeInTheDocument();
+    expect(screen.getByTestId("result-band")).toBeInTheDocument(); // a refusal keeps the last result
+    let answer: (r: TurnRun) => void = () => {};
+    let finish: (r: TurnRun) => void = () => {};
+    (api.act as Mock).mockReturnValueOnce(new Promise<TurnRun>((r) => (answer = r)));
+    (api.getTurnRun as Mock).mockReturnValueOnce(new Promise<TurnRun>((r) => (finish = r)));
+    fireEvent.click(screen.getByTestId("wait-btn"));
+    expect(screen.getByTestId("result-band")).toBeInTheDocument(); // still there before the 202
     await act(async () => answer(run("running")));
+    expect(screen.queryByTestId("result-band")).not.toBeInTheDocument(); // the next turn empties it
+    await act(async () => finish(done()));
     await screen.findByTestId("result-band");
     fireEvent.click(screen.getByTestId("result-band-close"));
     expect(screen.queryByTestId("result-band")).not.toBeInTheDocument();
@@ -356,6 +367,32 @@ describe("TP-V4-11: closed, empty, the GM at work", () => {
     await waitFor(() => expect(api.getRegion).toHaveBeenCalledTimes(6));
     await new Promise((r) => setTimeout(r, 40));
     expect(api.getRegion).toHaveBeenCalledTimes(6);
+  });
+
+  it("code review 01 #1: a hold with no run of ours says so, and past the cap offers [check again]", async () => {
+    (api.getRegion as Mock).mockResolvedValue(view({ turn_running: true }));
+    renderPlay();
+    expect(await screen.findByTestId("turn-held")).toHaveTextContent(t("notice.sessionHeld"));
+    expect(screen.getByTestId("wait-btn")).toHaveAttribute("aria-disabled", "true");
+    await waitFor(() => expect(api.getRegion).toHaveBeenCalledTimes(6)); // mount + 5
+    const again = await screen.findByTestId("held-recheck");
+    (api.getRegion as Mock).mockResolvedValue(view());
+    fireEvent.click(again);
+    await waitFor(() => expect(screen.getByTestId("wait-btn")).not.toHaveAttribute("aria-disabled"));
+    expect(screen.queryByTestId("turn-held")).not.toBeInTheDocument();
+  });
+
+  it("code review 01 #3: a double press on [wait] sends one action", async () => {
+    let answer: (r: TurnRun) => void = () => {};
+    (api.act as Mock).mockReturnValue(new Promise<TurnRun>((r) => (answer = r)));
+    (api.getTurnRun as Mock).mockResolvedValue(done());
+    renderPlay();
+    await screen.findByTestId("region-title");
+    fireEvent.click(screen.getByTestId("wait-btn"));
+    fireEvent.click(screen.getByTestId("wait-btn"));
+    expect(screen.getByTestId("wait-btn")).toHaveAttribute("aria-disabled", "true");
+    await act(async () => answer(run("running")));
+    expect(api.act).toHaveBeenCalledTimes(1);
   });
 
   it("without an AI key [talk] is off and says why", async () => {

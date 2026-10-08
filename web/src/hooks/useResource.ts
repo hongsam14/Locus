@@ -10,6 +10,8 @@ export interface Resource<T> {
   data: T | undefined;
   state: ResourceState;
   error?: DescribedError;
+  /** A request is out (a first read, a new key or a reload). */
+  pending: boolean;
   /** Read again with the same key; the data on screen stays until the new answer comes. */
   reload(): void;
 }
@@ -32,6 +34,7 @@ export function useResource<T>(
     state: "loading",
   });
   const [tick, setTick] = useState(0);
+  const [pending, setPending] = useState(false);
   const loadRef = useRef(load);
   loadRef.current = load;
   const seq = useRef(0);
@@ -42,6 +45,7 @@ export function useResource<T>(
     if (keyText === null) {
       lastKey.current = null; // the next key reads as a new one
       setValue((v) => (v.state === "loading" ? v : { data: v.data, dataKey: v.dataKey, state: "loading" }));
+      setPending(false);
       return;
     }
     const id = ++seq.current;
@@ -52,6 +56,7 @@ export function useResource<T>(
     // screen, unless the screen is an error: a retry shows that it is reading
     if (newKey) setValue((v) => ({ data: v.data, dataKey: v.dataKey, state: "loading" }));
     else setValue((v) => (v.state === "error" ? { data: v.data, dataKey: v.dataKey, state: "loading" } : v));
+    setPending(true);
     let request: Promise<T>;
     try {
       request = Promise.resolve(loadRef.current(controller.signal));
@@ -60,10 +65,13 @@ export function useResource<T>(
     }
     request.then(
       (data) => {
-        if (seq.current === id && !controller.signal.aborted) setValue({ data, dataKey: keyText, state: "ready" });
+        if (seq.current !== id || controller.signal.aborted) return;
+        setValue({ data, dataKey: keyText, state: "ready" });
+        setPending(false);
       },
       (err) => {
         if (seq.current !== id || controller.signal.aborted || isAbort(err)) return;
+        setPending(false);
         setValue((v) => {
           const mine = v.dataKey === keyText; // another key's data does not stand beside this error
           return { data: mine ? v.data : undefined, dataKey: mine ? v.dataKey : undefined, state: "error", error: describeError(err) };
@@ -74,5 +82,5 @@ export function useResource<T>(
   }, [keyText, tick]);
 
   const reload = useCallback(() => setTick((n) => n + 1), []);
-  return { data: value.data, state: value.state, error: value.error, reload };
+  return { data: value.data, state: value.state, error: value.error, pending, reload };
 }

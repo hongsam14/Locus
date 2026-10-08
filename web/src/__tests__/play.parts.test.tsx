@@ -188,7 +188,9 @@ describe("the result band (BR-V4-04, Q2=A)", () => {
     };
     render(<ResultBand outcome={outcome} onClose={close} />);
     const band = screen.getByTestId("result-band");
-    expect(band).toHaveAttribute("role", "status");
+    // code review 01 #26: the live region is always there; the band comes into it
+    expect(screen.getByTestId("result-live")).toHaveAttribute("role", "status");
+    expect(screen.getByTestId("result-live")).toContainElement(band);
     expect(band).toHaveTextContent(t("story.turnPassed", { n: 4 }));
     expect(screen.getByTestId("result-change-a")).toHaveTextContent(t("notif.rumors_added", { n: 2 }));
     expect(within(band).getByTestId("narration-card")).toHaveTextContent("광장이 술렁인다.");
@@ -202,6 +204,7 @@ describe("the result band (BR-V4-04, Q2=A)", () => {
     expect(screen.getByTestId("result-band")).toHaveTextContent(t("story.quietTurn"));
     rerender(<ResultBand outcome={null} onClose={() => {}} />);
     expect(screen.queryByTestId("result-band")).not.toBeInTheDocument();
+    expect(screen.getByTestId("result-live")).toBeEmptyDOMElement(); // still there, empty
   });
 });
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
-import { ActionBar } from "../features/play/ActionBar";
+import { ActionBar, type Held } from "../features/play/ActionBar";
 import { ActionDock } from "../features/play/ActionDock";
 import { DialoguePanel } from "../features/play/DialoguePanel";
 import { MovePanel } from "../features/play/MovePanel";
@@ -78,10 +78,13 @@ function PlayScreen({ sessionId, pollMs = 700, maxPolls = 120, heldRetryMs = 100
   // the small map's regions and ways, once per world (BLM § 2.1)
   const world = useResource(worldId ? ["map", worldId] : null, () => api.exportWorld(worldId as string));
   const turn = useTurnRun(sessionId, { reload: play.reload, pollMs, maxPolls });
-  // held with no run of ours: a GM write or an editor lease; read again 1 s × 5 (BR-V4-19)
-  useHeldRereads(!!view && (view.turn_running || !!view.gm_busy) && !turn.running, play.reload, heldRetryMs);
+  // held with no run of ours: a GM write or an editor lease; read again 1 s × 5, then offer
+  // [check again] (BR-V4-19, code review 01 #1). The header says gm_busy itself.
+  const heldNow = !!view && (view.turn_running || !!view.gm_busy) && !turn.running;
+  const heldReads = useHeldRereads(heldNow, play.reload, heldRetryMs, 5, play.pending);
+  const held: Held = !heldNow ? null : heldReads.stuck ? "stuck" : view?.gm_busy ? null : "waiting";
   const closed = session?.status === "closed";
-  const locked = turn.running != null || !!view?.turn_running || !!view?.gm_busy;
+  const locked = turn.running != null || turn.acting || !!view?.turn_running || !!view?.gm_busy;
 
   // talked-to counts (U5): read per place, best effort; a spoken line adds two (U5 C1)
   const npcs = useResource(regionId ? ["npcs", sessionId, regionId] : null, () => api.listNpcs(sessionId));
@@ -179,6 +182,8 @@ function PlayScreen({ sessionId, pollMs = 700, maxPolls = 120, heldRetryMs = 100
       error: turn.error,
       refusal: turn.refusal,
       onRecheck: turn.recheck,
+      held,
+      onHeldRecheck: heldReads.retry,
       disabled: closed,
       locked,
       closed,
@@ -218,7 +223,8 @@ function PlayScreen({ sessionId, pollMs = 700, maxPolls = 120, heldRetryMs = 100
             scene: <SceneText view={view} nameOf={nameOf} />,
             actions: !narrow && <ActionBar {...actionProps} />,
             dock: narrow && (
-              <ActionDock {...actionProps} moves={view.moves} nameOf={nameOf} onMove={move} moveOpen={moveOpen}
+              <ActionDock {...actionProps} onClearRefusal={turn.clearRefusal} moves={view.moves} nameOf={nameOf}
+                onMove={move} moveOpen={moveOpen}
                 onMoveOpenChange={setMoveOpen} highlightId={highlight} />
             ),
             map: world.state === "error" && !world.data ? null : (

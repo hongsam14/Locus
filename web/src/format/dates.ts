@@ -25,8 +25,10 @@ export function formatDateTime(iso: string, lang: Lang = currentLang(), timeZone
   }).format(d);
 }
 
-/** The current turn: "4턴째" / "Turn 4". */
+/** The current turn: "4턴째" / "Turn 4"; a session not yet past its first turn is "시작"
+ * as in the log (V4 code review 01 #15). */
 export function turnLabel(n: number, lang: Lang = currentLang()): string {
+  if (n === 0) return tFor(lang, "unit.turnStart");
   return tFor(lang, "unit.turnNow", { n });
 }
 

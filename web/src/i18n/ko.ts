@@ -523,7 +523,7 @@ export const ko = {
   "label.startAt": "시작 {name}",
   "hint.worldIdChars": "영문 소문자, 숫자, -로 40자까지 써 주세요.",
   "empty.noWorlds": "아직 만든 월드가 없어요.",
-  "story.turnPassed": "{n}턴이 지났다.",
+  "story.turnPassed": "{n}턴째가 되었다.",
   "story.quietTurn": "조용히 지나갔다.",
   "action.showMore": "{n}개 더 보기",
   "action.recheck": "다시 확인",
@@ -548,6 +548,7 @@ export const ko = {
   "unit.turns": "{n}턴",
   "empty.noSession": "세션이 없어요.",
   "hint.startFromDemo": "홈의 데모 카드에서 바로 시작할 수 있어요.",
+  "notice.sessionHeld": "다른 작업이 끝나기를 기다리고 있어요.",
 };
 
 export type Key = keyof typeof ko;

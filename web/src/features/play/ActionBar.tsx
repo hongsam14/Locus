@@ -27,57 +27,75 @@ export function lockedProps(locked: boolean, onClick: () => void) {
   };
 }
 
-/** Where a turn stands (V4 BLM § 2.2, BR-V4-17): running, slow past the poll cap, or its
- * check failed — the last two with [check again]. The action box and the phone's dock
- * both show it in the place of the actions. */
+export type Held = "waiting" | "stuck" | null;
+
+/** Where a turn stands (V4 BLM § 2.2, BR-V4-17/19): running, slow past the poll cap, its
+ * check failed (the last two with [check again]), or the session held by other work with no
+ * run of ours — past the re-read cap with [check again] too (code review 01 #1). Running,
+ * slow and held change inside one live region that is always there, so a screen reader
+ * hears them (#26); errors are alerts of their own. The action box and the phone's dock
+ * both show it in the place of the actions. `className` evens out the parent's gap when
+ * the region is empty. */
 export function TurnStatus({
   running,
   slow = false,
   error,
   refusal,
   onRecheck,
+  held = null,
+  onHeldRecheck,
+  className = "",
 }: {
   running: TurnRun | null;
   slow?: boolean;
   error?: DescribedError;
   refusal?: DescribedError; // the server refused the action: said once, nothing to check again
   onRecheck?: () => void;
+  held?: Held;
+  onHeldRecheck?: () => void;
+  className?: string;
 }) {
-  const refused = refusal && (
-    <div data-testid="action-error">
-      <InlineError error={refusal} />
-    </div>
-  );
   const recheck = onRecheck && (
     <Button size="sm" data-testid="turn-recheck" onClick={onRecheck}>{t("action.recheck")}</Button>
   );
   let state = null;
-  if (error) {
+  if (!error && slow) {
     state = (
-      <div data-testid="turn-error" className="flex flex-col items-start gap-2">
-        <InlineError error={error} />
-        {recheck}
-      </div>
-    );
-  } else if (slow) {
-    state = (
-      <div role="status" data-testid="turn-slow" className="flex flex-wrap items-center gap-2 text-sm">
+      <div data-testid="turn-slow" className="flex flex-wrap items-center gap-2 text-sm">
         <span className="text-muted">{t("notice.turnSlow")}</span>
         {recheck}
       </div>
     );
-  } else if (running) {
+  } else if (!error && running) {
     state = (
-      <span role="status" data-testid="turn-progress" className="animate-pulse text-sm text-muted">
+      <span data-testid="turn-progress" className="animate-pulse text-sm text-muted">
         {t("play.running", { n: running.cost_turns })}
       </span>
     );
+  } else if (!error && held) {
+    state = (
+      <div data-testid="turn-held" className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="text-muted">{t("notice.sessionHeld")}</span>
+        {held === "stuck" && onHeldRecheck && (
+          <Button size="sm" data-testid="held-recheck" onClick={onHeldRecheck}>{t("action.recheck")}</Button>
+        )}
+      </div>
+    );
   }
-  if (!refused && !state) return null;
   return (
     <>
-      {refused}
-      {state}
+      {refusal && (
+        <div data-testid="action-error">
+          <InlineError error={refusal} />
+        </div>
+      )}
+      {error && (
+        <div data-testid="turn-error" className="flex flex-col items-start gap-2">
+          <InlineError error={error} />
+          {recheck}
+        </div>
+      )}
+      <div role="status" className={className}>{state}</div>
     </>
   );
 }
@@ -168,10 +186,14 @@ export function ActionBar({
   refusal,
   onRecheck,
   locked = false,
+  held = null,
+  onHeldRecheck,
 }: {
   running: TurnRun | null;
   disabled: boolean;
   locked?: boolean;
+  held?: Held;
+  onHeldRecheck?: () => void;
   closed?: boolean;
   onWait: () => void;
   onDeclare?: (text: string) => Promise<boolean>;
@@ -194,7 +216,8 @@ export function ActionBar({
       ) : (
         <div className="flex">{wait}</div>
       )}
-      <TurnStatus running={running} slow={slow} error={error} refusal={refusal} onRecheck={onRecheck} />
+      <TurnStatus running={running} slow={slow} error={error} refusal={refusal} onRecheck={onRecheck} held={held}
+        onHeldRecheck={onHeldRecheck} className="empty:-mt-3" />
     </div>
   );
 }

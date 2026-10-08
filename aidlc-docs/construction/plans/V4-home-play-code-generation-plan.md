@@ -209,59 +209,72 @@
 - 기존 부품(`RegionScene`, `NpcList`, `MovePanel`, `PlayLog`, `ActionBar`, `DialoguePanel`)에는 **선택 prop만 더한다.** 기본값은 지금 동작이다: `names` 없음 = 영어, `compact=false`, `highlightId` 없음, 막힌 줄은 지금 표시.
 - 화면이 보이는 것을 바꾸는 변경은 Step 7에서 옛 PlayPage와 함께 바꾼다. 막힌 줄 이유 문장, ActionBar의 보이는 라벨, 결과 띠로 옮김이 여기에 든다.
 - 그래서 `play`·`dialogue`·`deeds` 테스트는 Step 6에서 그대로 통과한다. 새 부품과 새 prop은 이 단계의 부품 테스트로 본다.
-- [ ] 6.1 `PlayHeader`
+- [x] 6.1 `PlayHeader`
   - 경로(`level_path_ids` → 이름표)
   - 지역명·단계 라벨·턴 라벨
   - `closed-banner` + [홈으로]
   - `gm-busy-notice`
-- [ ] 6.2 `ResultBand`
+- [x] 6.2 `ResultBand`
   - `role=status`
   - 제목(N턴 / 조용히 지나감)
   - 지역 변화 줄: `summary.ts`를 쓰고 이름은 이름표
   - 선언 문장: `narration-card` 유지
   - [닫기]
-- [ ] 6.3 `RegionScene`·`NpcList`
+- [x] 6.3 `RegionScene`·`NpcList`
   - 장면 글(이름표)
   - 사람 카드(이름표, [말 걸기], 키 없음 안내)
   - 지식·전해 들은 것·소문(말 단계 배지, 수치 없음)
   - `compact`(좁음 더 보기)
-- [ ] 6.4 `MovePanel`
+- [x] 6.4 `MovePanel`
   - 이름표
   - `enumLabel("travelBy")` + `unit.turns`
   - 막힌 줄 회색 + `notice.moveBlocked`
   - `highlightId` 강조와 스크롤
-- [ ] 6.5 `PlayLog`
+- [x] 6.5 `PlayLog`
   - 기록의 `payload` id로 이름표를 찾는다.
   - `turnAt`
   - 좁음 5줄 + 더 보기
-- [ ] 6.6 `PlayMap`
+- [x] 6.6 `PlayMap`
   - `WorldMap mode="play"`
   - 이름표로 바꾼 `regions`
   - focus·reachable·player
   - 보기 전용: `onSelect`는 갈 수 있는 곳이면 `onPickReachable`
   - `map/WorldMap.tsx`(코드 계획 리뷰 01 R-07): **play 모드에서만** 바탕 그림을 svg `<image>`(`x=0 y=0 width=1000 height=625`, viewBox 안)로 그려 확대를 따르게 한다. edit·gm 모드는 지금의 `<img>` 그대로라 V6·V8 화면과 테스트에 영향이 없다. `map.worldmap.test.tsx`에 "play 모드의 바탕은 svg 안 image이고, edit 모드는 img" 테스트를 더한다.
-- [ ] 6.7 `ActionBar`
+- [x] 6.7 `ActionBar`
   - 선언 입력에 `Field` 라벨이 있다.
   - `outline-none`을 없앤다(V2 이월).
   - 상한 글자 수
   - 진행·느림·오류 표시: `turn-progress`, `turn-slow`, `turn-error`, `turn-recheck`
-- [ ] 6.8 `ActionDock`(좁음): 세 버튼을 띠 하나에 두고, 선언 시트(`Dialog variant="sheet"` + `ActionBar` 입력)와 이동 시트(`MovePanel`)를 연다.
-- [ ] 6.9 `TalkSheet`·`DialoguePanel`
+- [x] 6.8 `ActionDock`(좁음): 세 버튼을 띠 하나에 두고, 선언 시트(`Dialog variant="sheet"` + `ActionBar` 입력)와 이동 시트(`MovePanel`)를 연다.
+- [x] 6.9 `TalkSheet`·`DialoguePanel`
   - `Dialog variant="full"` 래퍼
   - `DialoguePanel`의 390 가로 스크롤을 고친다(V2 이월). 긴 낱말은 줄 바꿈, 입력은 `min-w-0`
-- [ ] 6.10 이 단계 부품이 쓰는 사전 키(ko·en)를 이 커밋에서 더한다(§ 1.2 접두어, 코드 계획 리뷰 01 R-04).
+- [x] 6.10 이 단계 부품이 쓰는 사전 키(ko·en)를 이 커밋에서 더한다(§ 1.2 접두어, 코드 계획 리뷰 01 R-04).
   - `story.turnPassed`, `story.quietTurn`
   - `action.close`(있음), `action.showMore`, `action.recheck`, `action.goHome`
   - `notice.sessionClosed`, `notice.gmBusy`, `notice.turnSlow`, `notice.moveBlocked`, `notice.talkNeedsKey`
   - `label.declare`, `label.whereToGo`, `label.journey`, `label.peopleHere`, `label.knownHere`, `label.heardFar`, `label.rumorsHere`
   - `action.wait`, `action.declare`, `action.move`, `unit.turns`
   - 이미 있는 키는 다시 만들지 않는다(`grep`으로 확인).
-- [ ] 6.11 테스트: 부품 단위
+- [x] 6.11 테스트: 부품 단위
   - TP-V4-6: 이름표·대체
   - TP-V4-7: 막힌 줄, 지도 누름 = 강조만
   - TP-V4-13: 접근성
   - 결과 띠 문장
-- [ ] 6.12 커밋: `feat(web): play parts — header, result band, scene, moves, log, small map, action dock and sheets (V4)`
+- 실행 기록(Step 6)
+  - `RegionScene.tsx`에 새 구역 `SceneText`·`PeopleHere`·`KnownHere`를 더했다. 장면 글은 행동 상자 위, 사람과 아는 것은 그 아래에 놓이므로(§ 1 표) 한 패널로는 놓을 수 없다. 옛 `RegionScene` 묶음은 옛 PlayPage가 쓰므로 Step 7에서 지운다.
+  - `MovePanel`의 `words`는 Step 7에서 켜는 임시 prop이다(막힌 줄의 이유 문장과 버튼 없앰, `travelBy` 단어). Step 7에서 옛 갈래와 함께 없앤다. `bare`는 이동 시트용(제목은 시트가 가짐)이다.
+  - `ActionBar`는 `TurnStatus`(진행·느림·오류 + [다시 확인])와 `DeclareForm`으로 나눴다. 휴대폰 띠와 선언 시트가 같은 둘을 쓴다. 버튼 문구 "선언하기 · 1턴"·"기다리기 · 1턴"도 지금 바꿨다(기존 테스트는 문구를 보지 않음). 진행 중 버튼의 `aria-disabled`(BR-V4-24)는 기존 테스트가 native `disabled`를 보므로 Step 7에서 화면과 함께 정한다.
+  - 선언 입력의 옛 `maxLength={max×2}`는 없앴다. `Textarea`의 `maxLength`는 자체 글자 수(UTF-16)를 보여 서버식 글자 수와 겹친다. 막음은 빨간 글자 수와 꺼지는 [선언하기]가 한다. 붙여 넣기를 자르는 방식은 4만 자 선형 시험(`play.test`)이 실패해 버렸다.
+  - 계획에 없던 사전 키 두 개: `label.yourStory`(내 행적 배지, GM이 쓰는 `badge.deed`와 나눔), `action.talk`("말 걸기", FD 문구). 쓰지 않게 된 `npc.talk`는 지웠다.
+  - `NpcList`의 `talkOff`(이유 문장)를 주면 [말 걸기]가 꺼진다(BLM § 2.5). 예전 BR-U5-29(키 없이도 기록은 열림)와 어긋나는 FD 결정이며, 사람에게 알렸다.
+  - `PlayHeader`의 경로는 `level_path`의 마지막(지역 자신)을 뺀다. 서버의 `level_path`는 꼭대기부터 그 지역까지다. 그래서 `play.test:94`("Aldermoor › Riverton")가 Step 7에서 의도한 변경이 된다.
+  - `DialoguePanel`의 `String(e)` 둘을 `describeError` + `InlineError`로 바꿨다(BR-V4-15). 원문은 접어 둔 자세히에 남아 기존 "400" 단언이 그대로 통과한다.
+  - 지도 범례는 넣지 않았다(사전 키 목록에 없고 시안에만 있음). 지도 바탕 그림은 지금 GM·에디터에서도 로컬 파일로만 고르므로 플레이에는 아직 없다. `PlayMap`은 `background`를 받을 자리만 둔다.
+  - 세션 scratchpad가 비워져 V2 캡처 도구(`v2/cap/*.mjs`)가 사라졌다. Step 9에서 `v4/cap/`에 다시 쓴다.
+  - "play 모드 바탕은 svg 안 image, edit 모드는 img" 시험은 `map.worldmap.test.tsx` 대신 `play.parts.test.tsx`(TP-V4-7 묶음)에 두었다.
+  - 테스트 `play.parts.test.tsx` 22개. 돌연변이 확인: 서버 `reason` 표시, 지도의 아무 지역 누름, 경로에 자기 포함, 거절에도 시트 닫힘, 기록 이름 무시, 휴대폰 3개 제한 없앰을 하나씩 넣으면 각각 실패한다.
+- [x] 6.12 커밋: `feat(web): play parts — header, result band, scene, moves, log, small map, action dock and sheets (V4)`
 
 ### Step 7 — 플레이 화면 조립 (BLM § 2, BR-V4-02~04·15·16·18·20·21·22·25, R-11)
 - [ ] 7.1 `features/play/PlayLayout.tsx`: frontend-components § 1 표대로 폭별 순서를 정하고, `useMedia` 두 쿼리를 쓴다. 각 컴포넌트는 한 곳에만 렌더한다.

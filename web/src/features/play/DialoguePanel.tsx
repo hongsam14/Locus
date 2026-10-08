@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../api";
 import { conflictKind, needsLlm, statusOf } from "../../api/http";
+import { describeError, type DescribedError } from "../../errors";
 import { lang, t } from "../../i18n";
 import type { Message, NPC } from "../../types";
-import { Button, Field, Panel } from "../../ui";
+import { Button, Field, InlineError, Panel } from "../../ui";
+import { english, type NameOf } from "./names";
 
 let _localSeq = 0;
 
@@ -13,7 +15,11 @@ let _localSeq = 0;
  * (A-1). The player's line shows at once and is taken back if the send fails, the
  * same all-or-nothing the server keeps (BR-U5-3). Talking is allowed while a turn
  * runs (BR-U5-27); "end talk" spends a turn, so it waits for the turn (`busy`).
- * Mount it with `key={npc.id}` so another NPC starts from a clean state. */
+ * Mount it with `key={npc.id}` so another NPC starts from a clean state.
+ *
+ * V4: the NPC's name from the name map; `bare` drops the panel frame and title for the talk
+ * sheet, whose title names the NPC (Q5=A); long words wrap and the input shrinks, so a
+ * phone never scrolls sideways; errors are described sentences (BR-V4-15). */
 export function DialoguePanel({
   sessionId,
   npc,
@@ -24,6 +30,8 @@ export function DialoguePanel({
   onEndTalk,
   onSpoke,
   onClosed,
+  nameOf = english,
+  bare = false,
 }: {
   sessionId: string;
   npc: NPC;
@@ -36,13 +44,15 @@ export function DialoguePanel({
   onSpoke?: () => void;
   /** The session closed elsewhere (GM tab, CLI, world replace): the page re-reads. */
   onClosed?: () => void;
+  nameOf?: NameOf;
+  bare?: boolean;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false); // `start` succeeded
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<DescribedError | null>(null);
   const alive = useRef(true);
   const shownFor = useRef(""); // the session and NPC the error line belongs to
 
@@ -76,9 +86,9 @@ export function DialoguePanel({
       .catch((e) => {
         if (!active) return;
         if (conflictKind(e) === "closed") {
-          setError(t("play.sessionClosed")); // U7 review #12
+          setError({ title: t("play.sessionClosed") }); // U7 review #12
           onClosed?.();
-        } else setError(String(e));
+        } else setError(describeError(e));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -116,10 +126,10 @@ export function DialoguePanel({
       // 503: the NPC's call failed (BR-U7-27) — a plain line; the words stay in the box.
       // 409 closed: the session ended elsewhere — say so and let the page lock (#12).
       if (conflictKind(e) === "closed") {
-        setError(t("play.sessionClosed"));
+        setError({ title: t("play.sessionClosed") });
         onClosed?.();
-      } else if (needsLlm(e)) setError(t("llm.required")); // no provider (BR-U8-27)
-      else setError(statusOf(e) === 503 ? t("dialogue.failed") : String(e));
+      } else if (needsLlm(e)) setError({ title: t("llm.required") }); // no provider (BR-U8-27)
+      else setError(statusOf(e) === 503 ? { title: t("dialogue.failed") } : describeError(e));
     } finally {
       if (alive.current) setSending(false);
     }
@@ -128,13 +138,10 @@ export function DialoguePanel({
   // Locked while a line is on its way: a failed send puts that line back in the box,
   // which must not overwrite a next line typed meanwhile (review U5 #9).
   const inputOff = !llmAvailable || !ready || readOnly || sending;
-  return (
-    <Panel
-      data-testid="dialogue-panel"
-      title={t("dialogue.title", { name: npc.name })}
-      className="max-w-2xl"
-    >
-      <p className="text-xs text-muted">{npc.role}</p>
+  const name = nameOf("npcs", npc.id, "name", npc.name);
+  const content = (
+    <>
+      <p className="text-xs text-muted">{nameOf("npcs", npc.id, "role", npc.role)}</p>
       {!llmAvailable && (
         <p data-testid="dialogue-no-llm" className="border border-line-strong rounded-md bg-sunken px-2 py-1 my-1 text-sm">
           {t("dialogue.noLlm")}
@@ -146,10 +153,10 @@ export function DialoguePanel({
           <li
             key={m.id}
             data-testid={`dialogue-msg-${m.role}`}
-            className={`border border-line-strong rounded-md px-2 py-1 max-w-[80%] ${m.role === "player" ? "self-end bg-sunken" : "self-start bg-bg"}`}
+            className={`max-w-[80%] min-w-0 rounded-md border border-line-strong px-2 py-1 [overflow-wrap:anywhere] ${m.role === "player" ? "self-end bg-sunken" : "self-start bg-bg"}`}
           >
             <span className="block text-xs text-muted">
-              {m.role === "player" ? t("dialogue.you") : npc.name}
+              {m.role === "player" ? t("dialogue.you") : name}
             </span>
             {m.text}
           </li>
@@ -164,27 +171,29 @@ export function DialoguePanel({
         </p>
       )}
       {error && (
-        <p data-testid="dialogue-error" className="text-danger text-sm">
-          {error}
-        </p>
+        <div data-testid="dialogue-error">
+          <InlineError error={error} />
+        </div>
       )}
       <form
-        className="flex items-end gap-2"
+        className="flex min-w-0 items-end gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           void send();
         }}
       >
-        <Field
-          label={t("dialogue.placeholder")}
-          hideLabel
-          data-testid="dialogue-input"
-          value={draft}
-          disabled={inputOff}
-          placeholder={t("dialogue.placeholder")}
-          onChange={(e) => setDraft(e.target.value)}
-          className="w-80"
-        />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Field
+            label={t("dialogue.placeholder")}
+            hideLabel
+            data-testid="dialogue-input"
+            value={draft}
+            disabled={inputOff}
+            placeholder={t("dialogue.placeholder")}
+            onChange={(e) => setDraft(e.target.value)}
+            className="w-full min-w-0"
+          />
+        </div>
         <Button
           type="submit"
           size="sm"
@@ -208,6 +217,18 @@ export function DialoguePanel({
           {t("action.close")}
         </Button>
       </div>
+    </>
+  );
+  if (bare) {
+    return (
+      <div data-testid="dialogue-panel" className="flex min-w-0 flex-col gap-2">
+        {content}
+      </div>
+    );
+  }
+  return (
+    <Panel data-testid="dialogue-panel" title={t("dialogue.title", { name })} className="max-w-2xl">
+      {content}
     </Panel>
   );
 }

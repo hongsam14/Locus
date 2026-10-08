@@ -122,7 +122,6 @@ export const ko = {
   "play.quiet": "조용하다",
 
   // NPC dialogue (U5)
-  "npc.talk": "말하기",
   "dialogue.title": "대화 · {name}",
   "dialogue.has": "대화 {n}",
   "dialogue.you": "나",
@@ -538,6 +537,29 @@ export const ko = {
   "label.startAt": "시작 {name}",
   "hint.worldIdChars": "영문 소문자, 숫자, -로 40자까지 써 주세요.",
   "empty.noWorlds": "아직 만든 월드가 없어요.",
+  "story.turnPassed": "{n}턴이 지났다.",
+  "story.quietTurn": "조용히 지나갔다.",
+  "action.showMore": "{n}개 더 보기",
+  "action.recheck": "다시 확인",
+  "action.goHome": "홈으로",
+  "notice.sessionClosed": "이 세션은 끝났어요.",
+  "notice.gmBusy": "GM이 작업 중이에요. 잠시 뒤 다시 해 보세요.",
+  "notice.turnSlow": "턴이 오래 걸려요. 잠시 뒤 다시 확인해 보세요.",
+  "notice.moveBlocked": "지금은 지나갈 수 없어요.",
+  "notice.talkNeedsKey": "AI 키가 없어 대화를 쉬어요.",
+  "label.declare": "무엇을 할까요?",
+  "label.whereToGo": "갈 수 있는 곳",
+  "label.journey": "여정 기록",
+  "label.peopleHere": "이곳의 사람들",
+  "label.knownHere": "이곳 사람들이 아는 것",
+  "label.heardFar": "전해 들은 이야기",
+  "label.rumorsHere": "떠도는 소문",
+  "label.yourStory": "당신 이야기",
+  "action.wait": "기다리기",
+  "action.declare": "선언하기",
+  "action.move": "이동",
+  "action.talk": "말 걸기",
+  "unit.turns": "{n}턴",
 };
 
 export type Key = keyof typeof ko;

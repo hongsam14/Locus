@@ -202,7 +202,7 @@ export function WorldMap({
       className="relative w-full overflow-hidden rounded-lg border border-line-strong bg-map-land"
       style={{ aspectRatio: `${viewBox.w} / ${viewBox.h}` }}
     >
-      {background && (
+      {background && mode !== "play" && (
         // the alt text moves into the dictionary with the editor screen (V8)
         <img src={background} alt="world map" className="absolute inset-0 h-full w-full object-cover opacity-70" />
       )}
@@ -236,6 +236,22 @@ export function WorldMap({
           }
         }}
       >
+        {background && mode === "play" && (
+          // play zooms to a close-up: the picture is drawn in the map's own space so it
+          // follows the view box (V4, V2 carry-over); "slice" covers the extent as the
+          // editor's object-cover does, so a region sits on the same spot of the picture
+          <image
+            data-testid="map-background"
+            href={background}
+            x={MAP_EXTENT.x}
+            y={MAP_EXTENT.y}
+            width={MAP_EXTENT.w}
+            height={MAP_EXTENT.h}
+            preserveAspectRatio="xMidYMid slice"
+            opacity={0.7}
+            pointerEvents="none"
+          />
+        )}
         {uniqueEdges(connections).map((c) => {
           const a = at(c.source_region_id);
           const b = at(c.target_region_id);

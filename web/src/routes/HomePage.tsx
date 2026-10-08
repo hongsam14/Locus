@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { describeError, type DescribedError } from "../errors";
@@ -7,7 +7,7 @@ import { DemoCards } from "../features/home/DemoCards";
 import { HomeHero } from "../features/home/HomeHero";
 import { MyWorlds } from "../features/home/MyWorlds";
 import { NewSessionForm } from "../features/play/NewSessionForm";
-import { useResource } from "../hooks";
+import { useMounted, useResource, useWorldNames } from "../hooks";
 import { useLang, useRequestLang } from "../i18n";
 import type { Region } from "../types";
 import { InlineError } from "../ui";
@@ -26,6 +26,10 @@ export function HomePage() {
   const [error, setError] = useState<DescribedError | null>(null);
   const [start, setStart] = useState<{ worldId: string; regions: Region[] } | null>(null);
   const [building, setBuilding] = useState(false);
+  const [startError, setStartError] = useState<DescribedError | null>(null);
+  const mounted = useMounted();
+  const buildOpen = useRef(false); // the build panel is still open (its callbacks outlive renders)
+  const { nameOf: startNames } = useWorldNames(start?.worldId ?? null);
 
   const { reload: reloadDemos } = demos;
   const { reload: reloadWorlds } = worlds;
@@ -49,8 +53,14 @@ export function HomePage() {
   }
 
   // the world's regions are read only when the form opens (BLM § 1.1)
-  const openStart = (worldId: string) =>
-    run(async () => setStart({ worldId, regions: (await api.exportWorld(worldId)).regions }));
+  const openStart = (worldId: string) => {
+    setStartError(null);
+    return run(async () => setStart({ worldId, regions: (await api.exportWorld(worldId)).regions }));
+  };
+  const openBuild = (open: boolean) => {
+    buildOpen.current = open;
+    setBuilding(open);
+  };
 
   return (
     <AppShell>
@@ -59,26 +69,39 @@ export function HomePage() {
         {error && <InlineError error={error} />}
         <DemoCards demos={demos} worlds={worlds.data} onLoaded={reloadLists} />
         <MyWorlds worlds={worlds} demoNames={demoNames} settled={demosSettled} busy={busy}
-          onBuild={() => setBuilding(true)} onStart={openStart} />
+          onBuild={() => openBuild(true)} onStart={openStart} />
       </div>
       <NewSessionForm open={start != null} worldId={start?.worldId} regions={start?.regions ?? []} busy={busy}
-        onCancel={() => setStart(null)}
-        onSubmit={(name, startRegionId) =>
-          run(async () => {
+        nameOf={startNames} error={startError}
+        onCancel={() => {
+          setStart(null);
+          setStartError(null);
+        }}
+        onSubmit={async (name, startRegionId) => {
+          // a failed start is said in the form, not behind it (code review 01 #22)
+          setStartError(null);
+          setBusy(true);
+          try {
             const out = await api.startSession(start!.worldId, { name, start_region_id: startRegionId });
-            navigate(`/play/${encodeURIComponent(out.session.id)}`);
-          })
-        } />
+            if (mounted.current) navigate(`/play/${encodeURIComponent(out.session.id)}`);
+          } catch (e) {
+            if (mounted.current) setStartError(describeError(e));
+          } finally {
+            if (mounted.current) setBusy(false);
+          }
+        }} />
       {/* the panel forgets its files when closed idle and keeps a running build (U8 review #2) */}
       <BuildPanel open={building} exists={false}
         onClose={() => {
-          setBuilding(false);
+          openBuild(false);
           reloadLists(); // a build that threw may still have written the world
         }}
         onBuilt={(worldId, report) => {
+          if (!mounted.current) return;
           reloadLists();
-          // A replace stays on the report (what was replaced, the backup) — U3 review #6
-          if (report.ok && !report.replaced) navigate(`/editor/${encodeURIComponent(worldId)}`);
+          // A replace stays on the report (what was replaced, the backup) — U3 review #6. A
+          // build whose panel was closed meanwhile opens nothing (code review 01 #9)
+          if (report.ok && !report.replaced && buildOpen.current) navigate(`/editor/${encodeURIComponent(worldId)}`);
         }} />
     </AppShell>
   );

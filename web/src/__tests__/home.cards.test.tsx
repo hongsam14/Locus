@@ -5,6 +5,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { resetCapabilities } from "../capabilities";
 import { configureLangs, setLang, t } from "../i18n";
+import { openLatestFirst } from "../features/home/sessions";
 import { HomePage } from "../routes/HomePage";
 import type { DemoInfo, GameSession, WorldInfo } from "../types";
 
@@ -227,5 +228,18 @@ describe("TP-V4-2: both lists follow the display language (BR-V4-12)", () => {
     renderHome();
     expect(await screen.findByTestId("world-row-harrow")).toHaveTextContent("해로");
     expect(card()).toHaveTextContent("엠버리프 섬");
+  });
+});
+
+describe("code review 01 #23: latest first by time, not by text", () => {
+  it("a whole second sorts before its half second; no time goes last", () => {
+    const at = (id: string, created_at: string | null) => ({ id, world_id: "w", status: "open" as const, turn: 0, created_at });
+    const order = openLatestFirst([
+      at("whole", "2026-10-01T09:00:45Z"),
+      at("half", "2026-10-01T09:00:45.500000Z"),
+      at("none", null),
+      { ...at("closed", "2026-10-09T00:00:00Z"), status: "closed" as const },
+    ]).map((s) => s.id);
+    expect(order).toEqual(["half", "whole", "none"]);
   });
 });

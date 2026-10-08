@@ -2,9 +2,10 @@ import { useRef, useState } from "react";
 import { api } from "../../api";
 import { needsLlm, openSessionsOf, statusOf, useReplaceConfirm } from "../../api/http";
 import { llmOff, useCapabilities } from "../../capabilities";
+import { describeError, type DescribedError } from "../../errors";
 import { t } from "../../i18n";
 import type { BuildReport } from "../../types";
-import { Button, ConfirmDialog, Dialog, Field, FileInput, InProgressBadge } from "../../ui";
+import { Button, ConfirmDialog, Dialog, Field, FileInput, InlineError, InProgressBadge } from "../../ui";
 import { BuildReportPanel } from "./BuildReportPanel";
 
 const FIELDS = [
@@ -41,7 +42,7 @@ export function BuildPanel({
   const replaceQ = useReplaceConfirm(); // "replace?" then "close N sessions?" (U3 C8)
   const noLlm = llmOff(useCapabilities()); // U8 (BR-U8-25): building calls the LLM
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<DescribedError | null>(null);
   const [report, setReport] = useState<BuildReport | null>(null);
   const closedMidBuild = useRef(false);
   if (!open) return null;
@@ -65,7 +66,8 @@ export function BuildPanel({
     } catch (e) {
       if (replaceQ.sessionsAsked(e, confirm)) return;
       if (statusOf(e) === 409 && !replace && !openSessionsOf(e)) replaceQ.askReplace(); // the id exists
-      else setError(needsLlm(e) ? t("llm.required") : String(e)); // BR-U8-27
+      // BR-U8-27; a described sentence, the original folded (V4 code review 01 #24, BR-V4-15)
+      else setError(needsLlm(e) ? { title: t("llm.required") } : describeError(e));
     } finally {
       setBusy(false);
       // the file boxes were unmounted while it ran: their files are not shown any more,
@@ -118,7 +120,11 @@ export function BuildPanel({
             onFiles={(picked) => setFiles({ ...files, [f.name]: picked })} />
         ))}
         {busy && <div className="text-muted text-sm" data-testid="build-working">{t("build.working")}</div>}
-        {error && <div className="text-danger text-sm" data-testid="build-error">{error}</div>}
+        {error && (
+          <div data-testid="build-error">
+            <InlineError error={error} />
+          </div>
+        )}
         {report && <BuildReportPanel report={report} />}
         <div className="flex items-center justify-end gap-2">
           {noLlm && <span className="text-xs text-muted" data-testid="llm-required">{t("llm.required")}</span>}

@@ -533,4 +533,7 @@ export const en: Record<Key, string> = {
   "empty.noSession": "No session here.",
   "hint.startFromDemo": "You can start right away from a demo card on the home screen.",
   "notice.sessionHeld": "Waiting for other work on this session to finish.",
+  "error.screenLoad.title": "This screen could not be loaded.",
+  "error.screenLoad.action": "A new version may be out, or the connection dropped. Reload the page.",
+  "action.reloadPage": "Reload",
 };

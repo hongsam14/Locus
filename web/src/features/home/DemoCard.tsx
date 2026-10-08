@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { openSessionsOf, statusOf, useReplaceConfirm } from "../../api/http";
 import { describeError, type DescribedError } from "../../errors";
-import { useResource, useWorldNames } from "../../hooks";
+import { useMounted, useResource, useWorldNames } from "../../hooks";
 import { t } from "../../i18n";
 import type { DemoInfo } from "../../types";
 import { Badge, Button, Card, ConfirmDialog, InlineError } from "../../ui";
@@ -30,6 +30,7 @@ export function DemoCard({
   onLoaded: () => void;
 }) {
   const navigate = useNavigate();
+  const mounted = useMounted(); // left the home meanwhile: no session, no navigate (review 01 #9)
   const worldId = demo.name; // a demo loads into its own name (BR-U8-3)
   const title = demo.title_ko || demo.title;
   const [busy, setBusy] = useState(false);
@@ -46,11 +47,14 @@ export function DemoCard({
   const sessions = useResource(there ? ["sessions", worldId] : null, () => api.listSessions(worldId));
   const { names } = useWorldNames(there ? worldId : null);
   const open = sessions.data ? openLatestFirst(sessions.data) : [];
+  // after a load that reached the server the sessions on screen are the old ones until the
+  // re-read answers: no [continue] to a session the replace closed (code review 01 #5)
+  const [staleSessions, setStaleSessions] = useState<unknown>(undefined);
   const mode = !there
     ? "new"
     : sessions.state === "error"
       ? "unread"
-      : sessions.data === undefined
+      : sessions.data === undefined || (staleSessions !== undefined && sessions.data === staleSessions)
         ? "reading"
         : open.length > 0
           ? "resume"
@@ -67,12 +71,25 @@ export function DemoCard({
     setWarnings(lines);
   }
 
+  /** Whatever came of a load that reached the server, the lists and this card's sessions are
+   * read again: a replace closes the confirmed sessions even when its report is not ok
+   * (code review 01 #5). */
+  function reread() {
+    onLoaded();
+    if (there) {
+      setStaleSessions(sessions.data ?? null);
+      sessions.reload();
+    }
+  }
+
   /** Load the demo; false (and the card says why) when it did not load cleanly. Only a
    * reload the designer confirmed replaces: a first load sends replace=false, so a world
    * the screen did not know about is never replaced unasked (U8 review #1). */
   async function load(confirm: boolean, next: After, fresh: boolean): Promise<boolean> {
     try {
       const report = await api.loadDemo(worldId, demo.name, { replace: fresh, confirm });
+      if (!mounted.current) return false;
+      reread();
       if (!report.ok) {
         const errs = report.warnings.filter((w) => w.severity === "error").map((w) => w.message);
         fail({ title: t("demo.loadFailed") }, [
@@ -81,16 +98,19 @@ export function DemoCard({
         ]);
         return false;
       }
-      onLoaded();
       return true;
     } catch (e) {
+      if (!mounted.current) return false;
       if (openSessionsOf(e)?.busy) fail({ title: t("demo.busy") }); // mid-turn: no question
       else if (replace.sessionsAsked(e, confirm)) setAfter(next);
       else if (!fresh && statusOf(e) === 409) {
         setFoundThere(true); // "world already exists": ask, or open it as it is
         if (next === "play") setAskExisting(true);
         else navigate(`/editor/${encodeURIComponent(worldId)}`); // never reloads (BR-U8-21)
-      } else fail(describeError(e));
+      } else {
+        fail(describeError(e));
+        if (statusOf(e) !== 409) reread(); // a failed request may still have written
+      }
       return false;
     }
   }
@@ -111,13 +131,15 @@ export function DemoCard({
     begin();
     try {
       if ((!there || fresh) && !(await load(confirm, "play", fresh))) return;
+      if (!mounted.current) return;
       try {
         const out = await api.startSession(worldId, {
           name: t("demo.playerName"),
           start_region_id: demo.start_region_id,
         });
-        navigate(`/play/${encodeURIComponent(out.session.id)}`);
+        if (mounted.current) navigate(`/play/${encodeURIComponent(out.session.id)}`);
       } catch (e) {
+        if (!mounted.current) return;
         // an edited world may have lost the demo's start region (FD R-03)
         if (there && !fresh && [400, 404].includes(statusOf(e) ?? 0)) setStartMissing(true);
         else fail(describeError(e));
@@ -130,7 +152,7 @@ export function DemoCard({
   async function reloadDemo(confirm = false) {
     begin();
     try {
-      if (await load(confirm, "stay", true)) sessions.reload();
+      await load(confirm, "stay", true); // it reads the sessions again itself
     } finally {
       setBusy(false);
     }
@@ -143,7 +165,7 @@ export function DemoCard({
     }
     begin();
     try {
-      if (await load(confirm, "edit", false)) navigate(`/editor/${encodeURIComponent(worldId)}`);
+      if ((await load(confirm, "edit", false)) && mounted.current) navigate(`/editor/${encodeURIComponent(worldId)}`);
     } finally {
       setBusy(false);
     }
@@ -209,7 +231,8 @@ export function DemoCard({
       {askExisting && (
         <div className="flex flex-wrap items-center gap-2 text-sm" data-testid="demo-ask">
           <span>{t("demo.existing", { title })}</span>
-          <Button size="sm" variant="primary" data-testid="demo-keep" onClick={() => { setAskExisting(false); play(false); }}>
+          {/* one primary per card: the card's own [play now] (code review 01 #25) */}
+          <Button size="sm" data-testid="demo-keep" onClick={() => { setAskExisting(false); play(false); }}>
             {t("demo.keep")}
           </Button>
           <Button size="sm" data-testid="demo-reload" onClick={() => { setAskExisting(false); askFresh("play"); }}>

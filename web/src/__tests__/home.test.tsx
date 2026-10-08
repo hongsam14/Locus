@@ -426,3 +426,99 @@ describe("V4 new session form (TP-V4-4, RE-F03)", () => {
     expect(screen.getByTestId("new-session-submit")).toBeDisabled();
   });
 });
+
+// --------------------------------------------------------------------------- //
+// V4 code review 01: home fixes (#5, #8, #9, #22, #25)
+// --------------------------------------------------------------------------- //
+describe("V4 code review 01 — home", () => {
+  beforeEach(() => {
+    resetCapabilities();
+    (api.capabilities as Mock).mockResolvedValue({ llm: true, vlm: true, embedding: true });
+  });
+  afterEach(() => resetCapabilities());
+
+  it("#5: a replace that ends not ok still reads the lists and sessions again; [continue] waits for them", async () => {
+    (api.listWorlds as Mock).mockResolvedValue(held(1));
+    (api.listDemos as Mock).mockResolvedValue([EMBER]);
+    (api.listSessions as Mock).mockResolvedValueOnce([session("a")]);
+    (api.loadDemo as Mock).mockResolvedValue({ ...OK, ok: false, replaced: true, warnings: [{ severity: "error", message: "commit failed" }] });
+    let answer: (v: unknown) => void = () => {};
+    renderHome();
+    await screen.findByTestId("demo-continue-emberleaf");
+    (api.listSessions as Mock).mockReturnValueOnce(new Promise((r) => (answer = r)));
+    fireEvent.click(screen.getByTestId("demo-fresh-emberleaf"));
+    confirmModal();
+    await waitFor(() => expect(api.loadDemo).toHaveBeenCalled());
+    await waitFor(() => expect(api.listSessions).toHaveBeenCalledTimes(2));
+    expect(api.listWorlds).toHaveBeenCalledTimes(2);
+    expect(screen.queryByTestId("demo-continue-emberleaf")).not.toBeInTheDocument(); // old sessions: no [continue]
+    await act(async () => answer([session("a", "closed")]));
+    await waitFor(() => expect(screen.getByTestId("demo-play-emberleaf")).toBeEnabled());
+    expect(screen.getByTestId("demo-error-emberleaf")).toHaveTextContent(t("demo.loadFailed"));
+  });
+
+  it("#9: a build that ends after its panel was closed opens no editor", async () => {
+    (api.listWorlds as Mock).mockResolvedValue([]);
+    let built: (r: unknown) => void = () => {};
+    (api.uploadBuild as Mock).mockReturnValue(new Promise((r) => (built = r)));
+    renderHome();
+    await screen.findByTestId("home-empty");
+    fireEvent.click(screen.getByTestId("home-build"));
+    fireEvent.change(screen.getByTestId("build-world-id"), { target: { value: "new-world" } });
+    fireEvent.change(screen.getByTestId("build-memo"), { target: { value: "notes" } });
+    await waitFor(() => expect(screen.getByTestId("build-submit")).toBeEnabled());
+    fireEvent.click(screen.getByTestId("build-submit"));
+    fireEvent.click(within(screen.getByTestId("build-panel")).getByRole("button", { name: t("action.close") }));
+    await act(async () => built(REPORT));
+    expect(screen.queryByTestId("where")).not.toBeInTheDocument();
+  });
+
+  it("#9: leaving the home while [play now] loads starts no session", async () => {
+    (api.listWorlds as Mock).mockResolvedValue([row("w")]);
+    (api.listDemos as Mock).mockResolvedValue([EMBER]);
+    let loaded: (r: unknown) => void = () => {};
+    (api.loadDemo as Mock).mockReturnValue(new Promise((r) => (loaded = r)));
+    renderHome();
+    fireEvent.click(await screen.findByTestId("demo-play-emberleaf"));
+    fireEvent.click(screen.getByTestId("world-edit-w")); // leaves for the editor
+    expect(screen.getByTestId("where")).toHaveTextContent("/editor/w");
+    await act(async () => loaded(OK));
+    expect(api.startSession).not.toHaveBeenCalled();
+    expect(screen.getByTestId("where")).toHaveTextContent("/editor/w");
+  });
+
+  it("#22: a failed start is said inside the form and cleared on cancel; #8: regions by name and level word", async () => {
+    (api.listWorlds as Mock).mockResolvedValue([row("w")]);
+    (api.worldNames as Mock).mockResolvedValue({ ...NO_NAMES("w"), regions: { r1: { name: "리버턴" } } });
+    (api.exportWorld as Mock).mockResolvedValue({ world_id: "w", regions: [{ id: "r1", name: "Riverton", level: "town" }],
+      connections: [], entities: [], knowledge: [], scopes: [] });
+    (api.startSession as Mock).mockRejectedValue(new HttpError(400, "Bad Request", '{"detail":"no such region"}'));
+    renderHome();
+    fireEvent.click(await screen.findByTestId("world-start-w"));
+    await screen.findByTestId("new-session-form");
+    await waitFor(() => expect(screen.getByTestId("new-session-region")).toHaveTextContent(`리버턴 · ${t("enum.regionLevel.town")}`));
+    expect(screen.getByTestId("new-session-region")).not.toHaveTextContent("town");
+    fireEvent.change(screen.getByTestId("new-session-name"), { target: { value: "Ann" } });
+    fireEvent.change(screen.getByTestId("new-session-region"), { target: { value: "r1" } });
+    fireEvent.submit(screen.getByTestId("new-session-form").querySelector("form") as HTMLFormElement);
+    const err = await within(screen.getByTestId("new-session-form")).findByTestId("new-session-error");
+    expect(err).toHaveTextContent("400");
+    fireEvent.click(screen.getByTestId("new-session-cancel"));
+    fireEvent.click(screen.getByTestId("world-start-w"));
+    await screen.findByTestId("new-session-form");
+    expect(screen.queryByTestId("new-session-error")).not.toBeInTheDocument();
+  });
+
+  it("#25: while 'this world, or fresh?' shows, the card still has one primary button", async () => {
+    let answer: (v: unknown) => void = () => {};
+    (api.listWorlds as Mock).mockImplementation(() => new Promise((r) => (answer = r)));
+    (api.listDemos as Mock).mockResolvedValue([EMBER]);
+    (api.loadDemo as Mock).mockRejectedValue(new HttpError(409, "Conflict", '{"detail":"world already exists: emberleaf"}'));
+    renderHome();
+    fireEvent.click(await screen.findByTestId("demo-play-emberleaf"));
+    await screen.findByTestId("demo-ask");
+    const card = screen.getByTestId("demo-card-emberleaf");
+    expect(within(card).getAllByRole("button").filter((b) => b.className.includes("bg-accent "))).toHaveLength(1);
+    answer([]);
+  });
+});

@@ -549,6 +549,9 @@ export const ko = {
   "empty.noSession": "세션이 없어요.",
   "hint.startFromDemo": "홈의 데모 카드에서 바로 시작할 수 있어요.",
   "notice.sessionHeld": "다른 작업이 끝나기를 기다리고 있어요.",
+  "error.screenLoad.title": "이 화면을 불러오지 못했어요.",
+  "error.screenLoad.action": "새 버전이 올라왔거나 연결이 끊겼을 수 있어요. 새로고침해 주세요.",
+  "action.reloadPage": "새로고침",
 };
 
 export type Key = keyof typeof ko;

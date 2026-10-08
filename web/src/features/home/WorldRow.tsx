@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { describeError, type DescribedError } from "../../errors";
 import { formatDate } from "../../format";
+import { useMounted } from "../../hooks";
 import { t } from "../../i18n";
 import type { WorldInfo } from "../../types";
 import { Badge, Button, Card, InlineError } from "../../ui";
@@ -23,6 +24,7 @@ export function WorldRow({
   onStale: () => void;
 }) {
   const navigate = useNavigate();
+  const mounted = useMounted(); // left the home meanwhile: no navigate (code review 01 #9)
   const [going, setGoing] = useState(false);
   const [error, setError] = useState<DescribedError | null>(null);
   const id = world.id;
@@ -33,12 +35,13 @@ export function WorldRow({
     setError(null);
     try {
       const latest = openLatestFirst(await api.listSessions(id))[0];
+      if (!mounted.current) return;
       if (latest) navigate(`/play/${encodeURIComponent(latest.id)}`);
       else onStale(); // the list was behind: read it again, and the button goes
     } catch (e) {
-      setError(describeError(e));
+      if (mounted.current) setError(describeError(e));
     } finally {
-      setGoing(false);
+      if (mounted.current) setGoing(false);
     }
   }
 

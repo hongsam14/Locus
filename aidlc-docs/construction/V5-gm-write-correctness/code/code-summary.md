@@ -7,9 +7,9 @@
 
 ## 1. 기준선과 결과
 
-| 항목 | 기준선 (Step 1.2, `efe78c9`) | 결과 (Step 9) |
+| 항목 | 기준선 (Step 1.2, `efe78c9`) | 결과 (Step 9) → 코드 리뷰 01 뒤(`3995e86`) |
 |---|---|---|
-| pytest | 1048 | **1119** (+71). hypothesis 시드 둘(`1`, `20261008`)로 GREEN |
+| pytest | 1048 | 1119 → **1138**. hypothesis 시드 둘(`1`, `20261008`)로 GREEN |
 | ruff · black | clean | clean |
 | mypy (`locus api`) | 11 | 11 |
 | 웹 | vitest 550 | 바뀐 웹 없음(`git diff efe78c9..HEAD -- web` 비어 있음) |
@@ -25,6 +25,7 @@
 | 6 | `101cb63` | 행적 취소·왜곡도 설정 구간 |
 | 7 | `a507d6a` | 끊긴 run 보상, 지운 지역의 사건 |
 | 8 | `03cdb83` | operations.md, env.example |
+| 리뷰 01 | `3995e86` | 코드 리뷰 01의 medium 4·low 21 고침(기록 `code/reviews/code-review-01.md` § 6) |
 
 ## 2. 바꾼 파일과 만든 파일
 
@@ -94,7 +95,7 @@
 
 예측 밖의 세 곳:
 - `test_world_editor_api.py::test_region_delete_waits_for_no_turn_and_holds_the_sessions`: 에디터 삭제 중 턴 시작이 `TurnInProgressError` → `GmBusyError`(에디터도 리스다, BLM § 7).
-- `test_advance_turn.py::test_approve_non_suggested_rejected`: ACTIVE 사건 승인은 400 → 그대로 돌려줌, 줄 없음(BR-V5-07). 해소된 사건 승인은 여전히 400.
+- `test_advance_turn.py::test_approve_non_suggested_rejected`: Step 4에서 "ACTIVE면 그대로"로 바꿨다가, 코드 리뷰 01 #9로 처음 단언(GM이 만든 ACTIVE는 400)으로 돌아갔다. 그대로 돌려주는 것은 제안에서 승인된 사건뿐이다.
 - `test_player_mode.py::test_a_region_deleted_from_the_world_does_not_wedge_the_turn_engine`(U4-2 #4): 지운 지역에 초안을 시도하고 건너뛰던 것을, 사건이 먼저 끝나 초안이 없는 것으로 바꿈(FR-C4). 턴이 막히지 않는다는 원래 뜻은 그대로다. 지운 지역 초안을 건너뛰는 방어 코드는 남겼지만, 사건으로는 더 닿지 않는다.
 
 시험 받침: `tests/api/play_fixtures.py::play_container`에 `tuning` 인자를 더했다.
@@ -103,8 +104,8 @@
 
 1. **`fail_stale_runs`를 없앴다**(§ 1.1 R-01, 실행 메모 R-06). 승인된 BR-V5-19, domain-entities § 3, TP-V5-5는 "보상이 실패해 남은 `running`은 `fail_stale_runs`로 실패 표시"라고 적는다. FD 리뷰 R-01이 그것을 "보상 없이 실패 표시만 하면 플레이어 위치·청구가 틀린 채 묻힌다"로 짚었고, 코드 플랜 승인 때 대신할 처분을 정했다. 보상이 실패한 run은 자기 작업 단위에서 `failed`/`interrupted_uncompensated`로 표시하고 ERROR 로그를 남긴다. 그 표시마저 실패하면 `running`으로 남아 다음 시작에서 다시 보상한다. 포트, 두 어댑터, lifespan, 시험 3곳에서 없앴다.
 2. **`WriteSection`을 따로 두었다.** 플랜은 서비스가 guard와 tuning을 받는다고 적었다. 그대로 받되, 구간의 모양(짧은 쓰기 → 작업 단위 → 세션 다시 읽기)을 한 클래스에 모아 다섯 서비스가 같은 코드를 쓴다. 서비스는 `section` 속성으로 그것을 들고 있다.
-3. **`SeedService`는 guard를 받지 않는다.** 사건 서비스의 `section`을 그대로 쓴다. 씨앗 시작이 사건 만들기에 다시 들어가므로 둘이 같은 guard여야 하고(BR-V5-04), 따로 받으면 어긋날 수 있다. R-03의 "직접 만드는 곳은 기본값으로 돈다"는 그대로 맞다.
-4. **닫는 중의 턴 거절 문장**은 "the session is closing"이다. 코드는 `session_closed` 그대로다. domain-entities § 2는 `SessionClosedError` 문장을 "그대로"라 적었으나, 닫는 중은 아직 닫히지 않았고 문장에 세션 id를 싣지 않으려고(FR-C5) guard의 상수를 쓴다.
+3. **`SeedService`는 guard를 받지 않는다.** 사건 서비스의 `section`을 그대로 쓴다. 코드 리뷰 01 #7 뒤로는 그 구간 하나에서 진행 중을 보고 `create_in`으로 만든다(다시 들어가지 않음, BR-V5-04 고침). R-03의 "직접 만드는 곳은 기본값으로 돈다"는 그대로 맞다.
+4. **`session_closed` 문장**: 닫는 중은 "the session is closing", 닫힘은 "the session is closed"다. 둘 다 세션 id가 없다(FR-C5, 코드 리뷰 01 #6). domain-entities § 2의 "그대로"를 고쳤다.
 
 ## 6. 알려진 한계
 
@@ -112,6 +113,8 @@
 - **지운 지역에 남은 소문의 되먹임**(BLM § 8). 턴의 `apply_feedback`이 지운 지역의 소문으로 그 지역 행을 쓸 수 있다. FR-C4는 사건만 다룬다.
 - **한 프로세스 안의 보장**이다. 짧은 쓰기와 guard는 프로세스 안 잠금이다. PostgreSQL 행 잠금(`FOR UPDATE`)과 상태 조건 쓰기는 두 번째 겹으로 남겼지만, 실제 PostgreSQL에서의 겹침은 오프라인 시험이 돌리지 못한다(아래 B&T 확인).
 - **지운 지역 초안 건너뛰기 방어 코드**는 사건 경로로는 더 닿지 않아 그 시험이 빠졌다(§ 4).
+- **닫는 중에 거절된 턴**은 409 `session_closed`(BR-V5-16)인데, 그 닫기가 상한을 넘겨 `gm_busy`로 실패하면 세션은 열린 채다. 플레이어는 이미 "닫혔다"를 받았다. 창은 GM 저장 구간이 멈췄을 때의 상한(5초)뿐이다(코드 리뷰 01 § 4).
+- **인메모리 변형의 겹침 시험**은 작업 단위가 저장소 전체를 잠가 구간 없이도 통과하는 것이 있다(TP-V5-3 취소 둘, 9, 10, 11). 구간 자체는 SQL 변형이 지킨다(NFR § 2.3, 코드 리뷰 01 § 4).
 - 받침의 끼워 넣기 문은 시간에 기대는 곳이 있다(0.5초 기다림). 단계마다 3~6번 이어 돌려 흔들림이 없었지만, 아주 느린 CI에서는 늘릴 수 있다.
 
 ## 7. 다음에 넘김
@@ -120,7 +123,8 @@
   - `rumor_inactive`: "그 사이 꺼진 소문이에요" 같은 문장. 지금은 V2의 409 기본 문장이 나온다.
   - 타임라인 `event_resolved`의 `reason: "region_removed"`: "사라진 지역의 사건이 끝났어요". 줄에 지역 이름이 없다(지역이 없다).
   - GM 쓰기의 409 `gm_busy`(짧은 쓰기 상한을 넘김)와 월드 교체 경고 "busy and could not be closed".
-  - ACTIVE 사건 승인이 이제 200(그대로)이다. 두 번 누름은 화면이 막는다(BLM § 8).
+  - 제안에서 승인된 사건을 다시 승인하면 200(그대로)이다. 두 번 누름은 화면이 막는다(BLM § 8).
+  - 코드 리뷰 01 § 3: 플레이어 행동의 409 `gm_busy`가 "턴이 진행 중입니다"로 나온다(`conflictKind`). GM 작업 중 문장을 따로 둔다. GM 허브는 `rumor_inactive`·`gm_busy`에서 원문을 보이고 `rumor_inactive` 뒤에 다시 읽지 않는다. `describeError`에 두 키를 더하고, `rumor_inactive` 뒤에는 지역을 다시 읽는다.
 - **Build and Test (운영자 확인)**: NFR § 3의 P1~P6을 B&T 체크리스트에 넣는다.
   - § 1.2 R-01: P1~P3는 "실제 스택 스모크"로 이름을 바꾼다(고치기 전 코드에서도 통과할 수 있다). 잠금 자체를 보는 확인을 더한다: `psql`에서 사건 행을 `SELECT … FOR UPDATE`로 잡아 둔 채 해소를 보내 응답이 늦어지는지 본다.
   - § 1.2 R-04: P3는 `POST /api/gm/sessions/{s}/seeds/{같은 씨앗 id}/start` 둘, 201 하나와 409 하나. P5는 run의 `failed`와 `error=interrupted`를 `GET /api/play/sessions/{s}/turn-runs/{id}`로 본다.

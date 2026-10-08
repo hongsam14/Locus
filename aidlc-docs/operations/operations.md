@@ -121,7 +121,7 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
     player screen's `gm_busy` flag is true (`turn_running` is a turn only). The part that
     reads and writes the rows — fresh read, checks, rows and their timeline line in one
     transaction — runs one at a time per session (the **short write**). It waits at most
-    **`GM_WRITE_WAIT_S`** (default 5 s); past that the write answers 409 `gm_busy` and writes
+    **`GM_WRITE_WAIT_S`** (default 5 s, at most 600); past that the write answers 409 `gm_busy` and writes
     nothing. The save takes milliseconds, so the wait only bites when something hangs.
   - **Close (V5)**: closing a session keeps new turns out at once (a turn started then is 409
     `session_closed`) and waits only for a save in progress, not for a GM write's LLM call;
@@ -140,6 +140,11 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   compensated like a failed run (V5): only the turns that ran stay charged, a move with no
   turn run is undone with its deeds, the run becomes `failed` with `error=interrupted`, and a
   `turn_run_failed` line says `error_type: "Interrupted"`.
+  - A run whose turns all committed (only its result was lost) is marked `failed` /
+    `interrupted` with nothing to undo and no timeline line.
+  - A session with more than one `running` run (a run whose failure could not even be
+    recorded, then a later action) has only its newest run compensated; the older ones are
+    marked `interrupted_uncompensated` for an operator.
   - If a run's compensation itself fails, the run is marked `failed` with
     `error=interrupted_uncompensated` and the API logs an ERROR line with the run and
     session ids. Find such runs with `GET /api/play/sessions/{s}/turn-runs?status=failed`

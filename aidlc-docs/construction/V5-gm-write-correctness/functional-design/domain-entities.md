@@ -59,7 +59,7 @@ TurnGuard.gm_busy(session_id) -> bool                 [새] 리스가 하나라�
 |---|---|---|---|---|
 | `GmBusyError` [새] | 409 | `gm_busy` | 리스가 있는데 턴을 시작하려 함. 짧은 쓰기를 상한 안에 못 얻음 | "the session is busy with a GM write; retry shortly" |
 | `TurnInProgressError` | 409 | `turn_running` | 턴이 도는데 턴·GM 쓰기·닫기를 하려 함 | "a turn is running in this session; retry when it ends" |
-| `SessionClosedError` | 409 | `session_closed` | 닫힌(또는 닫는 중인) 세션에 씀 | 그대로 |
+| `SessionClosedError` | 409 | `session_closed` | 닫힌(또는 닫는 중인) 세션에 씀 | 닫힘 "the session is closed", 닫는 중 "the session is closing". 둘 다 세션 id 없음(〔코드 리뷰 01 #6〕, 예전 문장은 id를 실었다) |
 | `SeedAlreadyRunningError` | 409 | `seed_running` | 씨앗의 사건이 이미 진행 중 | 그대로 |
 | `RumorInactiveError` [새] | 409 | `rumor_inactive` | 지지도를 조정하려는 소문이 그 사이 꺼짐(Q2=A) | "the rumor is no longer active" |
 

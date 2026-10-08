@@ -5439,3 +5439,33 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V5 — code approval gate.
 
 ---
+
+## Code Generation Part 2 — V5 — Approval
+**Timestamp**: 2026-10-08T08:13:12Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V5 code approved as it stands (deviations in summary § 5 accepted with it). Next: V5 code review, four angles in parallel as in V2–V4, review only.
+**Context**: CONSTRUCTION / V5 — Code Generation Part 2 approved.
+
+---
+
+## Code Review — V5 — Findings
+**Timestamp**: 2026-10-08T08:43:03Z
+**AI Response**: Four review angles (guard/locking, GM write services, turn engine, tests/contract with 40 mutants) ran in parallel, review only; this session re-checked the top candidates (wait overflow, restored neighbours reinforced, closed sentence with the session id). Record `construction/V5-gm-write-correctness/code/reviews/code-review-01.md`: 4 medium, 21 low, V6 hand-offs (web on gm_busy / rumor_inactive), 2 accepted limits. Asked for the fix scope.
+**Context**: CONSTRUCTION / V5 — code review 01; awaiting the fix-scope choice.
+
+---
+
+## Code Review — V5 — Choice
+**Timestamp**: 2026-10-08T08:45:01Z
+**User Input**: fix scope "A. 전부 고침 (권장)"
+**AI Response**: Fixing all 4 medium and 21 low findings; V6 hand-offs recorded; the two accepted limits go to code-summary § 6.
+**Context**: CONSTRUCTION / V5 — code review 01; fixing next.
+
+---
+
+## Code Review — V5 — Fixed
+**Timestamp**: 2026-10-08T08:56:07Z
+**AI Response**: All 4 medium and 21 low findings fixed in `3995e86` (code and tests); 17 mutants of the fixes caught. pytest 1138 (gate GREEN, ruff/black clean, mypy 11), no web change. FD amended (BR-V5-04, BR-V5-07, domain-entities § 2); operations.md and env.example updated; record `code/reviews/code-review-01.md` § 6; code-summary updated (V6 hand-offs, accepted limits).
+**Context**: CONSTRUCTION / V5 — code review 01 fixed; V5 COMPLETE. Next: V6 (GM screen) Functional Design.
+
+---

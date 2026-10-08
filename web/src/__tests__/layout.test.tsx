@@ -57,8 +57,17 @@ describe("AppShell", () => {
     expect(screen.getByTestId("nav-home")).toHaveAttribute("href", "/");
     expect(screen.getByTestId("nav-editor")).toHaveAttribute("href", "/");
     expect(screen.queryByTestId("nav-gm")).not.toBeInTheDocument();
-    expect(screen.getByTitle(t("nav.gmLocked"))).toHaveTextContent(t("nav.gm"));
+    expect(screen.getByTitle(t("hint.gmLocked"))).toHaveTextContent(t("nav.gm"));
     expect(screen.getByText("screen")).toBeInTheDocument();
+  });
+
+  it("on the world list the editor item is not shown as the current page (V4 UX-13)", () => {
+    vi.spyOn(api, "capabilities").mockResolvedValue({ llm: true, vlm: true, embedding: true });
+    shell();
+    const editor = screen.getByTestId("nav-editor");
+    expect(editor).not.toHaveAttribute("aria-current");
+    expect(editor.className).not.toContain("bg-sunken");
+    expect(editor).toHaveAttribute("href", "/");
   });
 
   it("with a world and a session the links open them", () => {

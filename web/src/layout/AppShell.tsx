@@ -68,13 +68,21 @@ export function AppShell({
                 {t("nav.gm")}
               </NavLink>
             ) : (
-              <span className="inline-flex min-h-11 items-center px-3 text-faint" title={t("nav.gmLocked")}>
+              <span className="inline-flex min-h-11 items-center px-3 text-faint" title={t("hint.gmLocked")}>
                 {t("nav.gm")}
               </span>
             )}
-            <NavLink data-testid="nav-editor" to={editorTo} className={item}>
-              {t("nav.editor")}
-            </NavLink>
+            {worldId ? (
+              <NavLink data-testid="nav-editor" to={editorTo} className={item}>
+                {t("nav.editor")}
+              </NavLink>
+            ) : (
+              // without a world the editor item leads to the world list: a plain link, never
+              // shown as the current page (a NavLink to "/" was active everywhere — V4 UX-13)
+              <Link data-testid="nav-editor" to={editorTo} className={item({ isActive: false })}>
+                {t("nav.editor")}
+              </Link>
+            )}
           </nav>
           <LangSwitch />
         </div>

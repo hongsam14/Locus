@@ -121,17 +121,17 @@
 - [x] 2.5 커밋: `feat(web): useMedia; dialog sheet and full variants; a busy button keeps its focus (V4)`
 
 ### Step 3 — 메뉴 활성 표시와 사전 문체 정리 (BR-V4-09, § 1.2)
-- [ ] 3.1 `layout/AppShell.tsx`: 월드 없는 "에디터"를 `Link to="/"`로 바꾼다. `nav.gmLocked`는 `hint.gmLocked`로 옮긴다(호출부 `AppShell.tsx:71`).
-- [ ] 3.2 `i18n`(코드 계획 리뷰 01 R-02)
+- [x] 3.1 `layout/AppShell.tsx`: 월드 없는 "에디터"를 `Link to="/"`로 바꾼다. `nav.gmLocked`는 `hint.gmLocked`로 옮긴다(호출부 `AppShell.tsx:71`).
+- [x] 3.2 `i18n`(코드 계획 리뷰 01 R-02)
   - ko `hint.gmLocked` = "세션을 고르면 열려요"(해요체, 옛 "…열립니다"는 i18n.style에 걸린다). en `hint.gmLocked` = "Opens once you pick a session".
   - `nav.gmLocked`는 두 사전에서 지운다.
   - `log.*` 두 줄에 마침표를 더한다.
   - `i18n.style.test`: STORY에 `log`를 더하고, LEGACY에서 `nav.gmLocked`를 뺀다.
-- [ ] 3.3 테스트
+- [x] 3.3 테스트
   - `layout.test.tsx:60`의 `t("nav.gmLocked")`를 `t("hint.gmLocked")`로 고친다.
   - 홈에서 `nav-editor`에 활성 클래스·`aria-current`가 없는지 본다.
   - `deeds.test`처럼 `t()`로 비교하는 곳은 키 이름을 쓰지 않으므로 영향이 없다(`grep -rn "gmLocked" web/src`로 확인).
-- [ ] 3.4 커밋: `fix(web): the editor menu item is not active on the world list; play log lines in the story register (V4, UX-13)`
+- [x] 3.4 커밋: `fix(web): the editor menu item is not active on the world list; play log lines in the story register (V4, UX-13)`
 
 ### Step 4 — 플레이 도우미 셋 (BLM § 2.1·2.2, BR-V4-16·17·19, R-11 무관)
 - [ ] 4.1 `hooks/useWorldNames.ts`: 키는 `[worldId, requestLang]`이다. `names.world_id !== worldId`면 null이다. `nameOf(kind, id, field, fallback)`.

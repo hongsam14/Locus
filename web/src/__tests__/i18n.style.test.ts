@@ -4,12 +4,11 @@ import { dicts } from "../i18n";
 
 const CONTROL = ["action", "nav", "tab"];
 const NOTICE = ["notice", "error", "confirm", "empty", "hint"];
-const STORY = ["story"]; // log.* and timeline.* move over with the play and GM screens
+const STORY = ["story", "log"]; // log.* moved over with the play screen (V4); timeline.* with GM (V6)
 const VALUE = ["enum", "word", "label", "unit"];
 
 // lines written before V2, moved to the rule by the unit that rewrites their screen
 const LEGACY = new Set([
-  "nav.gmLocked", // V4: becomes hint.gmLocked
   "confirm.regen", // V6
   "confirm.regenAll", // V6
 ]);

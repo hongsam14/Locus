@@ -5,8 +5,8 @@ import type { Key } from "./ko";
 export const en: Record<Key, string> = {
   "nav.editor": "Editor",
   "nav.gm": "GM",
+  "hint.gmLocked": "Opens once you pick a session",
   "nav.play": "Play",
-  "nav.gmLocked": "Opens once a session is picked",
   "lang.label": "Display language",
 
   "common.loading": "Loading…",
@@ -170,8 +170,8 @@ export const en: Record<Key, string> = {
   "timeline.event_applied": "event applied · {region}",
   "timeline.event_resolved": "event resolved · {region}",
   "timeline.gm_session_started": "GM session started",
-  "log.deed_seeded": "Talk about you has started in {region}",
-  "log.rumor_spread": "Talk about you has reached {region}",
+  "log.deed_seeded": "Talk about you has started in {region}.",
+  "log.rumor_spread": "Talk about you has reached {region}.",
 
   "notif.title": "region {region_id}",
   "notif.promoted": "{n} promoted",

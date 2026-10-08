@@ -5,8 +5,8 @@ export const ko = {
   // navigation / display language
   "nav.editor": "에디터",
   "nav.gm": "GM",
+  "hint.gmLocked": "세션을 고르면 열려요",
   "nav.play": "플레이",
-  "nav.gmLocked": "세션을 선택하면 열립니다",
   "lang.label": "표시 언어",
 
   // shared fragments
@@ -185,8 +185,8 @@ export const ko = {
   "timeline.event_applied": "이벤트 적용 · {region}",
   "timeline.event_resolved": "이벤트 해소 · {region}",
   "timeline.gm_session_started": "GM 세션 시작",
-  "log.deed_seeded": "{region}에 당신에 대한 이야기가 돌기 시작했다",
-  "log.rumor_spread": "당신에 대한 이야기가 {region}까지 왔다",
+  "log.deed_seeded": "{region}에 당신에 대한 이야기가 돌기 시작했다.",
+  "log.rumor_spread": "당신에 대한 이야기가 {region}까지 왔다.",
 
   // notification segments (per-region turn change)
   "notif.title": "지역 {region_id}",

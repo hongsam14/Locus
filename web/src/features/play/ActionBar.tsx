@@ -16,6 +16,17 @@ export function declaredLength(text: string): number {
 
 const oneTurn = () => t("unit.turns", { n: 1 });
 
+/** A button that is off while a turn runs keeps its focus (BR-V4-24): `aria-disabled` and
+ * the press ignored, not native `disabled` (which drops focus to the page). */
+export function lockedProps(locked: boolean, onClick: () => void) {
+  return {
+    "aria-disabled": locked || undefined,
+    onClick: () => {
+      if (!locked) onClick();
+    },
+  };
+}
+
 /** Where a turn stands (V4 BLM § 2.2, BR-V4-17): running, slow past the poll cap, or its
  * check failed — the last two with [check again]. The action box and the phone's dock
  * both show it in the place of the actions. */
@@ -23,37 +34,51 @@ export function TurnStatus({
   running,
   slow = false,
   error,
+  refusal,
   onRecheck,
 }: {
   running: TurnRun | null;
   slow?: boolean;
   error?: DescribedError;
+  refusal?: DescribedError; // the server refused the action: said once, nothing to check again
   onRecheck?: () => void;
 }) {
+  const refused = refusal && (
+    <div data-testid="action-error">
+      <InlineError error={refusal} />
+    </div>
+  );
   const recheck = onRecheck && (
     <Button size="sm" data-testid="turn-recheck" onClick={onRecheck}>{t("action.recheck")}</Button>
   );
+  let state = null;
   if (error) {
-    return (
+    state = (
       <div data-testid="turn-error" className="flex flex-col items-start gap-2">
         <InlineError error={error} />
         {recheck}
       </div>
     );
-  }
-  if (slow) {
-    return (
+  } else if (slow) {
+    state = (
       <div role="status" data-testid="turn-slow" className="flex flex-wrap items-center gap-2 text-sm">
         <span className="text-muted">{t("notice.turnSlow")}</span>
         {recheck}
       </div>
     );
+  } else if (running) {
+    state = (
+      <span role="status" data-testid="turn-progress" className="animate-pulse text-sm text-muted">
+        {t("play.running", { n: running.cost_turns })}
+      </span>
+    );
   }
-  if (!running) return null;
+  if (!refused && !state) return null;
   return (
-    <span role="status" data-testid="turn-progress" className="animate-pulse text-sm text-muted">
-      {t("play.running", { n: running.cost_turns })}
-    </span>
+    <>
+      {refused}
+      {state}
+    </>
   );
 }
 
@@ -63,12 +88,14 @@ export function TurnStatus({
  * beside [declare] (the action box puts [wait] there). */
 export function DeclareForm({
   disabled,
+  locked = false,
   closed = false,
   maxChars = 300,
   onDeclare,
   extra,
 }: {
-  disabled: boolean; // a turn is running or the session closed: no new action
+  disabled: boolean; // no new action (the session closed; before V4 also a running turn)
+  locked?: boolean; // a turn runs: [declare] is off but keeps its focus (BR-V4-24)
   closed?: boolean; // the session closed: the box locks too (U7 review #7)
   maxChars?: number;
   onDeclare: (text: string) => Promise<boolean>;
@@ -81,7 +108,7 @@ export function DeclareForm({
   const tooLong = length > maxChars;
 
   async function declare() {
-    if (disabled || sending || !text || tooLong) return;
+    if (disabled || locked || sending || !text || tooLong) return;
     const kept = draft;
     setSending(true);
     setDraft("");
@@ -116,7 +143,8 @@ export function DeclareForm({
         <span data-testid="declare-count" className={`mr-auto text-xs tabular-nums ${tooLong ? "text-danger" : "text-muted"}`}>
           {t("play.chars", { n: length, max: maxChars })}
         </span>
-        <Button type="submit" variant="primary" data-testid="declare-btn" disabled={disabled || sending || !text || tooLong}>
+        <Button type="submit" variant="primary" data-testid="declare-btn" busy={sending}
+          aria-disabled={locked || undefined} disabled={disabled || !text || tooLong}>
           {t("action.declare")} · {oneTurn()}
         </Button>
         {extra}
@@ -137,31 +165,36 @@ export function ActionBar({
   maxChars = 300,
   slow = false,
   error,
+  refusal,
   onRecheck,
+  locked = false,
 }: {
   running: TurnRun | null;
   disabled: boolean;
+  locked?: boolean;
   closed?: boolean;
   onWait: () => void;
   onDeclare?: (text: string) => Promise<boolean>;
   maxChars?: number;
   slow?: boolean;
   error?: DescribedError;
+  refusal?: DescribedError;
   onRecheck?: () => void;
 }) {
   const wait = (
-    <Button type="button" data-testid="wait-btn" disabled={disabled} onClick={onWait}>
+    <Button type="button" data-testid="wait-btn" disabled={disabled} {...lockedProps(locked, onWait)}>
       {t("action.wait")} · {oneTurn()}
     </Button>
   );
   return (
     <div data-testid="action-bar" className="flex flex-col gap-3 rounded-lg border border-line-strong bg-surface p-4">
       {onDeclare ? (
-        <DeclareForm disabled={disabled} closed={closed} maxChars={maxChars} onDeclare={onDeclare} extra={wait} />
+        <DeclareForm disabled={disabled} locked={locked} closed={closed} maxChars={maxChars} onDeclare={onDeclare}
+          extra={wait} />
       ) : (
         <div className="flex">{wait}</div>
       )}
-      <TurnStatus running={running} slow={slow} error={error} onRecheck={onRecheck} />
+      <TurnStatus running={running} slow={slow} error={error} refusal={refusal} onRecheck={onRecheck} />
     </div>
   );
 }

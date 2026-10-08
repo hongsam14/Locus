@@ -20,6 +20,7 @@ import { enumLabel, turnAt, turnLabel } from "../format";
 import type { TurnOutcome } from "../hooks";
 import { t } from "../i18n";
 import { WorldMap } from "../map";
+import { Button } from "../ui";
 import type { MoveOption, NPC, Region, RegionView, TimelineEntry } from "../types";
 
 vi.mock("../api", () => ({
@@ -77,7 +78,7 @@ describe("TP-V4-6: names from the map, the English behind them", () => {
     render(<NpcList npcs={[MARA]} nameOf={korean} onTalk={() => {}} />);
     expect(screen.getByTestId("npc-n1")).toHaveTextContent("마라");
     expect(screen.getByTestId("npc-n1")).toHaveTextContent("여관 주인");
-    render(<MovePanel words moves={MOVES} disabled={false} onMove={() => {}} nameOf={korean} />);
+    render(<MovePanel moves={MOVES} disabled={false} onMove={() => {}} nameOf={korean} />);
     expect(screen.getByTestId("move-b")).toHaveTextContent("할로");
     expect(screen.getByTestId("move-c")).toHaveTextContent("Crag"); // not in the map: English
     const outcome: TurnOutcome = {
@@ -120,7 +121,7 @@ describe("TP-V4-6: names from the map, the English behind them", () => {
 
 describe("TP-V4-7: moves and the map", () => {
   it("a blocked way stays as a grey row that says why, with no button; the server's reason is not shown", () => {
-    render(<MovePanel words moves={MOVES} disabled={false} onMove={() => {}} />);
+    render(<MovePanel moves={MOVES} disabled={false} onMove={() => {}} />);
     const row = screen.getByTestId("move-c");
     expect(screen.getByTestId("move-c-blocked")).toHaveTextContent(t("notice.moveBlocked"));
     expect(row).toHaveTextContent(enumLabel("travelBy", "blocked"));
@@ -147,9 +148,9 @@ describe("TP-V4-7: moves and the map", () => {
   });
 
   it("the row the map pointed at is marked", () => {
-    const { rerender } = render(<MovePanel words moves={MOVES} disabled={false} onMove={() => {}} />);
+    const { rerender } = render(<MovePanel moves={MOVES} disabled={false} onMove={() => {}} />);
     expect(screen.getByTestId("move-b")).not.toHaveAttribute("data-highlight");
-    rerender(<MovePanel words moves={MOVES} disabled={false} onMove={() => {}} highlightId="b" />);
+    rerender(<MovePanel moves={MOVES} disabled={false} onMove={() => {}} highlightId="b" />);
     expect(screen.getByTestId("move-b")).toHaveAttribute("data-highlight", "true");
   });
 
@@ -342,5 +343,29 @@ describe("TP-V4-13: labels, the focus ring, named sheets", () => {
         onMove={() => {}} moveOpen={false} onMoveOpenChange={() => {}} />,
     );
     for (const id of ["dock-wait", "dock-declare", "dock-move"]) expect(screen.getByTestId(id)).toBeDisabled();
+  });
+});
+
+describe("Button: busy and a caller's aria-disabled together (BR-V4-24)", () => {
+  it("a caller's aria-disabled={undefined} does not undo busy, and a locked button ignores the press", () => {
+    const onClick = vi.fn();
+    const { rerender } = render(<Button busy aria-disabled={undefined} onClick={onClick}>x</Button>);
+    expect(screen.getByRole("button")).toHaveAttribute("aria-disabled", "true");
+    rerender(<Button aria-disabled onClick={onClick}>x</Button>);
+    expect(screen.getByRole("button")).toHaveAttribute("aria-disabled", "true");
+    rerender(<Button onClick={onClick}>x</Button>);
+    expect(screen.getByRole("button")).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("the action box's [wait] keeps focus while a turn runs and ignores the press", () => {
+    const onWait = vi.fn();
+    render(<ActionBar running={null} disabled={false} locked onWait={onWait} onDeclare={async () => true} />);
+    const wait = screen.getByTestId("wait-btn");
+    wait.focus();
+    fireEvent.click(wait);
+    expect(onWait).not.toHaveBeenCalled();
+    expect(wait).toHaveFocus();
+    expect(wait).not.toBeDisabled();
+    expect(wait).toHaveAttribute("aria-disabled", "true");
   });
 });

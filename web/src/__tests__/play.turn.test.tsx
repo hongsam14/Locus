@@ -131,7 +131,8 @@ describe("useTurnRun", () => {
       ok = await hook.result.current.turn.act({ type: "move", to_region_id: "r9" });
     });
     expect(ok).toBe(false); // a refused action: the caller keeps the sheet open
-    expect(hook.result.current.turn.error?.status).toBe(400);
+    expect(hook.result.current.turn.refusal?.status).toBe(400);
+    expect(hook.result.current.turn.error).toBeUndefined(); // nothing to check again
   });
 
   it("leaving the session stops the loop: no outcome lands on the next session", async () => {

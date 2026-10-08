@@ -89,22 +89,12 @@ export const ko = {
   "notif.noTargets": "생성할 빈 지역이 없습니다",
 
   // player mode (U4)
-  "play.title": "플레이어 모드",
-  "play.noSession": "세션을 선택하거나, 홈(/)에서 플레이를 시작하세요.",
   "play.npcs": "이곳의 사람들",
   "play.facts": "아는 것",
-  "play.hearsay": "들은 이야기",
   "play.hearsayHint": "이 지역에 희미하게 닿은 이야기입니다. 사람들이 다 아는 것은 아닙니다.",
-  "play.rumors": "떠도는 소문",
-  "play.moves": "갈 수 있는 곳",
-  "play.move": "이동",
-  "play.turns": "{n}턴",
-  "play.blocked": "지나갈 수 없음",
-  "play.wait": "기다리기 (1턴)",
   "play.running": "세계가 움직이는 중… ({n}턴)",
   "play.turnInProgress": "턴이 진행 중입니다",
   "play.sessionClosed": "세션이 종료되었습니다",
-  "play.gmMode": "GM 모드",
   "gm.backToPlay": "플레이로 돌아가기",
   "gm.playerStatus": "{name} · {region} · {turn}턴",
   "gm.running": "(진행 중)",
@@ -117,8 +107,6 @@ export const ko = {
   "play.runFailed": "턴 처리에 실패했습니다",
   "play.budget": "LLM 예산이 다해 일부 소문을 건너뛰었습니다",
   "play.llmFailed": "LLM 호출이 실패해 남은 소문 생성을 멈췄습니다",
-  "play.noLlm": "LLM 키가 없어 소문·대화가 생성되지 않습니다. 이동과 지도는 동작합니다.",
-  "play.log": "여정 기록",
   "play.quiet": "조용하다",
 
   // NPC dialogue (U5)
@@ -133,10 +121,8 @@ export const ko = {
   "dialogue.noLlm": "LLM 키가 없어 대화할 수 없습니다. 지난 대화는 볼 수 있습니다.",
 
   // deeds & spread (U6)
-  "play.declare": "선언하기 (1턴)",
   "play.declarePlaceholder": "무엇을 하시겠습니까?",
   "play.chars": "{n}/{max}자",
-  "play.narrationTitle": "세계의 응답",
   "play.narrationFallback": "서술을 만들 LLM이 없어 행동만 기록했습니다",
   "badge.deed": "행적",
   "deed.title": "행적",
@@ -560,6 +546,8 @@ export const ko = {
   "action.move": "이동",
   "action.talk": "말 걸기",
   "unit.turns": "{n}턴",
+  "empty.noSession": "세션이 없어요.",
+  "hint.startFromDemo": "홈의 데모 카드에서 바로 시작할 수 있어요.",
 };
 
 export type Key = keyof typeof ko;

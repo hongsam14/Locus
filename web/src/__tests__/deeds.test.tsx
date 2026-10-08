@@ -8,7 +8,7 @@ import type { Mock } from "vitest";
 import { DeedPanel } from "../features/gm/DeedPanel";
 import { ActionBar } from "../features/play/ActionBar";
 import { PlayLog } from "../features/play/PlayLog";
-import { RegionScene } from "../features/play/RegionScene";
+import { KnownHere } from "../features/play/RegionScene";
 import { t } from "../i18n";
 import { PlayPage } from "../routes/PlayPage";
 import type { DeedViewOut, RegionView, SessionRumor, TurnRun } from "../types";
@@ -130,7 +130,9 @@ describe("PlayPage with declarations", () => {
     renderPlay();
     fireEvent.change(await screen.findByTestId("declare-input"), { target: { value: "x" } });
     fireEvent.click(screen.getByTestId("declare-btn"));
-    await waitFor(() => expect(screen.getByTestId("play-error")).toHaveTextContent("400"));
+    // V4 intended change: a refused action is said in the action's place (action-error), not
+    // as the page's read error (play-error); the original "400" is kept, folded
+    await waitFor(() => expect(screen.getByTestId("action-error")).toHaveTextContent("400"));
     expect(screen.getByTestId("declare-input")).toHaveValue("x");
     (api.act as Mock).mockRejectedValueOnce(new HttpError(409, "Conflict", "turn in progress"));
     fireEvent.click(screen.getByTestId("declare-btn"));
@@ -149,8 +151,10 @@ describe("PlayPage with declarations", () => {
 
 describe("deed badge and the player log (US-6.5, frontend §2.4/§2.5)", () => {
   it("a deed rumor carries the deed badge, a canonical one does not", () => {
-    render(<RegionScene view={view({ rumors: [rumor(), rumor({ id: "ru2", origin_kind: "canonical" })] })} />);
-    expect(screen.getByTestId("deed-badge-ru1")).toHaveTextContent(t("badge.deed"));
+    // V4 intended change: the region's parts (KnownHere) replace the one panel, and the
+    // player reads their own deed as "your story" (the GM keeps badge.deed)
+    render(<KnownHere view={view({ rumors: [rumor(), rumor({ id: "ru2", origin_kind: "canonical" })] })} />);
+    expect(screen.getByTestId("deed-badge-ru1")).toHaveTextContent(t("label.yourStory"));
     expect(screen.queryByTestId("deed-badge-ru2")).not.toBeInTheDocument();
   });
 

@@ -44,13 +44,15 @@ export function Button({
   disabled,
   children,
   onClick,
+  "aria-disabled": ariaDisabled,
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size; busy?: boolean; icon?: ReactNode }) {
   return (
     <button
       className={`${base} ${variants[variant]} ${sizes[size]} ${className}`.trim()}
       disabled={disabled}
-      aria-disabled={busy || undefined}
+      // busy, or off by the caller (a turn runs, V4 BR-V4-24): one attribute, neither drops the other
+      aria-disabled={busy || ariaDisabled === true || ariaDisabled === "true" || undefined}
       aria-busy={busy || undefined}
       onClick={(e) => {
         if (busy) {

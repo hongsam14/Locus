@@ -3,7 +3,7 @@ import type { DescribedError } from "../../errors";
 import { t } from "../../i18n";
 import type { MoveOption, TurnRun } from "../../types";
 import { Button, Dialog } from "../../ui";
-import { DeclareForm, TurnStatus } from "./ActionBar";
+import { DeclareForm, TurnStatus, lockedProps } from "./ActionBar";
 import { MovePanel } from "./MovePanel";
 import { english, type NameOf } from "./names";
 
@@ -17,8 +17,10 @@ export function ActionDock({
   running,
   slow = false,
   error,
+  refusal,
   onRecheck,
   disabled,
+  locked = false,
   closed = false,
   maxChars = 300,
   onWait,
@@ -33,8 +35,10 @@ export function ActionDock({
   running: TurnRun | null;
   slow?: boolean;
   error?: DescribedError;
+  refusal?: DescribedError;
   onRecheck?: () => void;
-  disabled: boolean; // a turn is running or the session closed
+  disabled: boolean; // the session closed
+  locked?: boolean; // a turn runs: the actions keep their focus (BR-V4-24)
   closed?: boolean;
   maxChars?: number;
   onWait: () => void;
@@ -51,9 +55,11 @@ export function ActionDock({
     <>
       <div data-testid="action-dock"
         className="fixed inset-x-0 bottom-0 z-40 flex flex-col gap-2 border-t border-line-strong bg-surface px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-pop">
-        <TurnStatus running={running} slow={slow} error={error} onRecheck={onRecheck} />
+        {/* a refused declaration is said in its sheet, which stays open */}
+        <TurnStatus running={running} slow={slow} error={error} refusal={declareOpen ? undefined : refusal}
+          onRecheck={onRecheck} />
         <div className="grid grid-cols-3 gap-2">
-          <Button data-testid="dock-wait" disabled={disabled} onClick={onWait}>
+          <Button data-testid="dock-wait" disabled={disabled} {...lockedProps(locked, onWait)}>
             {t("action.wait")}
           </Button>
           <Button variant="primary" data-testid="dock-declare" disabled={closed}
@@ -67,7 +73,8 @@ export function ActionDock({
       </div>
       <Dialog open={declareOpen} onOpenChange={setDeclareOpen} variant="sheet" testId="declare-sheet"
         title={t("action.declare")}>
-        <DeclareForm disabled={disabled} closed={closed} maxChars={maxChars}
+        {refusal && <TurnStatus running={null} refusal={refusal} />}
+        <DeclareForm disabled={disabled} locked={locked} closed={closed} maxChars={maxChars}
           onDeclare={async (text) => {
             const accepted = await onDeclare(text);
             if (accepted) setDeclareOpen(false);
@@ -76,7 +83,7 @@ export function ActionDock({
       </Dialog>
       <Dialog open={moveOpen} onOpenChange={onMoveOpenChange} variant="sheet" testId="move-sheet"
         title={t("label.whereToGo")}>
-        <MovePanel words bare moves={moves} nameOf={nameOf} highlightId={highlightId} disabled={disabled}
+        <MovePanel bare moves={moves} nameOf={nameOf} highlightId={highlightId} disabled={disabled} locked={locked}
           onMove={(id) => {
             onMoveOpenChange(false);
             onMove(id);

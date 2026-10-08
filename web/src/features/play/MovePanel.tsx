@@ -2,73 +2,38 @@ import { useEffect, useRef } from "react";
 import { enumLabel } from "../../format";
 import { t } from "../../i18n";
 import type { MoveOption } from "../../types";
-import { Button, Panel } from "../../ui";
+import { Button } from "../../ui";
+import { lockedProps } from "./ActionBar";
 import { english, type NameOf } from "./names";
 
 /** Move options from the current region (FR-C2): cost in turns, blocked ones greyed. The
  * list is the only way to move; the small map only points at a row (V4 Q4=A).
  *
- * V4: names from the map; `highlightId` marks the row the map pointed at and scrolls to it.
- * `words` = the V4 rows (Step 7 turns it on with the new screen): the way in words and
- * "N turns", a blocked row grey with the dictionary's reason and no button — the server's
- * `reason` is code-like English and never shown (BR-V4-13). `bare` drops the heading
- * (the move sheet has its own title). */
+ * V4: names from the map; the way in words and "N turns"; a blocked row stays, grey, with
+ * the dictionary's reason and no button — the server's `reason` is code-like English and
+ * never shown (BR-V4-13). `highlightId` marks the row the map pointed at and scrolls to it.
+ * `bare` drops the heading (the move sheet has its own title). */
 export function MovePanel({
   moves,
   disabled,
   onMove,
   nameOf = english,
   highlightId = null,
-  words = false,
   bare = false,
+  locked = false,
 }: {
   moves: MoveOption[];
   disabled: boolean;
   onMove: (regionId: string) => void;
   nameOf?: NameOf;
   highlightId?: string | null;
-  words?: boolean;
   bare?: boolean;
+  locked?: boolean; // a turn runs: [move] is off but keeps its focus (BR-V4-24)
 }) {
   const rows = useRef<Record<string, HTMLLIElement | null>>({});
   useEffect(() => {
     if (highlightId) rows.current[highlightId]?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
   }, [highlightId]);
-
-  if (!words) {
-    return (
-      <Panel title={t("play.moves")} data-testid="move-panel" className="max-w-2xl">
-        {moves.length === 0 && <p className="text-xs text-muted">—</p>}
-        <ul className="space-y-1">
-          {moves.map((m) => (
-            <li
-              key={m.region_id}
-              data-testid={`move-${m.region_id}`}
-              className={`flex items-center gap-2 text-sm ${m.passable ? "" : "opacity-50"}`}
-            >
-              <span className="flex-1">
-                <b>{m.region_name}</b> <span className="text-muted">· {m.kind}</span>{" "}
-                {m.passable ? (
-                  <span>· {t("play.turns", { n: m.cost_turns })}</span>
-                ) : (
-                  <span data-testid={`move-${m.region_id}-blocked`}>· {t("play.blocked")}</span>
-                )}
-              </span>
-              <Button
-                size="sm"
-                variant="primary"
-                data-testid={`move-${m.region_id}-btn`}
-                disabled={disabled || !m.passable}
-                onClick={() => onMove(m.region_id)}
-              >
-                {t("play.move")}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </Panel>
-    );
-  }
 
   return (
     <section className="flex flex-col gap-2" aria-labelledby={bare ? undefined : "where-to-go"} data-testid="move-panel">
@@ -104,7 +69,7 @@ export function MovePanel({
               </span>
               {m.passable && (
                 <Button size="sm" variant="primary" data-testid={`move-${m.region_id}-btn`} disabled={disabled}
-                  onClick={() => onMove(m.region_id)}>
+                  {...lockedProps(locked, () => onMove(m.region_id))}>
                   {t("action.move")}
                 </Button>
               )}

@@ -22,7 +22,10 @@ export interface TurnOutcome {
 export interface TurnRunControl {
   running: TurnRun | null;
   slow: boolean;
+  /** The run's check failed: [check again] polls the same run. */
   error?: DescribedError;
+  /** The server refused the action (400 and the like): no run, nothing to check again. */
+  refusal?: DescribedError;
   outcome: TurnOutcome | null;
   act(action: PlayerAction): Promise<boolean>;
   recheck(): void;
@@ -38,6 +41,7 @@ export function useTurnRun(
   const [running, setRunning] = useState<TurnRun | null>(null);
   const [slow, setSlow] = useState(false);
   const [error, setError] = useState<DescribedError>();
+  const [refusal, setRefusal] = useState<DescribedError>();
   const [outcome, setOutcome] = useState<TurnOutcome | null>(null);
   const sidRef = useRef(sessionId);
   sidRef.current = sessionId;
@@ -94,6 +98,7 @@ export function useTurnRun(
     setRunning(null);
     setSlow(false);
     setError(undefined);
+    setRefusal(undefined);
     setOutcome(null);
     lastRunRef.current = null;
     if (!sessionId) return;
@@ -118,6 +123,7 @@ export function useTurnRun(
       const gen = genRef.current;
       const here = () => sidRef.current === sid && genRef.current === gen;
       setError(undefined);
+      setRefusal(undefined);
       setOutcome(null); // the result band empties when the next action starts (Q2)
       setSlow(false);
       try {
@@ -132,7 +138,7 @@ export function useTurnRun(
         const kind = conflictKind(e);
         if (kind === "closed") reloadRef.current(); // the closed banner says it (BR-V4-18)
         else if (kind === "busy") toast({ key: "play:busy", tone: "event", title: t("play.turnInProgress") });
-        else setError(describeError(e));
+        else setRefusal(describeError(e));
         return false;
       }
     },
@@ -148,7 +154,7 @@ export function useTurnRun(
   }, [running, sessionId, poll]);
 
   const clearOutcome = useCallback(() => setOutcome(null), []);
-  return { running, slow, error, outcome, act, recheck, clearOutcome };
+  return { running, slow, error, refusal, outcome, act, recheck, clearOutcome };
 }
 
 /** Re-read while the session is held with no run of ours in flight — a GM write, an

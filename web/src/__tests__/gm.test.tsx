@@ -93,7 +93,9 @@ describe("CommitRange", () => {
 
 // --- play <-> GM (Q1=B, BR-U7-21/22) ------------------------------------------------ //
 describe("GM mode switch", () => {
-  it("the play screen's GM button goes to /gm/:sid", async () => {
+  // V4 intended change (BR-V4-20, R-11): the play screen has no GM button; the menu's GM
+  // item goes to this session's GM screen
+  it("the menu's GM item on the play screen goes to /gm/:sid", async () => {
     (api.getSession as Mock).mockResolvedValue(OPEN);
     (api.getRegion as Mock).mockRejectedValue(new Error("not needed"));
     (api.getLog as Mock).mockResolvedValue([]);
@@ -107,7 +109,9 @@ describe("GM mode switch", () => {
         </Routes>
       </MemoryRouter>,
     );
-    fireEvent.click(await screen.findByTestId("play-gm-btn"));
+    await screen.findByTestId("play-page");
+    expect(screen.queryByTestId("play-gm-btn")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("nav-gm"));
     expect(await screen.findByTestId("gm-route")).toBeInTheDocument();
   });
 

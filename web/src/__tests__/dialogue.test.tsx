@@ -467,6 +467,7 @@ describe("PlayPage with dialogue and the language toggle", () => {
     expect(lang()).toBe("en");
     expect(screen.getByTestId("nav-play")).toHaveTextContent("Play");
     expect(screen.getByTestId("lang-en")).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByTestId("region-scene")).toHaveTextContent("People here");
+    // V4 intended change: the people are their own section, beside the scene text
+    expect(screen.getByTestId("people-here")).toHaveTextContent("People here");
   });
 });

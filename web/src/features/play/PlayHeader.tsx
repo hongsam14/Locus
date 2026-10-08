@@ -4,6 +4,16 @@ import { t } from "../../i18n";
 import type { RegionView } from "../../types";
 import { english, type NameOf } from "./names";
 
+/** [home] as a link: a closed session and an empty `/play` lead back to the demo cards. */
+export function HomeLink() {
+  return (
+    <Link to="/" data-testid="play-home-link"
+      className="inline-flex min-h-11 items-center rounded-md border border-line-strong bg-surface px-4 text-fg hover:bg-bg sm:min-h-9">
+      {t("action.goHome")}
+    </Link>
+  );
+}
+
 /** The top of the play screen (V4 frontend-components § 3.3): where the region sits, its
  * name, level and the turn; a closed session's line with [home]; the GM-at-work notice.
  * `level_path` runs from the top ancestor down to the region itself, so the path above the
@@ -38,10 +48,7 @@ export function PlayHeader({
         <div role="status" data-testid="closed-banner"
           className="flex flex-wrap items-center gap-3 rounded-lg border border-line-strong bg-sunken px-3 py-2 text-sm">
           <span className="flex-1">{t("notice.sessionClosed")}</span>
-          <Link to="/" data-testid="play-home-link"
-            className="inline-flex min-h-9 items-center rounded-md border border-line-strong bg-surface px-3 text-fg hover:bg-bg">
-            {t("action.goHome")}
-          </Link>
+          <HomeLink />
         </div>
       )}
       {!closed && view.gm_busy && (

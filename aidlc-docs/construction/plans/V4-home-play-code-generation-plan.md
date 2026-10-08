@@ -277,20 +277,30 @@
 - [x] 6.12 커밋: `feat(web): play parts — header, result band, scene, moves, log, small map, action dock and sheets (V4)`
 
 ### Step 7 — 플레이 화면 조립 (BLM § 2, BR-V4-02~04·15·16·18·20·21·22·25, R-11)
-- [ ] 7.1 `features/play/PlayLayout.tsx`: frontend-components § 1 표대로 폭별 순서를 정하고, `useMedia` 두 쿼리를 쓴다. 각 컴포넌트는 한 곳에만 렌더한다.
-- [ ] 7.1a Step 6에서 미뤄 둔 보이는 변경을 켠다. 막힌 줄 이유 문장, ActionBar의 라벨·초점 고리, 결과 띠를 쓰고 알림·NarrationCard 단독 표시를 없앤다.
-- [ ] 7.2 `routes/PlayPage.tsx`를 다시 쓴다(조립).
+- [x] 7.1 `features/play/PlayLayout.tsx`: frontend-components § 1 표대로 폭별 순서를 정하고, `useMedia` 두 쿼리를 쓴다. 각 컴포넌트는 한 곳에만 렌더한다.
+- [x] 7.1a Step 6에서 미뤄 둔 보이는 변경을 켠다. 막힌 줄 이유 문장, ActionBar의 라벨·초점 고리, 결과 띠를 쓰고 알림·NarrationCard 단독 표시를 없앤다.
+- [x] 7.2 `routes/PlayPage.tsx`를 다시 쓴다(조립).
   - 쓰는 것: `usePlaySession`·`useTurnRun`·`useWorldNames`·`exportWorld`(지도용, 키 `[worldId]`)·`listNpcs`
   - 결과 띠: `outcome`
   - 대화: 넓음은 화면 상태, 그 밖은 `location.state.talk`. 〔실행 메모 R-11〕
   - 빈 `/play`와 오류 상태
   - `play-gm-btn`은 없앤다(GM은 메뉴로).
-- [ ] 7.3 테스트
+- [x] 7.3 테스트
   - `play.layout.test.tsx`: TP-V4-8, 세 폭. 중복 testid 없음. 대화 시트·기록 칸. R-11의 목적지 유지와 어긋난 `state.talk` 무시
   - `play.test.tsx`·`dialogue.test.tsx`·`deeds.test.tsx`: § 7.1 표대로 고친다. TP-V4-5, TP-V4-11
   - BR-V4-20: `play-gm-btn`이 없고 메뉴의 `nav-gm`이 그 세션의 GM으로 간다(코드 계획 리뷰 01 R-09)
   - BR-V4-22: [대화 끝내기]의 판단 결과가 `result-band`에 나오고, 이동하면 대화가 닫힌다
-- [ ] 7.4 커밋: `feat(web): play screen rebuilt — two columns or one with an action dock, one result band, talk in the column or a sheet (V4, FR-S2)`
+- 실행 기록(Step 7)
+  - PlayPage를 렌더하는 테스트 파일(R-11, `grep -rln PlayPage web/src/__tests__`): `play.test.tsx`, `dialogue.test.tsx`, `gm.test.tsx`, `deeds.test.tsx`.
+  - `PlayPage`는 세션마다 `PlayScreen`을 새로 띄운다(`key={sessionId}`). 대화·가리킨 줄·말 수가 다른 세션으로 넘어가지 않는다. 데이터 쪽 지킴(늦은 답, 다른 세션 data)은 Step 4 도우미가 그대로 맡는다.
+  - 대화 열림(R-11): 넓음은 화면 상태, 그 밖은 `state.talk = {sessionId, regionId, npcId}`이고 어긋나면 무시한다. [닫기]·Esc는 이 화면이 넣은 칸이면 `navigate(-1)`, 아니면(복원된 탭) 그 자리 `replace`라 화면을 떠나지 않는다. 지역이 바뀌면 남은 칸을 `replace`로 지우고, 폭이 바뀌면 시트↔열로 옮긴다. 언마운트·경로 이탈 때는 navigate하지 않는다.
+  - 턴 진행 중(내 run, `turn_running`, `gm_busy`) 행동 버튼은 `aria-disabled` + 누름 무시로 끈다(BR-V4-24, 초점 유지). 닫힌 세션은 native `disabled`다. 선언 요청 중의 [선언하기]는 바쁜 버튼이다. `Button`이 `busy`와 호출자의 `aria-disabled`를 합치게 고쳤다(전에는 뒤에 펼친 `aria-disabled={undefined}`가 busy의 값을 지웠다). 회귀 시험을 더했다.
+  - `useTurnRun`에 `refusal`을 더했다. 행동 거절(400 등)은 `error`(턴 확인 실패, [다시 확인])와 나뉘어 행동 자리의 `action-error`로 보인다. 섞여 있으면 400 뒤 [다시 확인]이 지난 run을 다시 폴링할 수 있었다.
+  - 잡힌 세션 다시 읽기는 `useHeldRereads`가 맡아, 예전의 마운트 직후 "낡은 표시 확인" 읽기가 1초 간격 첫 회로 합쳐졌다(계속 잡힘: 7 → 6번).
+  - 옛 `RegionScene` 묶음, `NarrationCard.tsx`, `MovePanel`의 옛 갈래와 `words` prop을 없앴다. 쓰지 않게 된 사전 키 14개(`play.title`·`noSession`·`hearsay`·`rumors`·`moves`·`move`·`turns`·`blocked`·`wait`·`gmMode`·`noLlm`·`log`·`declare`·`narrationTitle`)를 지웠다. 빈 `/play`용 키 두 개(`empty.noSession`, `hint.startFromDemo`)를 더했다.
+  - 고친 기존 테스트(의도한 변경, TP-V4-15): `play.test` 7개(EX-13 경로·소문 단어·막힌 줄, EX-7 결과 띠, #15 `turn-error`, S02 둘과 #5(b)·#7의 `aria-disabled`, 잡힘 7→6), `deeds.test` 2개(거절 `action-error`, `KnownHere`와 "당신 이야기"), `dialogue.test` 1개(`people-here`), `gm.test` 1개(메뉴 `nav-gm`). `play.test`는 매 테스트 전 api 대역을 `mockReset`한다.
+  - 새 테스트 `play.layout.test.tsx` 18개(TP-V4-5·8·10·11, BR-V4-22, R-11). 돌연변이 확인: 지역 변경 정리, 늘 `navigate(-1)`, 폭 전환 없음, 어긋난 state 믿기, 좁음 레이아웃에 이동 목록을 하나씩 넣으면 각각 실패한다.
+- [x] 7.4 커밋: `feat(web): play screen rebuilt — two columns or one with an action dock, one result band, talk in the column or a sheet (V4, FR-S2)`
 
 ### Step 8 — FR-D8 검사와 표기 (BR-V4-10, TP-V4-12·14)
 - [ ] 8.1 `fr-d8.test.tsx`: TP-V4-14. `ENUM_VALUES`의 `regionLevel`·`travelBy`·`sessionStatus`·`rumorOrigin` 전 값을 도는 렌더에서 원문 값과 `/\b0\.\d+\b/`가 없다.

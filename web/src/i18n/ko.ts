@@ -146,12 +146,12 @@ export const ko = {
 
   // notification segments (per-region turn change)
   "notif.title": "지역 {region_id}",
-  "notif.promoted": "{n}건 승격",
-  "notif.demoted": "{n}건 강등",
-  "notif.pruned": "{n}건 소멸",
-  "notif.rumors_added": "{n}건 신규 소문",
-  "notif.events_applied": "이벤트 {n} 적용",
-  "notif.events_resolved": "이벤트 {n} 해소",
+  "notif.promoted": "소문 {n}건 굳음",
+  "notif.demoted": "굳은 소문 {n}건 풀림",
+  "notif.pruned": "소문 {n}건 사라짐",
+  "notif.rumors_added": "새 소문 {n}건",
+  "notif.events_applied": "사건 {n}건 적용",
+  "notif.events_resolved": "사건 {n}건 해소",
 
   // U3 world editor (frontend-components §4)
   "home.empty": "아직 월드가 없습니다.",

@@ -130,8 +130,8 @@ export const en: Record<Key, string> = {
   "log.rumor_spread": "Talk about you has reached {region}.",
 
   "notif.title": "region {region_id}",
-  "notif.promoted": "{n} promoted",
-  "notif.demoted": "{n} demoted",
+  "notif.promoted": "{n} settled",
+  "notif.demoted": "{n} loosened",
   "notif.pruned": "{n} faded",
   "notif.rumors_added": "{n} new rumor(s)",
   "notif.events_applied": "{n} event(s) applied",

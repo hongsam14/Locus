@@ -183,8 +183,8 @@
 - [x] 8.3 커밋: `docs: GM writes in one worker, the wait limit, and restart compensation (V5)`
 
 ### Step 9 — 게이트와 요약
-- [ ] 9.1 게이트: ruff·black, mypy ≤ 11, pytest 두 번(hypothesis 시드 둘), 바뀐 웹 없음 확인(`git diff --stat -- web` 비어 있음).
-- [ ] 9.2 `construction/V5-gm-write-correctness/code/code-summary.md`
+- [x] 9.1 게이트: ruff·black, mypy ≤ 11, pytest 두 번(hypothesis 시드 둘), 바뀐 웹 없음 확인(`git diff --stat -- web` 비어 있음).
+- [x] 9.2 `construction/V5-gm-write-correctness/code/code-summary.md`
   - § 1 기준선과 결과
   - § 2 파일
   - § 3 BR·TP 대응
@@ -192,7 +192,7 @@
   - § 5 이탈
   - § 6 알려진 한계(§ 1.1 R-05c, 지운 지역 소문의 되먹임)
   - § 7 다음에 넘김: V6에 `rumor_inactive`·`reason: region_removed`·`gm_busy` 문장, B&T에 운영자 확인 P1~P6과 § 1.2 R-01·R-04
-- [ ] 9.3 커밋: `docs(aidlc): V5 code summary`
+- [x] 9.3 커밋: `docs(aidlc): V5 code summary`
 
 ---
 

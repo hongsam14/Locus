@@ -5425,3 +5425,17 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 - R-06 → Accepted risk
 
 ---
+
+## Code Generation Part 2 — V5 — Done
+**Timestamp**: 2026-10-08T07:50:06Z
+**AI Response**: V5 code generation finished (Steps 1–9) on `feat/follow-up`, not pushed. Commits `9ac7f28` (guard: turn slot, closing, leases, short write; 409 `gm_busy`/`rumor_inactive`; session close; replace pre-check), `a17ec29` (overlap harness), `60ef076` (event/seed sections, `WriteSection`), `de45bc4` (rumor sections), `101cb63` (deed void, distortion set), `a507d6a` (restart compensation, removed-region events; `fail_stale_runs` removed per § 1.1 R-01), `03cdb83` (operations.md, env.example), and the summary. Gates: pytest 1048 → 1119 (hypothesis seeds 1 and 20261008), ruff/black clean, mypy 11, no web change. Each step's tests were checked against the code before the fix or with mutants. Deviations in summary § 5 (`fail_stale_runs` removed; `WriteSection`; SeedService shares the event service's section; the closing sentence). Summary `construction/V5-gm-write-correctness/code/code-summary.md`.
+**Context**: CONSTRUCTION / V5 — Code Generation Part 2 complete; next the code approval gate.
+
+---
+
+## Code Generation Part 2 — V5 — Approval prompt
+**Timestamp**: 2026-10-08T07:50:06Z
+**AI Response**: Asked for approval of the V5 code (completion message with the summary's deviations and hand-offs).
+**Context**: CONSTRUCTION / V5 — code approval gate.
+
+---

@@ -339,14 +339,14 @@
 - [x] 5.8 게이트 GREEN → 커밋 `feat(web): GM screen rebuilt — map beside the turn tools and five tabs, one result band, nothing of the last session (V6, FR-S3, #14, RE-F01, RE-F02, RE-F04, RE-F05, RE-F14)`
 
 ### Step 6 — FR-D8 검사와 표기 (BR-V6-19·24·25, TP-V6-12·13)
-- [ ] 6.1 `fr-d8.test.tsx`: TP-V6-12
+- [x] 6.1 `fr-d8.test.tsx`: TP-V6-12
   - `eventStatus`·`eventCategory`·`eventLifecycle`·`sessionStatus`·`scopeType`·`regionLevel` 전 값으로 다섯 탭과 머리를 렌더한다.
   - 원문 값이 없다. `/\b[mdt]\d/` 약어가 없다. 숫자 옆에 뜻이 있다.
   - slant는 대상이 아니다(R-01).
-- [ ] 6.2 `design.grep.test.ts`: TP-V6-13
+- [x] 6.2 `design.grep.test.ts`: TP-V6-13
   - 범위는 `features/gm/**`와 `routes/GmPage.tsx`다.
   - 규칙은 `\.toFixed\(`, `String\((e|err|error)\)`, `outline-none`이다.
-- [ ] 6.3 게이트 GREEN → 커밋 `test(web): the GM screen shows no raw enum, bare number or error text (V6, FR-D8)`
+- [x] 6.3 게이트 GREEN → 커밋 `test(web): the GM screen shows no raw enum, bare number or error text (V6, FR-D8)`
 
 ### Step 7 — 캡처 (사람 확인, BR-V6-01, 캡처 계획)
 - [ ] 7.1 V4 캡처 도구(`scratchpad/v4/cap/{server.mjs,shoot.mjs}`)를 `scratchpad/v6/cap/`으로 복사한다. GM 읽기·쓰기 응답을 더한다: 세션 목록, 상태, 사건 세 갈래, 씨앗, 기록 40줄, 행적, 턴 결과.

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { turnAt } from "../../format";
+import { ENUM_VALUES, enumLabel, turnAt } from "../../format";
 import { t, timelineText } from "../../i18n";
 import type { TimelineEntry } from "../../types";
 import { Badge, Button, StatusView } from "../../ui";
@@ -7,6 +7,16 @@ import { english, namedPayload, type NameOf } from "../play/names";
 import type { GmRes } from "./useGmData";
 
 const STEP = 20;
+const CATEGORIES: readonly string[] = ENUM_VALUES.eventCategory;
+
+/** A line's payload as the screen reads it: names by id, an event's category in words (an
+ * event line carries the server's raw `category`, FR-D8). */
+function readable(payload: Record<string, unknown>, nameOf: NameOf): Record<string, unknown> {
+  const out = namedPayload(payload, nameOf);
+  const category = out.category;
+  if (typeof category === "string" && CATEGORIES.includes(category)) out.category = enumLabel("eventCategory", category);
+  return out;
+}
 
 /** The GM's record (V6 BR-V6-08/35, UX-34): newest first, twenty lines and [more] for twenty
  * more; each line's turn in words and regions by name; the lines the last turn brought are
@@ -34,7 +44,7 @@ export function TimelinePanel({
         {newest.slice(0, shown).map((entry) => (
           <li key={entry.id} className="flex flex-wrap items-baseline gap-x-2 border-b border-line py-1.5">
             <b className="text-xs text-muted">{turnAt(entry.turn)}</b>
-            <span className="flex-1">{timelineText(entry.kind, namedPayload(entry.payload, nameOf), entry.turn, entry.summary)}</span>
+            <span className="flex-1">{timelineText(entry.kind, readable(entry.payload, nameOf), entry.turn, entry.summary)}</span>
             {newIds.has(entry.id) && (
               <Badge tone="event" data-testid={`timeline-new-${entry.id}`}>{t("label.newLine")}</Badge>
             )}

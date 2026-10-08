@@ -5,7 +5,9 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { Mock } from "vitest";
 import { resetCapabilities } from "../capabilities";
-import { ENUM_VALUES } from "../format";
+import { ENUM_VALUES, numberWithMeaning } from "../format";
+import { t } from "../i18n";
+import { GmPage } from "../routes/GmPage";
 import { HomePage } from "../routes/HomePage";
 import { PlayPage } from "../routes/PlayPage";
 import type { GameSession, MoveOption, RegionView, SessionRumor, TurnRun } from "../types";
@@ -25,6 +27,15 @@ vi.mock("../api", () => ({
     listSessions: vi.fn(),
     act: vi.fn(),
     getTurnRun: vi.fn(),
+    // V6: the GM screen
+    getWorldState: vi.fn(),
+    getTimeline: vi.fn(),
+    listEvents: vi.fn(),
+    listRumors: vi.fn(),
+    listSeeds: vi.fn(),
+    listDeeds: vi.fn(),
+    getPlayer: vi.fn(),
+    sessionKnowledge: vi.fn(),
   },
 }));
 import { api } from "../api";
@@ -150,5 +161,93 @@ describe("TP-V4-14: no raw value, no 0..1 number", () => {
     expect(rawIn("Riverton · Opening")).toEqual([]); // a name is not the word
     for (const bad of ["d0.42", "· 0.42 ·", "(0.5)"]) expect(bad).toMatch(DECIMAL);
     for (const ok of ["10.5", "1.05", "2026. 10. 2.", "4턴"]) expect(ok).not.toMatch(DECIMAL);
+  });
+});
+
+// V6 (BR-V6-24/25, TP-V6-12): the GM screen shows numbers — but each with its meaning — and
+// no raw value of the enums it meets. The slant of a judgment is the NPC's own words, not an
+// enum (code plan § 1.1 R-01), so it is not searched.
+describe("TP-V6-12: the GM screen in words", () => {
+  const GM_RAW = [
+    ...ENUM_VALUES.eventStatus, ...ENUM_VALUES.eventCategory, ...ENUM_VALUES.eventLifecycle,
+    ...ENUM_VALUES.sessionStatus, ...ENUM_VALUES.scopeType, ...ENUM_VALUES.regionLevel,
+  ];
+  const gmRaw = (text: string) => GM_RAW.filter((v) => new RegExp(`\\b${v}\\b`).test(text));
+  // a 0..1 number must carry its meaning right after it ("0.42 · 많이 비틀림")
+  const BARE = /(?<![\d.])[01]\.\d\d(?! · )/;
+  const ABBREV = /(?<![\p{L}\d])[mdt]\d/u; // m0.40, d0.42, t4
+
+  const regions = ENUM_VALUES.regionLevel.map((level, i) => ({ id: `g${i}`, name: `Place ${i}`, level }));
+  const events = ENUM_VALUES.eventCategory.map((category, i) => ({
+    id: `e${i}`, session_id: "s1", region_id: "g0", category, description: `Thing ${i}`, magnitude: 0.37 + i / 100,
+    lifecycle: ENUM_VALUES.eventLifecycle[i % 2], status: ENUM_VALUES.eventStatus[i % 3], created_turn: i, resolved_turn: i % 3 === 2 ? i : null,
+    contributions: {},
+  }));
+
+  beforeEach(() => {
+    (api.getSession as Mock).mockResolvedValue({ id: "s1", world_id: "w", status: "open", turn: 4, created_at: "2026-10-08T05:05:00Z" });
+    (api.listSessions as Mock).mockResolvedValue(ENUM_VALUES.sessionStatus.map((status, i) => ({
+      id: `s${i + 1}`, world_id: "w", status, turn: i + 1, created_at: "2026-10-0" + (i + 1) + "T05:05:00Z" })));
+    (api.exportWorld as Mock).mockResolvedValue({ world_id: "w", regions, connections: [], entities: [], knowledge: [], scopes: [] });
+    (api.getWorldState as Mock).mockResolvedValue({ session_id: "s1", turn: 4, player_region_id: "g0", max_event_suggestions: 3,
+      regions: regions.map((r, i) => ({ region_id: r.id, region_name: r.name, distortion: 0.42, feedback_share: i ? 0 : 0.07,
+        active_rumors: 2, promoted_rumors: 1, deed_rumors: 1, active_events: 1 })) });
+    (api.getTimeline as Mock).mockResolvedValue(events.map((e, i) => ({ id: `t${i}`, session_id: "s1", turn: i, kind: "event_created",
+      summary: "", payload: { region_id: "g0", region_name: "Place 0", category: e.category } })));
+    (api.listEvents as Mock).mockResolvedValue(events);
+    (api.listRumors as Mock).mockResolvedValue(rumors);
+    (api.listSeeds as Mock).mockResolvedValue(events.map((e) => ({ seed: { id: `sd-${e.id}`, world_id: "w", region_id: "g0",
+      title: `Seed ${e.id}`, description: "", category: e.category, magnitude: 0.55 }, region_name: "Place 0", running_event_id: null })));
+    (api.listDeeds as Mock).mockResolvedValue([{
+      deed: { id: "d1", session_id: "s1", player_id: "p", region_id: "g0", turn: 2, kind: "arrival", text: "Ari came.",
+        witnessed_npc_ids: [], voided: false, region_name: "Place 0", witness_names: [] },
+      appraisals: [{ id: "ap", deed_id: "d1", npc_id: "n1", noteworthy: true, salience: 0.83, slant: "admiring", retelling: "", turn: 2, npc_name: "Mara" }],
+      rumors: [], reached_region_ids: [], reached_region_names: [],
+    }]);
+    (api.getPlayer as Mock).mockResolvedValue({ id: "p", session_id: "s1", name: "Ari", region_id: "g0", turns_spent: 2 });
+    (api.sessionKnowledge as Mock).mockResolvedValue({ world_id: "w", region_id: "g0", shared_ids: [], unique_ids: [],
+      items: ENUM_VALUES.scopeType.map((scope, i) => ({ knowledge_id: `k${i}`, statement: `Known ${i}`, scope_type: scope,
+        is_hearsay: false, confidence: 0.66, path_decay: i === 0 ? 0.31 : null, distortion: i === 1 ? 0.27 : null })) });
+  });
+
+  it("every tab, the head and each region level: no raw value, no bare or abbreviated number", async () => {
+    render(
+      <MemoryRouter initialEntries={["/gm/s1"]}>
+        <Routes><Route path="/gm/:sessionId" element={<GmPage />} /></Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId("advance-turn-btn")).toBeEnabled());
+    const seen: string[] = [];
+    const tab = (name: string) => {
+      fireEvent.mouseDown(screen.getByTestId(`gm-tab-${name}`).closest('[role="tab"]') as HTMLElement, { button: 0 });
+    };
+    for (const r of regions) {
+      fireEvent.click(screen.getByTestId(`region-marker-${r.id}`));
+      await screen.findByTestId("region-heading");
+      seen.push(visibleText());
+    }
+    fireEvent.click(screen.getByTestId(`region-marker-g0`));
+    await screen.findByTestId("rumor-r0");
+    fireEvent.click(screen.getByRole("button", { name: /NPC/ }));
+    await screen.findByTestId("knowledge-item-k0");
+    seen.push(visibleText());
+    tab("events");
+    fireEvent.click(await screen.findByRole("button", { name: new RegExp(t("label.eventsResolved")) }));
+    await screen.findByTestId("event-e2");
+    seen.push(visibleText());
+    tab("seeds");
+    await screen.findByTestId("seed-row-sd-e0");
+    seen.push(visibleText());
+    tab("timeline");
+    await screen.findByTestId("timeline");
+    seen.push(visibleText());
+    tab("deeds");
+    await screen.findByTestId("deed-d1");
+    seen.push(visibleText());
+    const all = seen.join("\n");
+    expect(gmRaw(all)).toEqual([]);
+    expect(all.match(BARE)).toBeNull();
+    expect(all.match(ABBREV)).toBeNull();
+    expect(all).toContain(numberWithMeaning("distortion", 0.42)); // numbers are there, with meanings
   });
 });

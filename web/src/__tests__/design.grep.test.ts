@@ -67,6 +67,18 @@ describe("design rules in the source", () => {
     }
   });
 
+  // V6 (BR-V6-19/25, TP-V6-13): the GM screen too — numbers come from format/, errors from
+  // describeError, focus rings stay
+  it("the GM screen has no toFixed, String(e) or outline-none", () => {
+    const scope = FILES.filter(
+      (f) => /^src\/features\/gm\//.test(f.path) || /^src\/routes\/GmPage\.tsx$/.test(f.path),
+    );
+    expect(scope.length).toBeGreaterThan(10); // the check reads the GM files
+    for (const rule of [/\.toFixed\(/, /String\((e|err|error)\)/, /outline-none/]) {
+      expect(scope.filter((f) => rule.test(f.text)).map((f) => f.path), String(rule)).toEqual([]);
+    }
+  });
+
   it("uses the display face for the logo only", () => {
     expect(offenders(/font-display/, (p) => p.endsWith("layout/AppShell.tsx"))).toEqual([]);
   });

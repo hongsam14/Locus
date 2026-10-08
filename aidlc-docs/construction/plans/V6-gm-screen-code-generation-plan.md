@@ -349,20 +349,20 @@
 - [x] 6.3 게이트 GREEN → 커밋 `test(web): the GM screen shows no raw enum, bare number or error text (V6, FR-D8)`
 
 ### Step 7 — 캡처 (사람 확인, BR-V6-01, 캡처 계획)
-- [ ] 7.1 V4 캡처 도구(`scratchpad/v4/cap/{server.mjs,shoot.mjs}`)를 `scratchpad/v6/cap/`으로 복사한다. GM 읽기·쓰기 응답을 더한다: 세션 목록, 상태, 사건 세 갈래, 씨앗, 기록 40줄, 행적, 턴 결과.
+- [x] 7.1 V4 캡처 도구(`scratchpad/v4/cap/{server.mjs,shoot.mjs}`)를 `scratchpad/v6/cap/`으로 복사한다. GM 읽기·쓰기 응답을 더한다: 세션 목록, 상태, 사건 세 갈래, 씨앗, 기록 40줄, 행적, 턴 결과.
   - 저장소에는 넣지 않는다.
   - 빌드는 스크래치 출력이다.
-- [ ] 7.2 찍는다
+- [x] 7.2 찍는다
   - 1280: [지역] 탭 / 턴 뒤 결과 띠 + [기록] "새로" / [사건] 세 묶음 / [행적] / 끝내기 확인 / 끝난 세션
   - 390: [지역] 탭 / 결과 띠 / 끝내기 확인
   - 768: [지역] 탭
   - 장마다 `scrollWidth == clientWidth`와 1280 페이지 높이를 잰다.
-- [ ] 7.3 비공개 Artifact 한 장에 쌍으로 올린다. 잰 값, 바뀐 것, 봐 주실 것(범례·배지 말, 탭 구성)을 함께 싣는다.
-- [ ] 7.4 가로 스크롤이 있거나 1280에서 오른쪽 열이 떨어지면 그 자리에서 고치고 다시 찍는다. 고친 커밋은 `fix(web): … (V6 captures)`다.
+- [x] 7.3 비공개 Artifact 한 장에 쌍으로 올린다. 잰 값, 바뀐 것, 봐 주실 것(범례·배지 말, 탭 구성)을 함께 싣는다.
+- [x] 7.4 가로 스크롤이 있거나 1280에서 오른쪽 열이 떨어지면 그 자리에서 고치고 다시 찍는다. 고친 커밋은 `fix(web): … (V6 captures)`다.
 
 ### Step 8 — 마무리
-- [ ] 8.1 전체 게이트: tsc, vitest(Step 1.2 기준선 이상. 옮긴 테스트로 줄어든 수와 새 테스트 수를 code-summary § 4에 적는다), `pytest -q`(1138, 바뀌지 않음), `npm audit --omit=dev`(0), JS gzip(첫 화면이 V4 끝 114.83 kB보다 크게 늘지 않는다. GM은 지연 청크다).
-- [ ] 8.2 `construction/V6-gm-screen/code/code-summary.md`
+- [x] 8.1 전체 게이트: tsc, vitest(Step 1.2 기준선 이상. 옮긴 테스트로 줄어든 수와 새 테스트 수를 code-summary § 4에 적는다), `pytest -q`(1138, 바뀌지 않음), `npm audit --omit=dev`(0), JS gzip(첫 화면이 V4 끝 114.83 kB보다 크게 늘지 않는다. GM은 지연 청크다).
+- [x] 8.2 `construction/V6-gm-screen/code/code-summary.md`
   - § 1 기준선과 결과
   - § 2 파일
   - § 3 BR → 테스트 표
@@ -370,7 +370,7 @@
   - § 5 이탈: R-01 상위와 다름, R-02 소유 표, R-08 BLM § 7 줄, FD의 틀린 전제(BLM § 1.5와 frontend-components § 5의 `SessionBar` 없앰 — 코드 계획 리뷰 01 R-01)
   - § 6 알려진 제약: 기록 전부 읽기, 지도 키보드 조작, 직전 월드 규칙
   - § 7 넘기는 것: R-09 → V8, `SessionBar` `variant="full"` 정리 → V8, 서버 기록 쪽 나누기 → V9
-- [ ] 8.3 audit, state 갱신 → 커밋 `docs(aidlc): V6 code summary`
+- [x] 8.3 audit, state 갱신 → 커밋 `docs(aidlc): V6 code summary`
 
 ---
 

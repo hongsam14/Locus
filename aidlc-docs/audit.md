@@ -5584,3 +5584,17 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 - R-06 → Accepted risk (execution follows § 1.3 / Step 4.9: `session.close` kept, new key `session.end`)
 
 ---
+
+## Code Generation Part 2 — V6 — Done
+**Timestamp**: 2026-10-08T12:21:10Z
+**AI Response**: Steps 1–8 done (`a6d82d7`, `91de3fc`, `17818cb`, `9ae93e6`, `a4614f6`, `0bf647c`, `abe9135`, `4723c5a`, `a59d5c4`). vitest 613 (baseline 550; 13 GmHub tests moved to gm.layout / gm.parts), tsc clean, pytest 1138 (backend unchanged), npm audit 0, first-screen JS 117.01 kB gzip (V4 end 114.83). Captures (12, 1280/768/390, no sideways scroll; 1280 page 2,130 → 1,109 px): https://claude.ai/artifact/BSMSgKWcYavigSp9jvtH1B. Found and fixed on the way: raw event category in the GM record (FR-D8 check), Radix tabs in the first-screen bundle and English witness names (captures), English fallback in the player strip (tests). 28 mutants, all caught in the end. Deviations, limits and hand-offs (V8: world-replace sentence, SessionBar full variant; V9: timeline paging, record register) in `construction/V6-gm-screen/code/code-summary.md`.
+**Context**: CONSTRUCTION / V6 — Code Generation Part 2 complete; next the code approval gate.
+
+---
+
+## Code Generation Part 2 — V6 — Approval prompt
+**Timestamp**: 2026-10-08T12:21:10Z
+**AI Response**: Asked for approval of the V6 code (summary's deviations and hand-offs, captures to check).
+**Context**: CONSTRUCTION / V6 — code approval gate.
+
+---

@@ -5469,3 +5469,118 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V5 — code review 01 fixed; V5 COMPLETE. Next: V6 (GM screen) Functional Design.
 
 ---
+
+## Functional Design — V6 — Plan and questions
+**Timestamp**: 2026-10-08T10:22:31Z
+**User Input**: "준비를 하고 있는거니?"
+**AI Response**: Said the V6 work had not started yet, then started it. Plan `construction/plans/V6-gm-screen-functional-design-plan.md`: inputs (FR-S3, FR-C13 GM side, UX-34~42, A-5, V5 hand-offs), self-decided items (GmLayout, WorldMap gm mode, state overlay on with word legend, session header with confirm and "no-player new session", numbers with meanings, useAction/useResource, targeted re-reads, conflictKind split, LLM notice once, event form, void label, timeline newest-first 20 + more). Questions: Q1 GM layout (A-5), Q2 where a turn's result shows.
+**Context**: CONSTRUCTION / V6 — Functional Design; awaiting Q1, Q2.
+
+---
+
+## Functional Design — V6 — Answers
+**Timestamp**: 2026-10-08T10:33:02Z
+**User Input**: Q1 "A. 지도 + 턴 도구 + 탭 5개 (권장)"; Q2 "A. 턴 도구 아래 결과 띠 (권장)"
+**AI Response**: No ambiguity. Writing the V6 FD artifacts (frontend-components, business-logic-model, business-rules) on these answers and the plan's self-decided items.
+**Context**: CONSTRUCTION / V6 — Functional Design; artifacts next, then the design review.
+
+---
+
+## Plan Review Requested — Functional Design — V6
+**Timestamp**: 2026-10-08T10:39:37Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/V6-gm-screen/functional-design/business-logic-model.md` (+ frontend-components.md, business-rules.md, FD plan). Review record: `aidlc-docs/construction/V6-gm-screen/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — V6 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — V6
+**Timestamp**: 2026-10-08T10:46:21Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 8 Minor; open 10. Record: `aidlc-docs/construction/V6-gm-screen/functional-design/reviews/functional-design-review-01.md`. Session re-check: R-01 (`format.enums.test.ts` asserts slant is not an enum), R-02 (`useResource` keeps the old key's data), R-05 (`conflictKind` returns "busy" for every coded 409 but session_closed) confirmed in code.
+**Context**: Functional Design — V6 — next: approval gate (artifacts frozen).
+
+---
+
+## Functional Design — V6 — Approval
+**Timestamp**: 2026-10-08T10:54:26Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V6 FD approved with the review's open findings accepted. Next: V6 Code Generation Part 1 (NFR SKIP for this unit); the code plan settles R-01..R-10 in its execution notes.
+**Context**: CONSTRUCTION / V6 — Functional Design approved.
+
+---
+
+## Plan Review Dispositions — Functional Design — V6
+**Timestamp**: 2026-10-08T10:54:26Z
+- R-01 → Accepted risk (→ code plan: slant shown as the NPC's own words, not an enum)
+- R-02 → Accepted risk (→ code plan: key boundary and state ownership, own-key data only)
+- R-03 → Accepted risk (→ code plan)
+- R-04 → Accepted risk (→ code plan)
+- R-05 → Accepted risk (→ code plan)
+- R-06 → Accepted risk (→ code plan)
+- R-07 → Accepted risk (→ code plan)
+- R-08 → Accepted risk (→ code plan)
+- R-09 → Accepted risk (→ code plan: hand the world-replace sentence to V8/V4 or settle it here)
+- R-10 → Accepted risk (→ code plan)
+
+---
+
+## Code Generation Part 1 — V6 — Plan
+**Timestamp**: 2026-10-08T10:58:35Z
+**AI Response**: Plan `construction/plans/V6-gm-screen-code-generation-plan.md` (8 steps): shared base (conflictKind split, Select groups, controlled Section, stoppable mapLimit, gm_busy play toast), GM hooks (useGmSession, useGmData own-key answers + re-read table, bulk stop), parts, screen assembly with the key boundary, FR-D8 checks, captures, summary. § 1.1 settles FD review R-01..R-10.
+**Context**: CONSTRUCTION / V6 — Code Generation Part 1; plan review next.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — V6
+**Timestamp**: 2026-10-08T10:58:35Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/V6-gm-screen-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V6-gm-screen-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — V6 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — V6
+**Timestamp**: 2026-10-08T11:01:03Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 1 Critical / 1 Major / 3 Minor; open 5. Record: `aidlc-docs/construction/plans/reviews/V6-gm-screen-code-generation-plan-review-01.md`. Session re-check: R-01 confirmed (`features/editor/WorldFileBar.tsx:5,106` uses SessionBar; `play.test.tsx:304-343` tests it), R-05 confirmed (`useWorldState` in GmPage and gm.test).
+**Context**: Code Generation Part 1 — V6 — builder fix, then re-review (iteration 2).
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — V6
+**Timestamp**: 2026-10-08T11:02:27Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Builder fixed R-01..R-05 (SessionBar kept for the editor picker, FD premise recorded as a deviation; Steps 3–4 new files and compatible changes only, Step 5 one switch-over commit; DialoguePanel unchanged; 14 write kinds listed and a vitest floor; useWorldState removed in Step 5 with its call sites). Dispatching architecture-reviewer (class adversarial, iteration 2) on `aidlc-docs/construction/plans/V6-gm-screen-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V6-gm-screen-code-generation-plan-review-02.md`.
+**Context**: Code Generation Part 1 — V6 — re-review.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — V6
+**Timestamp**: 2026-10-08T11:03:50Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: 0 Critical / 0 Major / 1 Minor open (R-06 new; R-01..R-05 Resolved). Record: `aidlc-docs/construction/plans/reviews/V6-gm-screen-code-generation-plan-review-02.md`. Plan frozen until the gate answer.
+**Context**: Code Generation Part 1 — V6 — next: approval gate.
+
+---
+
+## Code Generation Part 1 — V6 — Approval prompt
+**Timestamp**: 2026-10-08T11:03:50Z
+**AI Response**: Asked for approval of `construction/plans/V6-gm-screen-code-generation-plan.md` (8 steps, 8–9 commits on feat/follow-up) with the Review brief (R-06 open).
+**Context**: CONSTRUCTION / V6 — code plan approval gate.
+
+---
+
+## Code Generation Part 1 — V6 — Approval
+**Timestamp**: 2026-10-08T11:38:20Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V6 code plan approved; the approval covers the commits the plan lists on feat/follow-up. Starting Code Generation Part 2 at Step 1.
+**Context**: CONSTRUCTION / V6 — Code Generation Part 1 approved.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — V6
+**Timestamp**: 2026-10-08T11:38:20Z
+- R-06 → Accepted risk (execution follows § 1.3 / Step 4.9: `session.close` kept, new key `session.end`)
+
+---

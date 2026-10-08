@@ -43,9 +43,12 @@ export function DeedPanel({
             <Badge tone="event">{t(`deed.kind.${v.deed.kind}`)}</Badge>
             <span>{nameOf("regions", v.deed.region_id, "name", v.deed.region_name ?? v.deed.region_id)}</span>
             <span>{turnAt(v.deed.turn)}</span>
-            {(v.deed.witness_names ?? []).length > 0 && (
-              <span>
-                {t("deed.witnesses")}: {(v.deed.witness_names ?? []).join(", ")}
+            {v.deed.witnessed_npc_ids.length > 0 && (
+              <span data-testid={`deed-witnesses-${v.deed.id}`}>
+                {t("deed.witnesses")}:{" "}
+                {v.deed.witnessed_npc_ids
+                  .map((id, i) => nameOf("npcs", id, "name", v.deed.witness_names?.[i] ?? id))
+                  .join(", ")}
               </span>
             )}
             {v.deed.voided && <Badge data-testid={`deed-voided-${v.deed.id}`}>{t("deed.voided")}</Badge>}

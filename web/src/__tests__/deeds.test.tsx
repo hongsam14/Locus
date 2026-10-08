@@ -194,6 +194,13 @@ describe("DeedPanel (US-5.6)", () => {
     return onVoid;
   };
 
+  it("witnesses read by the map of names, like the judge beside them (V6 captures)", () => {
+    const nameOf = (kind: string, id: string, _f: string, fb: string) => (kind === "npcs" && id === "n1" ? "마라" : fb);
+    render(<DeedPanel deeds={{ data: [deedView()], state: "ready", reload: vi.fn() }} closed={false} nameOf={nameOf} onVoid={vi.fn()} />);
+    expect(screen.getByTestId("deed-witnesses-d1")).toHaveTextContent("마라");
+    expect(screen.getByTestId("deed-appraisals-d1")).toHaveTextContent("마라");
+  });
+
   it("shows the appraisals and where the rumors reached; the slant is the NPC's own words (R-01)", () => {
     panel([deedView()]);
     expect(screen.getByTestId("deed-appraisals-d1")).toHaveTextContent("Mara");

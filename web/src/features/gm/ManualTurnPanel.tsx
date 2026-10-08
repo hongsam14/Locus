@@ -1,11 +1,8 @@
 import { t } from "../../i18n";
 import { Button, Select } from "../../ui";
+import type { BulkProgress } from "./bulk";
 
-export interface BulkProgress {
-  done: number;
-  total: number;
-  failed: number;
-}
+export type { BulkProgress } from "./bulk";
 
 /** Turn and whole-world buttons: a manual turn, event suggestions (1..5, BR-U7-10),
  * generate / regenerate for every region, and the bulk progress bar. */

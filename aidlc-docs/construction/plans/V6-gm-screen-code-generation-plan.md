@@ -200,25 +200,25 @@
 ## 2. 단계
 
 ### Step 1 — 진행 기록과 기준선
-- [ ] 1.1 진행 기록을 커밋한다: audit, state, V6 FD 계획(체크), FD 산출물·리뷰, 이 계획과 그 리뷰(`docs(aidlc): V6 functional design approved; V6 code plan`).
-- [ ] 1.2 기준선을 재서 code-summary § 1에 적는다.
+- [x] 1.1 진행 기록을 커밋한다: audit, state, V6 FD 계획(체크), FD 산출물·리뷰, 이 계획과 그 리뷰(`docs(aidlc): V6 functional design approved; V6 code plan`).
+- [x] 1.2 기준선을 재서 code-summary § 1에 적는다.
   - `npx vitest run`(V4 끝 550), `npx tsc --noEmit`
   - `pytest -q`(1138), `npm audit --omit=dev`(0)
   - 첫 화면 JS gzip과 GM 청크 gzip(`vite build`, 스크래치 출력)
   - GM 390px 가로 스크롤과 1280 페이지 높이(약 2,130px)는 역공학 기록 값을 옮겨 적는다. 다시 찍지 않는다.
 
 ### Step 2 — 공유 바탕 (§ 1.1 R-05·R-06·R-08·R-10, BR-V6-20·29, TP-V6-9·16)
-- [ ] 2.1 `api/http.ts`: `conflictKind` 새 반환형과 `isBusy`(§ 1.1 R-05 표).
-- [ ] 2.2 `hooks/useTurnRun.ts`: `gm_busy`면 `play:gmBusy` 알림과 새 문장을 쓴다. `conflict`는 `setRefusal`로 간다. `DeedPanel.tsx`와 `GmHub.tsx`(Step 5까지 남음)의 `conflictKind` 비교는 새 반환형으로 맞춘다(`DeedPanel`은 표대로, `GmHub`는 `=== "closed"`만이라 그대로). `DialoguePanel.tsx`는 `=== "closed"`만 보므로 바꾸지 않는다.
-- [ ] 2.3 `i18n`(ko·en)
+- [x] 2.1 `api/http.ts`: `conflictKind` 새 반환형과 `isBusy`(§ 1.1 R-05 표).
+- [x] 2.2 `hooks/useTurnRun.ts`: `gm_busy`면 `play:gmBusy` 알림과 새 문장을 쓴다. `conflict`는 `setRefusal`로 간다. `DeedPanel.tsx`와 `GmHub.tsx`(Step 5까지 남음)의 `conflictKind` 비교는 새 반환형으로 맞춘다(`DeedPanel`은 표대로, `GmHub`는 `=== "closed"`만이라 그대로). `DialoguePanel.tsx`는 `=== "closed"`만 보므로 바꾸지 않는다.
+- [x] 2.3 `i18n`(ko·en)
   - `error.gm_busy.{title,action}`, `error.rumor_inactive.{title,action}`, `play.gmBusy`
   - `timeline.event_resolved_removed`
   - `i18n/index.ts` `timelineText`: `kind === "event_resolved" && payload.reason === "region_removed"`면 새 키를 쓴다.
-- [ ] 2.4 `ui/Select.tsx`: 옵션 `group?`. 같은 group이 이어지면 `<optgroup label>`으로 묶는다.
-- [ ] 2.5 `layout/Section.tsx`: 제어 `open?`·`onOpenChange?`. 없으면 지금처럼 스스로 가진다.
-- [ ] 2.6 `hooks/useWorldNames.ts`: `reload`를 돌려준다.
-- [ ] 2.7 `features/gm/bulk.ts`: `mapLimit(items, limit, fn, shouldStop?)`. `BulkProgress` 타입을 이 파일로 옮기고 `ManualTurnPanel`·`useBulkRumors`가 여기서 가져오게 한다.
-- [ ] 2.8 테스트
+- [x] 2.4 `ui/Select.tsx`: 옵션 `group?`. 같은 group이 이어지면 `<optgroup label>`으로 묶는다.
+- [x] 2.5 `layout/Section.tsx`: 제어 `open?`·`onOpenChange?`. 없으면 지금처럼 스스로 가진다.
+- [x] 2.6 `hooks/useWorldNames.ts`: `reload`를 돌려준다.
+- [x] 2.7 `features/gm/bulk.ts`: `mapLimit(items, limit, fn, shouldStop?)`. `BulkProgress` 타입을 이 파일로 옮기고 `ManualTurnPanel`·`useBulkRumors`가 여기서 가져오게 한다.
+- [x] 2.8 테스트
   - `errors.describe.prop`: `conflictKind` code 표와 code 없는 문장
   - `gm.test` #11: 고친 단언
   - `play.turn`: `gm_busy` 알림 문장이 `turn_running`과 다르다. `conflict`는 거절 문장이다.
@@ -228,7 +228,7 @@
   - `hooks`: `useWorldNames.reload`
   - `mapLimit`: 멈춤
   - `timelineText`: `region_removed`
-- [ ] 2.9 게이트 GREEN → 커밋 `feat(web): 409s told apart (gm_busy, rumor_inactive), grouped select, controlled section, a bulk run that can stop (V6)`
+- [x] 2.9 게이트 GREEN → 커밋 `feat(web): 409s told apart (gm_busy, rumor_inactive), grouped select, controlled section, a bulk run that can stop (V6)`
 
 ### Step 3 — GM 읽기·쓰기 훅 (BLM § 1·2·3·4, § 1.1 R-02·R-03·R-04·R-06·R-07·R-10, TP-V6-4·6·7·8)
 

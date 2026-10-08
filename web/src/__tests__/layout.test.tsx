@@ -120,4 +120,16 @@ describe("SplitView and Section", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("inside")).toBeInTheDocument();
   });
+
+  it("a section held by its caller opens only when the caller says so (V6 R-08)", () => {
+    const onOpenChange = vi.fn();
+    const { rerender } = render(<Section title="Knowledge" collapsible open={false} onOpenChange={onOpenChange}><p>inside</p></Section>);
+    const toggle = screen.getByRole("button", { name: "Knowledge" });
+    fireEvent.click(toggle);
+    expect(onOpenChange).toHaveBeenCalledWith(true);
+    expect(screen.queryByText("inside")).not.toBeInTheDocument(); // the caller has not opened it
+    rerender(<Section title="Knowledge" collapsible open onOpenChange={onOpenChange}><p>inside</p></Section>);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("inside")).toBeInTheDocument();
+  });
 });

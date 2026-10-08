@@ -9,7 +9,7 @@
 // `acting` (a second press sends nothing).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api";
-import { conflictKind } from "../api/http";
+import { conflictKind, isBusy } from "../api/http";
 import { describeError, type DescribedError } from "../errors";
 import { t } from "../i18n";
 import type { Narration, PlayerAction, RegionTurnChange, TurnRun } from "../types";
@@ -164,8 +164,13 @@ export function useTurnRun(
         if (!here()) return false;
         const kind = conflictKind(e);
         if (kind === "closed") reloadRef.current(); // the closed banner says it (BR-V4-18)
-        else if (kind === "busy") {
-          toast({ key: "play:busy", tone: "event", title: t("play.turnInProgress") });
+        else if (isBusy(kind)) {
+          // a running turn and a GM write holding the session are told apart (V6 BR-V6-20)
+          toast(
+            kind === "gm_busy"
+              ? { key: "play:gmBusy", tone: "event", title: t("play.gmBusy") }
+              : { key: "play:busy", tone: "event", title: t("play.turnInProgress") },
+          );
           reloadRef.current(); // the hold shows, and a run of this session is taken up
           resume(sid, gen, { acted: true });
         } else setRefusal(describeError(e));

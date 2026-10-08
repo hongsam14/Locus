@@ -160,6 +160,8 @@ export function timelineText(
   else if (k === "event_created" && payload.approved && payload.category != null) k = "event_approved";
   else if (k === "event_created" && (payload.suggested || payload.approved)) return summary || kind;
   else if (k === "session_started" && payload.player_name == null) k = "gm_session_started";
+  // V5: an event whose region left the world ends with no region name to show (V6 BR-V6-29)
+  else if (k === "event_resolved" && payload.reason === "region_removed") return t("timeline.event_resolved_removed");
   const key = `timeline.${k}`;
   const template = lookup(key);
   if (template == null) return summary || kind;

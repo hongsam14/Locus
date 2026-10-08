@@ -49,12 +49,29 @@ export function statusOf(err: unknown): number | null {
   return m ? Number(m[1]) : null;
 }
 
-/** What a 409 means (U6 review #10/#11): the session is closed for good, or a turn (or
- * another GM write) is running and a retry later will do. `null` for any other error. */
-export function conflictKind(err: unknown): "closed" | "busy" | null {
+export type ConflictKind = "closed" | "turn_running" | "gm_busy" | "rumor_inactive" | "conflict";
+
+const CONFLICT_CODES: Record<string, ConflictKind> = {
+  session_closed: "closed",
+  turn_running: "turn_running",
+  gm_busy: "gm_busy",
+  rumor_inactive: "rumor_inactive",
+};
+
+/** What a 409 means (U6 review #10/#11, V6 code plan § 1.1 R-05): the session is closed for
+ * good; a turn is running; another GM write holds the session past the wait; the rumor is
+ * gone; or another conflict (`seed_running`, `world_exists` …). A server without codes
+ * says "session is closed" or nothing more: the rest reads as a running turn, as before.
+ * `null` for any other error. */
+export function conflictKind(err: unknown): ConflictKind | null {
   if (statusOf(err) !== 409) return null;
-  if (err instanceof HttpError && err.code) return err.code === "session_closed" ? "closed" : "busy";
-  return /session is closed/i.test(String(err)) ? "closed" : "busy"; // a server without codes
+  if (err instanceof HttpError && err.code) return CONFLICT_CODES[err.code] ?? "conflict";
+  return /session is closed/i.test(String(err)) ? "closed" : "turn_running"; // a server without codes
+}
+
+/** A 409 that a retry later will clear: a running turn or a GM write holding the session. */
+export function isBusy(kind: ConflictKind | null): boolean {
+  return kind === "turn_running" || kind === "gm_busy";
 }
 
 /** What a 409 body says about the world's sessions (U8; U3 review design memo 10): open

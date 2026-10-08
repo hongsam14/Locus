@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { api } from "../../api";
 import { t } from "../../i18n";
-import type { BulkProgress } from "./ManualTurnPanel";
-import { BULK_LIMIT, mapLimit } from "./bulk";
+import { BULK_LIMIT, mapLimit, type BulkProgress } from "./bulk";
 
 /** The GM hub's runs over many regions (FR-UX2.3 / SEC-E), out of `GmHub` (U8, NFR-7):
  * [generate all] fills the regions with no canonical rumor, [regenerate all] redoes the

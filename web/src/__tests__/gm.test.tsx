@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "../api/http";
 import type { Mock } from "vitest";
 import { conflictKind } from "../api/http";
+import { mapLimit } from "../features/gm/bulk";
 import { resetCapabilities } from "../capabilities";
 import { MapOverlay } from "../MapOverlay";
 import { ActionBar, declaredLength } from "../features/play/ActionBar";
@@ -270,11 +271,11 @@ describe("U6 review carry-overs", () => {
 
   it("#11: a 409 is told apart — closed for good or a turn running", () => {
     expect(conflictKind(new Error("409 Conflict: session is closed: s1"))).toBe("closed");
-    expect(conflictKind(new Error("409 Conflict: turn in progress"))).toBe("busy");
+    expect(conflictKind(new Error("409 Conflict: turn in progress"))).toBe("turn_running");
     expect(conflictKind(new Error("400 Bad Request: nope"))).toBeNull();
     // U3 (C16): the typed error answers the same
     expect(conflictKind(new HttpError(409, "Conflict", "session is closed: s1"))).toBe("closed");
-    expect(conflictKind(new HttpError(409, "Conflict", "turn in progress"))).toBe("busy");
+    expect(conflictKind(new HttpError(409, "Conflict", "turn in progress"))).toBe("turn_running");
     expect(String(new HttpError(409, "Conflict", "x"))).toBe("Error: 409 Conflict: x");
   });
 
@@ -728,5 +729,28 @@ describe("U3 review carry: the GM screen", () => {
     await waitFor(() => expect(api.getPlayer).toHaveBeenCalledWith("s2"));
     await waitFor(() => expect(screen.queryByTestId("gm-player-status")).not.toBeInTheDocument());
     expect(screen.queryByTestId("player-marker-a")).not.toBeInTheDocument();
+  });
+});
+
+describe("V6 shared base", () => {
+  it("a bulk run that is told to stop sends no more regions (code plan § 1.1 R-06)", async () => {
+    const sent: number[] = [];
+    let stop = false;
+    await mapLimit([1, 2, 3, 4, 5, 6, 7], 2, async (n) => {
+      sent.push(n);
+      if (n === 3) stop = true;
+      return n;
+    }, () => stop);
+    // two workers: 1 and 2 start, then 3 and 4; after 3 asks to stop nothing new is taken
+    expect(sent.length).toBeLessThanOrEqual(4);
+    expect(sent).not.toContain(5);
+    expect(await mapLimit([1, 2, 3], 5, async (n) => n * 2)).toEqual([2, 4, 6]);
+  });
+
+  it("an event whose region left the world reads so, with no region id (V5 → V6, BR-V6-29)", () => {
+    const line = timelineText("event_resolved", { event_id: "e1", region_id: "r-gone", reason: "region_removed", restored: {} }, 4, "x");
+    expect(line).toBe(t("timeline.event_resolved_removed"));
+    expect(line).not.toContain("r-gone");
+    expect(timelineText("event_resolved", { event_id: "e1", region_id: "r1", region_name: "Harbor" }, 4)).toContain("Harbor");
   });
 });

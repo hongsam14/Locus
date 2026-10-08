@@ -138,6 +138,20 @@ describe("useTurnRun", () => {
     expect(hook.result.current.turn.error).toBeUndefined(); // nothing to check again
   });
 
+
+  it("409 gm_busy notifies apart from a running turn; another 409 is a refusal, not a notice (V6 BR-V6-20, R-05)", async () => {
+    const { reload, hook } = setup();
+    (api.act as Mock).mockRejectedValueOnce(new HttpError(409, "Conflict", '{"detail":"held","code":"gm_busy"}'));
+    await act(async () => void (await hook.result.current.turn.act({ type: "wait" })));
+    expect(hook.result.current.toasts.map((x) => [x.key, x.title])).toEqual([["play:gmBusy", t("play.gmBusy")]]);
+    expect(t("play.gmBusy")).not.toBe(t("play.turnInProgress"));
+    expect(reload).toHaveBeenCalledTimes(1);
+    clearToasts();
+    (api.act as Mock).mockRejectedValueOnce(new HttpError(409, "Conflict", '{"detail":"x","code":"conversation_exists"}'));
+    await act(async () => void (await hook.result.current.turn.act({ type: "wait" })));
+    expect(hook.result.current.toasts).toEqual([]);
+    expect(hook.result.current.turn.refusal?.code).toBe("conversation_exists");
+  });
   it("leaving the session stops the loop: no outcome lands on the next session", async () => {
     (api.act as Mock).mockResolvedValue(run("running"));
     let finish: (r: TurnRun) => void = () => {};
@@ -332,6 +346,18 @@ describe("useWorldNames (BR-V4-11)", () => {
     await waitFor(() => expect(api.worldNames).toHaveBeenCalledWith("w2"));
     expect(result.current.names).toBeNull(); // the answer names another world
     expect(result.current.nameOf("regions", "r1", "name", "Saltwake Harbor")).toBe("Saltwake Harbor");
+  });
+
+  it("a failed read says so and falls back to the English; reload reads again (V6 R-10)", async () => {
+    (api.worldNames as Mock).mockRejectedValueOnce(new TypeError("Failed to fetch")).mockResolvedValue({
+      world_id: "w1", lang: "ko", world: {}, npcs: {}, event_seeds: {}, regions: { r1: { name: "솔트웨이크 항구" } },
+    });
+    const { result } = renderHook(() => useWorldNames("w1"));
+    await waitFor(() => expect(result.current.failed).toBe(true));
+    expect(result.current.nameOf("regions", "r1", "name", "Saltwake Harbor")).toBe("Saltwake Harbor");
+    act(() => result.current.reload());
+    await waitFor(() => expect(result.current.nameOf("regions", "r1", "name", "Saltwake Harbor")).toBe("솔트웨이크 항구"));
+    expect(result.current.failed).toBe(false);
   });
 });
 

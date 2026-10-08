@@ -8,6 +8,8 @@ export function Section({
   defaultOpen = true,
   actions,
   level = 2,
+  open: openProp,
+  onOpenChange,
   children,
 }: {
   title: ReactNode;
@@ -15,10 +17,18 @@ export function Section({
   defaultOpen?: boolean;
   actions?: ReactNode;
   level?: 2 | 3;
+  /** Held by the caller (V6: the GM's folds outlive a hidden tab); otherwise the section holds it. */
+  open?: boolean;
+  onOpenChange?(open: boolean): void;
   children: ReactNode;
 }) {
   const id = useId();
-  const [open, setOpen] = useState(defaultOpen);
+  const [own, setOwn] = useState(defaultOpen);
+  const open = openProp ?? own;
+  const setOpen = (next: boolean) => {
+    if (openProp === undefined) setOwn(next);
+    onOpenChange?.(next);
+  };
   const Heading = level === 2 ? "h2" : "h3";
   const shown = !collapsible || open;
   return (
@@ -30,7 +40,7 @@ export function Section({
               type="button"
               aria-expanded={open}
               aria-controls={id}
-              onClick={() => setOpen((o) => !o)}
+              onClick={() => setOpen(!open)}
               className="inline-flex min-h-11 items-center gap-2 text-left"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" className={open ? "rotate-90" : ""}>

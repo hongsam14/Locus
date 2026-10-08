@@ -226,4 +226,15 @@ describe("DeedPanel (US-5.6)", () => {
     );
     expect(await screen.findByTestId("deed-notice")).toHaveTextContent(t("play.turnInProgress"));
   });
+
+  it("a void refused while another GM change saves says that, not 'a turn' (V6 BR-V6-20)", async () => {
+    (api.listDeeds as Mock).mockResolvedValue([deedView()]);
+    (api.voidDeed as Mock).mockRejectedValue(new HttpError(409, "Conflict", '{"detail":"held","code":"gm_busy"}'));
+    render(<DeedPanel sessionId="s1" closed={false} />);
+    fireEvent.click(await screen.findByTestId("void-d1"));
+    await act(async () =>
+      fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: t("deed.voidConfirmBtn") })),
+    );
+    expect(await screen.findByTestId("deed-notice")).toHaveTextContent(t("error.gm_busy.title"));
+  });
 });

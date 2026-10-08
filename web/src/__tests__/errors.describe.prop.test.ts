@@ -1,6 +1,6 @@
 // describeError always gives people a sentence, never the raw text (V2 BR-V2-16, TP-V2-7).
 import fc from "fast-check";
-import { HttpError, conflictKind, needsLlm } from "../api/http";
+import { HttpError, conflictKind, isBusy, needsLlm } from "../api/http";
 import { describeError } from "../errors";
 import { dicts } from "../i18n";
 
@@ -81,7 +81,17 @@ describe("describeError (examples)", () => {
   it("reads code before the old message text", () => {
     const closed = new HttpError(409, "Conflict", '{"detail":"anything","code":"session_closed"}');
     expect(conflictKind(closed)).toBe("closed");
-    expect(conflictKind(new HttpError(409, "Conflict", '{"detail":"a turn","code":"turn_running"}'))).toBe("busy");
+    expect(conflictKind(new HttpError(409, "Conflict", '{"detail":"a turn","code":"turn_running"}'))).toBe("turn_running");
+    // V6 (code plan § 1.1 R-05): each coded 409 has its own kind; the rest is "conflict"
+    const coded = (code: string) => new HttpError(409, "Conflict", JSON.stringify({ detail: "x", code }));
+    expect(conflictKind(coded("gm_busy"))).toBe("gm_busy");
+    expect(conflictKind(coded("rumor_inactive"))).toBe("rumor_inactive");
+    expect(conflictKind(coded("seed_running"))).toBe("conflict");
+    expect(conflictKind(coded("world_exists"))).toBe("conflict");
+    expect([coded("turn_running"), coded("gm_busy")].map((e) => isBusy(conflictKind(e)))).toEqual([true, true]);
+    expect([coded("rumor_inactive"), coded("seed_running"), coded("session_closed")].map((e) => isBusy(conflictKind(e)))).toEqual([false, false, false]);
+    expect(describeError(coded("gm_busy"), "ko").title).toBe(dicts.ko["error.gm_busy.title"]);
+    expect(describeError(coded("rumor_inactive"), "en").title).toBe(dicts.en["error.rumor_inactive.title"]);
     expect(needsLlm(new HttpError(503, "S", '{"detail":"no key","code":"llm_unavailable"}'))).toBe(true);
     expect(needsLlm(new HttpError(503, "S", '{"detail":"needs an LLM provider","code":"llm_failed"}'))).toBe(false);
   });

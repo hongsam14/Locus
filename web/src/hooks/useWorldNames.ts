@@ -12,6 +12,9 @@ export type NameKind = "regions" | "npcs" | "event_seeds";
 export function useWorldNames(worldId: string | null): {
   names: WorldNames | null;
   nameOf(kind: NameKind, id: string, field: string, fallback: string): string;
+  /** The read failed: names fall back to the English the answers carry (V6 R-10). */
+  failed: boolean;
+  reload(): void;
 } {
   const lang = useRequestLang();
   const r = useResource(worldId ? ["names", worldId, lang] : null, () => api.worldNames(worldId as string));
@@ -20,5 +23,5 @@ export function useWorldNames(worldId: string | null): {
     (kind: NameKind, id: string, field: string, fallback: string) => names?.[kind]?.[id]?.[field] ?? fallback,
     [names],
   );
-  return { names, nameOf };
+  return { names, nameOf, failed: r.state === "error", reload: r.reload };
 }

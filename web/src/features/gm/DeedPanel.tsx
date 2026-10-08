@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../api";
 import { t, useRequestLang } from "../../i18n";
 import type { DeedViewOut } from "../../types";
-import { conflictKind } from "../../api/http";
+import { conflictKind, isBusy } from "../../api/http";
 import { Badge, Button, Card, LocalizedText, ConfirmDialog, Panel } from "../../ui";
 
 /** The GM's view of the player's deeds (US-5.6): what happened, which NPC judged it and
@@ -58,8 +58,8 @@ export function DeedPanel({
       if (kind === "closed") {
         setNotice(t("play.sessionClosed")); // not a turn: say so, and let the page re-read
         onChanged?.();
-      } else if (kind === "busy") {
-        setNotice(t("play.turnInProgress"));
+      } else if (isBusy(kind)) {
+        setNotice(kind === "gm_busy" ? t("error.gm_busy.title") : t("play.turnInProgress"));
       } else {
         setError(String(e));
       }

@@ -16,7 +16,8 @@ export function Select<T extends string>({
 }: {
   label: ReactNode;
   value: T | "";
-  options: { value: T; label: string; disabled?: boolean }[];
+  /** Options with the same `group` next to each other are drawn under one `<optgroup>`. */
+  options: { value: T; label: string; disabled?: boolean; group?: string }[];
   onChange(v: T): void;
   placeholder?: string;
   disabled?: boolean;
@@ -40,11 +41,23 @@ export function Select<T extends string>({
               {placeholder}
             </option>
           )}
-          {options.map((o) => (
-            <option key={o.value} value={o.value} disabled={o.disabled}>
-              {o.label}
-            </option>
-          ))}
+          {runs(options).map((run, i) =>
+            run.group == null ? (
+              run.items.map((o) => (
+                <option key={o.value} value={o.value} disabled={o.disabled}>
+                  {o.label}
+                </option>
+              ))
+            ) : (
+              <optgroup key={`g${i}`} label={run.group}>
+                {run.items.map((o) => (
+                  <option key={o.value} value={o.value} disabled={o.disabled}>
+                    {o.label}
+                  </option>
+                ))}
+              </optgroup>
+            ),
+          )}
         </select>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted">
           <path d="M6 9l6 6 6-6" />
@@ -52,4 +65,15 @@ export function Select<T extends string>({
       </span>
     </label>
   );
+}
+
+/** The options cut into runs of the same group, in order (V6: the GM's ended sessions). */
+function runs<O extends { group?: string }>(options: O[]): { group?: string; items: O[] }[] {
+  const out: { group?: string; items: O[] }[] = [];
+  for (const o of options) {
+    const last = out[out.length - 1];
+    if (last && last.group === o.group) last.items.push(o);
+    else out.push({ group: o.group, items: [o] });
+  }
+  return out;
 }

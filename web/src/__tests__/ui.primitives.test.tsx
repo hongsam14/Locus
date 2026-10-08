@@ -209,6 +209,16 @@ describe("Select and FileInput", () => {
     expect(onChange).toHaveBeenCalledWith("a");
   });
 
+  it("options of one group sit under one optgroup, in order (V6)", () => {
+    const { container } = render(<Select label="Session" value="a" data-testid="sel" onChange={() => {}}
+      options={[{ value: "a", label: "A" }, { value: "b", label: "B", group: "Ended" }, { value: "c", label: "C", group: "Ended" }]} />);
+    const groups = container.querySelectorAll("optgroup");
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toHaveAttribute("label", "Ended");
+    expect([...groups[0].querySelectorAll("option")].map((o) => o.textContent)).toEqual(["B", "C"]);
+    expect([...container.querySelectorAll("select > option")].map((o) => o.textContent)).toEqual(["A"]);
+  });
+
   it("a file input hides the browser's words, keeps its test id and can take the same file again", () => {
     const onFiles = vi.fn();
     render(<FileInput label="Map image" data-testid="pick-file" onFiles={onFiles} />);

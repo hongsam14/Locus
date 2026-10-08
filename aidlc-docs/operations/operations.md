@@ -111,17 +111,43 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   calls. GM manual generate/regenerate ignore the caps (intentional). `llm_calls` in the
   results counts *reserved* calls (upper bound).
 - **Concurrency**: one running turn per session (in-process guard). A second action, a GM
-  manual turn, closing the session, or a GM write (rumors / support / distortion / events)
-  while a run is in flight answers **409 `turn in progress`**; reads are never blocked. The
-  guard is process-local: keep **`--workers 1`** (compose already does). Raising the worker
-  count breaks two things, not one: two workers can run turns for the same session at the
-  same time, and a starting worker's `fail_stale_runs` marks **another worker's live run**
-  `failed` (code review U4 #5, accepted for this demo scale — there is no cross-process
-  fencing).
+  manual turn, closing the session, or a GM write (rumors / support / distortion / events /
+  seeds / deed void) while a run is in flight answers **409 `turn_running`**; reads are never
+  blocked. The 409 bodies carry a `code` and a sentence with no session id, run id or lease
+  token (V5).
+  - **GM writes (V5)**: a GM write holds a lease on the session for its whole length, LLM
+    call included; leases share the session with each other (a bulk generate of five runs
+    at once) and keep turns out — a player action then answers **409 `gm_busy`**, and the
+    player screen's `gm_busy` flag is true (`turn_running` is a turn only). The part that
+    reads and writes the rows — fresh read, checks, rows and their timeline line in one
+    transaction — runs one at a time per session (the **short write**). It waits at most
+    **`GM_WRITE_WAIT_S`** (default 5 s); past that the write answers 409 `gm_busy` and writes
+    nothing. The save takes milliseconds, so the wait only bites when something hangs.
+  - **Close (V5)**: closing a session keeps new turns out at once (a turn started then is 409
+    `session_closed`) and waits only for a save in progress, not for a GM write's LLM call;
+    that write then finds the session closed, answers 409 `session_closed` and saves nothing.
+    A world replace closes its sessions the same way; only a session mid-turn blocks it
+    (`sessions_busy`).
+  - The guard and the short write are process-local: keep **`--workers 1`** (compose already
+    does). Raising the worker count breaks three things: two workers can run turns for the
+    same session at the same time, GM writes in two workers are no longer one at a time, and
+    a starting worker's restart recovery compensates **another worker's live run** (code
+    review U4 #5, accepted for this demo scale — there is no cross-process fencing).
 - **Background executor**: one daemon worker thread, FIFO across sessions. A queued run is
   shown as `running` before it actually starts (demo scale: fine). On shutdown the API waits
   `TURN_SHUTDOWN_TIMEOUT_S` (30s) for the current run; a hung LLM call does not block process
-  exit. On startup any run still `running` is marked `failed` (`error=interrupted`).
+  exit. On startup, before any request, every run still `running` (cut by the restart) is
+  compensated like a failed run (V5): only the turns that ran stay charged, a move with no
+  turn run is undone with its deeds, the run becomes `failed` with `error=interrupted`, and a
+  `turn_run_failed` line says `error_type: "Interrupted"`.
+  - If a run's compensation itself fails, the run is marked `failed` with
+    `error=interrupted_uncompensated` and the API logs an ERROR line with the run and
+    session ids. Find such runs with `GET /api/play/sessions/{s}/turn-runs?status=failed`
+    (look at `error`) or in SQL:
+    `select id, session_id from turn_runs where error = 'interrupted_uncompensated';`
+    Then check that player's position and turn charge by hand (`GET …/player`, the
+    session timeline). If even that mark fails (storage down), the run stays `running` and
+    the next start tries again.
 - **LLM outage**: each LLM call makes 3 attempts with a 30s timeout
   (`locus/shared/llm/retry.py`). Between attempts it waits 1s then 2s, or what the server
   asked for in `Retry-After` / `retry-after-ms` (rate limits, 503), capped at 8s. Worst case
@@ -273,7 +299,8 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
 - **Failed and interrupted runs**
   - A run that fails before any turn advanced deletes its deeds: an undone move's arrival, a
     declaration, a statement, and their appraisals. Their timeline lines stay as an audit trail.
-  - A run marked `interrupted` at restart keeps the deeds its prep step committed (accepted).
+  - V5: a run cut by a restart is compensated the same way at the next start, so it no
+    longer keeps the deeds its prep step committed (see "Background executor").
 - **Env** (`env.example`): `SPREAD_MIN_WEIGHT` (0.15), `DEED_SEED_MIN_SALIENCE` (0.5),
   `MAX_SPREAD_PER_REGION_TURN` (1), `DECLARE_MAX_CHARS` (300), `NPC_MAX_DEEDS` (5),
   `APPRAISAL_MAX_DEEDS` (8).
@@ -375,7 +402,8 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
 - **Region delete** (`GET …/delete-plan`, `DELETE …/regions/{r}`)
   - What happens, in this order: children move under the deleted region's parent; entities lose their location; its scopes go (knowledge stays — an item scoped only there becomes "unscoped"); its NPCs are deleted (search document, then node); both directions of its connections go; then the region.
   - A cut part-way leaves no dangling id, and sending the same delete again finishes it.
-  - The router holds the GM lease of every open session of the world over the check and the delete: a session mid-turn is 409 ("turn in progress"), and a region where an open session's player stands is 409 with those session ids.
+  - The router holds the GM lease of every open session of the world over the check and the delete: a session mid-turn is 409 `turn_running`, and a region where an open session's player stands is 409 with those session ids. While it holds them, a player action in those sessions is 409 `gm_busy`.
+  - V5: an ACTIVE event in the deleted region ends on the session's next turn. Its build-up on neighbouring regions is given back, nothing is written for the deleted region, and the timeline line `event_resolved` carries `reason: "region_removed"`. A GM resolve of such an event also gives back only the regions still there.
   - Known limit: a session started, or a GM write made, while the delete runs is not held; such a session may point at the deleted region (the play screen then answers that the player's region no longer exists).
 - **Augmentation Q&A**
   - Detectors: gap, low_confidence, wiki_conflict (reads `terrain_kind`), orphan, dangling (a `parent_id`, `located_in`, connection `wiki_prior_ref`, or an id in `derived_from_prior_ids` / `about_entity_ids` that points at nothing — one issue per id), unscoped.

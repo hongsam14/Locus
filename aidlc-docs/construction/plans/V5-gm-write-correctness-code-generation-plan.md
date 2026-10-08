@@ -174,13 +174,13 @@
 - [x] 7.6 커밋: `fix(play): a run cut by a restart is compensated like a failed one; an event whose region is gone ends (V5, FR-C3, FR-C4)`
 
 ### Step 8 — 운영 문서
-- [ ] 8.1 `aidlc-docs/operations/operations.md`
+- [x] 8.1 `aidlc-docs/operations/operations.md`
   - 워커 하나 문단(113~120행)에 짧은 쓰기 잠금을 덧붙인다.
   - `GM_WRITE_WAIT_S`를 적는다.
   - 124행의 재시작 처리를 고친다(보상, `interrupted_uncompensated`).
   - 273~276행의 끊긴 run 설명을 고친다.
-- [ ] 8.2 `env.example`: `# GM_WRITE_WAIT_S=5` 한 줄.
-- [ ] 8.3 커밋: `docs: GM writes in one worker, the wait limit, and restart compensation (V5)`
+- [x] 8.2 `env.example`: `# GM_WRITE_WAIT_S=5` 한 줄.
+- [x] 8.3 커밋: `docs: GM writes in one worker, the wait limit, and restart compensation (V5)`
 
 ### Step 9 — 게이트와 요약
 - [ ] 9.1 게이트: ruff·black, mypy ≤ 11, pytest 두 번(hypothesis 시드 둘), 바뀐 웹 없음 확인(`git diff --stat -- web` 비어 있음).

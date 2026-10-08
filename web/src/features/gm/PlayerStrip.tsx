@@ -1,76 +1,48 @@
-import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../../api";
-import { statusOf } from "../../api/http";
+import { turnLabel } from "../../format";
 import { t } from "../../i18n";
-import type { Player } from "../../types";
-import { Button } from "../../ui";
+import { Button, InlineError } from "../../ui";
+import type { GmRes, PlayerRead } from "./useGmData";
 
-/** Where the player stands, seen from the GM screen (US-5.1, BR-U7-21/22): name, region,
- * turn and whether a turn is running, with the way back to play. A GM session without a
- * player shows nothing. Re-read whenever `rev` changes. */
+/** Where the player stands, seen from the GM screen (US-5.1, BR-U7-21/22; V6 BLM § 2): name,
+ * region, turn and whether a turn is running — with [check again] then — and the way back to
+ * play. A GM session without a player shows nothing. It shows the session's own read
+ * (`useGmData.player`): an answer for another session never lands here (#14), and a failed
+ * re-read keeps the last player and says so. */
 export function PlayerStrip({
   sessionId,
   turn,
-  regionNames,
-  rev,
-  onPlayer,
+  player,
+  regionName,
 }: {
   sessionId: string;
   turn: number;
-  regionNames: Record<string, string>;
-  rev: number;
-  onPlayer?: (player: Player | null) => void;
+  player: GmRes<PlayerRead>;
+  /** A region by name: the display language's, else the world's English (V4 BR-V4-11). */
+  regionName(regionId: string): string;
 }) {
   const navigate = useNavigate();
-  const [player, setPlayer] = useState<Player | null>(null);
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const seq = useRef(0);
-  useEffect(() => {
-    const mine = ++seq.current;
-    Promise.all([
-      Promise.resolve()
-        .then(() => api.getPlayer(sessionId))
-        // only a 404 means "no player"; another failure keeps the last one (U7 review §3)
-        .catch((e) => (statusOf(e) === 404 ? null : { failed: String(e) })),
-      Promise.resolve()
-        .then(() => api.listTurnRuns(sessionId, "running")) // FD review R-08
-        .catch(() => []),
-    ]).then(([p, runs]) => {
-      if (mine !== seq.current) return;
-      if (p && typeof p === "object" && "failed" in p) {
-        setError(String(p.failed));
-        return;
-      }
-      setError(null);
-      const found = p && typeof p === "object" && "region_id" in p ? (p as Player) : null;
-      setPlayer(found);
-      setRunning(Array.isArray(runs) && runs.length > 0);
-      onPlayer?.(found);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onPlayer is a notifier
-  }, [sessionId, rev]);
-
-  if (!player) {
-    return error ? <div className="px-3 text-xs text-danger" data-testid="gm-player-error">{error}</div> : null;
+  const found = player.data?.player ?? null;
+  if (!found) {
+    return player.error ? (
+      <div data-testid="gm-player-error"><InlineError error={player.error} onRetry={player.reload} /></div>
+    ) : null;
   }
+  const running = (player.data?.running.length ?? 0) > 0;
   return (
-    <div className="flex flex-wrap items-center gap-3 px-3 py-1 text-sm">
+    <div className="flex flex-wrap items-center gap-3 text-sm">
       <span data-testid="gm-player-status">
-        {t("gm.playerStatus", {
-          name: player.name,
-          region: regionNames[player.region_id] ?? player.region_id,
-          turn,
-        })}
-        {running ? ` ${t("gm.running")}` : ""}
+        {found.name} · {regionName(found.region_id)} · {turnLabel(turn)}
+        {running ? ` · ${t("label.turnRunning")}` : ""}
       </span>
-      {error && <span className="text-xs text-danger" data-testid="gm-player-error">{error}</span>}
-      <Button
-        size="sm"
-        data-testid="gm-back-to-play"
-        onClick={() => navigate(`/play/${encodeURIComponent(sessionId)}`)}
-      >
+      {running && (
+        <Button size="sm" data-testid="gm-player-recheck" onClick={player.reload}>
+          {t("action.recheck")}
+        </Button>
+      )}
+      {player.error && <span className="text-xs text-danger" data-testid="gm-player-error">{player.error.title}</span>}
+      <Button size="sm" className="ml-auto" data-testid="gm-back-to-play"
+        onClick={() => navigate(`/play/${encodeURIComponent(sessionId)}`)}>
         {t("gm.backToPlay")}
       </Button>
     </div>

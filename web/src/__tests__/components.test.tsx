@@ -9,7 +9,6 @@ import { MapOverlay } from "../MapOverlay";
 import { RegionKnowledgePanel } from "../features/gm/RegionKnowledgePanel";
 import { AugmentPanel } from "../features/editor/AugmentPanel";
 import { SessionBar } from "../SessionBar";
-import { GmHub } from "../features/gm/GmHub";
 import { App } from "../App";
 import { resetCapabilities } from "../capabilities";
 import { t } from "../i18n";
@@ -18,6 +17,7 @@ import type { ConnectionEdge, GameSession, Region } from "../types";
 vi.mock("../api", () => ({
   api: {
     capabilities: vi.fn().mockResolvedValue({ llm: true, vlm: true, embedding: true }),
+    worldNames: vi.fn().mockRejectedValue(new Error("no names in this test")),
     listSeeds: vi.fn().mockResolvedValue([]),
     startSeed: vi.fn(),
     listDemos: vi.fn().mockResolvedValue([]),
@@ -134,7 +134,9 @@ describe("RegionPanel badges (U1 §11.4)", () => {
     await waitFor(() => expect(screen.getByTestId("knowledge-item-h1")).toBeInTheDocument());
     expect(screen.getByTestId("knowledge-item-h1")).toHaveTextContent(t("badge.hearsay"));
     expect(screen.getByTestId("knowledge-item-s1")).toHaveTextContent(t("badge.rumor"));
-    expect(screen.getByTestId("knowledge-item-d1")).toHaveTextContent("direct");
+    // V6 (FR-D8): the scope reads in words, never the raw value
+    expect(screen.getByTestId("knowledge-item-d1")).toHaveTextContent(t("enum.scopeType.direct"));
+    expect(screen.getByTestId("knowledge-item-d1").textContent).not.toMatch(/\bdirect\b/);
   });
 });
 
@@ -177,216 +179,8 @@ describe("SessionBar", () => {
   });
 });
 
-describe("GmHub (GameMaster hub, was SessionPanel)", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    // safe defaults for the Phase 2 reads SessionPanel issues on refresh
-    (api.listEvents as Mock).mockResolvedValue([]);
-    (api.listDistortions as Mock).mockResolvedValue([]);
-  });
-
-  it("renders rumors with promoted badge and generates", async () => {
-    (api.getTimeline as Mock).mockResolvedValue([
-      { id: "t1", session_id: "s1", turn: 0, kind: "generate", summary: "made rumors", payload: {} },
-    ]);
-    (api.listRumors as Mock).mockResolvedValue([
-      {
-        id: "ru1", session_id: "s1", region_id: "r1", distorted_from_id: "k",
-        distorted_from_kind: "knowledge", statement: "twisted tale", distortion_degree: 0.3,
-        support: 0.7, confidence: 0.5, promoted: true,
-      },
-    ]);
-    (api.generateRumors as Mock).mockResolvedValue([]);
-    render(<GmHub session={OPEN_SESSION} regionId="r1" />);
-    await waitFor(() => expect(screen.getByTestId("rumor-ru1")).toBeInTheDocument());
-    expect(screen.getByTestId("promoted-ru1")).toBeInTheDocument();
-    expect(screen.getByText(/twisted tale/)).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("generate-btn"));
-    await waitFor(() => expect(api.generateRumors).toHaveBeenCalledWith("s1", "r1"));
-  });
-
-  it("advances the turn", async () => {
-    (api.getTimeline as Mock).mockResolvedValue([]);
-    (api.listRumors as Mock).mockResolvedValue([]);
-    (api.advanceTurn as Mock).mockResolvedValue({
-      session_id: "s1", turn: 3, promoted_ids: [], demoted_ids: [],
-    });
-    render(<GmHub session={OPEN_SESSION} regionId={null} />);
-    expect(screen.getByTestId("gm-no-region")).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("advance-turn-btn"));
-    await waitFor(() => expect(api.advanceTurn).toHaveBeenCalledWith("s1"));
-  });
-
-  it("refresh loads independent reads in parallel (FR-H6)", async () => {
-    (api.getTimeline as Mock).mockResolvedValue([]);
-    (api.listRumors as Mock).mockResolvedValue([]);
-    render(<GmHub session={OPEN_SESSION} regionId="r1" />);
-    // all three region-independent reads + the region rumor read are issued
-    await waitFor(() => expect(api.getTimeline).toHaveBeenCalledWith("s1"));
-    expect(api.listEvents).toHaveBeenCalledWith("s1");
-    expect(api.listDistortions).toHaveBeenCalledWith("s1");
-    expect(api.listRumors).toHaveBeenCalledWith("s1", "r1");
-  });
-
-  it("refresh skips the rumor read when no region is selected (FR-H6)", async () => {
-    (api.getTimeline as Mock).mockResolvedValue([]);
-    render(<GmHub session={OPEN_SESSION} regionId={null} />);
-    await waitFor(() => expect(api.getTimeline).toHaveBeenCalledWith("s1"));
-    expect(api.listRumors).not.toHaveBeenCalled();
-  });
-
-  it("disables write controls on a closed session", async () => {
-    (api.getTimeline as Mock).mockResolvedValue([]);
-    (api.listRumors as Mock).mockResolvedValue([]);
-    render(
-      <GmHub session={{ ...OPEN_SESSION, status: "closed" }} regionId="r1" />,
-    );
-    await waitFor(() => expect(screen.getByTestId("generate-btn")).toBeDisabled());
-    expect(screen.getByTestId("advance-turn-btn")).toBeDisabled();
-    expect(screen.getByTestId("event-create-btn")).toBeDisabled();
-    expect(screen.getByTestId("suggest-events-btn")).toBeDisabled();
-  });
-
-  it("creates an event for the selected region", async () => {
-    (api.getTimeline as Mock).mockResolvedValue([]);
-    (api.listRumors as Mock).mockResolvedValue([]);
-    (api.createEvent as Mock).mockResolvedValue({});
-    render(<GmHub session={OPEN_SESSION} regionId="r1" />);
-    await waitFor(() => expect(screen.getByTestId("event-form")).toBeInTheDocument());
-    fireEvent.click(screen.getByTestId("event-create-btn"));
-    await waitFor(() =>
-      expect(api.createEvent).toHaveBeenCalledWith(
-        "s1",
-        expect.objectContaining({ region_id: "r1", category: "war" }),
-      ),
-    );
-  });
-
-  it("suggests, then approves/discards/resolves events", async () => {
-    (api.getTimeline as Mock).mockResolvedValue([]);
-    (api.listRumors as Mock).mockResolvedValue([]);
-    (api.listEvents as Mock).mockResolvedValue([
-      {
-        id: "e1", session_id: "s1", region_id: "r1", category: "war", description: "siege",
-        magnitude: 0.7, lifecycle: "persistent", status: "suggested", created_turn: 0, contributions: {},
-      },
-      {
-        id: "e2", session_id: "s1", region_id: "r2", category: "festival", description: "fair",
-        magnitude: 0.3, lifecycle: "one_shot", status: "active", created_turn: 1, contributions: {},
-      },
-    ]);
-    (api.suggestEvents as Mock).mockResolvedValue([]);
-    (api.approveEvent as Mock).mockResolvedValue({});
-    (api.resolveEvent as Mock).mockResolvedValue({});
-    render(<GmHub session={OPEN_SESSION} regionId={null} />);
-    await waitFor(() => expect(screen.getByTestId("event-e1")).toBeInTheDocument());
-    expect(screen.getByTestId("event-status-e1")).toHaveTextContent("suggested");
-
-    fireEvent.click(screen.getByTestId("suggest-events-btn"));
-    await waitFor(() => expect(api.suggestEvents).toHaveBeenCalledWith("s1", 1));
-
-    fireEvent.click(screen.getByTestId("approve-e1"));
-    await waitFor(() => expect(api.approveEvent).toHaveBeenCalledWith("s1", "e1"));
-
-    fireEvent.click(screen.getByTestId("resolve-e2"));
-    await waitFor(() => expect(api.resolveEvent).toHaveBeenCalledWith("s1", "e2"));
-  });
-
-  it("reflects real per-region distortion from listDistortions", async () => {
-    (api.getTimeline as Mock).mockResolvedValue([]);
-    (api.listRumors as Mock).mockResolvedValue([]);
-    (api.listDistortions as Mock).mockResolvedValue([
-      { session_id: "s1", region_id: "r1", distortion_degree: 0.75 },
-    ]);
-    render(<GmHub session={OPEN_SESSION} regionId="r1" />);
-    await waitFor(() => expect(screen.getByText(new RegExp(`${t("gm.distortion")} 0\\.75`))).toBeInTheDocument());
-  });
-
-  it("generate-all fills only empty regions (X3)", async () => {
-    (api.getTimeline as Mock).mockResolvedValue([]);
-    (api.listDistortions as Mock).mockResolvedValue([
-      { session_id: "s1", region_id: "r1", distortion_degree: 0.3 },
-      { session_id: "s1", region_id: "r2", distortion_degree: 0.3 },
-    ]);
-    // U3 intended change (U7 review C1): one state read gives the counts
-    (api.getWorldState as Mock).mockResolvedValue({ session_id: "s1", turn: 0, player_region_id: null,
-      regions: [{ region_id: "r1", region_name: "r1", distortion: 0.3, feedback_share: 0, active_rumors: 0, promoted_rumors: 0, deed_rumors: 0, active_events: 0 }, { region_id: "r2", region_name: "r2", distortion: 0.3, feedback_share: 0, active_rumors: 1, promoted_rumors: 0, deed_rumors: 0, active_events: 0 }] });
-    (api.generateRumors as Mock).mockResolvedValue([]);
-    render(<GmHub session={OPEN_SESSION} regionId={null} />);
-    fireEvent.click(await screen.findByTestId("generate-all-btn"));
-    await waitFor(() => expect(api.generateRumors).toHaveBeenCalledWith("s1", "r1"));
-    expect(api.generateRumors).not.toHaveBeenCalledWith("s1", "r2");
-  });
-
-  it("regen-all confirms before regenerating all regions (X3)", async () => {
-    (api.getTimeline as Mock).mockResolvedValue([]);
-    (api.listRumors as Mock).mockResolvedValue([]);
-    (api.listDistortions as Mock).mockResolvedValue([
-      { session_id: "s1", region_id: "r1", distortion_degree: 0.3 },
-    ]);
-    (api.regenRumors as Mock).mockResolvedValue([]);
-    render(<GmHub session={OPEN_SESSION} regionId={null} />);
-    fireEvent.click(await screen.findByTestId("regen-all-btn"));
-    expect(api.regenRumors).not.toHaveBeenCalled(); // confirmation pending
-    fireEvent.click(screen.getByText(t("action.confirm")));
-    await waitFor(() => expect(api.regenRumors).toHaveBeenCalledWith("s1", "r1"));
-  });
-
-  it("shows a per-region notification after advancing a turn (X3 / FR-UX2.6)", async () => {
-    (api.getTimeline as Mock).mockResolvedValue([]);
-    (api.listRumors as Mock).mockResolvedValue([]);
-    (api.advanceTurn as Mock).mockResolvedValue({
-      session_id: "s1",
-      turn: 3,
-      promoted_ids: ["ra"],
-      demoted_ids: [],
-      region_changes: [
-        {
-          region_id: "r1",
-          promoted: ["ra"],
-          demoted: [],
-          pruned: [],
-          events_applied: [],
-          events_resolved: [],
-          rumors_added: [],
-        },
-      ],
-    });
-    renderWithShell(<GmHub session={OPEN_SESSION} regionId={null} />); // V2: toasts live in the shell
-    fireEvent.click(await screen.findByTestId("advance-turn-btn"));
-    // V2: the notification area is always there (a live region), so wait for the card itself
-    expect(await screen.findByText(t("notif.title", { region_id: "r1" }))).toBeInTheDocument(); // notif title
-    expect(screen.getByText(t("notif.promoted", { n: 1 }))).toBeInTheDocument();
-  });
-
-  it("localizes rumor text with an original toggle (X3 / FR-UX3.4)", async () => {
-    (api.getTimeline as Mock).mockResolvedValue([]);
-    (api.listRumors as Mock).mockResolvedValue([
-      {
-        id: "ru1", session_id: "s1", region_id: "r1", distorted_from_id: "k",
-        distorted_from_kind: "knowledge", statement: "twisted tale", distortion_degree: 0.3,
-        support: 0.5, confidence: 0.5, promoted: false, statement_ko: "뒤틀린 이야기",
-      },
-    ]);
-    render(<GmHub session={OPEN_SESSION} regionId="r1" />);
-    await waitFor(() => expect(screen.getByText("뒤틀린 이야기")).toBeInTheDocument());
-    fireEvent.click(screen.getByTestId("rumor-text-ru1-toggle"));
-    expect(screen.getByText("twisted tale")).toBeInTheDocument();
-  });
-
-  it("localizes timeline entries via kind+payload (X3 / F2a)", async () => {
-    (api.listRumors as Mock).mockResolvedValue([]);
-    (api.getTimeline as Mock).mockResolvedValue([
-      { id: "t1", session_id: "s1", turn: 2, kind: "promote", summary: "promoted ra",
-        payload: { rumor_id: "ra", region_id: "r1", region_name: "Riverton" } },
-    ]);
-    render(<GmHub session={OPEN_SESSION} regionId={null} />);
-    // U7 intended change: FR-D3 — the line names the region
-    await waitFor(() =>
-      expect(screen.getByText(new RegExp(t("timeline.promote", { region: "Riverton" })))).toBeInTheDocument(),
-    );
-  });
-});
+// V6: the GmHub tests moved to gm.layout.test.tsx (the screen) and gm.parts.test.tsx (the
+// parts) — frontend-components § 7.1, TP-V6-17; each behaviour they asserted is kept there.
 
 describe("RegionPanel session view", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -408,6 +202,12 @@ describe("App routing (F1 / AD-R8)", () => {
     (api.getTimeline as Mock).mockResolvedValue([]);
     (api.listEvents as Mock).mockResolvedValue([]);
     (api.listDistortions as Mock).mockResolvedValue([]);
+    // V6: the GM screen reads its session's state, rumors, seeds, deeds and player itself
+    (api.getWorldState as Mock).mockResolvedValue({ session_id: "s1", turn: 0, player_region_id: null, regions: [] });
+    (api.listSeeds as Mock).mockResolvedValue([]);
+    (api.listDeeds as Mock).mockResolvedValue([]);
+    (api.getPlayer as Mock).mockRejectedValue(new HttpError(404, "Not Found", "no player"));
+    (api.listTurnRuns as Mock).mockResolvedValue([]);
   });
 
   it("redirects / to the default world editor and loads that world", async () => {
@@ -464,7 +264,8 @@ describe("App routing (F1 / AD-R8)", () => {
         <App />
       </MemoryRouter>,
     );
-    await waitFor(() => expect(screen.getByTestId("session-panel")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId("turn-tools")).toBeInTheDocument()); // V6: was the hub panel
+    expect(screen.getByTestId("gm-tabs")).toBeInTheDocument();
     expect(api.getSession).toHaveBeenCalledWith("s1");
     expect(api.exportWorld).toHaveBeenCalledWith("w");
     expect(screen.getByTestId("nav-gm")).toHaveAttribute("href", "/gm/s1");
@@ -483,7 +284,7 @@ describe("App routing (F1 / AD-R8)", () => {
     );
     await waitFor(() => expect(screen.getByTestId("gm-error")).toBeInTheDocument());
     fireEvent.click(screen.getByTestId("gm-retry-btn"));
-    await waitFor(() => expect(screen.getByTestId("session-panel")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId("turn-tools")).toBeInTheDocument()); // V6: was the hub panel
     expect(screen.queryByText(t("session.none"))).not.toBeInTheDocument(); // no dead entry on GM
   });
 

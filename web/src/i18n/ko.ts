@@ -80,8 +80,6 @@ export const ko = {
   "action.close": "닫기",
 
   // confirms
-  "confirm.regen": "이 지역 소문을 재생성합니다. 승격된 소문은 보존됩니다.",
-  "confirm.regenAll": "모든 지역 소문을 재생성합니다(덮어쓰기). 승격된 소문은 보존됩니다.",
 
   // progress
   "progress.done": "{done}/{total} 완료",
@@ -136,11 +134,11 @@ export const ko = {
   "deed.witnesses": "목격",
   "deed.salience": "열의",
   "deed.reached": "도달 지역",
-  "deed.void": "취소",
+  "deed.void": "없던 일로 하기",
   "deed.voidTitle": "행적 취소",
   "deed.voidConfirmBtn": "없던 일로 하기",
   "deed.voidConfirm": "이 행적과 그 소문 {n}건을 없던 일로 합니다. 되돌릴 수 없습니다.",
-  "deed.voided": "취소됨",
+  "deed.voided": "없던 일",
   "deed.none": "아직 행적이 없습니다",
 
   // timeline (kind -> template; payload fields interpolated)
@@ -597,6 +595,38 @@ export const ko = {
   "tab.seeds": "씨앗",
   "tab.timeline": "기록",
   "tab.deeds": "행적",
+  "label.distortion": "왜곡",
+  "label.support": "공신력",
+  "label.share": "소문이 더한 몫",
+  "label.settled": "굳음",
+  "label.slant": "보는 눈",
+  "label.salience": "눈길",
+  "label.newLine": "새로",
+  "label.turnRunning": "턴 진행 중",
+  "label.knows": "NPC가 아는 것",
+  "label.createEventHere": "이 지역에 사건 만들기",
+  "label.eventsSuggested": "제안",
+  "label.eventsActive": "진행 중",
+  "label.eventsResolved": "끝남",
+  "label.rumorsGoing": "도는 소문 {n}",
+  "label.rumorsSettled": "굳은 소문 {n}",
+  "label.rumorsDeed": "플레이어 이야기 {n}",
+  "label.eventsHere": "진행 중 사건 {n}",
+  "label.confidence": "확신",
+  "label.rumors": "소문",
+  "action.generateHere": "이 지역 소문 만들기",
+  "confirm.regenRegion": "이 지역의 소문을 새로 만들어요. 굳은 소문은 남아요.",
+  "confirm.voidDeedTitle": "이 행적을 없던 일로 할까요?",
+  "confirm.voidDeed": "이 행적과 그 소문 {n}건을 없던 일로 해요. 되돌릴 수 없어요.",
+  "empty.noRegionChosen": "지도에서 지역을 누르면 그 지역의 소문과 왜곡을 손볼 수 있어요.",
+  "empty.rumorsHere": "이 지역에는 아직 도는 소문이 없어요.",
+  "empty.eventsSuggested": "기다리는 제안이 없어요.",
+  "empty.eventsActive": "진행 중인 사건이 없어요.",
+  "empty.eventsResolved": "끝난 사건이 없어요.",
+  "empty.timeline": "아직 기록이 없어요.",
+  "empty.deeds": "아직 행적이 없어요.",
+  "empty.seeds": "이 월드에는 사건 씨앗이 없어요.",
+  "empty.knowledge": "이 지역 NPC가 아는 것이 아직 없어요.",
 };
 
 export type Key = keyof typeof ko;

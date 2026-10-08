@@ -8,9 +8,9 @@ const STORY = ["story", "log"]; // log.* moved over with the play screen (V4); t
 const VALUE = ["enum", "word", "label", "unit"];
 
 // lines written before V2, moved to the rule by the unit that rewrites their screen
-const LEGACY = new Set([
-  "confirm.regen", // V6
-  "confirm.regenAll", // V6
+const LEGACY = new Set<string>([
+  // V6 rewrote the two regenerate confirmations under the rule (confirm.regenRegion /
+  // confirm.regenAllRumors); none is left
 ]);
 
 const prefix = (key: string) => key.split(".")[0];

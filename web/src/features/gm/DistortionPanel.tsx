@@ -1,33 +1,29 @@
 import { useEffect, useState } from "react";
+import { numberWithMeaning } from "../../format";
 import { t } from "../../i18n";
 import { CommitRange } from "../../ui";
 
-/** The selected region's distortion. The slider saves on mouse, touch, keyboard or blur
- * (BR-U7-24); the feedback share — what strong rumors added — shows when there is one. */
+/** The chosen region's distortion (V6 BR-V6-11/25): the number with its meaning, following
+ * the thumb while it moves; saved on mouse, touch, keyboard or blur (BR-U7-24). The part that
+ * strong rumors added shows when there is one. A refused save puts the thumb back. */
 export function DistortionPanel({
-  regionName,
   value,
   share,
   closed,
   onCommit,
 }: {
-  regionName: string;
   value: number;
   share: number;
   closed: boolean;
   onCommit: (v: number) => Promise<boolean> | boolean | void;
 }) {
-  // the label follows the thumb while it moves, not only the saved value (U7 review #8)
   const [shown, setShown] = useState(value);
   useEffect(() => setShown(value), [value]);
   return (
-    <>
-      <div className="text-xs text-muted">
-        {t("gm.region")} {regionName}
-      </div>
-      <label className="text-xs flex items-center gap-2">
-        <span data-testid="distortion-label">
-          {t("gm.distortion")} {shown.toFixed(2)}
+    <div className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1">
+        <span data-testid="distortion-label" className="font-bold">
+          {t("label.distortion")} {numberWithMeaning("distortion", shown)}
         </span>
         <CommitRange
           data-testid="distortion-slider"
@@ -41,10 +37,10 @@ export function DistortionPanel({
         />
       </label>
       {share > 0 && (
-        <div data-testid="distortion-feedback" className="text-xs text-muted">
-          {t("gm.feedbackShare", { share: share.toFixed(2) })}
-        </div>
+        <span data-testid="distortion-feedback" className="text-xs text-muted">
+          {t("label.share")} {numberWithMeaning("share", share)}
+        </span>
       )}
-    </>
+    </div>
   );
 }

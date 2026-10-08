@@ -16,7 +16,7 @@ function failKind(e: unknown): FailKind {
   return "other";
 }
 
-/** The GM hub's runs over many regions (FR-UX2.3 / SEC-E), out of `GmHub` (U8, NFR-7):
+/** The GM screen's runs over many regions (FR-UX2.3 / SEC-E; out of the old hub in U8, NFR-7):
  * [generate all] fills the regions with no canonical rumor, [regenerate all] redoes the
  * given ones; one progress line, one notification at the end, then `after` (the hub's
  * re-read). `onCap` takes the suggestion cap the state read carries (U3 review S13).

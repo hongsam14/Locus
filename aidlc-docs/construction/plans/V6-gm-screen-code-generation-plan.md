@@ -297,7 +297,7 @@
 
 이 단계는 커밋 하나다. 기존 부품의 계약이 바뀌고 옛 소비자(`GmHub`, 지금 `GmPage`)가 같은 커밋에서 사라지므로, 중간 상태를 커밋하지 않는다(§ 1.3).
 
-- [ ] 5.1 기존 부품을 새 계약으로 바꾼다.
+- [x] 5.1 기존 부품을 새 계약으로 바꾼다.
   - `PlayerStrip`: `useGmData.player`를 받는다. 자기 읽기를 없애고, [다시 확인]과 이름표를 둔다.
   - `DistortionPanel`·`RumorPanel`: 수치와 뜻, 공신력 라벨이 끄는 값을 따라감, 배지 라벨, 빈 상태
   - `RegionKnowledgePanel`: `Section` 제어 안, `knowledgeRev`에 `reload`(다시 마운트 없음), 스코프 라벨, 수치와 뜻
@@ -306,23 +306,23 @@
   - `TimelinePanel`: 최신부터 20 + [더 보기], "새로", "N턴" 머리, 빈 상태
   - `DeedPanel`: "없던 일로 하기", "없던 일" 배지, "보는 눈: <slant>"(R-01), 수치와 뜻, `describeError`
   - `WorldStateOverlay.tsx`: `useWorldState`와 토글 컴포넌트를 없앤다. `distortionColor`는 남긴다. `overlayOf`는 Step 4의 `badgeOf`로 바꾸거나 없앤다(남는 쪽 하나).
-- [ ] 5.2 새 `RegionTab`: 요약 줄 + `DistortionPanel` + `RumorPanel` + `EventForm` + `RegionKnowledgePanel`, 빈 상태.
-- [ ] 5.3 새 `GmSessionView`(key 안)
+- [x] 5.2 새 `RegionTab`: 요약 줄 + `DistortionPanel` + `RumorPanel` + `EventForm` + `RegionKnowledgePanel`, 빈 상태.
+- [x] 5.3 새 `GmSessionView`(key 안)
   - 상태: `tab`, 결과, "새로" 집합, 쓰기 오류 줄, 펼침·초안
   - `gmWrite`, `useGmData`, `useBulkRumors`(새 콜백 연결, 다시 만들기 대상은 상태의 지역)
   - 지역 고르는 세 길 → `onSelect` + `tab="region"`. 1열의 결과 띠 클릭은 스크롤과 초점(R-08).
-- [ ] 5.4 `routes/GmPage.tsx`를 다시 쓴다.
+- [x] 5.4 `routes/GmPage.tsx`를 다시 쓴다.
   - `useGmSession`, `selected`·`mapUrl`·`overlayOn`
   - 오류 줄 + [다시 시도](`retry`), 로딩 줄
   - `<GmSessionView key={sessionId} …/>`
   - `SessionBar`를 더 쓰지 않는다.
-- [ ] 5.5 사전 값을 바꾼다: `deed.void` "없던 일로 하기", `deed.voided` "없던 일". 쓰는 곳은 `DeedPanel` 하나다(grep 확인).
-- [ ] 5.6 없앤다
+- [x] 5.5 사전 값을 바꾼다: `deed.void` "없던 일로 하기", `deed.voided` "없던 일". 쓰는 곳은 `DeedPanel` 하나다(grep 확인).
+- [x] 5.6 없앤다
   - `features/gm/{GmHub,ManualTurnPanel}.tsx`
   - `useWorldState`
   - 남은 import가 없는지 grep으로 확인한다. 테스트도 포함한다: `components.test.tsx`의 `GmHub`, `gm.test.tsx:18,167`의 `useWorldState`.
   - **`SessionBar.tsx`는 남긴다**(코드 계획 리뷰 01 R-01). 에디터 `WorldFileBar.tsx:106`의 세션 시작이 `variant="picker"`로 쓰고, `play.test.tsx:304-343`과 `components.test.tsx`의 `SessionBar` 묶음이 그것을 시험한다. GM이 쓰던 `variant="full"`(닫기·상태)은 쓰는 곳이 없어진다. 정리는 V8에 넘긴다(code-summary § 7).
-- [ ] 5.7 테스트
+- [x] 5.7 테스트
   - `gm.layout.test.tsx`(새)
     - TP-V6-1: 두 폭의 순서와 testid 하나
     - TP-V6-2: 세 길 → [지역] 탭, 제안 뒤 탭 그대로
@@ -336,7 +336,7 @@
     - `gm.test.tsx`: `WorldStateOverlay`·`useWorldState`(167), `llm-required`(650), 턴 알림, `session-panel`, 타임라인 순서
     - `deeds.test.tsx`: 무효화 라벨
     - 고친 수와 이유를 기록해 code-summary에 적는다(TP-V6-17).
-- [ ] 5.8 게이트 GREEN → 커밋 `feat(web): GM screen rebuilt — map beside the turn tools and five tabs, one result band, nothing of the last session (V6, FR-S3, #14, RE-F01, RE-F02, RE-F04, RE-F05, RE-F14)`
+- [x] 5.8 게이트 GREEN → 커밋 `feat(web): GM screen rebuilt — map beside the turn tools and five tabs, one result band, nothing of the last session (V6, FR-S3, #14, RE-F01, RE-F02, RE-F04, RE-F05, RE-F14)`
 
 ### Step 6 — FR-D8 검사와 표기 (BR-V6-19·24·25, TP-V6-12·13)
 - [ ] 6.1 `fr-d8.test.tsx`: TP-V6-12

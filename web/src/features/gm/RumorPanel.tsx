@@ -1,11 +1,18 @@
+import { useEffect, useState } from "react";
+import { numberWithMeaning } from "../../format";
+import { useAction } from "../../hooks";
 import { t } from "../../i18n";
 import type { SessionRumor } from "../../types";
-import { Badge, Button, Card, CommitRange, LocalizedText } from "../../ui";
+import { Badge, Button, Card, CommitRange, ConfirmDialog, LocalizedText, StatusView } from "../../ui";
+import type { GmRes } from "./useGmData";
 
-/** The selected region's rumors: generate / regenerate, and each rumor's support slider
- * (saved however it is moved, BR-U7-24). Deed rumors carry a badge (U6). */
+/** The chosen region's rumors (V6 frontend-components § 4.1, BR-V6-11/25/33): make them, make
+ * them again after asking, and each rumor's belief — the number with its meaning, following
+ * the thumb (UX-41). The first read shows loading; another region's rumors never show here
+ * while this one reads (code plan § 1.1 R-02). */
 export function RumorPanel({
   rumors,
+  list,
   closed,
   llmOff = false,
   busy,
@@ -13,58 +20,106 @@ export function RumorPanel({
   onRegen,
   onSupport,
 }: {
-  rumors: SessionRumor[];
+  rumors: GmRes<SessionRumor[]>;
+  /** The list with a write's own answer laid over it. */
+  list: SessionRumor[] | undefined;
   closed: boolean;
-  llmOff?: boolean; // U8 (BR-U8-25): generate and regenerate need the LLM
-  busy: boolean;
-  onGenerate: () => void;
-  onRegen: () => void;
+  llmOff?: boolean;
+  busy: boolean; // a bulk run goes
+  onGenerate(): Promise<unknown>;
+  onRegen(): Promise<unknown>;
   onSupport: (rumorId: string, v: number) => Promise<boolean> | boolean | void;
 }) {
+  const [asking, setAsking] = useState(false);
+  const write = useAction((fn: () => Promise<unknown>) => fn());
+  const why = llmOff ? t("llm.required") : undefined;
+  const off = closed || busy || llmOff;
   return (
-    <>
-      <div className="flex flex-wrap gap-2">
-        <Button variant="primary" data-testid="generate-btn" onClick={onGenerate}
-          disabled={closed || busy || llmOff} title={llmOff ? t("llm.required") : undefined}>
-          {t("gm.generate")}
+    <section className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="flex-1 font-heading text-lg">{t("label.rumors")}</h3>
+        <Button size="sm" variant="primary" data-testid="generate-btn" busy={write.busy} disabled={off} title={why}
+          onClick={() => void write.run(onGenerate)}>
+          {t("action.generateHere")}
         </Button>
-        <Button data-testid="regen-btn" onClick={onRegen}
-          disabled={closed || busy || llmOff} title={llmOff ? t("llm.required") : undefined}>
-          {t("gm.regen")}
+        <Button size="sm" data-testid="regen-btn" busy={write.busy} disabled={off} title={why}
+          onClick={() => setAsking(true)}>
+          {t("action.regenerate")}
         </Button>
       </div>
-      <div className="flex flex-col gap-1.5">
-        {rumors.map((r) => (
-          <Card key={r.id} data-testid={`rumor-${r.id}`} className="text-sm">
-            <div className="flex items-center gap-1.5">
-              {r.promoted && (
-                <Badge data-testid={`promoted-${r.id}`} tone="promoted">
-                  {t("gm.promoted")}
-                </Badge>
-              )}
-              {r.origin_kind === "deed" && (
-                <Badge data-testid={`deed-badge-${r.id}`} tone="event">
-                  {t("badge.deed")}
-                </Badge>
-              )}
-              <span className="text-muted text-xs">d{r.distortion_degree.toFixed(2)}</span>
-              <LocalizedText testId={`rumor-text-${r.id}`} ko={r.statement_ko} original={r.statement} />
-            </div>
-            <label className="text-xs text-muted flex items-center gap-2 mt-1">
-              {t("gm.support")} {r.support.toFixed(2)}
-              <CommitRange
-                data-testid={`support-${r.id}`}
-                min={0}
-                max={1}
-                step={0.05}
-                value={r.support}
-                disabled={closed}
-                onCommit={(v) => onSupport(r.id, v)}
-              />
-            </label>
-          </Card>
-        ))}
+      {list === undefined ? (
+        <StatusView state={rumors.state === "error" ? "error" : "loading"} error={rumors.error} onRetry={rumors.reload} />
+      ) : list.length === 0 ? (
+        <p data-testid="rumors-empty" className="text-sm text-muted">{t("empty.rumorsHere")}</p>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {list.map((r) => (
+            <RumorCard key={r.id} rumor={r} closed={closed} onSupport={onSupport} />
+          ))}
+        </div>
+      )}
+      <ConfirmDialog
+        open={asking}
+        title={t("action.regenerate")}
+        confirmLabel={t("action.regenerate")}
+        cancelLabel={t("action.cancel")}
+        confirmTestId="regen-confirm"
+        onConfirm={() => {
+          setAsking(false);
+          void write.run(onRegen);
+        }}
+        onCancel={() => setAsking(false)}
+      >
+        {t("confirm.regenRegion")}
+      </ConfirmDialog>
+    </section>
+  );
+}
+
+function RumorCard({
+  rumor: r,
+  closed,
+  onSupport,
+}: {
+  rumor: SessionRumor;
+  closed: boolean;
+  onSupport: (rumorId: string, v: number) => Promise<boolean> | boolean | void;
+}) {
+  const [shown, setShown] = useState(r.support);
+  useEffect(() => setShown(r.support), [r.support]);
+  return (
+    <Card data-testid={`rumor-${r.id}`} className="flex flex-col gap-1 text-sm">
+      <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+        {r.promoted && (
+          <Badge data-testid={`promoted-${r.id}`} tone="promoted">
+            {t("label.settled")}
+          </Badge>
+        )}
+        {r.origin_kind === "deed" && (
+          <Badge data-testid={`deed-badge-${r.id}`} tone="event">
+            {t("badge.deed")}
+          </Badge>
+        )}
+        <span>
+          {t("label.distortion")} {numberWithMeaning("distortion", r.distortion_degree)}
+        </span>
       </div>
-    </>
+      <LocalizedText testId={`rumor-text-${r.id}`} ko={r.statement_ko} original={r.statement} />
+      <label className="flex flex-col gap-1 text-xs">
+        <span data-testid={`support-label-${r.id}`} className="text-muted">
+          {t("label.support")} {numberWithMeaning("support", shown)}
+        </span>
+        <CommitRange
+          data-testid={`support-${r.id}`}
+          min={0}
+          max={1}
+          step={0.05}
+          value={r.support}
+          disabled={closed}
+          onCommit={(v) => onSupport(r.id, v)}
+          onDraft={setShown}
+        />
+      </label>
+    </Card>
   );
 }

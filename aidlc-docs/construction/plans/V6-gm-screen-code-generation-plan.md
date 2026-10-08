@@ -266,32 +266,32 @@
 
 이 단계도 새 파일만 더한다. 지금의 화면은 아직 이것을 쓰지 않는다. 바뀌는 기존 부품과 사전 값은 Step 5에서 바꾼다.
 
-- [ ] 4.1 `GmHeader`(새)
+- [x] 4.1 `GmHeader`(새)
   - 세션 고르기: `sessionLabel`, `group`
   - [플레이어 없는 새 세션]
   - [세션 끝내기] + `ConfirmDialog`(`session-close-confirm`, 대화상자 안 오류)
   - 목록 실패 문장(R-10)
-- [ ] 4.2 `ClosedBanner`(새)
-- [ ] 4.3 `MapPane`(새)
+- [x] 4.2 `ClosedBanner`(새)
+- [x] 4.3 `MapPane`(새)
   - 토글(처음 켜짐), 말 범례, [지도 그림 고르기]
   - `WorldMap mode="gm"`: 끌기 없음, 플레이어 고리, 고른 지역, 상태 색·배지
   - 배지는 새 순수 함수 `badgeOf(state)`(§ 1.2)로 만든다. `WorldStateOverlay.tsx`의 `overlayOf`·`useWorldState`는 Step 5에서 정리한다.
-- [ ] 4.4 `TurnTools`(새): [턴 진행], 제안 개수와 [제안], [빈 지역 소문 만들기], [모든 지역 소문 다시 만들기](확인), 진행 막대. 버튼 옆 글 없이 `title`만 둔다.
-- [ ] 4.5 `TurnBand`(새): 제목, 지역 줄(버튼), 예산·LLM 줄, [닫기], `role="status"` 영역
-- [ ] 4.6 `EventCard`(새, 자기 `useAction`, 라벨·뜻, 지역 이름 버튼, "제안" neutral)과 `EventForm`(새, 라벨·검증·성공 때 설명만 비움, 초안은 제어 props)
-- [ ] 4.7 `GmTabs`(새): V2 `Tabs` 다섯, 사건 배지. 내용은 props로 받는다.
-- [ ] 4.8 `GmLayout`(새): 넓음 grid `minmax(0,1fr)_400px` + 오른쪽 열 붙박이(R-08), 1열 순서는 frontend-components § 1 표대로. `useMedia(WIDE)`를 쓰고, 각 부분은 한 번만 렌더한다.
-- [ ] 4.9 이 단계 부품이 쓰는 새 사전 키(ko·en)를 더한다.
+- [x] 4.4 `TurnTools`(새): [턴 진행], 제안 개수와 [제안], [빈 지역 소문 만들기], [모든 지역 소문 다시 만들기](확인), 진행 막대. 버튼 옆 글 없이 `title`만 둔다.
+- [x] 4.5 `TurnBand`(새): 제목, 지역 줄(버튼), 예산·LLM 줄, [닫기], `role="status"` 영역
+- [x] 4.6 `EventCard`(새, 자기 `useAction`, 라벨·뜻, 지역 이름 버튼, "제안" neutral)과 `EventForm`(새, 라벨·검증·성공 때 설명만 비움, 초안은 제어 props)
+- [x] 4.7 `GmTabs`(새): V2 `Tabs` 다섯, 사건 배지. 내용은 props로 받는다.
+- [x] 4.8 `GmLayout`(새): 넓음 grid `minmax(0,1fr)_400px` + 오른쪽 열 붙박이(R-08), 1열 순서는 frontend-components § 1 표대로. `useMedia(WIDE)`를 쓰고, 각 부분은 한 번만 렌더한다.
+- [x] 4.9 이 단계 부품이 쓰는 새 사전 키(ko·en)를 더한다.
   - `gm.*` 새 키와 `session.end` "세션 끝내기"
   - 있는 키의 값은 바꾸지 않는다. `session.close`는 에디터 `SessionBar`에 남는다. 그래서 `GmHeader`는 새 키를 쓴다.
-- [ ] 4.10 테스트(`gm.parts.test.tsx`, 새)
+- [x] 4.10 테스트(`gm.parts.test.tsx`, 새)
   - 부품마다 BR 단언
   - TP-V6-10의 머리 몫: 확인 없이는 `closeSession` 없음, 대화상자 안 오류, 고르기 라벨과 묶음
   - TP-V6-11: 사건 폼
   - TP-V6-14의 탭 키보드
   - TP-V6-15: `gm` 모드 끌기 없음, 배지·범례
   - 바쁜 버튼 `aria-disabled`
-- [ ] 4.11 게이트 GREEN → 커밋 `feat(web): new GM parts — session header with a confirmed end, map pane in words, turn tools, result band, event card and form, tabs, layout (V6, FR-S3)`
+- [x] 4.11 게이트 GREEN → 커밋 `feat(web): new GM parts — session header with a confirmed end, map pane in words, turn tools, result band, event card and form, tabs, layout (V6, FR-S3)`
 
 ### Step 5 — 바꿔 끼우기: 기존 부품, 화면 조립, 옛 허브 없애기 (BLM § 1.3·5·7, BR-V6-01~12·15·16·18·24·25·28·29·35, § 1.1 R-01·R-02·R-08, TP-V6-1~3·5·6·17)
 

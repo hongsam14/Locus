@@ -5598,3 +5598,33 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V6 — code approval gate.
 
 ---
+
+## Code Generation Part 2 — V6 — Approval
+**Timestamp**: 2026-10-08T12:24:22Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V6 code approved as it stands (deviations in summary § 5 accepted with it). Next: V6 code review, four angles in parallel as in V2–V5, review only.
+**Context**: CONSTRUCTION / V6 — Code Generation Part 2 approved.
+
+---
+
+## Code Review — V6 — Findings
+**Timestamp**: 2026-10-08T12:50:46Z
+**AI Response**: Four review angles (late answers and state ownership, writes and errors, layout/accessibility/wording/FR-D8, tests with 65 mutants and shuffled order) ran in parallel, review only, each in its own git worktree under the scratchpad. This session re-checked the top candidates in code (support answer without statement_ko, seeds running from unresolved events, Dialog focus restore at close time only, raw {degree} in the timeline line, names empty in the source language). Record `construction/V6-gm-screen/code/reviews/code-review-01.md`: 1 high, 21 medium (13 code, 8 test gaps), 28 low. Asked for the fix scope.
+**Context**: CONSTRUCTION / V6 — code review 01; awaiting the fix-scope choice.
+
+---
+
+## Code Review — V6 — Choice
+**Timestamp**: 2026-10-08T12:54:26Z
+**User Input**: fix scope "A. 전부 고침 (권장)"; session move "A. 고르기 + [열기] 버튼 (권장)"
+**AI Response**: Fixing all 50 findings in four groups (data and writes; focus, accessibility and layout; wording; tests), then gates and new captures. The session picker moves with an [open] button (#9).
+**Context**: CONSTRUCTION / V6 — code review 01; fixing next.
+
+---
+
+## Code Review — V6 — Fixed
+**Timestamp**: 2026-10-08T13:36:16Z
+**AI Response**: All 50 findings fixed in `7b9b616` (reads and writes), `8f3212f` (focus, keyboard, layout; session [open] as chosen), `75b9913` (wording), `cb9a0ef` (test gaps, restored PlayPage tests), plus `c80dff9` (band wording found while recapturing). 26 mutants of the fixes, 24 caught (the two Dialog focus guards cannot be modelled in jsdom; recorded). vitest 664 (also shuffled seeds 3 and 21), tsc clean, npm audit 0, pytest 1138, first-screen JS 117.19 kB. Captures v2 (12, no sideways scroll) at the same artifact URL. FD amended (BLM § 3/§ 6, frontend-components § 4, BR-V6-26/34); review record § 6; code-summary updated.
+**Context**: CONSTRUCTION / V6 — code review 01 fixed; V6 COMPLETE. Next: V7 (world and knowledge correctness) Functional Design.
+
+---

@@ -1,17 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "../../i18n";
 import type { Region } from "../../types";
 import { Button, Dialog, Field, Select } from "../../ui";
 
-/** Player-mode session start (US-3.1): a name and a start region, both required. */
+/** Player-mode session start (US-3.1): a name and a start region, both required. The form
+ * stays mounted while closed: when it opens for another world the region choice empties and
+ * the name stays (RE-F03, BR-V4-08). `worldId` is optional — a caller without it is as before. */
 export function NewSessionForm({
   open,
+  worldId,
   regions,
   busy = false,
   onSubmit,
   onCancel,
 }: {
   open: boolean;
+  worldId?: string;
   regions: Region[];
   busy?: boolean;
   onSubmit: (name: string, startRegionId: string) => void;
@@ -19,6 +23,7 @@ export function NewSessionForm({
 }) {
   const [name, setName] = useState("");
   const [regionId, setRegionId] = useState("");
+  useEffect(() => setRegionId(""), [worldId]);
   if (!open) return null;
   const valid = name.trim().length >= 1 && name.trim().length <= 40 && regionId !== "";
   return (

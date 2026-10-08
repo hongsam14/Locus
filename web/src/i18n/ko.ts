@@ -198,14 +198,12 @@ export const ko = {
   "notif.events_resolved": "이벤트 {n} 해소",
 
   // U3 world editor (frontend-components §4)
-  "home.title": "월드",
   "home.empty": "아직 월드가 없습니다.",
   "home.edit": "편집",
   "home.startSession": "세션 시작",
-  "home.buildFromSources": "자료로 만들기",
+  "home.buildFromSources": "자료로 새 월드 만들기",
   "home.regions": "지역 {n}",
   "home.updated": "수정 {when}",
-  "home.openSessions": "열린 세션 {n}",
   "map.tool.select": "선택·이동",
   "map.tool.addRegion": "지역 추가",
   "map.tool.connect": "연결 긋기",
@@ -528,6 +526,18 @@ export const ko = {
   "label.map": "월드 지도",
   "label.eventCategory": "사건 분류",
   "label.eventLifecycle": "지속 방식",
+  "label.homeKicker": "솔로 TRPG",
+  "story.homeTagline": "소문은 길을 따라 퍼지고, 마을마다 아는 것이 다르다.",
+  "story.homeLead": "세계관 자료로 만든 월드에서 소문과 사건이 지형을 따라 퍼지고, 지역마다 NPC가 다르게 아는 것을 직접 겪는다.",
+  "label.myWorlds": "내 월드",
+  "action.continue": "이어 하기",
+  "action.newSession": "새 세션",
+  "action.reloadDemo": "데모 다시 불러오기",
+  "notice.sessionsUnreadable": "세션을 읽지 못했어요.",
+  "label.openSessions": "열린 세션 {n}",
+  "label.startAt": "시작 {name}",
+  "hint.worldIdChars": "영문 소문자, 숫자, -로 40자까지 써 주세요.",
+  "empty.noWorlds": "아직 만든 월드가 없어요.",
 };
 
 export type Key = keyof typeof ko;

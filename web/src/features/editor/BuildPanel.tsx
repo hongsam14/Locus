@@ -98,7 +98,7 @@ export function BuildPanel({
       <div className="flex flex-col gap-3">
         {fixedId == null && (
           <Field label={t("build.worldId")} data-testid="build-world-id" value={worldId}
-            onChange={(e) => setWorldId(e.target.value)} />
+            hint={t("hint.worldIdChars")} onChange={(e) => setWorldId(e.target.value)} />
         )}
         <Field label={t("build.name")} value={name} onChange={(e) => setName(e.target.value)} />
         <Field label={t("build.description")} value={description}

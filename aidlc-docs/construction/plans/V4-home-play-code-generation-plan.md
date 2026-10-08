@@ -159,39 +159,48 @@
 - [x] 4.5 커밋: `feat(web): play session, turn run and world name hooks — late answers dropped, polling capped (V4, RE-F08)`
 
 ### Step 5 — 홈 (FR-S1, BR-V4-05~09·12, TP-V4-1~4)
-- [ ] 5.1 `features/home/HomeHero.tsx`: 사전 `label.homeKicker`, `story.homeTagline`, `story.homeLead`.
-- [ ] 5.2 `features/home/DemoCard.tsx`를 다시 쓴다(BLM § 1.2).
+- [x] 5.1 `features/home/HomeHero.tsx`: 사전 `label.homeKicker`, `story.homeTagline`, `story.homeLead`.
+- [x] 5.2 `features/home/DemoCard.tsx`를 다시 쓴다(BLM § 1.2).
   - 상태: new, loaded, resume, 세션 읽기 중·실패, 409 질문 경로
   - 카드 안에서 `listSessions(name)`을 읽고 열린 것만 최근순으로 쓴다.
   - 시작 지역 이름은 `useWorldNames(name)`에서 찾는다.
   - 문구는 `*_ko`를 쓴다.
   - [데모 다시 불러오기] ghost 버튼(`demo-fresh-*`) → `useReplaceConfirm`.
   - `describeError`를 쓴다.
-- [ ] 5.3 `features/home/{MyWorlds,WorldRow}.tsx`
+- [x] 5.3 `features/home/{MyWorlds,WorldRow}.tsx`
   - 데모 id를 뺀다.
   - `name_ko`를 쓴다.
   - 열린 세션은 중립 배지다.
   - [이어 하기]는 누를 때 `listSessions`를 읽는다.
   - [새 세션]·[편집]을 둔다.
   - [자료로 새 월드 만들기]는 머리에 하나 둔다.
-- [ ] 5.4 `routes/HomePage.tsx`를 조립만 하게 고친다.
+- [x] 5.4 `routes/HomePage.tsx`를 조립만 하게 고친다.
   - 두 목록은 `useResource([…, requestLang])`이다.
   - 상태는 스켈레톤·오류·빈 상태다.
   - 빌드 뒤와 데모 불러오기 뒤에 다시 읽는다.
-- [ ] 5.5 `features/play/NewSessionForm.tsx`(코드 계획 리뷰 01 R-05)
+- [x] 5.5 `features/play/NewSessionForm.tsx`(코드 계획 리뷰 01 R-05)
   - 선택 prop `worldId?: string`를 받는다.
   - `useEffect(() => setRegion(""), [worldId])`로 월드가 바뀌면 지역 선택을 비운다(RE-F03).
   - 다른 호출부 `web/src/SessionBar.tsx:122`는 `worldId`를 넘기지 않아 지금 동작 그대로다(V6 소유, 바꾸지 않음).
   - `features/editor/BuildPanel.tsx`: 월드 id 칸 아래 `hint.worldIdChars` 한 줄.
-- [ ] 5.5a 이 단계의 사전 키(ko·en)를 이 커밋에서 더한다(코드 계획 리뷰 01 R-04).
+- [x] 5.5a 이 단계의 사전 키(ko·en)를 이 커밋에서 더한다(코드 계획 리뷰 01 R-04).
   - `label.homeKicker`, `story.homeTagline`, `story.homeLead`
   - `label.myWorlds`, `action.continue`, `action.newSession`, `action.reloadDemo`
   - `notice.sessionsUnreadable`, `label.openSessions`, `label.startAt`, `hint.worldIdChars`, `empty.noWorlds`
-- [ ] 5.6 테스트
+- [x] 5.6 테스트
   - `home.cards.test.tsx`: TP-V4-1, TP-V4-2
     - BR-V4-06: 열린 세션 배지의 클래스에 `danger`가 없다(TP-V4-12 뒤 절반, 코드 계획 리뷰 01 R-09)
   - `home.test.tsx`: § 7.1 표대로 고친다(EX-2, held-world, EX-13, 목록). TP-V4-3, TP-V4-4
-- [ ] 5.7 커밋: `feat(web): home rebuilt — one card per demo, my worlds, Korean names, lists follow the display language (V4, FR-S1)`
+- 실행 기록(Step 5)
+  - Hero 머리글은 `font-heading`이다. V2 규칙 "display 글꼴은 로고에만"(`design.grep`)이 FD의 "display, 작게"보다 앞선다.
+  - [데모 다시 불러오기](`demo-fresh-*`)는 다시 불러온 뒤 홈에 남고 카드가 세션을 다시 읽는다. 409 경로의 [새로](`demo-reload`)와 시작 지역이 없을 때의 버튼은 문구("새로 불러와 플레이")대로 불러온 뒤 플레이로 간다.
+  - "내 월드"는 데모 목록이 답할 때(데이터 또는 오류)까지 스켈레톤이다. 데모 월드가 잠깐 줄로 보였다 사라지지 않게 한다.
+  - 빌드 창을 닫을 때도 두 목록을 다시 읽는다. 예외로 끝난 빌드도 월드를 썼을 수 있다.
+  - `hint.worldIdChars`는 "…써 주세요"로 권하는 말이다. 서버는 데모 이름 말고는 월드 id 문자를 막지 않는다.
+  - `home.buildFromSources`는 "자료로 새 월드 만들기"로 바꾸고, 쓰지 않게 된 `home.title`·`home.openSessions`는 지웠다.
+  - TP-V4-1·2(`home.cards.test.tsx`)는 api를 대역하지 않고 fetch 대역으로 경로별로 답한다. `?lang=`이 실제 요청에 붙는지 본다. `home.test.tsx`는 매 테스트 전에 api 대역을 `mockReset`한다(실패한 테스트의 남은 답이 다음 테스트로 새지 않게).
+  - 돌연변이 확인: 폼 비우기, 데모 거르기, 최근순, 언어 키, 중립 배지를 하나씩 되돌리면 각각 테스트가 실패한다.
+- [x] 5.7 커밋: `feat(web): home rebuilt — one card per demo, my worlds, Korean names, lists follow the display language (V4, FR-S1)`
 
 ### Step 6 — 플레이 부품 (FR-S2, BR-V4-10·11·13·14·18·19·21·23)
 

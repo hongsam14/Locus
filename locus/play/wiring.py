@@ -96,7 +96,13 @@ def assemble_play(
     if suggester is None and shared.llm is not None:
         suggester = EventSuggester(shared.llm)
     rumors = RumorService(
-        store, generator, loader, knowledge.params, birth_support=tuning.birth_support
+        store,
+        generator,
+        loader,
+        knowledge.params,
+        birth_support=tuning.birth_support,
+        tuning=tuning,
+        guard=guard,
     )
     feedback = RumorFeedbackService(store, tuning)
     deeds = DeedService(store, loader, tuning=tuning)  # U6: records deeds and appraisals

@@ -216,3 +216,36 @@ def test_tp_v5_15_a_session_whose_close_times_out_is_reported_busy_not_mid_turn(
     messages = [w["message"] for w in r.json()["warnings"] if w["stage"] == "sessions"]
     assert messages == [f"session {sid} was busy and could not be closed"]
     assert p.repo.get_session(sid).status == "open"
+
+
+# --- TP-V5-15 (part 2, Step 5.2) --------------------------------------------- #
+def test_tp_v5_15_a_replace_during_a_gm_generate_closes_and_the_generate_gets_409() -> None:
+    from locus.play import InMemoryPlayRepository
+    from locus.play.rumor.generator import RumorGenerator
+    from locus.play.turn.executor import SyncTurnExecutor
+    from tests.api.play_fixtures import Loader
+    from tests.play.concurrency import BlockingDrafts
+    from tests.play.helpers import compose_play
+
+    llm = BlockingDrafts()
+    p = compose_play(
+        InMemoryPlayRepository(), RumorGenerator(llm), Loader(), executor=SyncTurnExecutor()
+    )
+    gm_client = TestClient(create_app(play=p))
+    sid = _start(gm_client)
+    result: list = []
+    t = threading.Thread(
+        target=lambda: result.append(gm_client.post(f"/api/gm/sessions/{sid}/regions/r1/rumors"))
+    )
+    t.start()
+    try:
+        assert llm.wait_entered(1)  # the GM write holds its lease, drafting
+        raw = _file("w").model_dump(mode="json")
+        r = world_client(play=p).post("/api/world/worlds/w/file?confirm=true", json=raw)
+    finally:
+        llm.release()
+        t.join(5)
+    assert r.status_code == 200 and r.json()["closed_session_ids"] == [sid]
+    generated = result[0]
+    assert generated.status_code == 409 and generated.json()["code"] == "session_closed"
+    assert p.repo.list_rumors(sid, include_pruned=True) == []

@@ -218,6 +218,10 @@ class BlockingDrafts:
     def release(self) -> None:
         self._open.set()
 
+    def block(self) -> None:
+        """Hold the drafts that start from now on."""
+        self._open.clear()
+
     def wait_entered(self, count: int = 1, timeout_s: float = 5.0) -> bool:
         """Wait until ``count`` drafts are in flight together."""
         end = time.monotonic() + timeout_s

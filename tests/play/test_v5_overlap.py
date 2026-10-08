@@ -9,12 +9,14 @@ the first and the result is the same as running them in order.
 from __future__ import annotations
 
 import threading
+import time
 from collections.abc import Callable
 from typing import Any
 
 import pytest
 
 from locus.play import InMemoryPlayRepository
+from locus.play.base import SessionClosedError
 from locus.play.errors import GmBusyError, SeedAlreadyRunningError
 from locus.play.event.suggester import EventSuggester
 from locus.play.models import EventCategory, EventStatus, SessionEvent, TimelineKind
@@ -22,12 +24,22 @@ from locus.play.rumor.generator import RumorGenerator
 from locus.play.turn.executor import SyncTurnExecutor
 from locus.play.wiring import PlayContainer
 from locus.shared.config.tuning import PlayTuning
-from locus.shared.models import EventSeed, Provenance, SourceKind
+from locus.shared.models import (
+    EventSeed,
+    Knowledge,
+    KnowledgeGraph,
+    Provenance,
+    ScopeLink,
+    ScopeType,
+    SourceKind,
+    WorldSnapshot,
+)
 from tests.play.concurrency import BlockingDrafts, FailingTimeline, InterleaveGate
 from tests.play.helpers import compose_play
 from tests.play.strategies import WORLD, build_snapshot, edge
 from tests.shared.snapshots import StaticSnapshots
 
+_PROV = Provenance(source=SourceKind.INPUT)
 SEED = EventSeed(
     id="seed-blight",
     world_id=WORLD,
@@ -39,9 +51,29 @@ SEED = EventSeed(
 )
 
 
+REGIONS = [f"r{i}" for i in range(5)]
+
+
+def _world() -> WorldSnapshot:
+    """Five regions, one fact each (rumor sources), r1 and r2 connected, one seed."""
+    facts = [
+        Knowledge(world_id=WORLD, statement=f"fact of {rid}", title=rid, provenance=_PROV)
+        for rid in REGIONS
+    ]
+    scopes = [
+        ScopeLink(world_id=WORLD, knowledge_id=k.id, region_id=rid, scope_type=ScopeType.DIRECT)
+        for k, rid in zip(facts, REGIONS, strict=True)
+    ]
+    world = build_snapshot(
+        REGIONS,
+        [edge("r1", "r2"), edge("r2", "r1")],
+        kg=KnowledgeGraph(world_id=WORLD, knowledge=facts, scopes=scopes),
+    )
+    return world.model_copy(update={"event_seeds": [SEED]})
+
+
 def _gm(repo, *, llm=None, tuning: PlayTuning | None = None) -> PlayContainer:
-    world = build_snapshot(["r1", "r2"], [edge("r1", "r2"), edge("r2", "r1")])
-    world = world.model_copy(update={"event_seeds": [SEED]})
+    world = _world()
     llm = llm or BlockingDrafts(blocked=False)
     extra: dict[str, Any] = {"tuning": tuning} if tuning is not None else {}
     return compose_play(
@@ -77,6 +109,10 @@ def _together(*calls: Callable[[], Any]) -> list[Any]:
 
 def _lines(repo, sid: str, kind: TimelineKind) -> list:
     return [e for e in repo.list_timeline(sid) if e.kind == kind.value]
+
+
+def _generate(gm: PlayContainer, sid: str, region: str) -> Callable[[], Any]:
+    return lambda: gm.rumors.generate_rumors(sid, region)
 
 
 def _active_event(repo, sid: str, region: str, contributions: dict[str, float]) -> str:
@@ -261,3 +297,146 @@ def test_the_sections_share_the_container_guard() -> None:
     """Wiring (code plan R-03): the event service and the seeds use the shared guard."""
     gm = _gm(InMemoryPlayRepository())
     assert gm.events.section.guard is gm.guard
+
+
+# --- TP-V5-4 (RE-P02): a close while the drafts are made ------------------------ #
+def test_tp_v5_4_a_close_during_a_generate_ends_at_once_and_the_generate_saves_nothing(
+    threaded_repo,
+) -> None:
+    llm = BlockingDrafts()
+    gm = _gm(threaded_repo, llm=llm)
+    sid = threaded_repo.create_session(WORLD).id
+    result: list[Any] = []
+    t = threading.Thread(target=lambda: result.extend(_together(_generate(gm, sid, "r1"))))
+    t.start()
+    try:
+        assert llm.wait_entered(1)
+        began = time.monotonic()
+        gm.sessions.close_session(sid)  # waits for no draft (BR-V5-15)
+        assert time.monotonic() - began < 1.0
+    finally:
+        llm.release()
+        t.join(5)
+    assert isinstance(result[0], SessionClosedError), result
+    assert threaded_repo.list_rumors(sid, include_pruned=True) == []
+    assert _lines(threaded_repo, sid, TimelineKind.GENERATE) == []
+    assert len(_lines(threaded_repo, sid, TimelineKind.SESSION_CLOSED)) == 1
+
+
+# --- TP-V5-7 (BR-V5-13): a bulk generate of five ---------------------------------- #
+def test_tp_v5_7_five_generates_draft_together_and_all_save(threaded_repo) -> None:
+    llm = BlockingDrafts()
+    gm = _gm(threaded_repo, llm=llm)
+    sid = threaded_repo.create_session(WORLD).id
+    out: list[Any] = []
+    t = threading.Thread(
+        target=lambda: out.extend(_together(*(_generate(gm, sid, rid) for rid in REGIONS)))
+    )
+    t.start()
+    try:
+        together = llm.wait_entered(len(REGIONS))  # every draft outside the section
+    finally:
+        llm.release()
+        t.join(10)
+    assert together and llm.max_inside >= 2
+    assert all(isinstance(o, list) and o for o in out), out  # no 409, every region drafted
+    regions = {r.region_id for r in threaded_repo.list_rumors(sid)}
+    assert regions == set(REGIONS)
+    assert len(_lines(threaded_repo, sid, TimelineKind.GENERATE)) == len(REGIONS)
+
+
+# --- TP-V5-11 (RE-P07): regenerates that overlap ---------------------------------- #
+def _canonical(repo, sid: str, region: str) -> set[str]:
+    return {
+        r.id
+        for r in repo.list_rumors(sid, region)
+        if r.origin_kind == "canonical" and not r.promoted
+    }
+
+
+def test_tp_v5_11_of_two_regenerates_the_last_one_s_set_stays(threaded_repo) -> None:
+    llm = BlockingDrafts(blocked=False)
+    gm = _gm(threaded_repo, llm=llm)
+    sid = threaded_repo.create_session(WORLD).id
+    first = {r.id for r in gm.rumors.generate_rumors(sid, "r1")}
+    llm.block()
+    out: list[Any] = []
+    t = threading.Thread(
+        target=lambda: out.extend(
+            _together(
+                lambda: gm.rumors.regenerate_region(sid, "r1"),
+                lambda: gm.rumors.regenerate_region(sid, "r1"),
+            )
+        )
+    )
+    t.start()
+    try:
+        assert llm.wait_entered(2)  # both draft before either saves
+    finally:
+        llm.release()
+        t.join(10)
+    fresh = [{r.id for r in res.fresh} for res in out]
+    assert all(fresh), out
+    lines = _lines(threaded_repo, sid, TimelineKind.REGENERATE)
+    last = [set(e.payload["rumor_ids"]) for e in lines][-1]
+    assert _canonical(threaded_repo, sid, "r1") == last  # one set: the last one saved
+    earlier = (fresh[0] | fresh[1]) - last
+    assert earlier and earlier.isdisjoint(_canonical(threaded_repo, sid, "r1"))
+    assert first.isdisjoint(_canonical(threaded_repo, sid, "r1"))
+    assert set(lines[-1].payload["deactivated"]) == earlier  # it replaced the first's
+
+
+def test_tp_v5_11_a_generate_beside_a_regenerate_comes_out_in_order(threaded_repo) -> None:
+    """Code plan § 1.1 R-03: generate after → the regenerate's set plus the generate's;
+    regenerate after → the regenerate's set only."""
+    llm = BlockingDrafts(blocked=False)
+    gm = _gm(threaded_repo, llm=llm)
+    sid = threaded_repo.create_session(WORLD).id
+    gm.rumors.generate_rumors(sid, "r1")
+    llm.block()
+    out: list[Any] = []
+    t = threading.Thread(
+        target=lambda: out.extend(
+            _together(
+                lambda: gm.rumors.generate_rumors(sid, "r1"),
+                lambda: gm.rumors.regenerate_region(sid, "r1"),
+            )
+        )
+    )
+    t.start()
+    try:
+        assert llm.wait_entered(2)
+    finally:
+        llm.release()
+        t.join(10)
+    generated, regenerated = out
+    gen_ids = {r.id for r in generated}
+    regen_ids = {r.id for r in regenerated.fresh}
+    kinds = [
+        e.kind
+        for e in threaded_repo.list_timeline(sid)
+        if e.kind in (TimelineKind.GENERATE.value, TimelineKind.REGENERATE.value)
+    ]
+    expected = regen_ids | gen_ids if kinds[-1] == TimelineKind.GENERATE.value else regen_ids
+    assert _canonical(threaded_repo, sid, "r1") == expected
+
+
+# --- TP-V5-12 (RE-P05), the rumor side ------------------------------------------- #
+def test_tp_v5_12r_a_failed_line_leaves_the_rumors_as_they_were(threaded_repo) -> None:
+    gm = _gm(threaded_repo)
+    sid = threaded_repo.create_session(WORLD).id
+    before = {r.id: r.support for r in gm.rumors.generate_rumors(sid, "r1")}
+    rumor_id = next(iter(before))
+    with FailingTimeline(
+        threaded_repo,
+        kinds=[TimelineKind.GENERATE, TimelineKind.REGENERATE, TimelineKind.ADJUST_SUPPORT],
+    ):
+        with pytest.raises(RuntimeError):
+            gm.rumors.generate_rumors(sid, "r2")
+        with pytest.raises(RuntimeError):
+            gm.rumors.regenerate_region(sid, "r1")
+        with pytest.raises(RuntimeError):
+            gm.rumors.adjust_support(sid, rumor_id, 0.9)
+    after = {r.id: r.support for r in threaded_repo.list_rumors(sid, include_pruned=True)}
+    assert after == before  # no r2 rumor, r1 not swapped, the support unchanged
+    assert all(r.active for r in threaded_repo.list_rumors(sid, include_pruned=True))

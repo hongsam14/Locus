@@ -138,19 +138,19 @@
 - [x] 4.4 커밋: `fix(play): event and seed writes run one at a time per session — both restores land, one seed start wins (V5, #9, #12, RE-P06)`
 
 ### Step 5 — 소문 구간 (BLM § 2, BR-V5-08·11·12·13)
-- [ ] 5.1 `RumorService`가 guard와 tuning을 받는다.
+- [x] 5.1 `RumorService`가 guard와 tuning을 받는다.
   - `generate_rumors`: 초안은 밖, 저장과 줄은 구간 안.
   - `regenerate_region`: 초안은 밖, 구간 안에서 버릴 것을 다시 고르고 건너뛰기를 판단한다.
   - `adjust_support`: 구간 안에서 새로 읽고, 꺼졌으면 `RumorInactiveError`, 줄도 같은 단위에 쓴다.
   - `_generate_for_region`을 초안과 저장으로 나눈다.
-- [ ] 5.2 시험(`tests/play/test_v5_overlap.py`)
+- [x] 5.2 시험(`tests/play/test_v5_overlap.py`)
   - TP-V5-4: 닫기 중 생성.
   - TP-V5-7: 일괄 다섯, 동시 최댓값 ≥ 2.
   - TP-V5-11: 재생성 둘, 생성·재생성.
   - TP-V5-12 소문 쪽.
   - TP-V5-3의 조정 쪽은 Step 6에서 행적 취소와 함께 본다.
   - 돌연변이 확인.
-- [ ] 5.3 커밋: `fix(play): rumor writes save inside the session's short write — a closed session gets nothing, a second regenerate replaces the first (V5, RE-P02, RE-P05, RE-P07)`
+- [x] 5.3 커밋: `fix(play): rumor writes save inside the session's short write — a closed session gets nothing, a second regenerate replaces the first (V5, RE-P02, RE-P05, RE-P07)`
 
 ### Step 6 — 행적·왜곡도 구간 (BLM § 2, BR-V5-08·09·10)
 - [ ] 6.1 `DeedService.void`: guard를 받고, 구간 안에서 다시 읽는다(이미 취소면 그대로).

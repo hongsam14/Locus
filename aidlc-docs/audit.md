@@ -5260,3 +5260,19 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V4 — Code Generation Part 2 complete; next the code approval gate.
 
 ---
+
+## Code Generation Part 2 — V4 — Approval
+**Timestamp**: 2026-10-08T05:09:38Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V4 code approved as it stands (the talk off without a key, aria-disabled during a turn, editor/GM lazy-loaded, the small map and old-register lines left as noted). Next: V4 code review, four angles in parallel as in V2/V3, review only.
+**Context**: CONSTRUCTION / V4 — Code Generation Part 2 approved.
+
+---
+
+## Code Review — V4 — Findings and choice
+**Timestamp**: 2026-10-08T05:29:47Z
+**AI Response**: Four review angles (hooks, play, home, display/tests) ran in parallel, review only; this session re-read the top candidates. Record `construction/V4-home-play/code/reviews/code-review-01.md`: 10 medium, 17 low, 1 design conflict (#28: talk off without a key vs BR-V4-18 history readable).
+**User Input**: fix scope "A. 전부 고침 (권장)"; #28 "(a) 기록은 열림 (권장)"
+**Context**: CONSTRUCTION / V4 — code review 01; fixing all findings next.
+
+---

@@ -92,14 +92,18 @@ describe("TP-V4-6: names from the map, the English behind them", () => {
   it("a log line finds its names by the ids in its payload; a name the map lacks stays", () => {
     const entries: TimelineEntry[] = [
       { id: "1", session_id: "s1", turn: 2, kind: "player_moved", summary: "",
-        payload: { from_region_id: "a", from_region_name: "Riverton", to_region_id: "z", to_region_name: "Zed", cost_turns: 1 } },
+        payload: { from_region_id: "a", from_region_name: "Riverton", to_region_id: "b", to_region_name: "Hollow", cost_turns: 1 } },
+      { id: "3", session_id: "s1", turn: 4, kind: "player_waited", summary: "",
+        payload: { region_id: "z", region_name: "Zed" } },
       { id: "2", session_id: "s1", turn: 3, kind: "npc_talked", summary: "",
         payload: { npc_id: "n1", npc_name: "Mara", region_id: "a", region_name: "Riverton" } },
     ];
     render(<PlayLog entries={entries} nameOf={korean} />);
     expect(screen.getByTestId("log-player_moved")).toHaveTextContent("리버턴");
-    expect(screen.getByTestId("log-player_moved")).toHaveTextContent("Zed");
+    expect(screen.getByTestId("log-player_moved")).toHaveTextContent("할로"); // the to-region pair
+    expect(screen.getByTestId("log-player_waited")).toHaveTextContent("Zed"); // not in the map: kept
     expect(screen.getByTestId("log-npc_talked")).toHaveTextContent("마라");
+    expect(screen.getByTestId("log-npc_talked")).toHaveTextContent("리버턴"); // the region_id pair
     expect(screen.getByTestId("log-npc_talked")).toHaveTextContent(turnAt(3));
     expect(namedPayload({ seed_id: "s1", seed_title: "Wolf Winter" }, korean).seed_title).toBe("늑대의 겨울");
     expect(namedPayload({ region_name: "Old" }, korean)).toEqual({ region_name: "Old" }); // no id: unchanged
@@ -368,7 +372,7 @@ describe("TP-V4-13: labels, the focus ring, named sheets", () => {
 });
 
 describe("Button: busy and a caller's aria-disabled together (BR-V4-24)", () => {
-  it("a caller's aria-disabled={undefined} does not undo busy, and a locked button ignores the press", () => {
+  it("a caller's aria-disabled={undefined} does not undo busy; a caller's aria-disabled marks it off", () => {
     const onClick = vi.fn();
     const { rerender } = render(<Button busy aria-disabled={undefined} onClick={onClick}>x</Button>);
     expect(screen.getByRole("button")).toHaveAttribute("aria-disabled", "true");
@@ -388,5 +392,28 @@ describe("Button: busy and a caller's aria-disabled together (BR-V4-24)", () => 
     expect(wait).toHaveFocus();
     expect(wait).not.toBeDisabled();
     expect(wait).toHaveAttribute("aria-disabled", "true");
+  });
+});
+
+describe("code review 01 #10: locked actions ignore a press", () => {
+  it("[declare], [move] and the move sheet's [move] do nothing while a turn runs", async () => {
+    const onDeclare = vi.fn().mockResolvedValue(true);
+    const onMove = vi.fn();
+    const { unmount } = render(<ActionBar running={null} disabled={false} locked onWait={() => {}} onDeclare={onDeclare} />);
+    fireEvent.change(screen.getByTestId("declare-input"), { target: { value: "I sing" } });
+    fireEvent.click(screen.getByTestId("declare-btn"));
+    fireEvent.submit(screen.getByTestId("declare-input").closest("form") as HTMLFormElement);
+    expect(onDeclare).not.toHaveBeenCalled();
+    unmount();
+    const panel = render(<MovePanel moves={MOVES} disabled={false} locked onMove={onMove} />);
+    fireEvent.click(screen.getByTestId("move-b-btn"));
+    expect(onMove).not.toHaveBeenCalled();
+    panel.unmount();
+    render(
+      <ActionDock running={null} disabled={false} locked onWait={() => {}} onDeclare={onDeclare} moves={MOVES}
+        onMove={onMove} moveOpen onMoveOpenChange={() => {}} />,
+    );
+    fireEvent.click(within(screen.getByTestId("move-sheet")).getByTestId("move-b-btn"));
+    expect(onMove).not.toHaveBeenCalled();
   });
 });

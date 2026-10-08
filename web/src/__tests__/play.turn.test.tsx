@@ -334,3 +334,32 @@ describe("useWorldNames (BR-V4-11)", () => {
     expect(result.current.nameOf("regions", "r1", "name", "Saltwake Harbor")).toBe("Saltwake Harbor");
   });
 });
+
+describe("code review 01 #10: the last guards", () => {
+  it("an action answered after the session changed sets no run on the next session", async () => {
+    let answer: (r: TurnRun) => void = () => {};
+    (api.act as Mock).mockReturnValue(new Promise<TurnRun>((r) => (answer = r)));
+    (api.getTurnRun as Mock).mockImplementation(() => new Promise(() => {}));
+    const { hook } = setup();
+    act(() => void hook.result.current.turn.act({ type: "wait" }));
+    hook.rerender({ sid: "s2" });
+    await act(async () => answer(run("running")));
+    expect(hook.result.current.turn.running).toBeNull();
+    expect(api.getTurnRun).not.toHaveBeenCalled();
+  });
+
+  it("usePlaySession: A's answer arriving after B's is dropped", async () => {
+    (api.getSession as Mock).mockImplementation(async (sid: string) => ({ id: sid, world_id: "w", status: "open", turn: 0 }));
+    (api.getLog as Mock).mockResolvedValue([]);
+    let releaseA: (v: RegionView) => void = () => {};
+    (api.getRegion as Mock).mockImplementation((sid: string) =>
+      sid === "a" ? new Promise<RegionView>((r) => (releaseA = r)) : Promise.resolve(view("b", "Ironcrag")),
+    );
+    const { result, rerender } = renderHook(({ sid }) => usePlaySession(sid), { initialProps: { sid: "a" } });
+    rerender({ sid: "b" });
+    await waitFor(() => expect(result.current.view?.region_name).toBe("Ironcrag"));
+    await act(async () => releaseA(view("a", "Harbor"))); // late
+    expect(result.current.view?.region_name).toBe("Ironcrag");
+    expect(result.current.session?.id).toBe("b");
+  });
+});

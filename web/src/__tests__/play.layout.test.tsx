@@ -570,3 +570,30 @@ describe("code review 01 #17: the phone's bar keeps room under the page", () => 
     expect(document.documentElement.style.getPropertyValue("--dock-h")).toBe("");
   });
 });
+
+describe("code review 01 #10: a filled name map reaches every part of the page", () => {
+  it("path, title, scene, people, ways, the result band and the log are Korean", async () => {
+    (api.worldNames as Mock).mockResolvedValue({
+      world_id: "w", lang: "ko", world: {}, event_seeds: {},
+      regions: { top: { name: "올더무어" }, a: { name: "리버턴", description: "강가의 작은 마을." }, b: { name: "할로" } },
+      npcs: { n1: { name: "마라", role: "여관 주인" } },
+    });
+    (api.getLog as Mock).mockResolvedValue([
+      { id: "l1", session_id: "s1", turn: 2, kind: "player_moved", summary: "",
+        payload: { from_region_id: "b", from_region_name: "Hollow", to_region_id: "a", to_region_name: "Riverton", cost_turns: 1 } },
+    ]);
+    (api.act as Mock).mockResolvedValue(run("running"));
+    (api.getTurnRun as Mock).mockResolvedValue(done({
+      changes: [{ region_id: "b", region_name: "Hollow", promoted: [], demoted: [], pruned: [], events_applied: [], events_resolved: [], rumors_added: ["r"] }],
+    }));
+    renderPlay();
+    await waitFor(() => expect(screen.getByTestId("region-title")).toHaveTextContent("리버턴"));
+    expect(screen.getByTestId("region-path")).toHaveTextContent("올더무어");
+    expect(screen.getByTestId("region-scene")).toHaveTextContent("강가의 작은 마을.");
+    expect(screen.getByTestId("npc-n1")).toHaveTextContent("마라");
+    expect(screen.getByTestId("move-b")).toHaveTextContent("할로");
+    expect(screen.getByTestId("log-player_moved")).toHaveTextContent("할로");
+    fireEvent.click(screen.getByTestId("wait-btn"));
+    expect(await screen.findByTestId("result-change-b")).toHaveTextContent("할로");
+  });
+});

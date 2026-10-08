@@ -417,3 +417,17 @@ describe("code review 01 #10: locked actions ignore a press", () => {
     expect(onMove).not.toHaveBeenCalled();
   });
 });
+
+describe("code review 01 #14: a refusal belongs to the action it answered", () => {
+  it("opening the declare sheet clears a move's refusal, so it is not shown as the declaration's", () => {
+    const clear = vi.fn();
+    render(
+      <ActionDock running={null} disabled={false} onWait={() => {}} onDeclare={async () => true} moves={MOVES}
+        onMove={() => {}} moveOpen={false} onMoveOpenChange={() => {}} refusal={{ title: "갈 수 없어요." }}
+        onClearRefusal={clear} />,
+    );
+    expect(screen.getByTestId("action-error")).toHaveTextContent("갈 수 없어요.");
+    fireEvent.click(screen.getByTestId("dock-declare"));
+    expect(clear).toHaveBeenCalled();
+  });
+});

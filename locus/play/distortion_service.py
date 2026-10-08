@@ -24,16 +24,27 @@ from locus.play.models import (
     TimelineKind,
 )
 from locus.play.ports import PlayRepository
+from locus.play.turn.guard import TurnGuard
 from locus.play.world_state import region_rows
+from locus.play.write_section import WriteSection
+from locus.shared.config.tuning import PlayTuning
 from locus.shared.models.util import clamp01
 
 
 class DistortionService(SessionAppService):
     """Set and list per-region distortion degrees."""
 
-    def __init__(self, repo: PlayRepository, snapshots: SnapshotSource) -> None:
+    def __init__(
+        self,
+        repo: PlayRepository,
+        snapshots: SnapshotSource,
+        *,
+        tuning: PlayTuning | None = None,
+        guard: TurnGuard | None = None,
+    ) -> None:
         super().__init__(repo)
         self._snapshots = snapshots
+        self.section = WriteSection(repo, guard, tuning)  # V5 (BR-V5-10)
 
     def list_distortions(self, session_id: str) -> list[RegionDistortion]:
         """One row per current world region, the stored one or the default; nothing is
@@ -46,22 +57,27 @@ class DistortionService(SessionAppService):
             self._repo.list_region_distortions(session_id),
         )
 
-    def set_region_distortion(self, session_id: str, region_id: str, degree: float) -> None:
+    def set_region_distortion(
+        self, session_id: str, region_id: str, degree: float
+    ) -> RegionDistortion:
         """The GM's value is the region's new base: the feedback share is cleared and
-        what was cleared is recorded (U7 BR-U7-5). 404 for a region not in the world."""
+        what was cleared is recorded (U7 BR-U7-5). 404 for a region not in the world.
+
+        V5 (BR-V5-10): the share is read in the session's section, so of two sets of one
+        region only the first records it; the row as saved is returned."""
         session = self._require_open(session_id)
         name = require_region(self._snapshots, session.world_id, region_id).name
         degree = clamp01(degree)
-        cleared = next(
-            (
-                row.feedback_share
-                for row in self._repo.list_region_distortions(session_id)
-                if row.region_id == region_id
-            ),
-            0.0,
-        )
         active = EventStatus.ACTIVE.value
-        with self._repo.uow() as u:
+        with self.section.open(session_id) as (u, session):
+            cleared = next(
+                (
+                    row.feedback_share
+                    for row in u.distortions.list_region_distortions(session_id)
+                    if row.region_id == region_id
+                ),
+                0.0,
+            )
             # Read the events inside the transaction (rows locked on PostgreSQL) and write
             # their contributions only, only while still ACTIVE: a resolve running at the
             # same time is neither revived nor undone (U3 review #10).
@@ -91,3 +107,9 @@ class DistortionService(SessionAppService):
                     },
                 )
             )
+            saved = next(
+                row
+                for row in u.distortions.list_region_distortions(session_id)
+                if row.region_id == region_id
+            )
+        return saved

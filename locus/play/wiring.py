@@ -105,7 +105,7 @@ def assemble_play(
         guard=guard,
     )
     feedback = RumorFeedbackService(store, tuning)
-    deeds = DeedService(store, loader, tuning=tuning)  # U6: records deeds and appraisals
+    deeds = DeedService(store, loader, tuning=tuning, guard=guard)  # U6: deeds, appraisals
     region_knowledge = SessionKnowledgeService(store, loader, knowledge.params)
     # One LLM speaks for the NPCs and the GM: dialogue, deed appraisal and narration
     # (U6 code-plan review R-02 — `dialogue_llm` is the single injection point).
@@ -140,7 +140,7 @@ def assemble_play(
     container = PlayContainer(
         repo=store,
         sessions=SessionService(store, loader, guard, deeds=deeds, tuning=tuning),
-        distortions=DistortionService(store, loader),
+        distortions=DistortionService(store, loader, tuning=tuning, guard=guard),
         world_state=WorldStateService(store, loader, max_suggestions=tuning.max_event_suggestions),
         region_knowledge=region_knowledge,
         feedback=feedback,

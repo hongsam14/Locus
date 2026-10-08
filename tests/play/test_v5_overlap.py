@@ -17,9 +17,9 @@ import pytest
 
 from locus.play import InMemoryPlayRepository
 from locus.play.base import SessionClosedError
-from locus.play.errors import GmBusyError, SeedAlreadyRunningError
+from locus.play.errors import GmBusyError, RumorInactiveError, SeedAlreadyRunningError
 from locus.play.event.suggester import EventSuggester
-from locus.play.models import EventCategory, EventStatus, SessionEvent, TimelineKind
+from locus.play.models import Deed, EventCategory, EventStatus, SessionEvent, TimelineKind
 from locus.play.rumor.generator import RumorGenerator
 from locus.play.turn.executor import SyncTurnExecutor
 from locus.play.wiring import PlayContainer
@@ -36,7 +36,7 @@ from locus.shared.models import (
 )
 from tests.play.concurrency import BlockingDrafts, FailingTimeline, InterleaveGate
 from tests.play.helpers import compose_play
-from tests.play.strategies import WORLD, build_snapshot, edge
+from tests.play.strategies import WORLD, build_snapshot, deed_rumor, edge
 from tests.shared.snapshots import StaticSnapshots
 
 _PROV = Provenance(source=SourceKind.INPUT)
@@ -183,21 +183,23 @@ def test_tp_v5_9_two_approves_that_overlap_write_one_line(threaded_repo) -> None
     assert len(_lines(threaded_repo, sid, TimelineKind.EVENT_APPROVED)) == 1
 
 
-def _after_first_read(repo, then: Callable[[], Any]) -> Callable[[], None]:
-    """After the next ``get_event`` returns, run ``then`` — the other write finishing
+def _after_first_read(
+    repo, then: Callable[[], Any], method: str = "get_event"
+) -> Callable[[], None]:
+    """After the next ``method`` call returns, run ``then`` — the other write finishing
     between this write's first read and its section. Returns the undo."""
-    original = repo.get_event
+    original = getattr(repo, method)
     fired: list[bool] = []
 
-    def get_event(*a: Any, **kw: Any) -> Any:
+    def read(*a: Any, **kw: Any) -> Any:
         result = original(*a, **kw)
         if not fired:
             fired.append(True)
             then()
         return result
 
-    repo.get_event = get_event
-    return lambda: vars(repo).pop("get_event", None)
+    setattr(repo, method, read)
+    return lambda: vars(repo).pop(method, None)
 
 
 def test_tp_v5_9_approve_first_then_the_discard_is_refused(threaded_repo) -> None:
@@ -440,3 +442,73 @@ def test_tp_v5_12r_a_failed_line_leaves_the_rumors_as_they_were(threaded_repo) -
     after = {r.id: r.support for r in threaded_repo.list_rumors(sid, include_pruned=True)}
     assert after == before  # no r2 rumor, r1 not swapped, the support unchanged
     assert all(r.active for r in threaded_repo.list_rumors(sid, include_pruned=True))
+
+
+# --- TP-V5-3 (RE-P01): a support change against a void -------------------------- #
+def _deed_with_rumor(repo, sid: str) -> tuple[str, str]:
+    deed = repo.record_deed(
+        Deed(
+            session_id=sid,
+            player_id="p",
+            region_id="r1",
+            kind="arrival",
+            text="Ari came.",
+            witnessed_npc_ids=["n1"],
+        )
+    )
+    rumor = deed_rumor("r1", deed_id=deed.id, support=0.6).model_copy(update={"session_id": sid})
+    repo.upsert_rumor(rumor)
+    return deed.id, rumor.id
+
+
+def test_tp_v5_3_a_support_change_after_a_void_is_refused_and_nothing_spreads(
+    threaded_repo,
+) -> None:
+    gm = _gm(threaded_repo)
+    sid = threaded_repo.create_session(WORLD).id
+    deed_id, rumor_id = _deed_with_rumor(threaded_repo, sid)
+    undo = _after_first_read(threaded_repo, lambda: gm.deeds.void(sid, deed_id), method="get_rumor")
+    try:
+        with pytest.raises(RumorInactiveError):  # 409 rumor_inactive (Q2=A)
+            gm.rumors.adjust_support(sid, rumor_id, 0.9)
+    finally:
+        undo()
+    rumor = threaded_repo.get_rumor(sid, rumor_id)
+    assert rumor is not None and not rumor.active and rumor.support == 0.6
+    assert _lines(threaded_repo, sid, TimelineKind.ADJUST_SUPPORT) == []
+    assert len(_lines(threaded_repo, sid, TimelineKind.DEED_VOIDED)) == 1
+    gm.turns.advance(sid)  # a revived rumor would hop r1 -> r2 here
+    family = threaded_repo.list_rumors_by_origin(sid, deed_id=deed_id, include_inactive=True)
+    assert [r.id for r in family] == [rumor_id]
+
+
+def test_tp_v5_3_two_voids_that_overlap_write_one_line(threaded_repo) -> None:
+    gm = _gm(threaded_repo)
+    sid = threaded_repo.create_session(WORLD).id
+    deed_id, rumor_id = _deed_with_rumor(threaded_repo, sid)
+    with InterleaveGate(threaded_repo, "get_deed"):  # both read it as not yet voided
+        out = _together(lambda: gm.deeds.void(sid, deed_id), lambda: gm.deeds.void(sid, deed_id))
+    assert sorted(len(o.deactivated_rumor_ids) for o in out) == [0, 1], out
+    assert threaded_repo.get_deed(sid, deed_id).voided
+    assert len(_lines(threaded_repo, sid, TimelineKind.DEED_VOIDED)) == 1
+
+
+# --- TP-V5-10 (U8 § 3): the feedback share is recorded once ---------------------- #
+def test_tp_v5_10_two_sets_of_one_region_record_the_share_once(threaded_repo) -> None:
+    gm = _gm(threaded_repo)
+    sid = threaded_repo.create_session(WORLD).id
+    threaded_repo.set_region_distortion(sid, "r1", 0.5, feedback_share=0.2)
+    with InterleaveGate(threaded_repo, "list_region_distortions"):  # right after the read
+        out = _together(
+            lambda: gm.distortions.set_region_distortion(sid, "r1", 0.4),
+            lambda: gm.distortions.set_region_distortion(sid, "r1", 0.6),
+        )
+    shares = sorted(
+        e.payload["feedback_share_cleared"]
+        for e in _lines(threaded_repo, sid, TimelineKind.SET_DISTORTION)
+    )
+    assert shares == [0.0, 0.2]
+    for row in out:  # the service gives back the row it saved
+        assert row.region_id == "r1" and row.feedback_share == 0.0
+        assert row.distortion_degree in (0.4, 0.6)
+    assert threaded_repo.get_region_distortion(sid, "r1") in (0.4, 0.6)  # the later one

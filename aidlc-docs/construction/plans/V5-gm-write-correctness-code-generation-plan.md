@@ -153,10 +153,10 @@
 - [x] 5.3 커밋: `fix(play): rumor writes save inside the session's short write — a closed session gets nothing, a second regenerate replaces the first (V5, RE-P02, RE-P05, RE-P07)`
 
 ### Step 6 — 행적·왜곡도 구간 (BLM § 2, BR-V5-08·09·10)
-- [ ] 6.1 `DeedService.void`: guard를 받고, 구간 안에서 다시 읽는다(이미 취소면 그대로).
-- [ ] 6.2 `DistortionService.set_region_distortion`: guard를 받고, 몫을 구간 안에서 읽고, 저장한 `RegionDistortion`을 돌려준다. `api/routers/gm.py` `set_distortion`은 그 값을 그대로 돌려준다(저장소를 다시 읽지 않는다).
-- [ ] 6.3 시험(`tests/play/test_v5_overlap.py`): TP-V5-3(조정과 취소가 겹침, 다음 턴에 퍼지지 않음), TP-V5-10. 돌연변이 확인.
-- [ ] 6.4 커밋: `fix(play): a voided deed's rumor stays voided under a support change; a distortion set records the feedback share once (V5, RE-P01)`
+- [x] 6.1 `DeedService.void`: guard를 받고, 구간 안에서 다시 읽는다(이미 취소면 그대로).
+- [x] 6.2 `DistortionService.set_region_distortion`: guard를 받고, 몫을 구간 안에서 읽고, 저장한 `RegionDistortion`을 돌려준다. `api/routers/gm.py` `set_distortion`은 그 값을 그대로 돌려준다(저장소를 다시 읽지 않는다).
+- [x] 6.3 시험(`tests/play/test_v5_overlap.py`): TP-V5-3(조정과 취소가 겹침, 다음 턴에 퍼지지 않음), TP-V5-10. 돌연변이 확인.
+- [x] 6.4 커밋: `fix(play): a voided deed's rumor stays voided under a support change; a distortion set records the feedback share once (V5, RE-P01)`
 
 ### Step 7 — 턴: 끊긴 run 복구와 지운 지역의 사건 (BLM § 5·6, BR-V5-18~21, § 1.1 R-01·R-04·R-06)
 - [ ] 7.1 포트 `TurnRunStore.list_running_runs()`를 더하고, `fail_stale_runs`를 없앤다(인메모리, SQL, 포트).

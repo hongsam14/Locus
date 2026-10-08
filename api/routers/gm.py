@@ -193,11 +193,10 @@ def set_distortion(
     p: PlayContainer = Depends(get_play),
 ) -> RegionDistortion:
     try:
-        p.distortions.set_region_distortion(session_id, region_id, body.degree)
+        # the row as the service saved it (P10; V5: no second read of the store)
+        return p.distortions.set_region_distortion(session_id, region_id, body.degree)
     except PLAY_ERRORS as exc:
         raise http_error(exc) from exc
-    # the stored row (P10): the service has checked the region, so it exists now
-    return next(r for r in p.repo.list_region_distortions(session_id) if r.region_id == region_id)
 
 
 @router.get("/sessions/{session_id}/state", response_model=WorldStateOut)

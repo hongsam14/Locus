@@ -226,7 +226,7 @@ def test_u4_2_a_shut_down_executor_answers_503_not_500() -> None:
     executor.shutdown(timeout=2)  # e.g. a graceful shutdown racing a request
     r = client.post(f"/api/play/sessions/{sid}/act", json={"type": "wait"})
     assert r.status_code == 503
-    assert not p.guard.is_running(sid)  # and the guard was released
+    assert not p.guard.turn_running(sid)  # and the guard was released
     assert client.get(f"/api/play/sessions/{sid}/turn-runs").json()[0]["status"] == "failed"
 
 

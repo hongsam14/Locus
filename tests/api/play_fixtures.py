@@ -88,11 +88,12 @@ class DialogueLLM:
 
 
 def play_container(
-    *, with_suggester: bool = False, executor=None, dialogue_llm=None
+    *, with_suggester: bool = False, executor=None, dialogue_llm=None, tuning=None
 ) -> PlayContainer:
     repo = InMemoryPlayRepository()
     loader = Loader()
     suggester = EventSuggester(SuggestLLM()) if with_suggester else None
+    extra = {"tuning": tuning} if tuning is not None else {}  # V5: e.g. a short GM wait
     return compose_play(
         repo,
         RumorGenerator(RumorLLM()),
@@ -100,4 +101,5 @@ def play_container(
         suggester=suggester,
         executor=executor or SyncTurnExecutor(),
         dialogue_llm=dialogue_llm if dialogue_llm is not None else DialogueLLM(),
+        **extra,
     )

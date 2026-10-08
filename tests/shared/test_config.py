@@ -41,6 +41,18 @@ def test_dialogue_knobs_default_and_load_from_env(monkeypatch: pytest.MonkeyPatc
         _settings()
 
 
+def test_v5_gm_write_wait_defaults_loads_and_must_be_positive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """V5 BR-V5-03: how long a GM write waits for the session's save section."""
+    assert _settings().play_tuning().gm_write_wait_s == 5.0
+    monkeypatch.setenv("GM_WRITE_WAIT_S", "0.5")
+    assert _settings().play_tuning().gm_write_wait_s == 0.5
+    monkeypatch.setenv("GM_WRITE_WAIT_S", "0")
+    with pytest.raises(ValidationError):
+        _settings()
+
+
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [

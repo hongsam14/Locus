@@ -395,7 +395,8 @@ class RegionView(LocusModel):
     hearsay: list[KnowledgeView] = Field(default_factory=list)
     rumors: list[SessionRumor] = Field(default_factory=list)  # active session rumors
     moves: list[MoveOption] = Field(default_factory=list)
-    turn_running: bool = False
+    turn_running: bool = False  # V5 (BR-V5-22): a turn run only
+    gm_busy: bool = False  # V5: a GM write or the editor holds a lease (FR-C5)
     llm_available: bool = True
     declare_max_chars: int = 300  # U6: the server's declaration limit for the input box
 

@@ -131,7 +131,7 @@ def assemble_play(
     events = EventService(store, loader, suggester=suggester, deeds=deeds, tuning=tuning)
     container = PlayContainer(
         repo=store,
-        sessions=SessionService(store, loader, guard, deeds=deeds),
+        sessions=SessionService(store, loader, guard, deeds=deeds, tuning=tuning),
         distortions=DistortionService(store, loader),
         world_state=WorldStateService(store, loader, max_suggestions=tuning.max_event_suggestions),
         region_knowledge=region_knowledge,

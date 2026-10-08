@@ -19,9 +19,11 @@ from locus.play.errors import (
     AppraisalExistsError,
     ConversationExistsError,
     ExecutorShutdownError,
+    GmBusyError,
     InvalidActionError,
     LlmCallFailedError,
     LlmUnavailableError,
+    RumorInactiveError,
     SeedAlreadyRunningError,
     TurnInProgressError,
 )
@@ -53,8 +55,10 @@ class ApiError(HTTPException):
 # Ordered: the first match wins (V2 domain-entities § 5).
 ERROR_CODES: list[tuple[type[Exception], int, str]] = [
     (SessionClosedError, 409, "session_closed"),
+    (GmBusyError, 409, "gm_busy"),  # before its parent (V5 FD review R-04)
     (TurnInProgressError, 409, "turn_running"),
     (SeedAlreadyRunningError, 409, "seed_running"),
+    (RumorInactiveError, 409, "rumor_inactive"),
     (WorldExistsError, 409, "world_exists"),
     (BuildInProgressError, 409, "build_running"),
     (RunFinishedError, 409, "run_finished"),
@@ -94,6 +98,7 @@ PLAY_ERRORS: tuple[type[Exception], ...] = (
     LlmUnavailableError,
     LlmCallFailedError,
     SeedAlreadyRunningError,
+    RumorInactiveError,
     ValueError,
 )
 

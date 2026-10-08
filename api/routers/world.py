@@ -43,7 +43,7 @@ from api.schemas import (
     world_names,
 )
 from locus.localization.wiring import LocalizationContainer
-from locus.play.errors import TurnInProgressError
+from locus.play.errors import GmBusyError, TurnInProgressError
 from locus.play.wiring import PlayContainer
 from locus.shared.config import Settings
 from locus.shared.models import (
@@ -80,8 +80,9 @@ def _open_sessions(world_id: str, confirm: bool, play: PlayContainer | None) -> 
     open_ids = [s.id for s in play.sessions.open_sessions(world_id)]
     # Pre-flight the turn guard: a session mid-turn cannot be closed, so admitting it
     # here let the destructive replace run and then fail on the close, after the world
-    # was already gone (code review U4-2 #3, re-framed root cause).
-    busy = [sid for sid in open_ids if play.guard.is_running(sid)]
+    # was already gone (code review U4-2 #3, re-framed root cause). Only a turn counts:
+    # a GM write's save finds the session closed (V5 BR-V5-17).
+    busy = [sid for sid in open_ids if play.guard.turn_running(sid)]
     if busy:
         raise ApiError(
             409,
@@ -149,29 +150,31 @@ def _close_if_replaced(report, open_ids: list[str], play: PlayContainer | None) 
         report.closed_session_ids = []
         return
     closed: list[str] = []
-    busy: list[str] = []
+    stuck: list[tuple[str, str]] = []  # (session id, why it stays open)
     for sid in open_ids:
         try:
             play.sessions.close_session(sid)
             closed.append(sid)
+        except GmBusyError:  # a GM save section outlasted the wait (V5 § 1.1 R-05b)
+            stuck.append((sid, "busy"))
         except TurnInProgressError:
-            busy.append(sid)
+            stuck.append((sid, "mid-turn"))
         except LookupError:  # already gone
             closed.append(sid)
     report.closed_session_ids = closed
-    if busy:
+    if stuck:
         logger.warning(
-            "world replaced but %d session(s) were mid-turn and stay open: %s",
-            len(busy),
-            ", ".join(busy),
+            "world replaced but %d session(s) stay open: %s",
+            len(stuck),
+            ", ".join(f"{sid} ({why})" for sid, why in stuck),
         )
         report.warnings = list(getattr(report, "warnings", [])) + [
             BuildWarning(
                 stage="sessions",
-                message=f"session {sid} was mid-turn and could not be closed",
+                message=f"session {sid} was {why} and could not be closed",
                 severity="warning",
             )
-            for sid in busy
+            for sid, why in stuck
         ]
 
 

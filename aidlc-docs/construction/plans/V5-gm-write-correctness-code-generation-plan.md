@@ -85,35 +85,35 @@
 - [x] 1.2 기준선을 잰다(2026-10-08: pytest 1048, ruff·black clean, mypy 11): pytest(1048), ruff·black, mypy(11). `v5gate.sh`를 만든다.
 
 ### Step 2 — guard·오류·조정값·호출부 (domain-entities § 1~3, BR-V5-03·04·14·16·17·22~25)
-- [ ] 2.1 `locus/play/errors.py`
+- [x] 2.1 `locus/play/errors.py`
   - `GmBusyError(TurnInProgressError)`를 더한다.
   - `RumorInactiveError(RuntimeError)`를 더한다(§ 1.1 R-05a).
-- [ ] 2.2 `locus/play/turn/guard.py`를 다시 쓴다.
+- [x] 2.2 `locus/play/turn/guard.py`를 다시 쓴다.
   - 상태: 턴 슬롯, 닫는 중(수), 리스(수), 세션별 짧은 쓰기 `RLock`.
   - 메서드: `acquire`(턴 → `TurnInProgressError`, 닫는 중 → `SessionClosedError`, 리스 → `GmBusyError`), `release`, `hold`(턴 → `TurnInProgressError`), `short_write(s, *, timeout_s)`(상한을 넘으면 `GmBusyError`), `closing(s)`(턴 → `TurnInProgressError`), `turn_running`, `gm_busy`.
   - 문장에는 세션 id·run id·토큰을 싣지 않는다.
   - `is_running`·`running_run_id`·`assert_idle`은 없앤다.
-- [ ] 2.3 `locus/shared/config/{tuning,settings}.py`
+- [x] 2.3 `locus/shared/config/{tuning,settings}.py`
   - `PlayTuning.gm_write_wait_s: float = 5.0`
   - `Settings.gm_write_wait_s`(alias `GM_WRITE_WAIT_S`, > 0)
   - `play_tuning()`에 연결한다.
-- [ ] 2.4 `locus/play/models.py` `RegionView.gm_busy: bool = False`. `locus/play/player/service.py`가 `turn_running = guard.turn_running(s)`, `gm_busy = guard.gm_busy(s)`를 채운다.
-- [ ] 2.5 `locus/play/session_service.py` `close_session`: `with guard.closing(s): with guard.short_write(s, timeout_s=…):` 안에서 작업 단위로 닫는다. 서비스가 tuning을 받는다(wiring).
-- [ ] 2.6 `api/routers/world.py`
+- [x] 2.4 `locus/play/models.py` `RegionView.gm_busy: bool = False`. `locus/play/player/service.py`가 `turn_running = guard.turn_running(s)`, `gm_busy = guard.gm_busy(s)`를 채운다.
+- [x] 2.5 `locus/play/session_service.py` `close_session`: `with guard.closing(s): with guard.short_write(s, timeout_s=…):` 안에서 작업 단위로 닫는다. 서비스가 tuning을 받는다(wiring).
+- [x] 2.6 `api/routers/world.py`
   - 사전 점검은 `play.guard.turn_running(sid)`만 본다.
   - `_close_if_replaced`는 `GmBusyError`(바쁨)와 `TurnInProgressError`(턴)를 나눠 경고한다(§ 1.1 R-05b).
-- [ ] 2.7 `api/errors.py`
+- [x] 2.7 `api/errors.py`
   - `ERROR_CODES`에 `(GmBusyError, 409, "gm_busy")`를 `TurnInProgressError` **앞**에 둔다(R-04).
   - `(RumorInactiveError, 409, "rumor_inactive")`를 `seed_running` 다음에 둔다.
   - `PLAY_ERRORS`에 `RumorInactiveError`를 더한다.
-- [ ] 2.8 시험(파일: `tests/play/test_turn_guard.py`, 새 `tests/play/test_guard_machine.py`, 새 `tests/api/test_v5_busy_api.py`)
+- [x] 2.8 시험(파일: `tests/play/test_turn_guard.py`, 새 `tests/play/test_guard_machine.py`, 새 `tests/api/test_v5_busy_api.py`)
   - `test_turn_guard.py`: 세 메서드를 새 메서드로 고친다. 더하는 것: `short_write` 기다림·상한·같은 스레드 다시 들어감, `closing` 수 세기, 리스 수 세기.
   - 새 `test_guard_machine.py`: hypothesis 상태 기계(NFR § 4 + R-06).
   - TP-V5-8: 행동 409 세 코드, 문장에 내부값 없음, `RegionView` 두 칸, `GmBusyError` 매핑.
   - TP-V5-14: 닫는 중 턴 409 `session_closed`, 닫기 둘 겹침.
   - TP-V5-15: 리스가 있어도 월드 교체가 진행되고 세션이 닫힘. 턴이 돌면 `sessions_busy`.
   - § 1.2 R-03의 기존 단언을 고친다.
-- [ ] 2.9 커밋: `fix(play): the session guard tells a turn from a GM write and closes without a gap; 409s carry no internals (V5, FR-C2, FR-C5)`
+- [x] 2.9 커밋: `fix(play): the session guard tells a turn from a GM write and closes without a gap; 409s carry no internals (V5, FR-C2, FR-C5)`
 
 ### Step 3 — 시험 받침 (NFR § 2, R-02·R-05)
 - [ ] 3.1 `tests/play/concurrency.py`

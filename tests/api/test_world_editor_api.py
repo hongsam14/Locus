@@ -187,7 +187,8 @@ def test_region_delete_waits_for_no_turn_and_holds_the_sessions() -> None:
         r = client.delete(f"/api/world/worlds/w/regions/{w['town'].id}")
     finally:
         play.guard.release(sid)
-    assert r.status_code == 409 and "turn in progress" in r.json()["detail"]
+    assert r.status_code == 409 and r.json()["code"] == "turn_running"
+    assert "a turn is running" in r.json()["detail"] and sid not in r.json()["detail"]
 
     regions = client.app.state.containers.world.editors.regions
     original = regions.delete_region
@@ -204,7 +205,7 @@ def test_region_delete_waits_for_no_turn_and_holds_the_sessions() -> None:
 
     object.__setattr__(regions, "delete_region", during)
     r = client.delete(f"/api/world/worlds/w/regions/{w['town'].id}")
-    assert r.status_code == 200 and tries == ["TurnInProgressError"]
+    assert r.status_code == 200 and tries == ["GmBusyError"]  # V5: the editor holds a lease
     assert set(r.json()["deleted_ids"]) == {w["town"].id, w["ada"].id}
     assert graph.get_node("w", w["town"].id) is None
 

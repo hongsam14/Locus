@@ -76,7 +76,8 @@ class PlayService(SessionAppService):
             hearsay=src.hearsay,
             rumors=src.rumors,
             moves=movement.move_options(snapshot, region.id, self._tuning),
-            turn_running=self._guard.is_running(session.id),
+            turn_running=self._guard.turn_running(session.id),
+            gm_busy=self._guard.gm_busy(session.id),
             llm_available=self._turns.llm_available,
             declare_max_chars=self._tuning.declare_max_chars,
         )

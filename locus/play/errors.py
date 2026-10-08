@@ -15,6 +15,12 @@ class TurnInProgressError(RuntimeError):
     """A turn run is already in progress for this session (BR-U4-13)."""
 
 
+class GmBusyError(TurnInProgressError):
+    """A GM write or the editor holds the session (V5 FR-C5): a turn cannot start, or a
+    GM write could not get its short-write section in time. 409 ``gm_busy`` — listed
+    before ``TurnInProgressError`` in the error table (FD review R-04)."""
+
+
 class ExecutorShutdownError(RuntimeError):
     """The background turn executor is shut down, so no new run can start (503).
 
@@ -52,3 +58,8 @@ class LlmCallFailedError(RuntimeError):
 class SeedAlreadyRunningError(RuntimeError):
     """The seed's event is still running in this session (U8, BR-U8-16): 409. Once that
     event is resolved the seed can start again."""
+
+
+class RumorInactiveError(RuntimeError):
+    """The rumor whose support the GM changes was switched off meanwhile — a deed void or
+    a regenerate (V5 Q2=A, RE-P01): 409 ``rumor_inactive``, nothing is written."""

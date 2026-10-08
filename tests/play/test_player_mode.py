@@ -375,7 +375,11 @@ def test_game_session_import_used() -> None:  # keeps the GameSession import mea
 import threading  # noqa: E402
 import time  # noqa: E402
 
-from locus.play.errors import InvalidActionError, TurnInProgressError  # noqa: E402
+from locus.play.errors import (  # noqa: E402
+    GmBusyError,
+    InvalidActionError,
+    TurnInProgressError,
+)
 from locus.play.models import (  # noqa: E402
     EndTalkAction,
     EventCategory,
@@ -455,7 +459,7 @@ def test_ex5_start_moves_the_player_at_once_and_records_the_run() -> None:
         payload = repo.list_timeline(session.id)[0].payload
         assert payload["to_region_name"] == "B" and payload["cost_turns"] == 2
         assert repo.get_run(session.id, run.id).status == "running"
-        assert turns.guard.is_running(session.id)
+        assert turns.guard.turn_running(session.id)
         with pytest.raises(TurnInProgressError):  # EX-8 at the engine level
             turns.advance(session.id)
     finally:
@@ -471,7 +475,7 @@ def test_tp_u4_7_move_runs_cost_turns_and_stores_the_result() -> None:
     runs = repo.list_runs(session.id)
     assert len(runs) == 1 and runs[0].status == "done" and runs[0].result is not None
     assert runs[0].result.session.turn == 2 and runs[0].finished_at is not None
-    assert not turns.guard.is_running(session.id)
+    assert not turns.guard.turn_running(session.id)
 
 
 def test_ex6_wait_end_talk_and_gm_turn_cost_one_turn_each() -> None:
@@ -487,7 +491,7 @@ def test_ex6_wait_end_talk_and_gm_turn_cost_one_turn_each() -> None:
         turns.advance(session.id, EndTalkAction(npc_id="ghost"))
     with pytest.raises(InvalidActionError, match="blocked pass"):
         turns.advance(session.id, MoveAction(to_region_id="c"))
-    assert not turns.guard.is_running(session.id)  # released after a rejected action
+    assert not turns.guard.turn_running(session.id)  # released after a rejected action
 
 
 def test_ex7_begin_returns_the_run_and_the_sync_executor_completes_it() -> None:
@@ -497,7 +501,7 @@ def test_ex7_begin_returns_the_run_and_the_sync_executor_completes_it() -> None:
     stored = repo.get_run(session.id, run.id)  # the sync executor already ran it (poll -> done)
     assert stored.status == "done" and len(stored.result.turns) == 2
     assert stored.result.player.region_id == "b"
-    assert not turns.guard.is_running(session.id)
+    assert not turns.guard.turn_running(session.id)
 
 
 def test_ex8_second_action_during_a_background_run_is_rejected() -> None:
@@ -518,7 +522,7 @@ def test_ex8_second_action_during_a_background_run_is_rejected() -> None:
     while repo.get_run(session.id, run.id).status == "running" and time.time() < deadline:
         time.sleep(0.02)
     assert repo.get_run(session.id, run.id).status == "done"
-    assert not turns.guard.is_running(session.id)
+    assert not turns.guard.turn_running(session.id)
     executor.shutdown(timeout=2)
 
 
@@ -547,10 +551,10 @@ def test_ex9_failure_in_the_second_turn_keeps_the_first_and_records_only_the_typ
     player = repo.get_player(session.id)
     assert player.turns_spent == 1  # charged 2 for the move, refunded the turn that never ran
     assert player.region_id == "b"  # a turn did advance, so the arrival stands
-    assert not turns.guard.is_running(session.id)
+    assert not turns.guard.turn_running(session.id)
     with pytest.raises(RuntimeError):  # the synchronous path surfaces the error too
         turns.advance(session.id)
-    assert not turns.guard.is_running(session.id)
+    assert not turns.guard.turn_running(session.id)
 
 
 def test_fd_r10_validation_uses_the_fresh_position() -> None:
@@ -563,7 +567,7 @@ def test_fd_r10_validation_uses_the_fresh_position() -> None:
         turns.advance(session.id, MoveAction(to_region_id="a"))  # c -> a exists but is blocked
     with pytest.raises(InvalidActionError, match="not connected"):
         turns.advance(session.id, MoveAction(to_region_id="zzz"))
-    assert not turns.guard.is_running(session.id)
+    assert not turns.guard.turn_running(session.id)
 
 
 def test_fd_r11_rejected_submit_fails_the_run_and_releases_the_guard() -> None:
@@ -579,7 +583,7 @@ def test_fd_r11_rejected_submit_fails_the_run_and_releases_the_guard() -> None:
         turns.begin(session.id, WaitAction())
     runs = repo.list_runs(session.id)
     assert len(runs) == 1 and runs[0].status == "failed"
-    assert not turns.guard.is_running(session.id)
+    assert not turns.guard.turn_running(session.id)
 
 
 def test_ex16_without_an_llm_the_world_still_moves() -> None:
@@ -861,7 +865,7 @@ def test_a_run_that_advances_no_turn_puts_the_player_back() -> None:
     assert after.region_id == "a"  # move undone
     assert after.turns_spent == 0  # charge undone
     assert repo.get_session(session.id).turn == 0
-    assert not turns.guard.is_running(session.id)
+    assert not turns.guard.turn_running(session.id)
 
 
 def test_a_closed_session_stops_the_turn_loop_at_the_next_boundary() -> None:
@@ -882,7 +886,7 @@ def test_a_closed_session_stops_the_turn_loop_at_the_next_boundary() -> None:
     repo.bump_turn = real_bump  # type: ignore[method-assign]
     assert repo.get_run(session.id, run.id).status == "failed"
     assert repo.get_session(session.id).turn == 1  # only the first turn ran
-    assert not turns.guard.is_running(session.id)
+    assert not turns.guard.turn_running(session.id)
 
 
 def test_a_region_deleted_from_the_world_does_not_wedge_the_turn_engine() -> None:
@@ -957,14 +961,14 @@ def test_regenerate_keeps_everything_when_only_part_of_a_chain_arrives() -> None
 
 
 def test_the_gm_guard_is_held_for_the_whole_write() -> None:
-    """#7: `assert_idle` was a check, so a turn could start during a slow GM write and
-    its promotion be deleted by the write's stale view. `hold` keeps the session."""
+    """#7: a mere check let a turn start during a slow GM write and its promotion be
+    deleted by the write's stale view. `hold` keeps the session (V5: as a lease)."""
     guard = TurnGuard()
     with guard.hold("s"):
-        assert guard.is_running("s")
-        with pytest.raises(TurnInProgressError):
+        assert guard.gm_busy("s") and not guard.turn_running("s")
+        with pytest.raises(GmBusyError):
             guard.acquire("s", "run-1")  # a turn cannot start mid-write
-    assert not guard.is_running("s")
+    assert not guard.gm_busy("s")
     guard.acquire("s", "run-1")  # ... and the write cannot start mid-turn
     try:
         with pytest.raises(TurnInProgressError):
@@ -975,7 +979,7 @@ def test_the_gm_guard_is_held_for_the_whole_write() -> None:
     with pytest.raises(RuntimeError):  # the lease is released even when the body raises
         with guard.hold("s"):
             raise RuntimeError("boom")
-    assert not guard.is_running("s")
+    assert not guard.gm_busy("s")
 
 
 def test_a_one_way_connection_still_offers_the_way_back() -> None:

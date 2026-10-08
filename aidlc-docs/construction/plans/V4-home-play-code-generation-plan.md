@@ -303,9 +303,14 @@
 - [x] 7.4 커밋: `feat(web): play screen rebuilt — two columns or one with an action dock, one result band, talk in the column or a sheet (V4, FR-S2)`
 
 ### Step 8 — FR-D8 검사와 표기 (BR-V4-10, TP-V4-12·14)
-- [ ] 8.1 `fr-d8.test.tsx`: TP-V4-14. `ENUM_VALUES`의 `regionLevel`·`travelBy`·`sessionStatus`·`rumorOrigin` 전 값을 도는 렌더에서 원문 값과 `/\b0\.\d+\b/`가 없다.
-- [ ] 8.2 `design.grep.test.ts`: TP-V4-12 정규식을 홈·플레이 파일 범위에 더한다(`\.toFixed\(`, `String\((e|err|error)\)`, `outline-none`).
-- [ ] 8.3 커밋: `test(web): home and play show no raw enum, number or error text (V4, FR-D8)`
+- [x] 8.1 `fr-d8.test.tsx`: TP-V4-14. `ENUM_VALUES`의 `regionLevel`·`travelBy`·`sessionStatus`·`rumorOrigin` 전 값을 도는 렌더에서 원문 값과 `/\b0\.\d+\b/`가 없다.
+- [x] 8.2 `design.grep.test.ts`: TP-V4-12 정규식을 홈·플레이 파일 범위에 더한다(`\.toFixed\(`, `String\((e|err|error)\)`, `outline-none`).
+- 실행 기록(Step 8)
+  - `fr-d8.test.tsx` 12개: 지역 단계 5 × 세션 상태 2의 플레이 화면(이동은 `travelBy` 네 값, 소문은 `rumorOrigin` 두 값), 홈 카드·줄, 검사 자체 확인.
+  - 소수 검사는 FD의 `/\b0\.\d+\b/` 대신 `/(?<![\d.])0\.\d+/`를 쓴다. FD 식은 글자에 붙은 소수("d0.42", 옛 소문 배지)를 놓친다. 강화한 식은 그것을 잡고 10.5·1.05는 잡지 않는다.
+  - `design.grep.test.ts`에 홈·플레이 범위 규칙(`.toFixed(`, `String(e|err|error)`, `outline-none`) 0건을 더했다.
+  - 돌연변이 확인: 소문 배지를 `d{toFixed(2)}`로, 이동 줄을 원문 `kind`로 되돌리면 플레이 렌더 10개가 실패한다. 플레이 파일에 `String(e)`를 심으면 소스 검사가 실패한다.
+- [x] 8.3 커밋: `test(web): home and play show no raw enum, number or error text (V4, FR-D8)`
 
 ### Step 9 — 캡처 (사람 확인, BR-V4-01, 캡처 계획)
 - [ ] 9.1 `v4/cap/`(세션 scratchpad, 코드 계획 리뷰 01 R-10)

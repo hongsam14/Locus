@@ -55,6 +55,18 @@ describe("design rules in the source", () => {
     expect(offenders(old)).toEqual([]);
   });
 
+  // V4 (BR-V4-10/15/23, TP-V4-12): the home and play screens show words, described errors
+  // and the focus ring — no fixed-point number, no raw error text, no hidden outline
+  it("home and play have no toFixed, String(e) or outline-none", () => {
+    const scope = FILES.filter(
+      (f) => /^src\/features\/(home|play)\//.test(f.path) || /^src\/routes\/(HomePage|PlayPage)\.tsx$/.test(f.path),
+    );
+    expect(scope.length).toBeGreaterThan(15); // the check checks something
+    for (const rule of [/\.toFixed\(/, /String\((e|err|error)\)/, /outline-none/]) {
+      expect(scope.filter((f) => rule.test(f.text)).map((f) => f.path), String(rule)).toEqual([]);
+    }
+  });
+
   it("uses the display face for the logo only", () => {
     expect(offenders(/font-display/, (p) => p.endsWith("layout/AppShell.tsx"))).toEqual([]);
   });

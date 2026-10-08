@@ -352,3 +352,35 @@ describe("GmTabs and GmLayout (BR-V6-02/03/04/34, TP-V6-14)", () => {
     expect(order()).toEqual(["L-header", "L-player", "L-tools", "L-error", "L-band", "L-map", "L-tabs"]);
   });
 });
+
+describe("small rules (code review 01 #47)", () => {
+  it("MP1: a region with no player's story has no ✦; T3/TB2: the band's LLM line and names from the map", () => {
+    expect(badgeOf({ ...STATE, regions: [{ ...STATE.regions[0], deed_rumors: 0 }] })).toEqual({ a: "3" });
+    const outcome = outcomeOf({ session_id: "s1", turn: 5, promoted_ids: [], demoted_ids: [], applied_event_ids: [], resolved_event_ids: [],
+      llm_failed: true, region_changes: [{ region_id: "a", region_name: "Harbor", promoted: ["x"], demoted: [], pruned: [], events_applied: [],
+        events_resolved: [], rumors_added: [] }] } as TurnResult);
+    const nameOf = (_k: string, id: string, _f: string, fb: string) => (id === "a" ? "항구" : fb);
+    render(<TurnBand outcome={outcome} nameOf={nameOf} onPickRegion={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.getByTestId("turn-band")).toHaveTextContent(t("notice.turnLlmFailed"));
+    expect(screen.getByTestId("turn-band-region-a")).toHaveTextContent("항구");
+  });
+
+  it("T2: the progress line counts failures", () => {
+    render(<TurnTools closed={false} advancing={false} suggesting={false} bulk={{ done: 3, total: 5, failed: 2 }} suggestN={1}
+      maxSuggest={3} onSuggestN={vi.fn()} onAdvance={vi.fn()} onSuggest={vi.fn()} onGenerateAll={vi.fn()} onRegenAll={vi.fn()} />);
+    expect(screen.getByTestId("generate-progress")).toHaveTextContent(t("progress.failed", { failed: 2 }));
+  });
+
+  it("H1: reopening the end dialog shows no error from the last try", async () => {
+    const onEnd = vi.fn().mockRejectedValue(new HttpError(409, "Conflict", '{"detail":"a turn","code":"turn_running"}'));
+    render(<GmHeader session={OPEN} worldName="w" options={[{ value: "s1", label: "s1" }]} onRetrySessions={vi.fn()}
+      onPick={vi.fn()} onNew={vi.fn()} onEnd={onEnd} />);
+    fireEvent.click(screen.getByTestId("session-close-btn"));
+    await act(async () => fireEvent.click(screen.getByTestId("session-close-confirm")));
+    expect(within(screen.getByRole("dialog")).getByRole("alert")).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: t("action.cancel") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    fireEvent.click(screen.getByTestId("session-close-btn"));
+    expect(within(screen.getByRole("dialog")).queryByRole("alert")).not.toBeInTheDocument();
+  });
+});

@@ -248,6 +248,48 @@ describe("TP-V6-7: a bulk run counts why it failed and stops (§ 1.1 R-06)", () 
   });
 });
 
+describe("code review 01 #18, #20, #47: the bulk run's other stops and the distortion layer", () => {
+  it("#18: the first 'turn running' stops the run and tells the page", async () => {
+    let calls = 0;
+    (api.regenRumors as Mock).mockImplementation(async () => {
+      calls += 1;
+      if (calls === 1) throw new HttpError(409, "Conflict", '{"detail":"a turn","code":"turn_running"}');
+      return [];
+    });
+    (api.getWorldState as Mock).mockResolvedValue(state(Array.from({ length: 12 }, () => ({}))));
+    const onTurnRunning = vi.fn();
+    const onError = vi.fn();
+    const hook = renderHook(() =>
+      useBulkRumors("s1", { notify: vi.fn(), fail: vi.fn(), after: vi.fn().mockResolvedValue(undefined), onCap: vi.fn(), onError, onTurnRunning }),
+    );
+    await act(async () => hook.result.current.regenAll());
+    expect(calls).toBeLessThanOrEqual(5);
+    expect(onTurnRunning).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenLastCalledWith(expect.objectContaining({ title: dicts.ko["error.turn_running.title"] }));
+  });
+
+  it("#47 B6: a failed pre-scan is told", async () => {
+    (api.getWorldState as Mock).mockRejectedValue(new TypeError("Failed to fetch"));
+    const onError = vi.fn();
+    const hook = renderHook(() =>
+      useBulkRumors("s1", { notify: vi.fn(), fail: vi.fn(), after: vi.fn(), onCap: vi.fn(), onError }),
+    );
+    await act(async () => hook.result.current.generateAll());
+    expect(onError).toHaveBeenLastCalledWith(expect.objectContaining({ code: "network" }));
+    expect(hook.result.current.progress).toBeNull();
+  });
+
+  it("#20 D2: the next state answer replaces a saved distortion's layer", async () => {
+    (api.getWorldState as Mock).mockResolvedValueOnce(state([{ distortion: 0.3 }])).mockResolvedValue(state([{ distortion: 0.2 }]));
+    const { result } = renderHook(() => useGmData("s1", "r0"));
+    await waitFor(() => expect(result.current.regionState("r0")?.distortion).toBe(0.3));
+    act(() => result.current.patchDistortion({ session_id: "s1", region_id: "r0", distortion_degree: 0.7, feedback_share: 0 }));
+    expect(result.current.regionState("r0")?.distortion).toBe(0.7);
+    act(() => result.current.after("distortion"));
+    await waitFor(() => expect(result.current.regionState("r0")?.distortion).toBe(0.2));
+  });
+});
+
 describe("TP-V6-8 (hooks): the session read and [retry] (RE-F01, § 1.1 R-10)", () => {
   const S1: GameSession = { id: "s1", world_id: "w", status: "open", turn: 3, created_at: "2026-10-08T05:05:00Z" };
   const world = { world_id: "w", regions: [], connections: [] };

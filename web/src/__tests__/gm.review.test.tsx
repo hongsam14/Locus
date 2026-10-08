@@ -572,3 +572,188 @@ describe("focus and keyboard (code review 01)", () => {
     expect(await screen.findByRole("button", { name: t("label.knowsCount", { n: 1 }) })).toBeInTheDocument();
   });
 });
+
+describe("test gaps (code review 01 #14–#20, #47)", () => {
+  const evs = (n: number, status: SessionEvent["status"]) =>
+    Array.from({ length: n }, (_, i) => ev(`r${i}`, status, { resolved_turn: i, description: `old ${i}` }));
+
+  it("#14: [remake every region's rumors] remakes every region of the state, after asking", async () => {
+    (api.regenRumors as Mock).mockResolvedValue([]);
+    renderGm();
+    await ready();
+    fireEvent.click(screen.getByTestId("regen-all-btn"));
+    expect(api.regenRumors).not.toHaveBeenCalled();
+    await act(async () => fireEvent.click(screen.getByTestId("regen-all-confirm")));
+    await waitFor(() => expect(api.regenRumors).toHaveBeenCalledTimes(2));
+    expect((api.regenRumors as Mock).mock.calls).toEqual(expect.arrayContaining([["s1", "a"], ["s1", "b"]]));
+  });
+
+  it("#15: a tab whose first read fails says so with [retry], and retry shows it", async () => {
+    (api.listEvents as Mock).mockRejectedValueOnce(new TypeError("Failed to fetch")).mockResolvedValue([ev("e1", "active")]);
+    (api.getTimeline as Mock).mockRejectedValueOnce(new TypeError("Failed to fetch")).mockResolvedValue([line("l1", 1)]);
+    renderGm();
+    await ready();
+    openTab("events");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(t("error.network.title"));
+    fireEvent.click(within(alert).getByRole("button", { name: t("action.retry") }));
+    expect(await screen.findByTestId("event-e1")).toBeInTheDocument();
+    openTab("timeline");
+    fireEvent.click(within(await screen.findByRole("alert")).getByRole("button", { name: t("action.retry") }));
+    expect(await screen.findByTestId("timeline")).toBeInTheDocument();
+  });
+
+  it("#18: while a bulk run goes, the head, the seeds and the region's writes wait", async () => {
+    const hold = deferred<unknown>();
+    (api.generateRumors as Mock).mockReturnValue(hold.promise);
+    (api.listSeeds as Mock).mockResolvedValue([SEED]);
+    renderGm();
+    await ready();
+    await chooseRegion("b");
+    await act(async () => fireEvent.click(screen.getByTestId("generate-all-btn")));
+    await waitFor(() => expect(api.generateRumors).toHaveBeenCalled());
+    for (const id of ["session-new-btn", "session-close-btn", "generate-btn", "regen-btn", "regen-all-btn", "advance-turn-btn"])
+      expect(screen.getByTestId(id), id).toBeDisabled();
+    openTab("seeds");
+    expect(await screen.findByTestId("seed-start-sd")).toBeDisabled();
+    await act(async () => hold.resolve([]));
+  });
+
+  it("#19: an ended session turns every write off — events, deeds, beliefs, rumors", async () => {
+    (api.getSession as Mock).mockImplementation(async (sid: string) => ({ ...OPEN, id: sid, status: "closed" }));
+    (api.listEvents as Mock).mockResolvedValue([ev("e1", "suggested"), ev("e2", "active")]);
+    (api.listRumors as Mock).mockResolvedValue([rumor("ra")]);
+    const deed = { id: "d1", session_id: "s1", player_id: "p", region_id: "a", turn: 0, kind: "arrival", text: "x",
+      witnessed_npc_ids: [], voided: false, region_name: "A", witness_names: [] };
+    (api.listDeeds as Mock).mockResolvedValue([{ deed, appraisals: [], rumors: [], reached_region_ids: [], reached_region_names: [] }]);
+    renderGm();
+    await screen.findByTestId("gm-closed-banner");
+    await chooseRegion("a");
+    for (const id of ["generate-btn", "regen-btn", "support-ra", "distortion-slider"]) expect(await screen.findByTestId(id), id).toBeDisabled();
+    openTab("events");
+    for (const id of ["approve-e1", "discard-e1", "resolve-e2"]) expect(await screen.findByTestId(id), id).toBeDisabled();
+    openTab("deeds");
+    expect(await screen.findByTestId("void-d1")).toBeDisabled();
+  });
+
+  it("#20: the next write clears the error line; a saved belief shows the saved value, not the dragged one", async () => {
+    (api.suggestEvents as Mock).mockRejectedValueOnce(new HttpError(409, "Conflict", '{"detail":"x","code":"gm_busy"}')).mockResolvedValue([]);
+    (api.listRumors as Mock).mockResolvedValueOnce([rumor("ra")]).mockResolvedValue([rumor("ra", { support: 0.85 })]);
+    (api.setSupport as Mock).mockResolvedValue(rumor("ra", { support: 0.85 }));
+    renderGm();
+    await ready();
+    await act(async () => fireEvent.click(screen.getByTestId("suggest-events-btn")));
+    expect(await screen.findByTestId("gm-hub-error")).toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getByTestId("suggest-events-btn")));
+    await waitFor(() => expect(screen.queryByTestId("gm-hub-error")).not.toBeInTheDocument());
+    await chooseRegion("a");
+    const slider = await screen.findByTestId("support-ra");
+    fireEvent.change(slider, { target: { value: "0.9" } });
+    await act(async () => fireEvent.pointerUp(slider));
+    await waitFor(() => expect(screen.getByTestId("support-label-ra")).toHaveTextContent(numberWithMeaning("support", 0.85)));
+  });
+
+  it("#47 P1: a session of another world drops the chosen region", async () => {
+    (api.getSession as Mock).mockImplementation(async (sid: string) => ({ ...OPEN, id: sid, world_id: sid === "s3" ? "w2" : "w" }));
+    (api.exportWorld as Mock).mockImplementation(async (w: string) => (w === "w2" ? { ...WORLD, world_id: "w2",
+      regions: [{ id: "z", name: "Zeal", level: "town" }] } : WORLD));
+    renderGm();
+    await ready();
+    await chooseRegion("a");
+    fireEvent.click(screen.getByTestId("go-s3"));
+    await ready();
+    await screen.findByTestId("region-marker-z");
+    expect(screen.queryByTestId("region-heading")).not.toBeInTheDocument();
+    expect(screen.getByTestId("gm-no-region")).toBeInTheDocument();
+  });
+
+  it("#47 RK1/RT2: what the NPCs know is read again in place after a write, not remounted", async () => {
+    (api.generateRumors as Mock).mockResolvedValue([]);
+    renderGm();
+    await ready();
+    await chooseRegion("a");
+    fireEvent.click(screen.getByRole("button", { name: t("label.knows") }));
+    const panel = await screen.findByTestId("region-panel");
+    await waitFor(() => expect(api.sessionKnowledge).toHaveBeenCalledTimes(1));
+    await act(async () => fireEvent.click(screen.getByTestId("generate-btn")));
+    await waitFor(() => expect(api.sessionKnowledge).toHaveBeenCalledTimes(2));
+    expect(screen.getByTestId("region-panel")).toBe(panel);
+  });
+
+  it("#47 V10: in one column a region named in the band brings its tab into focus", async () => {
+    (api.advanceTurn as Mock).mockResolvedValue({ ...TURN, region_changes: [{ region_id: "a", region_name: "Riverton", promoted: ["x"],
+      demoted: [], pruned: [], events_applied: [], events_resolved: [], rumors_added: [] }] });
+    renderGm();
+    await ready();
+    await act(async () => fireEvent.click(screen.getByTestId("advance-turn-btn")));
+    fireEvent.click(await screen.findByTestId("turn-band-region-a"));
+    await waitFor(() => expect(document.activeElement?.querySelector('[data-testid="gm-tab-region"]')).not.toBeNull());
+  });
+
+  it("#47 EP1/EP2/TL1: ended events newest first, ten at a time; [more] says how many", async () => {
+    (api.listEvents as Mock).mockResolvedValue(evs(12, "resolved"));
+    (api.getTimeline as Mock).mockResolvedValue(Array.from({ length: 25 }, (_, i) => line(`l${i}`, i)));
+    renderGm();
+    await ready();
+    openTab("events");
+    fireEvent.click(await screen.findByRole("button", { name: new RegExp(t("label.eventsResolved")) }));
+    const cards = () => within(screen.getByTestId("events-resolved")).getAllByTestId(/^event-r\d+$/);
+    await waitFor(() => expect(cards()).toHaveLength(10));
+    expect(cards()[0]).toHaveTextContent("old 11");
+    fireEvent.click(screen.getByTestId("events-more"));
+    expect(cards()).toHaveLength(12);
+    openTab("timeline");
+    expect(await screen.findByTestId("timeline-more")).toHaveTextContent(t("action.showMore", { n: 5 }));
+  });
+
+  it("#47 DS2/RT1/V12: no share line at 0; a region's slider draft does not carry over; the suggestion count stays under the cap", async () => {
+    (api.getWorldState as Mock).mockResolvedValue(state({ max_event_suggestions: 2, regions: [
+      { region_id: "a", region_name: "Riverton", distortion: 0.3, feedback_share: 0, active_rumors: 1, promoted_rumors: 0, deed_rumors: 0, active_events: 0 },
+      { region_id: "b", region_name: "Hollow", distortion: 0.7, feedback_share: 0, active_rumors: 0, promoted_rumors: 0, deed_rumors: 0, active_events: 0 },
+    ] }));
+    (api.suggestEvents as Mock).mockResolvedValue([]);
+    renderGm();
+    await ready();
+    await chooseRegion("a");
+    expect(screen.queryByTestId("distortion-feedback")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("distortion-slider"), { target: { value: "0.9" } }); // dragged, not saved
+    fireEvent.click(screen.getByTestId("region-marker-b"));
+    await waitFor(() => expect(screen.getByTestId("distortion-label")).toHaveTextContent(numberWithMeaning("distortion", 0.7)));
+    expect(within(screen.getByTestId("suggest-n")).getAllByRole("option")).toHaveLength(2);
+    await act(async () => fireEvent.click(screen.getByTestId("suggest-events-btn")));
+    expect(api.suggestEvents).toHaveBeenCalledWith("s1", 1);
+  });
+
+  it("#47 DP2: a witness with no name in the map keeps the name the deed carries", async () => {
+    const deed = { id: "d1", session_id: "s1", player_id: "p", region_id: "a", turn: 0, kind: "arrival", text: "x",
+      witnessed_npc_ids: ["n1"], voided: false, region_name: "A", witness_names: ["Mara"] };
+    (api.listDeeds as Mock).mockResolvedValue([{ deed, appraisals: [], rumors: [], reached_region_ids: [], reached_region_names: [] }]);
+    renderGm();
+    await ready();
+    openTab("deeds");
+    expect(await screen.findByTestId("deed-witnesses-d1")).toHaveTextContent("Mara");
+  });
+});
+
+describe("missed mutants of the fixes", () => {
+  it("#12: with no names in the map, the title is the world file's name, not its id", async () => {
+    (api.worldNames as Mock).mockResolvedValue({ world_id: "w", lang: "en", world: {}, regions: {}, npcs: {}, event_seeds: {} });
+    (api.exportWorld as Mock).mockResolvedValue({ ...WORLD, world: { id: "w", name: "Emberleaf Isle" } });
+    renderGm();
+    await ready();
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Emberleaf Isle");
+  });
+
+  it("#29: a started seed stays off until the seeds are read again", async () => {
+    const reread = deferred<unknown>();
+    (api.listSeeds as Mock).mockResolvedValueOnce([SEED]).mockReturnValue(reread.promise);
+    (api.startSeed as Mock).mockResolvedValue(ev("e9", "active"));
+    renderGm();
+    await ready();
+    openTab("seeds");
+    await act(async () => fireEvent.click(await screen.findByTestId("seed-start-sd")));
+    expect(screen.getByTestId("seed-start-sd")).toBeDisabled();
+    await act(async () => reread.resolve([{ ...SEED, running_event_id: "e9" }]));
+    expect(await screen.findByTestId("seed-running-sd")).toBeInTheDocument();
+  });
+});

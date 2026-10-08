@@ -72,6 +72,9 @@ const OPEN: GameSession = { id: "s1", world_id: "w", status: "open", turn: 3 };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // no test inherits another's "LLM off" answer (code review 01 #21)
+  resetCapabilities();
+  (api.capabilities as Mock).mockResolvedValue({ llm: true, vlm: true, embedding: true });
 });
 
 // V6: the GM tests drive the real screen (GmPage) over these reads; a test changes what it needs.
@@ -335,7 +338,80 @@ describe("U6 review carry-overs", () => {
     const before = (api.listDeeds as Mock).mock.calls.length;
     await act(async () => done());
     expect(api.voidDeed).toHaveBeenCalledTimes(1);
+    expect(api.voidDeed).toHaveBeenCalledWith("s1", "d1"); // review #46
     await waitFor(() => expect((api.listDeeds as Mock).mock.calls.length - before).toBe(1));
+  });
+});
+
+
+// restored by V6 code review 01 #22 (dropped by mistake in the V6 switch-over)
+describe("PlayPage after U7", () => {
+  const VIEW = {
+    session_id: "s1",
+    turn: 3,
+    player: { id: "p1", session_id: "s1", name: "Ari", region_id: "a", turns_spent: 0 },
+    region_id: "a",
+    region_name: "Riverton",
+    level: "town",
+    description: "",
+    level_path: ["Riverton"],
+    npcs: [
+      { id: "n1", world_id: "w", name: "Mara", role: "innkeeper", description: "", home_region_id: "a", traits: [], provenance: { source: "input" } },
+    ],
+    facts: [],
+    hearsay: [],
+    rumors: [],
+    moves: [],
+    turn_running: false,
+    llm_available: true,
+  };
+
+  function play() {
+    return render(
+      <MemoryRouter initialEntries={["/play/s1"]}>
+        <Routes>
+          <Route path="/play/:sessionId?" element={<PlayPage pollMs={5} />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  beforeEach(() => {
+    (api.getRegion as Mock).mockResolvedValue(VIEW);
+    (api.getLog as Mock).mockResolvedValue([]);
+    (api.listTurnRuns as Mock).mockResolvedValue([]);
+    (api.listNpcs as Mock).mockResolvedValue([{ npc: VIEW.npcs[0], has_conversation: false, message_count: 0 }]);
+  });
+
+  it("#10: a closed session locks the actions", async () => {
+    (api.getSession as Mock).mockResolvedValue({ ...OPEN, status: "closed" });
+    play();
+    await waitFor(() => expect(screen.getByTestId("wait-btn")).toBeDisabled());
+    fireEvent.change(screen.getByTestId("declare-input"), { target: { value: "I sing" } });
+    expect(screen.getByTestId("declare-btn")).toBeDisabled();
+  });
+
+  it("U5 C1: a spoken line adds two to the count without re-reading the people here", async () => {
+    (api.getSession as Mock).mockResolvedValue(OPEN);
+    (api.startDialogue as Mock).mockResolvedValue({ id: "c1", session_id: "s1", npc_id: "n1", started_turn: 3, messages: [] });
+    (api.dialogueHistory as Mock).mockResolvedValue({ id: "c1", session_id: "s1", npc_id: "n1", started_turn: 3, messages: [] });
+    (api.say as Mock).mockResolvedValue({
+      message: { id: "m2", conversation_id: "c1", role: "npc", text: "Hm.", lang: "ko", turn: 3 },
+      lang: "ko",
+      llm_calls: 1,
+      context_ids: [],
+    });
+    play();
+    fireEvent.click(await screen.findByTestId("npc-n1-talk-btn"));
+    await waitFor(() => expect(screen.getByTestId("dialogue-input")).toBeEnabled());
+    const reads = (api.listNpcs as Mock).mock.calls.length;
+    fireEvent.change(screen.getByTestId("dialogue-input"), { target: { value: "hello" } });
+    await act(async () => fireEvent.click(screen.getByTestId("dialogue-send-btn")));
+    await waitFor(() => expect(api.say).toHaveBeenCalled());
+    expect((api.listNpcs as Mock).mock.calls.length).toBe(reads);
+    await waitFor(() =>
+      expect(screen.getByTestId("npc-n1-talked")).toHaveTextContent(t("dialogue.has", { n: 2 })),
+    );
   });
 });
 
@@ -417,9 +493,11 @@ describe("U7 review carry in U3", () => {
     fireEvent.pointerUp(slider);
     fireEvent.click(screen.getByTestId("region-marker-b"));
     await waitFor(() => expect(screen.getByText("rumor of b")).toBeInTheDocument());
+    const timelineReads = (api.getTimeline as Mock).mock.calls.length;
     await act(async () => finish({ session_id: "s1", region_id: "a", distortion_degree: 0.5, feedback_share: 0 }));
-    await new Promise((r) => setTimeout(r, 20));
+    await waitFor(() => expect((api.getTimeline as Mock).mock.calls.length).toBeGreaterThan(timelineReads)); // the write's re-read
     expect(screen.queryByText("rumor of a")).not.toBeInTheDocument();
+    expect(screen.getByText("rumor of b")).toBeInTheDocument();
   });
 
   it("#8: the distortion label follows the thumb before the save", async () => {

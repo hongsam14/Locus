@@ -98,7 +98,7 @@ export function GmSessionView({
       const el = document.querySelector<HTMLElement>(`[data-testid="${focusTo}"]`);
       if (!el || (el instanceof HTMLButtonElement && el.disabled)) return false;
       el.focus();
-      return true;
+      return document.activeElement === el; // a focus trap may refuse it: then try again
     };
     if (tryFocus()) {
       setFocusTo(null);

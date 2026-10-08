@@ -198,6 +198,9 @@ describe("RegionPanel session view", () => {
 describe("App routing (F1 / AD-R8)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // no test inherits another's "LLM off" answer (code review 01 #50)
+    resetCapabilities();
+    (api.capabilities as Mock).mockResolvedValue({ llm: true, vlm: true, embedding: true });
     (api.listSessions as Mock).mockResolvedValue([]);
     (api.getTimeline as Mock).mockResolvedValue([]);
     (api.listEvents as Mock).mockResolvedValue([]);

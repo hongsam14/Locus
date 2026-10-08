@@ -190,9 +190,9 @@ describe("TP-V6-2: choosing a region opens its tab; nothing else moves the tab (
     expect(selectedTab()).toHaveTextContent(t("tab.region"));
     expect(screen.getByTestId("region-heading")).toHaveTextContent("Riverton");
     // a suggestion does not move the tab: the events tab's count says it
-    (api.listEvents as Mock).mockResolvedValue([ev("e1", "active"), ev("e2", "suggested")]);
+    (api.listEvents as Mock).mockResolvedValue([ev("e1", "active"), ev("e2", "suggested"), ev("e3", "suggested")]);
     await act(async () => fireEvent.click(screen.getByTestId("suggest-events-btn")));
-    await waitFor(() => expect(screen.getByTestId("events-badge")).toHaveTextContent("1"));
+    await waitFor(() => expect(screen.getByTestId("events-badge")).toHaveTextContent("2")); // suggestions only (review #20)
     expect(selectedTab()).toHaveTextContent(t("tab.region"));
   });
 });
@@ -208,6 +208,7 @@ describe("TP-V6-3: one turn per press, one band, the new lines marked (BR-V6-06/
     fireEvent.click(btn);
     fireEvent.click(btn);
     expect(api.advanceTurn).toHaveBeenCalledTimes(1);
+    expect(api.advanceTurn).toHaveBeenCalledWith("s1"); // review #46
     expect(btn).toHaveAttribute("aria-disabled", "true");
     (api.getTimeline as Mock).mockResolvedValue([line("old1", 2), line("old2", 3), line("new1", 4)]);
     await act(async () => hold.resolve({ session_id: "s1", turn: 4, promoted_ids: [], demoted_ids: [], applied_event_ids: [],
@@ -298,7 +299,10 @@ describe("TP-V6-6 (screen): nothing of the last session (BR-V6-15/16, #14, RE-F1
     await act(async () => lateEvents.resolve([ev("old", "suggested")]));
     await act(async () => next.resolve({ ...OPEN, id: "s2", turn: 0 }));
     await ready();
+    openTab("events"); // a hidden tab says nothing (code review 01 #17)
+    await screen.findByTestId("events-suggested");
     expect(screen.queryByTestId("event-old")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("events-badge")).not.toBeInTheDocument();
     expect(screen.queryByTestId("gm-player-status")).not.toBeInTheDocument();
     expect(api.exportWorld).toHaveBeenCalledTimes(1);
   });

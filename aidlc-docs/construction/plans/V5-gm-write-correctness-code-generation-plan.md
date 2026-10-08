@@ -116,12 +116,12 @@
 - [x] 2.9 커밋: `fix(play): the session guard tells a turn from a GM write and closes without a gap; 409s carry no internals (V5, FR-C2, FR-C5)`
 
 ### Step 3 — 시험 받침 (NFR § 2, R-02·R-05)
-- [ ] 3.1 `tests/play/concurrency.py`
+- [x] 3.1 `tests/play/concurrency.py`
   - `InterleaveGate`: 메서드 이름 기준, 첫 두 호출, 0.5초. 저장소와 `uow()` 저장소 속성의 명시 메서드를 감싼다. 인메모리 작업 단위 안에서는 멈추지 않는다.
   - `BlockingDrafts`: 가짜 생성기·제안기다. `threading.Event`로 멈추고, 동시에 들어온 수의 최댓값을 센다.
-- [ ] 3.2 `tests/play/conftest.py`: `threaded_repo` 픽스처(`memory` / `sql`: `sqlite:///{tmp_path}/play.db`, `check_same_thread=False`, `timeout=5`, 스키마 생성).
-- [ ] 3.3 받침 자체 시험: 문이 두 스레드를 모으고, 혼자면 시간 초과로 푼다.
-- [ ] 3.4 커밋: `test(play): an interleave gate and a threaded repository for overlap tests (V5, NFR-10)`
+- [x] 3.2 `tests/play/conftest.py`: `threaded_repo` 픽스처(`memory` / `sql`: `sqlite:///{tmp_path}/play.db`, `check_same_thread=False`, `timeout=5`, 스키마 생성).
+- [x] 3.3 받침 자체 시험: 문이 두 스레드를 모으고, 혼자면 시간 초과로 푼다.
+- [x] 3.4 커밋: `test(play): an interleave gate and a threaded repository for overlap tests (V5, NFR-10)`
 
 ### Step 4 — 사건·씨앗 구간 (BLM § 2, BR-V5-01·02·05·06·07·12·21)
 - [ ] 4.1 `EventService`가 guard와 tuning을 받는다(wiring).

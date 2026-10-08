@@ -5628,3 +5628,10 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V6 — code review 01 fixed; V6 COMPLETE. Next: V7 (world and knowledge correctness) Functional Design.
 
 ---
+
+## Code Review — V6 — Correction
+**Timestamp**: 2026-10-08T13:36:28Z
+**AI Response**: Correction to the "Fixed" entry above: 24 mutants of the fixes (not 26); 22 caught in the end (two of the four first missed were caught after adding tests: the world-name fallback and the started seed row); the two Dialog focus guards remain uncatchable in jsdom. code-summary § 3 and the review record § 6 corrected.
+**Context**: CONSTRUCTION / V6 — bookkeeping correction only.
+
+---

@@ -5283,3 +5283,145 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V4 — code review 01 fixed; V4 COMPLETE. Next: V5 (GM write correctness) Functional Design.
 
 ---
+
+## Functional Design — V5 — Plan and questions
+**Timestamp**: 2026-10-08T06:07:21Z
+**User Input**: "작업 시작"
+**AI Response**: Started V5 (GM write correctness) Functional Design. Read the unit, FR-C1~C5, NFR-10, application design S1/S2/S5/S6 and the code (guard, GM router lease, event/seed/rumor/deed/distortion services, session close, advancer _fail and _compute_events, lifespan, error table). Plan `construction/plans/V5-gm-write-correctness-functional-design-plan.md` with self-decided items (from AD Q1=A/Q2=A and code facts) and three questions: Q1 deleted-region events (FR-C4), Q2 support adjust on an inactive rumor (RE-P01), Q3 also close RE-P05/RE-P07.
+**Context**: CONSTRUCTION / V5 — Functional Design, questions.
+
+---
+
+## Functional Design — V5 — Answers
+**Timestamp**: 2026-10-08T06:12:38Z
+**User Input**: Q1 "A. 다음 턴에 저절로 해소 (권장)"; Q2 "A. 409로 알림 (권장)"; Q3 "A. 함께 닫음 (권장)"
+**AI Response**: No ambiguity. Writing the V5 FD artifacts (domain-entities, business-logic-model, business-rules with TP-V5-*). Also found while reading: session close checks turns only at one point, so a turn starting right after the check could write to the closing session — the design lets close hold off new turns while it closes.
+**Context**: CONSTRUCTION / V5 — Functional Design, artifacts.
+
+---
+
+## Plan Review Requested — Functional Design — V5
+**Timestamp**: 2026-10-08T06:16:16Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/V5-gm-write-correctness/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/V5-gm-write-correctness/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — V5
+**Timestamp**: 2026-10-08T06:21:01Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 4 Minor; open 6. Record: `aidlc-docs/construction/V5-gm-write-correctness/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — next: approval gate (artifacts frozen).
+
+---
+
+## Functional Design — V5 — Approval
+**Timestamp**: 2026-10-08T06:22:06Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V5 functional design approved as it stands. Open review findings accepted; they go to the code plan as execution notes (R-01: what to do when compensating an interrupted run fails; R-02: r1 regression on the SQL adapter over a SQLite file, interleave gate also on the unit of work's stores, per-scenario store table). Next: NFR light (V5).
+**Context**: CONSTRUCTION / V5 — Functional Design approved.
+
+---
+
+## Plan Review Dispositions — Functional Design — V5
+**Timestamp**: 2026-10-08T06:22:06Z
+- R-01 → Accepted risk
+- R-02 → Accepted risk
+- R-03 → Accepted risk
+- R-04 → Accepted risk
+- R-05 → Accepted risk
+- R-06 → Accepted risk
+
+---
+
+## NFR Requirements + NFR Design (light) — V5 — Draft
+**Timestamp**: 2026-10-08T06:24:09Z
+**AI Response**: Wrote `construction/V5-gm-write-correctness/nfr/nfr-light.md`: NFR-1..10 applied to V5; the offline interleave method (two stores, SQLite file not `sqlite://`, the gate also wraps the unit of work's stores, per-scenario store table — closes the accepted FD finding R-02 here); the PostgreSQL operator checks P1..P6 for B&T; a hypothesis state-machine test for TurnGuard (NFR-6); operations/env additions.
+**Context**: CONSTRUCTION / V5 — NFR light.
+
+---
+
+## Plan Review Requested — NFR Requirements + NFR Design (light) — V5
+**Timestamp**: 2026-10-08T06:24:09Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class advisory, iteration 1, as for V2's light NFR) on `aidlc-docs/construction/V5-gm-write-correctness/nfr/nfr-light.md`. Review record: `aidlc-docs/construction/V5-gm-write-correctness/nfr/reviews/nfr-light-review-01.md`.
+**Context**: NFR light — review requested before approval gate.
+
+---
+
+## Plan Review Completed — NFR Requirements + NFR Design (light) — V5
+**Timestamp**: 2026-10-08T06:26:43Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 1 Major / 5 Minor; open 6. Record: `aidlc-docs/construction/V5-gm-write-correctness/nfr/reviews/nfr-light-review-01.md`.
+**Context**: NFR light — next: approval gate (advisory verdict is terminal; artifact frozen).
+
+---
+
+## NFR Requirements + NFR Design (light) — V5 — Approval
+**Timestamp**: 2026-10-08T06:33:35Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V5 NFR light approved. Open findings accepted: R-01 goes to the B&T checklist (P1..P3 are a real-stack smoke, plus a psql row-hold check if the lock itself is to be seen); R-02..R-06 go to the code plan as execution notes. Next: Code Generation Part 1 (V5 code plan).
+**Context**: CONSTRUCTION / V5 — NFR light approved.
+
+---
+
+## Plan Review Dispositions — NFR Requirements + NFR Design (light) — V5
+**Timestamp**: 2026-10-08T06:33:35Z
+- R-01 → Accepted risk
+- R-02 → Accepted risk
+- R-03 → Accepted risk
+- R-04 → Accepted risk
+- R-05 → Accepted risk
+- R-06 → Accepted risk
+
+---
+
+## Code Generation Part 1 — V5 — Plan
+**Timestamp**: 2026-10-08T06:36:25Z
+**AI Response**: Wrote `construction/plans/V5-gm-write-correctness-code-generation-plan.md`: 9 steps / 9 commits (record + baseline; guard, errors, tuning and callers; test harness; event and seed sections; rumor sections; deed and distortion sections; turn recovery and removed-region events; operations docs; gates and summary). Execution notes carry the accepted FD R-01..R-06 (R-01: a run whose compensation fails is marked `interrupted_uncompensated` and logged, `fail_stale_runs` removed) and NFR R-01..R-06 (counts of changed tests by grep).
+**Context**: CONSTRUCTION / V5 — Code Generation Part 1.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — V5
+**Timestamp**: 2026-10-08T06:36:25Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/V5-gm-write-correctness-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V5-gm-write-correctness-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — V5
+**Timestamp**: 2026-10-08T06:38:43Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 4 Minor; open 6. Record: `aidlc-docs/construction/plans/reviews/V5-gm-write-correctness-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — next: approval gate (plan frozen).
+
+---
+
+## Code Generation Part 1 — V5 — Approval prompt
+**Timestamp**: 2026-10-08T06:38:43Z
+**AI Response**: Asked for approval of the V5 code plan with the review brief (R-01, R-02 Major; R-03..R-06 Minor open).
+**Context**: CONSTRUCTION / V5 — code plan gate.
+
+---
+
+## Code Generation Part 1 — V5 — Approval
+**Timestamp**: 2026-10-08T07:09:26Z
+**User Input**: "Approve & Continue"
+**AI Response**: V5 code plan approved. It authorizes the plan's commits on `feat/follow-up`, with no push. R-01..R-06 become 실행 메모 § 1.4. Starting Code Generation Part 2.
+**Context**: CONSTRUCTION / V5 — Code Generation Part 1 approved.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — V5
+**Timestamp**: 2026-10-08T07:09:26Z
+- R-01 → Accepted risk
+- R-02 → Accepted risk
+- R-03 → Accepted risk
+- R-04 → Accepted risk
+- R-05 → Accepted risk
+- R-06 → Accepted risk
+
+---

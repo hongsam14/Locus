@@ -128,7 +128,9 @@ def assemble_play(
         region_knowledge=region_knowledge,
         default_lang=shared.settings.translation_target_lang,
     )
-    events = EventService(store, loader, suggester=suggester, deeds=deeds, tuning=tuning)
+    events = EventService(
+        store, loader, suggester=suggester, deeds=deeds, tuning=tuning, guard=guard
+    )
     container = PlayContainer(
         repo=store,
         sessions=SessionService(store, loader, guard, deeds=deeds, tuning=tuning),

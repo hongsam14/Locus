@@ -318,10 +318,16 @@ def test_suggest_without_suggester_returns_empty() -> None:
 
 
 def test_approve_non_suggested_rejected() -> None:
-    _repo, _loader, gm, session = _setup()
+    """V5 BR-V5-07: approving an ACTIVE event gives it back as it is, with no second line
+    (two approves that overlap); a resolved one is still refused."""
+    repo, _loader, gm, session = _setup()
     ev = gm.events.create_event(
         session.id, "r1", category=EventCategory.WAR, magnitude=0.5
     )  # ACTIVE
+    lines = len(repo.list_timeline(session.id))
+    assert gm.events.approve_event(session.id, ev.id).status == EventStatus.ACTIVE
+    assert len(repo.list_timeline(session.id)) == lines
+    gm.events.resolve_event(session.id, ev.id)
     with pytest.raises(ValueError):
         gm.events.approve_event(session.id, ev.id)
 

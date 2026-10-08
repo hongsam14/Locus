@@ -124,18 +124,18 @@
 - [x] 3.4 커밋: `test(play): an interleave gate and a threaded repository for overlap tests (V5, NFR-10)`
 
 ### Step 4 — 사건·씨앗 구간 (BLM § 2, BR-V5-01·02·05·06·07·12·21)
-- [ ] 4.1 `EventService`가 guard와 tuning을 받는다(wiring).
+- [x] 4.1 `EventService`가 guard와 tuning을 받는다(wiring).
   - `create_event`·`resolve_event`·`approve_event`·`discard_event`: 구간 안에서 열림을 확인하고 새로 읽고 쓰고 줄을 쓴다.
   - `suggest_events`: LLM은 밖, 저장과 줄은 구간 안이다.
   - 승인 규칙(BR-V5-07), 해소의 복원은 월드에 있는 지역만(BR-V5-21)이다.
-- [ ] 4.2 `SeedService.start`: 진행 중 확인과 만들기를 한 구간에 둔다(다시 들어감).
-- [ ] 4.3 시험(새 `tests/play/test_v5_overlap.py` — 겹침 시나리오는 모두 이 파일, `threaded_repo`로 두 저장소)
+- [x] 4.2 `SeedService.start`: 진행 중 확인과 만들기를 한 구간에 둔다(다시 들어감).
+- [x] 4.3 시험(새 `tests/play/test_v5_overlap.py` — 겹침 시나리오는 모두 이 파일, `threaded_repo`로 두 저장소)
   - TP-V5-1: SQL 전용, 인메모리는 정확성만.
   - TP-V5-2, TP-V5-9.
   - TP-V5-12 사건 쪽(만들기·승인·제안).
   - TP-V5-13: 상한 0.1초, 씨앗 다시 들어감.
   - 돌연변이 확인.
-- [ ] 4.4 커밋: `fix(play): event and seed writes run one at a time per session — both restores land, one seed start wins (V5, #9, #12, RE-P06)`
+- [x] 4.4 커밋: `fix(play): event and seed writes run one at a time per session — both restores land, one seed start wins (V5, #9, #12, RE-P06)`
 
 ### Step 5 — 소문 구간 (BLM § 2, BR-V5-08·11·12·13)
 - [ ] 5.1 `RumorService`가 guard와 tuning을 받는다.

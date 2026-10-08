@@ -51,21 +51,25 @@ class SeedService(SessionAppService):
         snapshot = self._snapshots.get(session.world_id)
         seed = _seed(snapshot.event_seeds, seed_id)
         require_region(self._snapshots, session.world_id, seed.region_id)
-        running = self._running(session_id).get(seed.id)
-        if running is not None:
-            raise SeedAlreadyRunningError(f"seed already running: {seed.id} (event {running})")
-        return self._events.create_event(
-            session_id,
-            seed.region_id,
-            category=seed.category,
-            magnitude=seed.magnitude,
-            description=seed.description or seed.title,
-            lifecycle=seed.lifecycle,
-            provenance=Provenance(
-                source=SourceKind.INPUT, generated_by=SEED_SOURCE, refs=[seed.id]
-            ),
-            timeline_extra={"seed_id": seed.id, "seed_title": seed.title},
-        )
+        # V5 (#12, BR-V5-06): "is it running?" and the create are one section — the
+        # event service's, entered again by ``create_event`` (BR-V5-04) — so of two starts
+        # of one seed the second sees the first's event.
+        with self._events.section.lock(session_id):
+            running = self._running(session_id).get(seed.id)
+            if running is not None:
+                raise SeedAlreadyRunningError(f"seed already running: {seed.id} (event {running})")
+            return self._events.create_event(
+                session_id,
+                seed.region_id,
+                category=seed.category,
+                magnitude=seed.magnitude,
+                description=seed.description or seed.title,
+                lifecycle=seed.lifecycle,
+                provenance=Provenance(
+                    source=SourceKind.INPUT, generated_by=SEED_SOURCE, refs=[seed.id]
+                ),
+                timeline_extra={"seed_id": seed.id, "seed_title": seed.title},
+            )
 
     def _running(self, session_id: str) -> dict[str, str]:
         """seed id -> its unresolved event id in this session."""

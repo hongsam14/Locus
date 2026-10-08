@@ -103,9 +103,9 @@
 - [ ] 1.2 기준선을 잰다: `npx vitest run`(424 + skip 1), `npx tsc --noEmit`, `pytest -q`(1048), `npm audit --omit=dev`(0), JS gzip(`vite build` 결과의 gzip 값). 390px 가로 스크롤은 V2 캡처의 기록 값을 옮겨 적는다(홈 0, 플레이 대화 418; 다시 찍지 않음). code-summary § 1에 적는다.
 
 ### Step 2 — 공유 바탕: `useMedia`, `Dialog` 변형, `Button busy` (BR-V4-24·26, frontend-components § 4.1·5)
-- [ ] 2.1 `hooks/useMedia.ts`: `matchMedia` 구독이다. 없으면 false다. `hooks/index.ts`가 내보낸다.
-- [ ] 2.2 `ui/Dialog.tsx` `variant: "center" | "sheet" | "full"`(기본 center). 클래스만 다르고 동작(이름·초점·Esc·복귀·알림 영역 누름 무시)은 같다.
-- [ ] 2.3 `ui/Button.tsx`(코드 계획 리뷰 01 R-03)
+- [x] 2.1 `hooks/useMedia.ts`: `matchMedia` 구독이다. 없으면 false다. `hooks/index.ts`가 내보낸다.
+- [x] 2.2 `ui/Dialog.tsx` `variant: "center" | "sheet" | "full"`(기본 center). 클래스만 다르고 동작(이름·초점·Esc·복귀·알림 영역 누름 무시)은 같다.
+- [x] 2.3 `ui/Button.tsx`(코드 계획 리뷰 01 R-03)
   - `busy`면 native `disabled` 대신 `aria-disabled="true"`를 둔다.
   - `onClick`을 감싸 바쁜 동안 `e.preventDefault()` 후 돌아간다. 클릭의 기본 동작을 막으므로 `type="submit"` 버튼의 마우스 제출과 Enter 암묵 제출이 함께 막힌다(암묵 제출도 기본 버튼에 click을 보낸다). 바쁜 submit 버튼의 Enter 제출이 막히는지 테스트한다.
   - `disabled`(바쁨 아님)는 native 그대로다.
@@ -114,11 +114,11 @@
     - `gm.test.tsx` "U6 review carry-overs › #13 and C1: one void per confirmation"
   - 둘을 `toHaveAttribute("aria-disabled", "true")`와 "누름 무시"로 고친다. 그 밖의 `busy={…}` 쓰는 곳(에디터·GM·SessionBar·ConfirmDialog 등 28곳)은 테스트가 깨지지 않았다.
   - 규칙: 바쁜 버튼 단언은 `aria-disabled`, `disabled` 버튼 단언은 `toBeDisabled()`다.
-- [ ] 2.4 테스트(`ui.primitives`, `hooks`)
+- [x] 2.4 테스트(`ui.primitives`, `hooks`)
   - `useMedia`의 matchMedia 대역
   - Dialog 세 변형의 이름·Esc·초점 복귀
   - Button busy는 클릭을 무시하고 초점이 유지된다
-- [ ] 2.5 커밋: `feat(web): useMedia; dialog sheet and full variants; a busy button keeps its focus (V4)`
+- [x] 2.5 커밋: `feat(web): useMedia; dialog sheet and full variants; a busy button keeps its focus (V4)`
 
 ### Step 3 — 메뉴 활성 표시와 사전 문체 정리 (BR-V4-09, § 1.2)
 - [ ] 3.1 `layout/AppShell.tsx`: 월드 없는 "에디터"를 `Link to="/"`로 바꾼다. `nav.gmLocked`는 `hint.gmLocked`로 옮긴다(호출부 `AppShell.tsx:71`).

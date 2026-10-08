@@ -5,14 +5,36 @@ import { t } from "../i18n";
 import { Button, ConfirmDialog, Dialog, FileInput, Select, StatusView, Tabs, Toaster, toast } from "../ui";
 
 describe("Button", () => {
-  it("shows work in progress and cannot be pressed while busy", () => {
+  it("shows work in progress, keeps its focus and cannot be pressed while busy (V4 BR-V4-24)", () => {
     const onClick = vi.fn();
-    render(<Button busy onClick={onClick}>go</Button>);
+    const { rerender } = render(<Button onClick={onClick}>go</Button>);
     const b = screen.getByRole("button", { name: "go" });
+    b.focus();
+    rerender(<Button busy onClick={onClick}>go</Button>);
     expect(b).toHaveAttribute("aria-busy", "true");
-    expect(b).toBeDisabled();
+    expect(b).toHaveAttribute("aria-disabled", "true");
+    expect(b).not.toBeDisabled(); // aria-disabled, so focus stays on it
+    expect(document.activeElement).toBe(b);
     fireEvent.click(b);
     expect(onClick).not.toHaveBeenCalled();
+    expect(b.className).toContain("aria-disabled:bg-disabled"); // looks off (code plan R-12)
+  });
+
+  it("a busy submit button does not submit its form, by mouse or Enter", () => {
+    const onSubmit = vi.fn((e: { preventDefault(): void }) => e.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        <input aria-label="name" />
+        <Button type="submit" busy>send</Button>
+      </form>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "send" }));
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("a disabled button is natively disabled as before", () => {
+    render(<Button disabled>off</Button>);
+    expect(screen.getByRole("button", { name: "off" })).toBeDisabled();
   });
 
   it("is 44 px tall on a phone, the small one 36 px from 640 px up", () => {
@@ -94,6 +116,32 @@ describe("Dialog and the world around it", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("main")));
+  });
+});
+
+describe("Dialog variants (V4 BR-V4-26)", () => {
+  it.each(["center", "sheet", "full"] as const)("%s: named, closes on Esc, gives focus back", async (variant) => {
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>open {variant}</button>
+          <Dialog open={open} onOpenChange={setOpen} title={`T ${variant}`} variant={variant} testId="d">
+            <input aria-label="inside" />
+          </Dialog>
+        </>
+      );
+    }
+    render(<Harness />);
+    const opener = screen.getByRole("button", { name: `open ${variant}` });
+    opener.focus();
+    fireEvent.click(opener);
+    const dialog = await screen.findByRole("dialog", { name: `T ${variant}` });
+    expect(dialog).toHaveAttribute("data-variant", variant);
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(document.activeElement).toBe(opener));
   });
 });
 

@@ -1,6 +1,6 @@
 // Request helpers drop late answers and run a write once at a time (V2 BR-V2-24, TP-V2-13).
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { useAction, useResource } from "../hooks";
+import { NARROW, WIDE, useAction, useMedia, useResource } from "../hooks";
 
 type Deferred<T> = { promise: Promise<T>; resolve(v: T): void; reject(e: unknown): void };
 function deferred<T>(): Deferred<T> {
@@ -167,5 +167,28 @@ describe("useAction", () => {
     unmount();
     await act(async () => d.resolve(1));
     expect(onDone).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("useMedia (V4)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("is false without matchMedia (jsdom), so tests get the middle layout", () => {
+    const { result } = renderHook(() => useMedia(WIDE));
+    expect(result.current).toBe(false);
+  });
+
+  it("follows the query's changes", () => {
+    let listener: ((e: { matches: boolean }) => void) | null = null;
+    vi.stubGlobal("matchMedia", (q: string) => ({
+      matches: q === NARROW,
+      addEventListener: (_: string, fn: (e: { matches: boolean }) => void) => (listener = fn),
+      removeEventListener: () => {},
+    }));
+    const { result } = renderHook(() => useMedia(NARROW));
+    expect(result.current).toBe(true);
+    act(() => listener?.({ matches: false }));
+    expect(result.current).toBe(false);
   });
 });

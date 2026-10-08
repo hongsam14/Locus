@@ -7,7 +7,9 @@ type Size = "sm" | "md";
 
 const base =
   "inline-flex items-center justify-center gap-2 rounded-md border font-body font-bold leading-none " +
-  "transition-colors disabled:cursor-not-allowed disabled:border-line disabled:bg-disabled disabled:text-disabled-fg";
+  "transition-colors disabled:cursor-not-allowed disabled:border-line disabled:bg-disabled disabled:text-disabled-fg " +
+  // a busy button is aria-disabled, not disabled (V4 BR-V4-24): the same look (code plan R-12)
+  "aria-disabled:cursor-not-allowed aria-disabled:border-line aria-disabled:bg-disabled aria-disabled:text-disabled-fg";
 
 const variants: Record<Variant, string> = {
   primary: "border-accent bg-accent text-on-accent hover:border-accent-hover hover:bg-accent-hover",
@@ -29,6 +31,10 @@ function Spinner() {
   );
 }
 
+/** V4 (BR-V4-24): `busy` keeps the button focusable — `aria-disabled`, not `disabled`, so
+ * focus does not fall to the body while the work runs — and ignores presses: the click's
+ * default is prevented too, which also stops a submit button's form submission (mouse or
+ * Enter). `disabled` (not busy) is the native attribute as before. */
 export function Button({
   variant = "secondary",
   size = "md",
@@ -37,13 +43,22 @@ export function Button({
   className = "",
   disabled,
   children,
+  onClick,
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size; busy?: boolean; icon?: ReactNode }) {
   return (
     <button
       className={`${base} ${variants[variant]} ${sizes[size]} ${className}`.trim()}
-      disabled={disabled || busy}
+      disabled={disabled}
+      aria-disabled={busy || undefined}
       aria-busy={busy || undefined}
+      onClick={(e) => {
+        if (busy) {
+          e.preventDefault();
+          return;
+        }
+        onClick?.(e);
+      }}
       {...rest}
     >
       {busy ? <Spinner /> : icon}

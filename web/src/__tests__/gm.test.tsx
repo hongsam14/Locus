@@ -312,7 +312,8 @@ describe("U6 review carry-overs", () => {
     const dialog = within(screen.getByRole("dialog"));
     const confirm = dialog.getByRole("button", { name: t("deed.voidConfirmBtn") });
     fireEvent.click(confirm);
-    await waitFor(() => expect(confirm).toBeDisabled());
+    // V4 (BR-V4-24): a busy button is aria-disabled and ignores presses (not native disabled)
+    await waitFor(() => expect(confirm).toHaveAttribute("aria-disabled", "true"));
     fireEvent.click(confirm); // a double click sends nothing more
     const before = (api.listDeeds as Mock).mock.calls.length;
     await act(async () => done());

@@ -9,6 +9,16 @@ import { useRef, type ReactNode } from "react";
 // <main>. A press in the notification area is not an outside press: closing a toast must
 // not close the dialog under it (V2 review #3).
 const SIZES = { sm: "max-w-sm", md: "max-w-md", lg: "max-w-2xl" } as const;
+// V4 (BR-V4-26): where the dialog sits. "center" is the V2 dialog; "sheet" rises from the
+// bottom edge at full width (a phone's declare / move sheet); "full" covers the screen (a
+// phone's talk). Only the frame differs — naming, focus, Esc and focus return are the same.
+const FRAME = {
+  center:
+    "left-1/2 top-1/2 max-h-[90vh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border p-6",
+  sheet:
+    "inset-x-0 bottom-0 max-h-[85vh] w-full rounded-t-xl border-x border-t p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]",
+  full: "inset-0 h-full w-full p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]",
+} as const;
 
 export function Dialog({
   open,
@@ -18,6 +28,7 @@ export function Dialog({
   children,
   footer,
   size = "md",
+  variant = "center",
   testId,
 }: {
   open: boolean;
@@ -27,6 +38,7 @@ export function Dialog({
   children?: ReactNode;
   footer?: ReactNode;
   size?: keyof typeof SIZES;
+  variant?: keyof typeof FRAME;
   testId?: string; // on the dialog element itself (its title and body inside)
 }) {
   const opener = useRef<HTMLElement | null>(null);
@@ -36,9 +48,10 @@ export function Dialog({
         <RadixDialog.Overlay className="fixed inset-0 z-50 bg-scrim" />
         <RadixDialog.Content
           data-testid={testId}
+          data-variant={variant}
           className={
-            `fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 ` +
-            `flex-col gap-3 overflow-y-auto rounded-xl border border-line-strong bg-surface p-6 text-fg shadow-pop ${SIZES[size]}`
+            `fixed z-50 flex flex-col gap-3 overflow-y-auto border-line-strong bg-surface text-fg shadow-pop ` +
+            `${FRAME[variant]} ${variant === "center" ? SIZES[size] : ""}`
           }
           onOpenAutoFocus={() => {
             opener.current = document.activeElement as HTMLElement | null;

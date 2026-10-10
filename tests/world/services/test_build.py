@@ -322,3 +322,113 @@ def test_br_v7_11_a_builder_without_a_backup_still_replaces(tmp_path) -> None:
     builder.build("w", inputs=None)
     report = builder.build("w", inputs=None, replace=True)
     assert report.ok and report.replaced is True and report.backup_path is None
+
+
+# --------------------------------------------------------------------------- #
+# V7 — a rebuild keeps the world's NPCs and event seeds (TP-V7-8, TP-V7-9)
+# --------------------------------------------------------------------------- #
+def _add_people(graph, regions_by_name: dict, *, npc_homes=("R0", "R1"), seed_home="R1"):
+    """What the editor would add after a build: NPCs and an event seed."""
+    from locus.shared.models import NPC, EventSeed
+    from locus.shared.storage.persistence import persist_graph
+
+    npcs = [
+        NPC(
+            id=f"npc-{i}",
+            world_id="w",
+            name=f"Npc {i}",
+            role="miller",
+            description="d",
+            home_region_id=regions_by_name[home],
+            provenance=_prov(),
+        )
+        for i, home in enumerate(npc_homes)
+    ]
+    seed = EventSeed(
+        id="seed-0",
+        world_id="w",
+        region_id=regions_by_name[seed_home],
+        title="Flood",
+        category="disaster",
+        magnitude=0.5,
+        provenance=_prov(),
+    )
+    persist_graph(graph, InMemorySearchRepository(), None, "w", npcs=npcs, seeds=[seed])
+    return npcs, seed
+
+
+def _names(cache) -> dict:
+    return {r.name: r.id for r in cache.get("w").topo.regions}
+
+
+def test_tp_v7_8_a_rebuild_carries_npcs_and_seeds_onto_the_new_regions(tmp_path) -> None:
+    builder, graph, _search, cache = _make(tmp_path, ingest=_Ingest(regions=2))
+    builder.build("w", inputs=None)
+    old_ids = _names(cache)
+    _add_people(graph, old_ids)
+    cache.invalidate("w")
+
+    report = builder.build("w", inputs=None, replace=True)
+
+    assert report.ok and report.replaced is True
+    assert (report.carried_npcs, report.carried_seeds) == (2, 1)
+    after = cache.get("w")
+    new_ids = _names(cache)
+    assert set(new_ids.values()).isdisjoint(old_ids.values())  # new regions
+    homes = {n.id: n.home_region_id for n in after.npcs}
+    assert homes == {"npc-0": new_ids["R0"], "npc-1": new_ids["R1"]}
+    assert [(s.id, s.region_id) for s in after.event_seeds] == [("seed-0", new_ids["R1"])]
+
+
+def test_tp_v7_8_an_npc_whose_region_is_gone_is_named_not_carried(tmp_path) -> None:
+    builder, graph, _search, cache = _make(tmp_path, ingest=_Ingest(regions=2))
+    builder.build("w", inputs=None)
+    _add_people(graph, _names(cache))
+    cache.invalidate("w")
+    shrunk, *_ = _make(tmp_path, graph=graph, ingest=_Ingest(regions=1))  # no R1 now
+
+    report = shrunk.build("w", inputs=None, replace=True)
+
+    assert report.ok and (report.carried_npcs, report.carried_seeds) == (1, 0)
+    left = [w for w in report.warnings if w.stage == "carry-over"]
+    assert sorted(w.item_id for w in left) == ["npc-1", "seed-0"]
+    assert all(w.severity == "warning" for w in left)
+
+
+def test_tp_v7_9_the_old_world_is_read_fresh_not_from_the_cache(tmp_path) -> None:
+    """The cache still holds the world as it was before the editor's NPC (same version
+    mark: the NPC went in without touching WorldMeta); the rebuild reads it fresh."""
+    builder, graph, _search, cache = _make(tmp_path, ingest=_Ingest(regions=2))
+    builder.build("w", inputs=None)
+    assert cache.get("w").npcs == [] and cache.is_cached("w")
+    _add_people(graph, _names(cache))
+    assert cache.get("w").npcs == []  # stale on purpose
+
+    report = builder.build("w", inputs=None, replace=True)
+
+    assert report.carried_npcs == 2 and len(cache.get("w").npcs) == 2
+
+
+def test_tp_v7_9_an_old_world_that_cannot_be_read_is_not_replaced(tmp_path) -> None:
+    class _Unreadable(WorldCache):
+        fail = False
+
+        def get(self, world_id):
+            if self.fail:
+                raise ConnectionError("graph read failed")
+            return super().get(world_id)
+
+    graph = InMemoryGraphRepository()
+    builder, graph, search, _cache = _make(tmp_path, graph=graph)
+    builder.build("w", inputs=None)
+    before = sorted((n.label, n.id) for n in graph._nodes.values())
+    cache = _Unreadable(WorldLoader(graph))
+    cache.fail = True
+    builder._cache = cache  # the same builder, reading through a failing cache
+
+    report = builder.build("w", inputs=None, replace=True)
+
+    assert report.ok is False and report.replaced is False
+    assert [(w.stage, w.severity) for w in report.errors] == [("carry-over", "error")]
+    assert "not replaced" in report.errors[0].message
+    assert sorted((n.label, n.id) for n in graph._nodes.values()) == before

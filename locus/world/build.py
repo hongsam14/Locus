@@ -42,6 +42,7 @@ from locus.shared.models import (
 )
 from locus.shared.storage.base import GraphRepository, SearchRepository
 from locus.shared.storage.persistence import persist_graph
+from locus.world.carry_over import CarryOver, carry_over
 from locus.world.ingestion.service import IngestionService, WorldInputs
 from locus.world.ontology.builder import OntologyBuild, OntologyBuilder
 from locus.world.topology.builder import TopologyBuild, TopologyBuilder
@@ -256,8 +257,22 @@ class WorldBuilder:
         backup_path: Path | None = None
         onto_build: OntologyBuild | None = None
         kg = None
+        carry = CarryOver()
         try:
             if exists:
+                try:  # what the editor added since: read fresh, not from the cache (R-08)
+                    self._cache.invalidate(world_id)
+                    old = self._cache.get(world_id)
+                except Exception as exc:  # unread, its NPCs and seeds would be lost (R-07)
+                    warnings.append(
+                        BuildWarning(
+                            stage="carry-over",
+                            severity="error",
+                            message=f"the old world could not be read; it was not replaced: {exc}",
+                        )
+                    )
+                    return self._report(world_id, warnings, counter)
+                carry = carry_over(old, topology.regions, world_id)
                 try:
                     backup_path = self._backup(world_id)
                 except BackupFailedError as exc:  # before anything is deleted (R-07)
@@ -302,6 +317,7 @@ class WorldBuilder:
                         "lookups kept the computed weight without a prior",
                     )
                 )
+            warnings.extend(carry.warnings)  # one per NPC or seed left behind
             persist_graph(
                 self._graph,
                 self._search,
@@ -313,6 +329,8 @@ class WorldBuilder:
                 connections=topology.connections,
                 scopes=kg.scopes,
                 relations=kg.relations,
+                npcs=carry.npcs,  # V7: the old world's, on the new regions (FR-C9)
+                seeds=carry.seeds,
                 meta=WorldMeta(
                     id=world_id,
                     name=getattr(inputs, "name", None) or world_id,
@@ -357,6 +375,8 @@ class WorldBuilder:
             replaced=replaced,
             backup_path=str(backup_path) if backup_path else None,
             priors_created=len(priors) + len(_created_priors(wiki)),
+            carried_npcs=len(carry.npcs),
+            carried_seeds=len(carry.seeds),
         )
 
     # ------------------------------------------------------------------ #

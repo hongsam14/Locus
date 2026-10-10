@@ -27,6 +27,12 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
+# The load warnings of an NPC / event seed dropped for a missing region: a rebuild's
+# carry-over reports those too, from the old snapshot's ``load_warnings`` (V7, R-10).
+NPC_HOME_DANGLING = "NPC home region"
+SEED_REGION_DANGLING = "EventSeed region"
+
+
 class WorldLoader:
     def __init__(self, graph_repo: GraphRepository) -> None:
         self._g = graph_repo
@@ -116,12 +122,12 @@ class WorldLoader:
         npcs = _keep(
             npcs,
             lambda n: n.home_region_id in region_ids,
-            lambda n: dangling("NPC home region", n.id),
+            lambda n: dangling(NPC_HOME_DANGLING, n.id),
         )
         seeds = _keep(  # U8: a seed whose region is gone never reaches a session
             seeds,
             lambda s: s.region_id in region_ids,
-            lambda s: dangling("EventSeed region", s.id),
+            lambda s: dangling(SEED_REGION_DANGLING, s.id),
         )
 
         scoped = {s.knowledge_id for s in scopes}

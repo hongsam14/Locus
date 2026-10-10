@@ -81,3 +81,11 @@ def test_the_readme_names_only_compose_profiles_that_exist() -> None:
     named = set(re.findall(r"--profile (\w+)", (ROOT / "README.md").read_text(encoding="utf-8")))
     assert declared == {"service", "tools"}
     assert named and named <= declared
+
+
+def test_tp_v7_14_the_readme_says_what_a_build_makes() -> None:
+    """V7 (BR-V7-16): a build makes regions, connections and knowledge; NPCs and event
+    seeds come from the editor and a rebuild keeps them."""
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "NPC가 만들어집니다" not in readme
+    assert "NPC와 사건 씨앗은 에디터에서 더하고, 소스로 다시 빌드해도 남습니다" in readme

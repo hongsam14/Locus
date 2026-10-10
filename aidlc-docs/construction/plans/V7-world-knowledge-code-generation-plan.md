@@ -144,24 +144,24 @@
 - [x] 6.5 커밋: `fix(world): a failed backup stops the replace before anything is deleted (V7, FR-C8, RE-W04)`
 
 ### Step 7 — 이어 붙이기 (BLM § 4, BR-V7-12~16, § 1.1 R-10)
-- [ ] 7.1 `locus/knowledge/loader.py`: 버리는 문장의 앞머리를 상수 `NPC_HOME_DANGLING`, `SEED_REGION_DANGLING`으로 둔다(문장은 그대로).
-- [ ] 7.2 새 `locus/world/carry_over.py`(순수): `CarryOver`, `region_key`, `carry_over(old, new_regions, world_id)`. 맞추기는 domain-entities § 4다. 로더가 버린 것의 경고는 § 1.1 R-10이다.
-- [ ] 7.3 `locus/shared/models/reports.py` `BuildReport`: `carried_npcs: int = 0`, `carried_seeds: int = 0`. `BuildWarning.stage` 주석에 새 stage 넷을 더한다.
-- [ ] 7.4 `locus/world/build.py` 커밋 단계(교체일 때)
+- [x] 7.1 `locus/knowledge/loader.py`: 버리는 문장의 앞머리를 상수 `NPC_HOME_DANGLING`, `SEED_REGION_DANGLING`으로 둔다(문장은 그대로).
+- [x] 7.2 새 `locus/world/carry_over.py`(순수): `CarryOver`, `region_key`, `carry_over(old, new_regions, world_id)`. 맞추기는 domain-entities § 4다. 로더가 버린 것의 경고는 § 1.1 R-10이다.
+- [x] 7.3 `locus/shared/models/reports.py` `BuildReport`: `carried_npcs: int = 0`, `carried_seeds: int = 0`. `BuildWarning.stage` 주석에 새 stage 넷을 더한다.
+- [x] 7.4 `locus/world/build.py` 커밋 단계(교체일 때)
   - ① `self._cache.invalidate(world_id)` 다음 `old = self._cache.get(world_id)`. 던지면 멈춘다: `stage="carry-over"`, severity error, `"the old world could not be read; it was not replaced: …"`, `replaced=false`.
   - ② 백업(Step 6) ③ 지우기 ④ 사전·온톨로지(지금과 같음)
   - ⑤ `carry = carry_over(old, topology.regions, world_id)`
   - ⑥ 본체 `persist_graph`에 `npcs=carry.npcs`, `seeds=carry.seeds`를 싣는다. WorldMeta는 Step 3대로 마지막이다.
   - ⑦ 리포트에 `carried_npcs`, `carried_seeds`, `carry.warnings`를 싣는다. 첫 빌드(월드 없음)는 0이다.
-- [ ] 7.5 `README.md` 7행: "NPC가 만들어집니다"를 FD § 4 문장으로 고친다.
-- [ ] 7.6 시험
+- [x] 7.5 `README.md` 7행: "NPC가 만들어집니다"를 FD § 4 문장으로 고친다.
+- [x] 7.6 시험
   - 새 `tests/world/test_carry_over.py`: 맞추기 규칙(정규화한 이름·단계, 부모로 가르기, 못 가르면 경고, 없으면 경고, 로더가 버린 것 경고), PBT-V7-4.
   - `tests/world/services/test_build.py`: TP-V7-8(NPC 둘·씨앗 하나 → 다시 빌드 → 새 지역 id로 셋, 리포트 수; 이름 바뀐 지역의 NPC → 경고), TP-V7-9(캐시에 낡은 스냅샷, 그래프에 막 더한 NPC → 이어 붙음; 캐시 `get`이 던지면 교체 안 함).
   - `tests/api/test_world_api.py`: TP-V7-9의 세션 쪽(옛 월드 읽기 실패 → `replaced=false`, 열린 세션 그대로).
   - TP-V7-14: README에 옛 문장이 없고 새 문장이 있다(README를 읽는 기존 `tests/test_packaging.py`에 둔다).
   - PBT-02: `BuildReport`의 JSON 왕복(새 두 칸).
   - 돌연변이: (a) 캐시 `get`만 하고 무효화 빼기 → TP-V7-9 실패, (b) 부모 가르기 빼기 → 시험 실패, (c) 로더가 버린 것 경고 빼기 → PBT-V7-4 실패.
-- [ ] 7.7 커밋: `fix(world): a rebuild keeps the world's NPCs and event seeds on the regions of the same name, and says which it could not place (V7, FR-C9, RE-W18)`
+- [x] 7.7 커밋: `fix(world): a rebuild keeps the world's NPCs and event seeds on the regions of the same name, and says which it could not place (V7, FR-C9, RE-W18)`
 
 ### Step 8 — 보강 질문의 입력 칸과 무변경 답 (BLM § 7, BR-V7-21·22, § 1.1 R-09·S-1)
 - [ ] 8.1 `locus/world/augmentation/questions.py`: `NEEDS`를 (이슈 종류, 대상 종류) 열쇠로 바꾼다(domain-entities § 8 표). `generate`는 `NEEDS.get((issue.type, issue.target_kind), {})`로 찾는다. DANGLING은 대상 넷 모두 같은 칸이다.

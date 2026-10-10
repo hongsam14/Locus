@@ -56,6 +56,11 @@ class WorldExistsError(RuntimeError):
     """The world already exists and ``replace`` was not requested (409 / exit 1)."""
 
 
+class BackupFailedError(RuntimeError):
+    """The old world was set up to be backed up and could not be: a replace stops before
+    anything is deleted (V7, BR-V7-10). The message is the cause."""
+
+
 class BuildInProgressError(RuntimeError):
     """A build of this world is already running in this process (409; U8 review #2). A
     second one would race the first past the existence check and commit a second copy."""
@@ -253,7 +258,11 @@ class WorldBuilder:
         kg = None
         try:
             if exists:
-                backup_path = self._backup(world_id, warnings)
+                try:
+                    backup_path = self._backup(world_id)
+                except BackupFailedError as exc:  # before anything is deleted (R-07)
+                    warnings.append(backup_failed_warning(exc))
+                    return self._report(world_id, warnings, counter)
                 self._graph.delete_world(world_id)
                 replaced = True  # the graph is gone from here on, whatever happens next
                 self._cache.invalidate(world_id)
@@ -361,8 +370,10 @@ class WorldBuilder:
             embedding_calls=counter.embedding_calls,
         )
 
-    def _backup(self, world_id: str, warnings: list[BuildWarning]) -> Path | None:
-        """Write the old world to ``backup_dir`` before replacing it (BR-U2-11). Best effort."""
+    def _backup(self, world_id: str) -> Path | None:
+        """Write the old world to ``backup_dir`` before replacing it (BR-U2-11). ``None``
+        when no backup is set up (the CLI's and the tests' builders); a backup that is set
+        up and fails raises ``BackupFailedError`` and the replace stops (V7, BR-V7-10)."""
         if self._exporter is None or self._backup_dir is None:
             return None
         try:
@@ -376,9 +387,17 @@ class WorldBuilder:
             )
             return path
         except Exception as exc:
-            warnings.append(BuildWarning(stage="backup", message=f"backup skipped: {exc}"))
             logger.warning("world backup failed for %s: %s", world_id, exc)
-            return None
+            raise BackupFailedError(str(exc)) from exc
+
+
+def backup_failed_warning(exc: BackupFailedError) -> BuildWarning:
+    """The report line of a replace stopped by its backup (build and World File import)."""
+    return BuildWarning(
+        stage="backup",
+        severity="error",
+        message=f"backup failed; the world was not replaced: {exc}",
+    )
 
 
 def _created_priors(wiki) -> list[WikiPrior]:

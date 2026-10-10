@@ -419,3 +419,26 @@ def test_pbt_v7_5_duplicate_ids_do_not_follow_order(file: WorldFile, data) -> No
         update={s: data.draw(st.permutations(getattr(dup, s))) for s in ID_SECTIONS}
     )
     assert duplicate_ids(shuffled) == found
+
+
+class _BrokenFileExporter:
+    def export(self, world_id):
+        raise OSError("disk full")
+
+
+def test_tp_v7_7_an_import_whose_backup_fails_leaves_the_old_world(tmp_path) -> None:
+    graph, search, cache, _exporter, importer = _stack()
+    assert importer.import_("w", _demo_file("w")).ok
+    before = _stored(graph)
+    broken = WorldFileImporter(
+        graph, search, None, cache, exporter=_BrokenFileExporter(), backup_dir=tmp_path
+    )
+    report = broken.import_("w", _demo_file("w"))
+    assert report.ok is False and report.replaced is False and report.backup_path is None
+    assert [(w.stage, w.severity) for w in report.warnings if w.severity == "error"] == [
+        ("backup", "error")
+    ]
+    assert _stored(graph) == before
+    # no backup set up: the import replaces as before (BR-V7-11)
+    again = importer.import_("w", _demo_file("w"))
+    assert again.ok and again.replaced is True

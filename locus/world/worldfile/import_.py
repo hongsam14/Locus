@@ -18,7 +18,7 @@ from locus.shared.llm.base import EmbeddingProvider
 from locus.shared.models import BuildWarning, ImportReport, WorldMeta
 from locus.shared.storage.base import GraphRepository, SearchRepository
 from locus.shared.storage.persistence import persist_graph
-from locus.world.build import WorldExistsError
+from locus.world.build import BackupFailedError, WorldExistsError, backup_failed_warning
 from locus.world.worldfile.export import WorldFileExporter, to_json_bytes
 from locus.world.worldfile.remap import (
     duplicate_ids,
@@ -62,7 +62,9 @@ class WorldFileImporter:
         file = remap_ids(file, world_id) if remapped else set_world_id(file, world_id)
         twice = duplicate_ids(file)  # the ids it would store, before anything is written
         if twice:
-            return self._refused(world_id, file, source_world_id, remapped, force_remap, twice)
+            return self._stopped(
+                world_id, file, source_world_id, remapped, force_remap, [_duplicates(twice)]
+            )
         file, warnings = validate_references(file)
 
         exists = world_id in self._graph.list_world_ids()
@@ -73,7 +75,13 @@ class WorldFileImporter:
         backup_path: Path | None = None
         try:
             if exists:
-                backup_path = self._backup(world_id, warnings)
+                try:
+                    backup_path = self._backup(world_id)
+                except BackupFailedError as exc:  # before anything is deleted (V7, R-07)
+                    warnings.append(backup_failed_warning(exc))
+                    return self._stopped(
+                        world_id, file, source_world_id, remapped, force_remap, warnings
+                    )
                 self._graph.delete_world(world_id)
                 replaced = True  # the graph is gone from here on, whatever happens next
                 self._cache.invalidate(world_id)
@@ -129,17 +137,16 @@ class WorldFileImporter:
         )
 
     @staticmethod
-    def _refused(
+    def _stopped(
         world_id: str,
         file: WorldFile,
         source_world_id: str,
         remapped: bool,
         forced: bool,
-        twice: list[str],
+        warnings: list[BuildWarning],
     ) -> ImportReport:
-        """A file with duplicate ids: nothing deleted or written, the old world stays
-        (V7, BR-V7-17)."""
-        shown = ", ".join(twice[:10]) + (f" and {len(twice) - 10} more" if len(twice) > 10 else "")
+        """An import stopped before anything was deleted or written: the old world stays
+        (V7 — duplicate ids, BR-V7-17; a failed backup, BR-V7-10)."""
         return ImportReport(
             world_id=world_id,
             format_version=file.format_version,
@@ -147,16 +154,12 @@ class WorldFileImporter:
             remapped=remapped,
             forced=forced,
             counts=file.counts(),
-            warnings=[
-                BuildWarning(
-                    stage="duplicate-ids",
-                    severity="error",
-                    message=f"duplicate ids in the World File: {shown}",
-                )
-            ],
+            warnings=warnings,
         )
 
-    def _backup(self, world_id: str, warnings: list[BuildWarning]) -> Path | None:
+    def _backup(self, world_id: str) -> Path | None:
+        """``None`` when no backup is set up; ``BackupFailedError`` when one is set up and
+        could not be written (V7, BR-V7-10)."""
         if self._exporter is None or self._backup_dir is None:
             return None
         try:
@@ -166,6 +169,14 @@ class WorldFileImporter:
             path.write_bytes(to_json_bytes(self._exporter.export(world_id)))
             return path
         except Exception as exc:
-            warnings.append(BuildWarning(stage="backup", message=f"backup skipped: {exc}"))
             logger.warning("world backup failed for %s: %s", world_id, exc)
-            return None
+            raise BackupFailedError(str(exc)) from exc
+
+
+def _duplicates(twice: list[str]) -> BuildWarning:
+    shown = ", ".join(twice[:10]) + (f" and {len(twice) - 10} more" if len(twice) > 10 else "")
+    return BuildWarning(
+        stage="duplicate-ids",
+        severity="error",
+        message=f"duplicate ids in the World File: {shown}",
+    )

@@ -13,6 +13,7 @@ from locus.play.turn.guard import TurnGuard
 from locus.shared.config import Settings
 from locus.shared.models import (
     BuildReport,
+    BuildWarning,
     ImportReport,
     Knowledge,
     Provenance,
@@ -446,3 +447,40 @@ def test_u5_a_replace_with_no_open_session_still_purges_the_worlds_translations(
     store.upsert_many([row("k3", "w")])
     assert client.post("/api/world/worlds/w/demo/aldermoor?confirm=true").status_code == 200
     assert store.get_many([("knowledge", "k3", "statement")], "ko") == {}
+
+
+# --- V7: a replace stopped before the delete closes no session (R-06) --------- #
+def test_a_stopped_replace_leaves_the_open_sessions_open() -> None:
+    """The router's rule, fixed with stub reports: a build or an import that stopped
+    before deleting (a failed backup, an old world it could not read) reports
+    ``replaced=false``, so the sessions it was told to close stay open. The V7 code that
+    produces those reports is tested on the real builder and importer (test_build.py,
+    test_worldfile.py)."""
+    stopped = BuildWarning(stage="backup", severity="error", message="backup failed")
+
+    class _StoppedImporter(_Importer):
+        def import_(self, world_id, file, *, replace=True, force_remap=False):
+            return (
+                super()
+                .import_(world_id, file, replace=False)
+                .model_copy(update={"warnings": [stopped]})
+            )
+
+    class _StoppedBuilder:
+        def build(self, world_id, inputs, *, replace=True):
+            return BuildReport(
+                world_id=world_id, warnings=[stopped.model_copy(update={"stage": "carry-over"})]
+            )
+
+    play = _Play([_Session("s-open", "open")])
+    raw = _file("w").model_dump(mode="json")
+    r = _client(importer=_StoppedImporter(), play=play).post(
+        "/api/world/worlds/w/file?confirm=true", json=raw
+    )
+    assert r.status_code == 200 and r.json()["ok"] is False
+    assert r.json()["closed_session_ids"] == [] and play.sessions.closed == []
+    r = _client(builder=_StoppedBuilder(), play=play).post(
+        "/api/world/worlds/w/build?confirm=true", json={"memos": ["x"]}
+    )
+    assert r.status_code == 200 and r.json()["replaced"] is False
+    assert play.sessions.closed == []

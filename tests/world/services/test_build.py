@@ -119,7 +119,9 @@ class _Emb:
         return [[0.0, 1.0] for _ in texts]
 
 
-def _make(tmp_path, *, graph=None, search=None, ingest=None, llm=None, emb=None):
+def _make(
+    tmp_path, *, graph=None, search=None, ingest=None, llm=None, emb=None, exporter="default"
+):
     graph = graph or InMemoryGraphRepository()
     search = search or InMemorySearchRepository()
     cache = WorldCache(WorldLoader(graph))
@@ -131,8 +133,8 @@ def _make(tmp_path, *, graph=None, search=None, ingest=None, llm=None, emb=None)
         ingestion_factory=lambda llm_, vlm_: ingest or _Ingest(),
         topology_factory=lambda wiki: _Topo(),
         ontology_factory=lambda llm_, emb_, wiki: _Onto(llm_, emb_),
-        exporter=WorldFileExporter(cache),
-        backup_dir=tmp_path / "backups",
+        exporter=WorldFileExporter(cache) if exporter == "default" else exporter,
+        backup_dir=tmp_path / "backups" if exporter is not None else None,
     )
     return builder, graph, search, cache
 
@@ -287,3 +289,36 @@ def test_u8_review_2_a_failed_build_frees_its_world(tmp_path) -> None:
         builder.build("w", inputs=None)
     builder._ingestion_factory = lambda llm_, vlm_: _Ingest()  # type: ignore[assignment]
     assert builder.build("w", inputs=None).ok
+
+
+# --------------------------------------------------------------------------- #
+# V7 — a failed backup stops the replace before anything is deleted (TP-V7-7)
+# --------------------------------------------------------------------------- #
+class _BrokenExporter:
+    def export_world(self, world_id):
+        raise OSError("disk full")
+
+
+def test_tp_v7_7_a_failed_backup_leaves_the_old_world(tmp_path) -> None:
+    builder, graph, _search, cache = _make(tmp_path)
+    builder.build("w", inputs=None)
+    old = sorted((n.label, n.id) for n in graph._nodes.values())
+    deleted: list = []
+    real_delete = graph.delete_world
+    graph.delete_world = lambda wid: (deleted.append(wid), real_delete(wid))  # type: ignore
+
+    broken, *_ = _make(tmp_path, graph=graph, exporter=_BrokenExporter())
+    report = broken.build("w", inputs=None, replace=True)
+
+    assert report.ok is False and report.replaced is False and report.backup_path is None
+    assert [(w.stage, w.severity) for w in report.errors] == [("backup", "error")]
+    assert "not replaced" in report.errors[0].message and "disk full" in report.errors[0].message
+    assert deleted == [] and sorted((n.label, n.id) for n in graph._nodes.values()) == old
+    assert len(cache.get("w").topo.regions) == 1
+
+
+def test_br_v7_11_a_builder_without_a_backup_still_replaces(tmp_path) -> None:
+    builder, graph, *_ = _make(tmp_path, exporter=None)
+    builder.build("w", inputs=None)
+    report = builder.build("w", inputs=None, replace=True)
+    assert report.ok and report.replaced is True and report.backup_path is None

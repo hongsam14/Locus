@@ -136,12 +136,12 @@
 - [x] 5.4 커밋: `fix(world): a World File with duplicate ids is refused before anything is written (V7, FR-C10)`
 
 ### Step 6 — 백업 게이트 (BLM § 3, BR-V7-10·11)
-- [ ] 6.1 `locus/world/build.py`: `BackupFailedError(RuntimeError)`를 `WorldExistsError` 곁에 둔다. `_backup(world_id) -> Path | None`은 미설정이면 `None`, 성공이면 경로, 실패면 `BackupFailedError`다(경고 목록을 받지 않는다).
-- [ ] 6.2 빌더 커밋 단계: `_backup`이 던지면 지우기 전에 멈춘다. 리포트는 `replaced=false`, `backup_path=None`, `BuildWarning(stage="backup", severity="error", message="backup failed; the world was not replaced: …")`다.
-- [ ] 6.3 `locus/world/worldfile/import_.py`: `_backup`을 같은 계약으로 바꾸고, 같은 자리에서 멈춘다. `BackupFailedError`는 `locus.world.build`에서 가져온다(지금 `WorldExistsError`와 같음).
-- [ ] 6.4 시험: TP-V7-7을 빌드(`tests/world/services/test_build.py`)와 불러오기(`tests/world/worldfile/test_worldfile.py`)에 각각 둔다. exporter가 던짐 → `delete_world` 안 불림, 옛 노드 그대로, `ok=false`, stage `backup`. 미설정이면 교체(BR-V7-11). API 경로의 세션은 닫히지 않음(`replaced=false`, `tests/api/test_world_api.py`에 하나).
+- [x] 6.1 `locus/world/build.py`: `BackupFailedError(RuntimeError)`를 `WorldExistsError` 곁에 둔다. `_backup(world_id) -> Path | None`은 미설정이면 `None`, 성공이면 경로, 실패면 `BackupFailedError`다(경고 목록을 받지 않는다).
+- [x] 6.2 빌더 커밋 단계: `_backup`이 던지면 지우기 전에 멈춘다. 리포트는 `replaced=false`, `backup_path=None`, `BuildWarning(stage="backup", severity="error", message="backup failed; the world was not replaced: …")`다.
+- [x] 6.3 `locus/world/worldfile/import_.py`: `_backup`을 같은 계약으로 바꾸고, 같은 자리에서 멈춘다. `BackupFailedError`는 `locus.world.build`에서 가져온다(지금 `WorldExistsError`와 같음).
+- [x] 6.4 시험: TP-V7-7을 빌드(`tests/world/services/test_build.py`)와 불러오기(`tests/world/worldfile/test_worldfile.py`)에 각각 둔다. exporter가 던짐 → `delete_world` 안 불림, 옛 노드 그대로, `ok=false`, stage `backup`. 미설정이면 교체(BR-V7-11). API 경로의 세션은 닫히지 않음(`replaced=false`, `tests/api/test_world_api.py`에 하나).
   - 돌연변이: 실패를 삼키고 진행 → TP-V7-7 실패.
-- [ ] 6.5 커밋: `fix(world): a failed backup stops the replace before anything is deleted (V7, FR-C8, RE-W04)`
+- [x] 6.5 커밋: `fix(world): a failed backup stops the replace before anything is deleted (V7, FR-C8, RE-W04)`
 
 ### Step 7 — 이어 붙이기 (BLM § 4, BR-V7-12~16, § 1.1 R-10)
 - [ ] 7.1 `locus/knowledge/loader.py`: 버리는 문장의 앞머리를 상수 `NPC_HOME_DANGLING`, `SEED_REGION_DANGLING`으로 둔다(문장은 그대로).

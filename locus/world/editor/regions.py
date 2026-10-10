@@ -109,15 +109,15 @@ class RegionEditor:
             if scoped:  # ③ scopes go, the knowledge stays
                 g.delete_edges(world_id, [_edge("SCOPED_TO", k, region_id) for k in scoped])
             for sid in plan.seed_ids:  # ③b its event seeds (U8, BR-U8-14); a retry finds the rest
-                g.delete_node(world_id, sid)
+                g.delete_node(world_id, sid, label="EventSeed")
             npc_ids = [n.id for n in plan.npcs]
             if npc_ids:  # ④ search documents, then the nodes (DETACH takes LIVES_IN)
                 self._w.unindex(world_id, npc_ids)
                 for nid in npc_ids:
-                    g.delete_node(world_id, nid)
+                    g.delete_node(world_id, nid, label="NPC")
             if plan.connections:  # ⑤ both directions
                 g.delete_edges(world_id, [e for k in plan.connections for e in edge_keys(k)])
-            g.delete_node(world_id, region_id)  # ⑥
+            g.delete_node(world_id, region_id, label="Region")  # ⑥
         return RegionDeleteReport(
             **plan.model_dump(),
             deleted_ids=[region_id, *npc_ids, *plan.seed_ids],

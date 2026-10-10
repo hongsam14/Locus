@@ -278,3 +278,63 @@ def test_edges_touching_returns_only_edges_with_an_end_in_the_ids() -> None:
     repo.edges_touching("w", ["b"], ["LIVES_IN"])
     ((query, params),) = rec
     assert "a.id IN $ids OR b.id IN $ids" in query and params["types"] == ["LIVES_IN"]
+
+
+# --------------------------------------------------------------------------- #
+# V7 — reads and deletes that name the node's kind (BR-V7-19, TP-V7-11)
+# --------------------------------------------------------------------------- #
+def _two_kinds_one_id() -> InMemoryGraphRepository:
+    g = InMemoryGraphRepository()
+    g.upsert_nodes(
+        [
+            Node(id="x", label="Region", world_id="w", properties={"name": "Mill"}),
+            Node(id="x", label="EventSeed", world_id="w", properties={"title": "Flood"}),
+            Node(id="y", label="Region", world_id="w", properties={"name": "Ford"}),
+        ]
+    )
+    g.upsert_edges(
+        [Edge(type="CONNECTED_TO", source_id="x", target_id="y", world_id="w", properties={})]
+    )
+    return g
+
+
+def test_one_id_may_be_two_kinds_and_a_label_reads_its_own() -> None:
+    g = _two_kinds_one_id()
+    assert g.get_node("w", "x", label="Region").properties["name"] == "Mill"
+    assert g.get_node("w", "x", label="EventSeed").properties["title"] == "Flood"
+    assert g.get_node("w", "x", label="NPC") is None
+    assert g.get_node("w", "x") is not None  # any kind
+
+
+def test_a_labeled_delete_leaves_the_other_kind_and_its_edges() -> None:
+    g = _two_kinds_one_id()
+    g.delete_node("w", "x", label="EventSeed")
+    assert g.get_node("w", "x", label="EventSeed") is None
+    assert g.get_node("w", "x", label="Region") is not None
+    assert len(g.get_edges("w", ["CONNECTED_TO"])) == 1
+
+
+def test_an_unlabeled_delete_takes_every_kind_of_the_id() -> None:
+    g = _two_kinds_one_id()
+    g.delete_node("w", "x")
+    assert g.get_node("w", "x") is None and g.get_edges("w") == []
+
+
+def test_neo4j_a_label_narrows_the_read_and_the_delete() -> None:
+    repo, rec = _neo4j()
+    repo.get_node("w", "x", label="EventSeed")
+    repo.delete_node("w", "x", label="EventSeed")
+    repo.get_node("w", "x")
+    repo.delete_node("w", "x")
+    queries = [q for q, _ in rec]
+    assert queries[0].startswith("MATCH (n:EventSeed {id: $id, world_id: $world_id}) RETURN")
+    assert queries[1] == "MATCH (n:EventSeed {id: $id, world_id: $world_id}) DETACH DELETE n"
+    assert queries[2].startswith("MATCH (n {id: $id, world_id: $world_id}) RETURN")
+    assert queries[3] == "MATCH (n {id: $id, world_id: $world_id}) DETACH DELETE n"
+
+
+def test_neo4j_rejects_an_unsafe_label() -> None:
+    repo, rec = _neo4j()
+    with pytest.raises(ValueError):
+        repo.delete_node("w", "x", label="Region) DETACH DELETE (m")
+    assert rec == []

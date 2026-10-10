@@ -35,6 +35,13 @@ class MeteredGraph(InMemoryGraphRepository):
     def __init__(self, meter: Meter) -> None:
         super().__init__()
         self.meter = meter
+        # (method, node id, label) of each node read and delete: the kind a caller named
+        # (V7, TP-V7-12). Reads are not writes, so they never count toward a cut.
+        self.calls_with: list[tuple[str, str, str | None]] = []
+
+    def get_node(self, world_id, node_id, *, label=None):
+        self.calls_with.append(("get_node", node_id, label))
+        return super().get_node(world_id, node_id, label=label)
 
     def upsert_nodes(self, nodes):
         self.meter.hit("upsert_nodes")
@@ -56,9 +63,10 @@ class MeteredGraph(InMemoryGraphRepository):
         self.meter.hit("replace_edges")
         InMemoryGraphRepository.upsert_edges(self, edges)
 
-    def delete_node(self, world_id, node_id):
+    def delete_node(self, world_id, node_id, *, label=None):
         self.meter.hit("delete_node")
-        super().delete_node(world_id, node_id)
+        self.calls_with.append(("delete_node", node_id, label))
+        super().delete_node(world_id, node_id, label=label)
 
 
 class MeteredSearch(InMemorySearchRepository):

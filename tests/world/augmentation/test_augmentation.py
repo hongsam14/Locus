@@ -825,3 +825,32 @@ def test_engine_apply_and_revert_invalidate_cache() -> None:
     gen = stack.cache.generation("w")
     svc.revert(run.id, res.change.id)  # type: ignore[union-attr]
     assert stack.cache.generation("w") > gen
+
+
+# --------------------------------------------------------------------------- #
+# V7 — answers read and delete by the node's kind (TP-V7-12)
+# --------------------------------------------------------------------------- #
+def test_tp_v7_12_repoint_revert_and_an_added_node_name_their_kind() -> None:
+    stack, w = _seeded()
+    svc = _service(stack)
+    run = svc.start_run("w")
+    q = _question(run, "dangling", w["tomas"].id, "located_in")
+    stack.graph.calls_with.clear()
+    res = svc.answer(
+        run.id, AugmentationAnswer(question_id=q.id, action="edit", ref_id=w["hollow"].id)
+    )
+    first_read = next(c for c in stack.graph.calls_with if c[1] == w["hollow"].id)
+    assert first_read == ("get_node", w["hollow"].id, "Region")  # the reference, by its kind
+    stack.graph.calls_with.clear()
+    svc.revert(run.id, res.change.id)  # type: ignore[union-attr]
+    assert ("get_node", w["tomas"].id, "Entity") in stack.graph.calls_with  # the edit check
+
+    run = svc.get_run(run.id)  # type: ignore[assignment]
+    q = _question(run, "gap", w["hollow"].id)
+    res = svc.answer(
+        run.id, AugmentationAnswer(question_id=q.id, action="add", statement="the well ran dry")
+    )
+    (new_id,) = res.change.added_ids  # type: ignore[union-attr]
+    stack.graph.calls_with.clear()
+    svc.revert(run.id, res.change.id)  # type: ignore[union-attr]
+    assert ("delete_node", new_id, "Knowledge") in stack.graph.calls_with

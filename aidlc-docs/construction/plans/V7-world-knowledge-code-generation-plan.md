@@ -109,24 +109,24 @@
 - [x] 3.4 커밋: `fix(knowledge): the world's version mark is written last and a world without one is never cached, so a half-replaced world is not served twice (V7, FR-C7, RE-W02, RE-W03)`
 
 ### Step 4 — 라벨 있는 읽기·삭제 (BLM § 6, BR-V7-19·20)
-- [ ] 4.1 포트와 어댑터
+- [x] 4.1 포트와 어댑터
   - `locus/shared/storage/base.py`: `get_node(…, *, label: str | None = None)`, `delete_node(…, *, label: str | None = None)`.
   - `locus/shared/storage/neo4j_repo.py`: 라벨이 있으면 `MATCH (n:{_safe_ident(label)} {id, world_id})`로 읽고 지운다. 없으면 지금 질의다.
-- [ ] 4.2 대역 셋(§ 1.2)
+- [x] 4.2 대역 셋(§ 1.2)
   - `tests/shared/storage/fakes.py`: (월드, 라벨, id) 열쇠, 라벨 인자, 남은 노드가 없을 때만 엣지 지우기.
   - `tests/world/services/test_services.py` `_GraphRepo`, `tests/world/editor/helpers.py` `MeteredGraph`: 라벨 인자를 받아 넘긴다.
-- [ ] 4.3 호출부 9곳
+- [x] 4.3 호출부 9곳
   - `editor/writes.py`: `node()` → `get_node(label=label)`. `delete_held`는 FD R-02 흐름이다(라벨 읽기 → 있으면 라벨 삭제와 문서 지우기 → 없으면 라벨 없는 읽기 → 노드가 아예 없으면 문서만 → 다른 라벨이면 False, 문서 그대로).
   - `editor/regions.py`: 씨앗 `EventSeed`, NPC `NPC`, 지역 `Region`.
   - `augmentation/apply.py`: 다시 가리키기 `label=_REF_KIND.get(field)`, 되돌리기 검사 `label=snap.label`, 더한 노드 삭제는 `nodes_after`의 라벨(스냅숏이 없는 id는 라벨 없이).
   - 그대로 두는 셋: `own_label`, `bundle.delete_any`, `apply._nodes`. 셋에 "이 id의 아무 노드를 묻는다" 주석을 한 줄 단다.
-- [ ] 4.4 시험
+- [x] 4.4 시험
   - `tests/shared/storage/test_port_contract.py`: 대역의 라벨 계약(같은 id의 두 라벨, 라벨 있는 읽기·삭제가 다른 라벨을 건드리지 않음, 라벨 없는 삭제는 둘 다 지움).
   - `tests/world/editor/test_region_delete.py`: TP-V7-11(같은 id의 지역 Y와 다른 지역 X의 씨앗 Y → X 삭제가 지역 Y와 그 연결을 남김).
   - `tests/world/editor/test_editors.py`: `delete_held(label=X)`가 다른 라벨 노드와 그 검색 문서를 남김(R-02), 노드가 없으면 문서만 지움(지금 규칙 유지).
   - TP-V7-12: 대역이 받은 `label` 인자를 9곳에서 단언한다(지역 삭제 경로, 다시 가리키기, 되돌리기).
   - 돌연변이: 각 호출부의 `label=` 빼기 → 해당 시험 실패.
-- [ ] 4.5 커밋: `fix(world): reads and deletes name the node's kind, so a seed sharing a region's id no longer takes the region with it (V7, FR-C10, U8 #10)`
+- [x] 4.5 커밋: `fix(world): reads and deletes name the node's kind, so a seed sharing a region's id no longer takes the region with it (V7, FR-C10, U8 #10)`
 
 ### Step 5 — 중복 id 거절 (BLM § 5, BR-V7-17·18)
 - [ ] 5.1 `locus/world/worldfile/remap.py`: `duplicate_ids(file) -> list[str]`(정렬; 절 `regions, entities, relations, knowledge, priors, npcs, event_seeds`, 절 안과 절 사이).

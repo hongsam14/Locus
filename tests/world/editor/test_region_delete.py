@@ -284,3 +284,90 @@ def test_ex7_a_region_delete_takes_its_seeds() -> None:
     calls = stack.meter.calls
     third = calls.index("delete_edges", calls.index("replace_nodes", 2))  # ③ scopes
     assert calls[third + 1] == "delete_node" and calls[third + 2] == "delete"  # ③b then ④
+
+
+# --------------------------------------------------------------------------- #
+# V7 — a seed sharing a region's id (TP-V7-11, TP-V7-12, U8 #10)
+# --------------------------------------------------------------------------- #
+def test_tp_v7_11_a_seed_with_a_regions_id_takes_only_itself() -> None:
+    """Region "x" holds a seed whose id is region "y"'s id. Deleting "x" deletes the
+    seed by its kind: region "y" and its connection stay (unlabeled, DETACH DELETE took
+    "y" and the connection with it)."""
+    from locus.shared.models import EventSeed
+
+    stack = Stack()
+    x, y, z = (
+        Region(id=rid, world_id="w", name=rid, level=RegionLevel.TOWN, provenance=_prov())
+        for rid in ("x", "y", "z")
+    )
+    persist_graph(
+        stack.graph,
+        stack.search,
+        None,
+        "w",
+        regions=[x, y, z],
+        connections=[
+            ConnectionEdge(
+                world_id="w",
+                source_region_id=a,
+                target_region_id=b,
+                kind=ConnectionKind.ROUTE,
+                weight=0.8,
+                provenance=_prov(),
+            )
+            for a, b in (("y", "z"), ("z", "y"))
+        ],
+        seeds=[
+            EventSeed(
+                id="y",
+                world_id="w",
+                region_id="x",
+                title="Flood",
+                category="disaster",
+                magnitude=0.5,
+                provenance=_prov(),
+            )
+        ],
+        meta=WorldMeta(id="w", name="W"),
+    )
+    stack.cache.invalidate("w")
+
+    report = stack.editors.regions.delete_region("w", "x")
+
+    assert report.seeds_deleted == 1
+    after = stack.cache.get("w")
+    assert "y" in after.regions_by_id and not after.event_seeds
+    assert {(c.source_region_id, c.target_region_id) for c in after.topo.connections} == {
+        ("y", "z"),
+        ("z", "y"),
+    }
+    # TP-V7-12: each delete named its kind
+    deletes = [c for c in stack.graph.calls_with if c[0] == "delete_node"]
+    assert deletes == [("delete_node", "y", "EventSeed"), ("delete_node", "x", "Region")]
+
+
+def test_tp_v7_12_a_region_delete_names_the_kind_of_its_npcs() -> None:
+    stack = Stack()
+    x = Region(id="x", world_id="w", name="X", level=RegionLevel.TOWN, provenance=_prov())
+    npc = NPC(
+        id="n1",
+        world_id="w",
+        name="Ida",
+        role="miller",
+        description="d",
+        home_region_id="x",
+        provenance=_prov(),
+    )
+    persist_graph(
+        stack.graph,
+        stack.search,
+        None,
+        "w",
+        regions=[x],
+        npcs=[npc],
+        meta=WorldMeta(id="w", name="W"),
+    )
+    stack.cache.invalidate("w")
+    stack.editors.regions.delete_region("w", "x")
+    deletes = [c for c in stack.graph.calls_with if c[0] == "delete_node"]
+    assert deletes == [("delete_node", "n1", "NPC"), ("delete_node", "x", "Region")]

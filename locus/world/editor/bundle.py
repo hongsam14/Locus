@@ -51,7 +51,7 @@ class Editors:
     def delete_any(self, world_id: str, node_id: str) -> bool:
         """Delete what an augmentation REMOVE answer names — knowledge or an entity, the
         only kinds a question removes (U3 review C4). False when it is not there."""
-        node = self.writes.graph.get_node(world_id, node_id)
+        node = self.writes.graph.get_node(world_id, node_id)  # any kind: it picks the editor
         if node is None:
             return False
         if node.label == "Knowledge":

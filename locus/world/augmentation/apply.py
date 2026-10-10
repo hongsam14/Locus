@@ -157,8 +157,9 @@ def _repoint(issue: Issue, target_id, action, answer, world_id, editors: Editors
     ref = None
     if action == AnswerAction.EDIT:
         ref = answer.ref_id
-        node = editors.writes.graph.get_node(world_id, ref) if ref else None
-        if node is None or node.label != _REF_KIND.get(field):
+        kind = _REF_KIND.get(field)
+        node = editors.writes.graph.get_node(world_id, ref, label=kind) if ref else None
+        if node is None or node.label != kind:
             raise ValueError(f"{field} must point at an existing {_REF_KIND.get(field)}")
     if field == "parent_id":  # through the region editor: the cycle check applies
         region = editors.writes.snapshot(world_id).regions_by_id.get(target_id)
@@ -192,7 +193,7 @@ def revert(change: ChangeSet, *, world_id: str, editors: Editors) -> None:
     resuming = change.revert_started
     before = {s.id: _props(s.properties) for s in change.nodes_before}
     for snap in change.nodes_after:
-        now = graph.get_node(world_id, snap.id)
+        now = graph.get_node(world_id, snap.id, label=snap.label)
         if now is not None and _props(now.properties) == _props(snap.properties):
             continue
         if resuming and now is None and snap.id in change.added_ids:
@@ -206,8 +207,9 @@ def revert(change: ChangeSet, *, world_id: str, editors: Editors) -> None:
     change.revert_started = True  # past the checks: a retry may resume (U3 review S03)
     with editors.writes.writing(world_id):
         graph.delete_edges(world_id, [_key(e) for e in change.edges_added])
-        for nid in change.added_ids:
-            graph.delete_node(world_id, nid)
+        labels = {s.id: s.label for s in change.nodes_after}
+        for nid in change.added_ids:  # by its kind; an id with no snapshot, any kind
+            graph.delete_node(world_id, nid, label=labels.get(nid))
         editors.writes.unindex(world_id, change.added_ids)
         restored = [
             Node(id=s.id, label=s.label, world_id=world_id, properties=s.properties)
@@ -253,7 +255,7 @@ def _knowledge(editors: Editors, world_id: str, knowledge_id: str) -> Knowledge:
 def _nodes(editors: Editors, world_id: str, ids: list[str]) -> dict[str, NodeSnapshot]:
     out: dict[str, NodeSnapshot] = {}
     for nid in dict.fromkeys(ids):
-        node = editors.writes.graph.get_node(world_id, nid)
+        node = editors.writes.graph.get_node(world_id, nid)  # whatever node holds the id
         if node is not None:
             out[nid] = NodeSnapshot(id=node.id, label=node.label, properties=dict(node.properties))
     return out

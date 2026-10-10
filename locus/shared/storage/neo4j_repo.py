@@ -28,6 +28,11 @@ def _safe_ident(value: str) -> str:
     return value
 
 
+def _label_clause(label: str | None) -> str:
+    """``:Label`` for a node pattern, or nothing for "any node of this id"."""
+    return f":{_safe_ident(label)}" if label is not None else ""
+
+
 class Neo4jGraphRepository(GraphRepository):
     def __init__(self, *, uri: str, user: str, password: str) -> None:
         self._uri = uri
@@ -196,9 +201,9 @@ class Neo4jGraphRepository(GraphRepository):
         return deleted
 
     # -- reads ------------------------------------------------------------ #
-    def get_node(self, world_id: str, node_id: str) -> Node | None:
+    def get_node(self, world_id: str, node_id: str, *, label: str | None = None) -> Node | None:
         rows = self._run(
-            "MATCH (n {id: $id, world_id: $world_id}) "
+            f"MATCH (n{_label_clause(label)} {{id: $id, world_id: $world_id}}) "
             "RETURN labels(n) AS labels, properties(n) AS props LIMIT 1",
             {"id": node_id, "world_id": world_id},
         )
@@ -279,9 +284,9 @@ class Neo4jGraphRepository(GraphRepository):
             for row in rows
         ]
 
-    def delete_node(self, world_id: str, node_id: str) -> None:
-        self._run(
-            "MATCH (n {id: $id, world_id: $world_id}) DETACH DELETE n",
+    def delete_node(self, world_id: str, node_id: str, *, label: str | None = None) -> None:
+        self._run(  # a label keeps another kind's node of the same id, and its edges (V7)
+            f"MATCH (n{_label_clause(label)} {{id: $id, world_id: $world_id}}) DETACH DELETE n",
             {"id": node_id, "world_id": world_id},
         )
 

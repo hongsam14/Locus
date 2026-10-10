@@ -42,7 +42,7 @@ class _GraphRepo:
     def upsert_edges(self, edges):
         self.edges.extend(edges)
 
-    def delete_node(self, world_id, node_id):
+    def delete_node(self, world_id, node_id, *, label=None):
         self.deleted.append(node_id)
 
     def find_nodes(self, world_id, label, filters=None):
@@ -53,8 +53,17 @@ class _GraphRepo:
             and all(n.properties.get(k) == v for k, v in (filters or {}).items())
         ]
 
-    def get_node(self, world_id, node_id):
-        return next((n for n in self.nodes if n.id == node_id and n.world_id == world_id), None)
+    def get_node(self, world_id, node_id, *, label=None):
+        return next(
+            (
+                n
+                for n in self.nodes
+                if n.id == node_id
+                and n.world_id == world_id
+                and (label is None or n.label == label)
+            ),
+            None,
+        )
 
     def list_world_ids(self):
         return sorted({n.world_id for n in self.nodes})

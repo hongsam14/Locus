@@ -186,8 +186,8 @@
 - [x] 9.2 커밋: `docs: rebuilds keep NPCs and seeds, a failed backup stops a replace, meta-less worlds are read fresh (V7)`
 
 ### Step 10 — 게이트와 요약
-- [ ] 10.1 게이트: ruff·black, mypy ≤ 11, pytest 두 번(hypothesis 시드 둘), `git diff --stat -- web` 비어 있음.
-- [ ] 10.2 `construction/V7-world-knowledge/code/code-summary.md`
+- [x] 10.1 게이트: ruff·black, mypy ≤ 11, pytest 두 번(hypothesis 시드 둘), `git diff --stat -- web` 비어 있음.
+- [x] 10.2 `construction/V7-world-knowledge/code/code-summary.md`
   - § 1 기준선과 결과
   - § 2 파일
   - § 3 BR·TP·PBT 대응
@@ -196,7 +196,7 @@
   - § 6 알려진 한계(FD의 셋, 대역 엣지의 느슨함, 옛 스냅샷 읽기와 백업 사이의 편집)
   - § 7 돌연변이 결과
   - § 8 다음에 넘김(§ 4)
-- [ ] 10.3 커밋: `docs(aidlc): V7 code summary`
+- [x] 10.3 커밋: `docs(aidlc): V7 code summary`
 
 ---
 

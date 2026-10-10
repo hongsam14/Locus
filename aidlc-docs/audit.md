@@ -5731,3 +5731,10 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V7 — Code Generation Part 2.
 
 ---
+## Code Generation Part 2 — V7 — Complete
+**Timestamp**: 2026-10-10T16:00:36Z
+**User Input**: (none)
+**AI Response**: Steps 1–10 done on feat/follow-up: `c5601fc` (docs), `bc13544` (consensus), `7e2c588` (persist order + cache), `ed79465` (labels), `8ceefcc` (duplicate ids), `2dfb923` (backup gate), `c63d109` (carry-over), `4ae47d6` (augmentation), `aa64b3b` (operations), then the code summary. Gate GREEN: ruff/black clean, mypy 11, pytest 1194 (baseline 1138 + 56 new, none lost) under hypothesis seeds 3 and 21; web unchanged (vitest 664). One existing test changed (test_cache.py, plan § 1.4 R-01). Mutation check: 36 mutants, all caught (two survived the first run; tests tightened). Deviations recorded in code-summary § 5 (three doubles, in-memory key, tie digits, kept_keys, carry computed before the backup, shared stopped report). Next: code approval gate, then the code review (four angles) as for V5/V6.
+**Context**: CONSTRUCTION / V7 — Code Generation complete; awaiting approval.
+
+---

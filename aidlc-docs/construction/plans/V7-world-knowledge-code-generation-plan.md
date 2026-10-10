@@ -93,20 +93,20 @@
 - [x] 2.3 커밋: `fix(knowledge): a region's knowledge comes from its strongest source, unknowns count once, each list confident first (V7, FR-C6, RE-W01)`
 
 ### Step 3 — 저장 순서와 캐시 (BLM § 2, BR-V7-06~09)
-- [ ] 3.1 `locus/shared/storage/persistence.py` `persist_graph`
+- [x] 3.1 `locus/shared/storage/persistence.py` `persist_graph`
   - 노드 목록에서 WorldMeta를 뺀다. 노드 → 엣지 → 임베딩 → 색인 → WorldMeta upsert 차례다.
   - 노드·엣지 실패는 지금처럼 돌아가고 WorldMeta를 쓰지 않는다.
   - 색인 실패 뒤에도 WorldMeta를 쓴다. WorldMeta 쓰기 실패는 `stage="persist-meta"`, severity error다.
-- [ ] 3.2 `locus/knowledge/cache.py` `WorldCache`
+- [x] 3.2 `locus/knowledge/cache.py` `WorldCache`
   - 모듈 상수 `UNVERSIONED`(표식 객체)를 둔다. `_current_version`은 로더에 `version`이 없으면 `UNVERSIONED`를 돌려준다.
   - hit: `check_version`이 꺼져 있거나 캐시한 버전이 `UNVERSIONED`면 hit다. 버전 읽기를 try로 감싼다. 예외면 invalidate하고 miss로 가되 캐시하지 않는다.
   - miss: 버전이 `None`(이 월드에 WorldMeta 없음)이면 캐시하지 않는다. `UNVERSIONED`나 문자열이면 지금처럼 generation을 보고 캐시한다.
   - 모듈 docstring과 `__init__` 주석의 "Worlds without meta rely on explicit invalidation only"를 새 규칙으로 고친다.
-- [ ] 3.3 시험
+- [x] 3.3 시험
   - `tests/knowledge/test_cache.py`: TP-V7-4(인메모리 그래프 + `WorldLoader`로 다른 "프로세스"의 교체를 흉내: 옛 월드 지우기 → 노드만 쓰기 → `get` → `is_cached` 거짓 → 엣지와 메타 쓰기 → `get` → 연결·스코프가 있는 스냅샷, 캐시됨), TP-V7-5(hit의 `version()` 예외 → 오류 없이 새 스냅샷, 캐시 안 됨; `version` 없는 로더 → 캐시). EX-18·EX-19는 손대지 않는다.
   - 새 `tests/shared/storage/test_persist_order.py`: TP-V7-6(쓰기를 기록하는 대역: WorldMeta upsert가 엣지·색인 뒤; 엣지 실패 → WorldMeta upsert 없음; 색인 실패 → WorldMeta 있음; 메타 실패 → `persist-meta` error).
   - 돌연변이: (a) WorldMeta를 노드 묶음에 되돌림 → TP-V7-4·6 실패, (b) `None` 캐시 → TP-V7-4 실패, (c) hit의 try 빼기 → TP-V7-5 실패.
-- [ ] 3.4 커밋: `fix(knowledge): the world's version mark is written last and a world without one is never cached, so a half-replaced world is not served twice (V7, FR-C7, RE-W02, RE-W03)`
+- [x] 3.4 커밋: `fix(knowledge): the world's version mark is written last and a world without one is never cached, so a half-replaced world is not served twice (V7, FR-C7, RE-W02, RE-W03)`
 
 ### Step 4 — 라벨 있는 읽기·삭제 (BLM § 6, BR-V7-19·20)
 - [ ] 4.1 포트와 어댑터

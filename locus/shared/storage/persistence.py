@@ -66,7 +66,6 @@ def persist_graph(
         + [gm.wikiprior_to_node(p) for p in priors]
         + [gm.npc_to_node(n) for n in npcs]
         + [gm.seed_to_node(s) for s in seeds]
-        + ([gm.worldmeta_to_node(meta)] if meta is not None else [])
     )
     edges = (
         gm.contains_edges(regions)
@@ -116,6 +115,14 @@ def persist_graph(
             warnings.append(
                 BuildWarning(stage="persist-search", severity="error", message=str(exc))
             )
+    if meta is not None:
+        # Last (V7, BR-V7-06): the version mark a reader caches by goes in only once the
+        # graph is whole, so a reader in another process never caches a half-written
+        # world under the new mark (RE-W02). A failed index above still writes it.
+        try:
+            graph_repo.upsert_nodes([gm.worldmeta_to_node(meta)])
+        except Exception as exc:
+            warnings.append(BuildWarning(stage="persist-meta", severity="error", message=str(exc)))
     return warnings
 
 

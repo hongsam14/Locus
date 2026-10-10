@@ -5635,3 +5635,99 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V6 — bookkeeping correction only.
 
 ---
+
+## Functional Design — V7 — Plan and question
+**Timestamp**: 2026-10-08T13:40:23Z
+**AI Response**: Plan `construction/plans/V7-world-knowledge-functional-design-plan.md`. Self-decided from the approved Application Design and code facts: best_origins (max path weight, tie by region id; unknown_count once per knowledge), persist order with WorldMeta last (skipped when nodes/edges fail; written after a failed index), no caching of meta-less snapshots, hit-path version failure as a miss, _backup unset/ok/failed with BackupFailedError before any delete, old snapshot via the loader, carry_over by normalized (name, level) with a parent tie-break, carried NPCs/seeds in the same persist call before WorldMeta, duplicate ids refused after remap and before writes, label on 8 of the 11 call sites (3 stay any-label), NEEDS by (issue, target kind) and no-change answers refused. Question: Q1 knowledge list order.
+**Context**: CONSTRUCTION / V7 — Functional Design; awaiting Q1.
+
+---
+
+## Functional Design — V7 — Answer
+**Timestamp**: 2026-10-08T13:43:33Z
+**User Input**: Q1 "A. 확실한 것부터 (권장)"
+**AI Response**: No ambiguity. Writing the V7 FD artifacts.
+**Context**: CONSTRUCTION / V7 — Functional Design; artifacts next, then the design review.
+
+---
+
+## Plan Review Requested — Functional Design — V7
+**Timestamp**: 2026-10-08T13:46:42Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/V7-world-knowledge/functional-design/business-logic-model.md` (+ domain-entities.md, business-rules.md, FD plan). Review record: `aidlc-docs/construction/V7-world-knowledge/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — V7 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — V7
+**Timestamp**: 2026-10-08T13:51:03Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 3 Major / 5 Minor; open 8. Record: `aidlc-docs/construction/V7-world-knowledge/functional-design/reviews/functional-design-review-01.md`. Session re-check: R-04 (`_close_if_replaced` runs after a successful replace only) and R-06 (`pick_facts` re-sorts; rumor seeds take direct + propagated in consensus order) confirmed.
+**Context**: Functional Design — V7 — builder fix, then re-review (iteration 2).
+
+---
+## Functional Design — V7 — Review findings fixed
+**Timestamp**: 2026-10-08T13:53:13Z
+**User Input**: (none)
+**AI Response**: Fixed R-01..R-08 in the V7 FD (business-logic-model.md, business-rules.md, domain-entities.md) and the FD plan. R-01: no-cache rule only for a cache that can read versions; a loader without `version()` or `check_version=False` caches as before (EX-18/EX-19 unchanged), `UNVERSIONED` marker. R-02: `delete_held` reads with the label, falls back to an unlabeled read, and touches neither the node nor the search doc when another label holds the id. R-03: CONFIRM is never refused (WIKI_CONFLICT keep path); the no-change check runs before any write or change record. R-04: sessions close after the replace only when `replaced=true`; the known-limit line is removed. R-05: 12 production call sites, 9 labeled, 3 unlabeled, plus the snapshot-less branch. R-06: `pick_facts` re-sorts with an equivalent key; rumor seeds now go confident-first. R-07: duplicate direct scopes of one (region, knowledge) keep the max confidence; the PBT generator emits them. R-08: the builder reads the old world by invalidating its cache and calling `get` (no new constructor parameter).
+**Context**: Functional Design — V7 — re-review next (iteration 2).
+
+---
+
+## Plan Review Requested — Functional Design — V7 (iteration 2)
+**Timestamp**: 2026-10-08T13:53:13Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 2 of 2) with prior findings R-01..R-08 carried forward. Review record: `aidlc-docs/construction/V7-world-knowledge/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — V7 — re-review before approval gate.
+
+---
+## Plan Review Completed — Functional Design — V7 (iteration 2)
+**Timestamp**: 2026-10-08T13:57:04Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. R-01..R-08 Resolved; new Minor R-09 (a confirm that changes nothing leaves an empty ChangeSet in the run's history) and R-10 (the loader drops NPCs/seeds with a missing region, so carry_over's "region not in the old world" branch is unreachable and they vanish unreported). Record: `aidlc-docs/construction/V7-world-knowledge/functional-design/reviews/functional-design-review-02.md`. Session re-check: R-09 confirmed (`apply_answer` returns a ChangeSet with no nodes/edges; `service.answer` appends it to `run.history`). R-10 confirmed (`loader._keep` → `load_warnings`). Session finding S-1: a WIKI_CONFLICT confirm does not close the question — the cached verdict (key: id, statement, terrain) re-raises the same issue on the next detection, and only IGNORE adds to `ignored_keys`; the FD's "확인은 그 질문을 닫는다" does not hold for WIKI_CONFLICT.
+**Context**: Functional Design — V7 — approval gate next.
+
+---
+## Functional Design — V7 — Approval
+**Timestamp**: 2026-10-10T15:15:59Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V7 Functional Design approved. Open findings R-09, R-10 and session finding S-1 recorded as Accepted risk and carried into the V7 code plan with the decisions shown at the gate: R-09 — a confirm that changes no value writes nothing, records no change and closes the question (TP-V7-13 asserts it); S-1 — a WIKI_CONFLICT confirm closes the question for the run (same list as ignore, so it can be restored); R-10 — NPCs/seeds the loader dropped surface as carry-over warnings in the build report, and PBT-V7-4 counts snapshot items plus dropped ones. NFR stages SKIP for V7; next: V7 Code Generation (Part 1, plan).
+**Context**: CONSTRUCTION / V7 — Functional Design complete.
+
+---
+## Code Generation — V7 — Part 1 plan
+**Timestamp**: 2026-10-10T15:21:10Z
+**User Input**: (none)
+**AI Response**: Plan `construction/plans/V7-world-knowledge-code-generation-plan.md`: 10 steps (docs+baseline, consensus, persist order+cache, labeled reads/deletes, duplicate ids, backup gate, carry-over, augmentation inputs, operations doc, gate+summary). Code facts recorded in § 1.2: three graph test doubles (not two), the in-memory graph keyed by (world, id) re-keyed to (world, label, id), the cache hit path's unguarded version read, builder test cache stubs that raise on get. FD review 02 R-09/R-10 and session S-1 carried in § 1.1 (`kept_keys` on AugmentationRun; loader drop-message constants). Web unchanged; V8 gets the report display.
+**Context**: CONSTRUCTION / V7 — Code Generation Part 1; plan review next.
+
+---
+
+## Plan Review Requested — Code Generation Plan — V7
+**Timestamp**: 2026-10-10T15:21:10Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/V7-world-knowledge-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V7-world-knowledge-code-generation-plan-review-01.md`.
+**Context**: Code Generation — V7 — review requested before approval gate.
+
+---
+## Plan Review Completed — Code Generation Part 1 — V7
+**Timestamp**: 2026-10-10T15:26:32Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 1 Major / 7 Minor; open 8 (R-01 an existing cache test turns RED under Step 3; R-02 check_version=False must store UNVERSIONED; R-03 how a no-change confirm reaches apply_answer and the kept_keys condition needs action == CONFIRM; R-04 the gate script is gone; R-05 which double records label args, no Neo4j query-shape test; R-06 test_world_api uses stub builders; R-07 BackupFailedError and the old-read error are caught by the commit block's generic except; R-08 no end-state test counts). Record: `aidlc-docs/construction/plans/reviews/V7-world-knowledge-code-generation-plan-review-01.md`. Session re-check: R-01 confirmed (test_cache.py:96-99), R-04 confirmed (the session scratchpad was emptied — v4/v5 gate scripts and the V6 capture tools are gone), R-06 confirmed (`_Builder`, `_Importer` stubs), R-07 confirmed (`_backup` inside the commit try). Plan frozen until the gate answer.
+**Context**: Code Generation Part 1 — V7 — next: approval gate.
+
+---
+
+## Code Generation Part 1 — V7 — Approval prompt
+**Timestamp**: 2026-10-10T15:26:32Z
+**AI Response**: Asked for approval of `construction/plans/V7-world-knowledge-code-generation-plan.md` (10 steps, 10 commits on feat/follow-up) with the Review brief (R-01..R-08 open).
+**Context**: CONSTRUCTION / V7 — code plan approval gate.
+
+---
+## Code Generation Part 1 — V7 — Approval
+**Timestamp**: 2026-10-10T15:28:25Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V7 code plan approved; the approval covers the commits the plan lists on feat/follow-up. Review 01 R-01..R-08 recorded as Accepted risk and written into the plan's § 1.4 execution notes with the decisions shown at the gate. Starting Code Generation Part 2 at Step 1.
+**Context**: CONSTRUCTION / V7 — Code Generation Part 2.
+
+---

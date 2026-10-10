@@ -359,3 +359,39 @@ def test_llm_free_world_edits_and_augments_but_drafts_answer_503() -> None:
     assert client.post(f"/api/world/worlds/w/regions/{town.id}/npc-drafts").status_code == 503
     run = client.post("/api/world/worlds/w/augmentation/runs")
     assert run.status_code == 200 and run.json()["llm_calls"] == 0
+
+
+def test_tp_v7_13_an_entity_answer_with_only_a_title_is_a_400() -> None:
+    """V7 (BR-V7-21/22): an entity question asks for no title, and an answer that would
+    change nothing is refused before any write with ``invalid_request``."""
+    from locus.shared.models import Entity, EntityType
+
+    graph, search = InMemoryGraphRepository(), InMemorySearchRepository()
+    cache = WorldCache(WorldLoader(graph))
+    town = Region(world_id="w", name="Riverton", level=RegionLevel.TOWN, provenance=_prov())
+    ghost = Entity(
+        world_id="w",
+        name="Ghost",
+        entity_type=EntityType.PERSON,
+        confidence=0.2,
+        located_in=town.id,
+        provenance=_prov(),
+    )
+    persist_graph(
+        graph, search, None, "w", regions=[town], entities=[ghost], meta=WorldMeta(id="w", name="W")
+    )
+    shared = SharedContainer(settings=Settings(), graph=graph, search=search, llm=None)
+    knowledge = KnowledgeContainer(
+        loader=WorldLoader(graph), cache=cache, query=None, params=None  # type: ignore[arg-type]
+    )
+    client = TestClient(create_app(world=assemble_world(shared, knowledge)))
+    run = client.post("/api/world/worlds/w/augmentation/runs").json()
+    q = next(q for q in run["open_questions"] if q["target"]["id"] == ghost.id)
+    assert q["needs"] == {"edit": ["statement", "confidence"]}
+    r = client.post(
+        f"/api/world/augmentation/runs/{run['id']}/answer",
+        json={"question_id": q["id"], "action": "edit", "title": "The Ghost"},
+    )
+    assert r.status_code == 400 and r.json()["code"] == "invalid_request"
+    after = client.get(f"/api/world/augmentation/runs/{run['id']}").json()
+    assert after["history"] == [] and q["id"] in [x["id"] for x in after["open_questions"]]

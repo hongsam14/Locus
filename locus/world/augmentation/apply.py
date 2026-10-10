@@ -36,6 +36,13 @@ _REF_KIND = {  # dangling field -> the label its new reference must have
 }
 
 
+class _Unchanged:
+    """``_write``'s answer for a confirm that left every value as it was (V7, R-09)."""
+
+
+UNCHANGED = _Unchanged()
+
+
 def apply_answer(
     issue: Issue,
     question: AugmentationQuestion,
@@ -44,7 +51,8 @@ def apply_answer(
     world_id: str,
     editors: Editors,
 ) -> ChangeSet | None:
-    """Apply ``answer`` to ``question``'s target; None for ignore (nothing written)."""
+    """Apply ``answer`` to ``question``'s target; None for ignore, and for a confirm that
+    changes no value (nothing written, so nothing to undo — V7, R-09)."""
     action = AnswerAction(answer.action)
     if action not in [AnswerAction(a) for a in question.actions]:
         raise ValueError(f"{action} is not an answer to this question")
@@ -60,6 +68,8 @@ def apply_answer(
     before = _edges(graph, world_id, watch)
 
     added = _write(issue, target.id, action, answer, world_id=world_id, editors=editors, cs=cs)
+    if isinstance(added, _Unchanged):
+        return None
     cs.added_ids = added
     nodes_after = _nodes(editors, world_id, [*nodes, *added])
     # only what changed is recorded: a revert checks those for edits made after it
@@ -85,8 +95,11 @@ def _watched(issue: Issue, target_id: str) -> tuple[list[str], list[str]]:
     return [target_id], [target_id]
 
 
-def _write(issue, target_id, action, answer, *, world_id, editors: Editors, cs) -> list[str]:
-    """The writes of BLM §4.2's table; returns the ids of nodes it created."""
+def _write(
+    issue, target_id, action, answer, *, world_id, editors: Editors, cs
+) -> list[str] | _Unchanged:
+    """The writes of BLM §4.2's table; returns the ids of nodes it created, or
+    ``UNCHANGED`` for a confirm that left the value as it was."""
     kind = IssueType(issue.type)
     if kind == IssueType.GAP:  # add
         statement = (answer.statement or "").strip()
@@ -108,7 +121,8 @@ def _write(issue, target_id, action, answer, *, world_id, editors: Editors, cs) 
             raise LookupError(f"node not found: {target_id}")
         return []
     if kind in (IssueType.LOW_CONFIDENCE, IssueType.WIKI_CONFLICT):
-        _confirm_or_edit(issue, target_id, action, answer, world_id, editors)
+        if not _confirm_or_edit(issue, target_id, action, answer, world_id, editors):
+            return UNCHANGED
     elif kind == IssueType.ORPHAN:  # edit: place it in a region
         entity = _entity(editors, world_id, target_id)
         editors.entities.update_entity(entity.model_copy(update={"located_in": _region(answer)}))
@@ -119,35 +133,39 @@ def _write(issue, target_id, action, answer, *, world_id, editors: Editors, cs) 
     return []
 
 
-def _confirm_or_edit(issue, target_id, action, answer, world_id, editors: Editors) -> None:
-    if issue.target_kind == "entity":  # B3: entity targets edit the entity
-        e = _entity(editors, world_id, target_id)
-        if action == AnswerAction.CONFIRM:
-            conf = answer.confidence if answer.confidence is not None else max(e.confidence, 0.9)
-            e = e.model_copy(update={"confidence": conf})
-        else:
-            update: dict = {}
-            if answer.statement:
-                update["description"] = answer.statement
-            if answer.confidence is not None:
-                update["confidence"] = answer.confidence
-            e = e.model_copy(update=update)
-        editors.entities.update_entity(e)
-        return
-    k = _knowledge(editors, world_id, target_id)
+def _confirm_or_edit(issue, target_id, action, answer, world_id, editors: Editors) -> bool:
+    """Write the confirm or the edit; False when a confirm leaves the value as it is.
+
+    V7 (BR-V7-22): what would change is worked out first. An edit that changes nothing
+    (empty fields, or the values already there) is refused before any write; a confirm
+    is "keep it as it is" and never refused (FD review R-03), it just writes nothing."""
+    entity = issue.target_kind == "entity"  # B3: entity targets edit the entity
+    item = (
+        _entity(editors, world_id, target_id)
+        if entity
+        else _knowledge(editors, world_id, target_id)
+    )
+    update: dict = {}
     if action == AnswerAction.CONFIRM:
-        conf = answer.confidence if answer.confidence is not None else max(k.confidence, 0.9)
-        k = k.model_copy(update={"confidence": conf})
+        conf = answer.confidence if answer.confidence is not None else max(item.confidence, 0.9)
+        update["confidence"] = conf
     else:
-        update = {}
-        if answer.statement:
-            update["statement"] = answer.statement
-        if answer.title:
+        if answer.statement:  # an entity's description comes in the statement field
+            update["description" if entity else "statement"] = answer.statement
+        if answer.title and not entity:  # an entity has no title (U8 #13)
             update["title"] = answer.title
         if answer.confidence is not None:
             update["confidence"] = answer.confidence
-        k = k.model_copy(update=update)
-    editors.knowledge.upsert_knowledge(k)
+    changed = {f: v for f, v in update.items() if getattr(item, f) != v}
+    if not changed:
+        if action == AnswerAction.CONFIRM:
+            return False
+        raise ValueError("the answer changes nothing")
+    if isinstance(item, Knowledge):
+        editors.knowledge.upsert_knowledge(item.model_copy(update=changed))
+    else:
+        editors.entities.update_entity(item.model_copy(update=changed))
+    return True
 
 
 def _repoint(issue: Issue, target_id, action, answer, world_id, editors: Editors) -> None:

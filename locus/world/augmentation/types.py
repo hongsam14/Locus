@@ -148,13 +148,17 @@ class AugmentationRun(_Aug):
     open_questions: list[AugmentationQuestion] = Field(default_factory=list)
     issues: list[Issue] = Field(default_factory=list)
     ignored_keys: list[str] = Field(default_factory=list)
+    # V7 (S-1, R-09): confirmed "keep as it is" where detection would ask again — a wiki
+    # conflict, or a confirm that changed nothing. Not asked again in this run; kept
+    # apart from ``ignored_keys``, which the screen lists as ignored.
+    kept_keys: list[str] = Field(default_factory=list)
     history: list[ChangeSet] = Field(default_factory=list)
     llm_calls: int = 0
     llm_budget_exhausted: bool = False
 
 
 class AnswerResult(_Aug):
-    change: ChangeSet | None = None  # None for ignore (not in the history)
+    change: ChangeSet | None = None  # None for ignore, or a confirm that changed nothing
     run: AugmentationRun
     changed: list[QuestionTarget] = Field(default_factory=list)
 

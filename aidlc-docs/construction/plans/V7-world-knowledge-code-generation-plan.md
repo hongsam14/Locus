@@ -164,18 +164,18 @@
 - [x] 7.7 커밋: `fix(world): a rebuild keeps the world's NPCs and event seeds on the regions of the same name, and says which it could not place (V7, FR-C9, RE-W18)`
 
 ### Step 8 — 보강 질문의 입력 칸과 무변경 답 (BLM § 7, BR-V7-21·22, § 1.1 R-09·S-1)
-- [ ] 8.1 `locus/world/augmentation/questions.py`: `NEEDS`를 (이슈 종류, 대상 종류) 열쇠로 바꾼다(domain-entities § 8 표). `generate`는 `NEEDS.get((issue.type, issue.target_kind), {})`로 찾는다. DANGLING은 대상 넷 모두 같은 칸이다.
-- [ ] 8.2 `locus/world/augmentation/apply.py`
+- [x] 8.1 `locus/world/augmentation/questions.py`: `NEEDS`를 (이슈 종류, 대상 종류) 열쇠로 바꾼다(domain-entities § 8 표). `generate`는 `NEEDS.get((issue.type, issue.target_kind), {})`로 찾는다. DANGLING은 대상 넷 모두 같은 칸이다.
+- [x] 8.2 `locus/world/augmentation/apply.py`
   - `_confirm_or_edit` 고치기: 바꿀 칸을 먼저 계산하고 지금 값과 같은 칸은 뺀다. 비면 아무것도 쓰기 전에 `ValueError("the answer changes nothing")`이다. 엔티티는 설명(statement 칸)과 확신만 본다.
   - `_confirm_or_edit` 확인: 새 확신도가 지금 값과 같으면 쓰지 않고 "바뀐 것 없음"을 알린다. `apply_answer`는 그때 `None`을 돌려준다(R-09).
   - 더하기·다시 가리키기·자리 정하기는 지금 검사(빈 문장, 빈 지역, 없는 참조)로 이미 쓰기 전에 거절된다. 이 단계의 시험이 그것을 확인한다.
-- [ ] 8.3 `locus/world/augmentation/types.py` `AugmentationRun.kept_keys: list[str] = []`. `locus/world/augmentation/service.py` `answer`: 확인 답이 WIKI_CONFLICT이거나 `change is None`이면 `kept_keys`에 열쇠를 넣는다. `_refresh`는 `select(found, run.ignored_keys + run.kept_keys)`다.
-- [ ] 8.4 시험(`tests/world/augmentation/test_augmentation.py`)
+- [x] 8.3 `locus/world/augmentation/types.py` `AugmentationRun.kept_keys: list[str] = []`. `locus/world/augmentation/service.py` `answer`: 확인 답이 WIKI_CONFLICT이거나 `change is None`이면 `kept_keys`에 열쇠를 넣는다. `_refresh`는 `select(found, run.ignored_keys + run.kept_keys)`다.
+- [x] 8.4 시험(`tests/world/augmentation/test_augmentation.py`)
   - TP-V7-13: LOW_CONFIDENCE·entity 질문의 `needs`에 title이 없음; 제목만 보낸 엔티티 답 → 400(API 경로 하나는 `tests/api/test_world_editor_api.py`), 그래프 쓰기 없음(Meter), 변경 기록 없음, 질문 열림; 지금 값과 같은 지식 답 → 같음.
   - R-09: 확신 0.95 지식에 확인 → 받음, 변경 기록 없음, 그래프 쓰기 없음, 질문 닫힘.
   - S-1: 위키 충돌 판정이 캐시된 지식에 확인 → 다음 탐지에 같은 질문이 없음, "무시한 질문"(`ignored_keys`)에도 없음.
   - 돌연변이: (a) 무변경 검사를 쓰기 뒤로 → 쓰기 단언 실패, (b) `kept_keys` 빼기 → S-1 실패, (c) 엔티티에 title 칸 되돌림 → `needs` 단언 실패.
-- [ ] 8.5 커밋: `fix(world): augmentation answers ask only for what they can change, refuse an answer that changes nothing, and a kept wiki conflict stays answered (V7, FR-C12, U8 #13)`
+- [x] 8.5 커밋: `fix(world): augmentation answers ask only for what they can change, refuse an answer that changes nothing, and a kept wiki conflict stays answered (V7, FR-C12, U8 #13)`
 
 ### Step 9 — 운영 문서
 - [ ] 9.1 `aidlc-docs/operations/operations.md`

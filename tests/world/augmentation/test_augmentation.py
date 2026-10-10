@@ -854,3 +854,100 @@ def test_tp_v7_12_repoint_revert_and_an_added_node_name_their_kind() -> None:
     stack.graph.calls_with.clear()
     svc.revert(run.id, res.change.id)  # type: ignore[union-attr]
     assert ("delete_node", new_id, "Knowledge") in stack.graph.calls_with
+
+
+# --------------------------------------------------------------------------- #
+# V7 — inputs by target kind, answers that change nothing (TP-V7-13, R-09, S-1)
+# --------------------------------------------------------------------------- #
+def _writes(stack: Stack) -> int:
+    return len(stack.meter.calls)
+
+
+def test_tp_v7_13_an_entity_question_asks_for_no_title() -> None:
+    stack, w = _seeded()
+    run = _service(stack).start_run("w")
+    assert _question(run, "low_confidence", w["ghost"].id).needs == {
+        "edit": ["statement", "confidence"]
+    }
+    assert _question(run, "low_confidence", w["fish"].id).needs == {
+        "edit": ["statement", "title", "confidence"]
+    }
+
+
+def test_tp_v7_13_an_edit_that_changes_nothing_writes_nothing() -> None:
+    stack, w = _seeded()
+    svc = _service(stack)
+    run = svc.start_run("w")
+    ghost_q = _question(run, "low_confidence", w["ghost"].id)
+    fish_q = _question(run, "low_confidence", w["fish"].id)
+    before = _writes(stack)
+    for q, answer in (
+        (ghost_q, {"title": "The Ghost"}),  # an entity has no title
+        (fish_q, {"statement": w["fish"].statement}),  # the value already there
+        (fish_q, {}),  # nothing at all
+    ):
+        with pytest.raises(ValueError, match="changes nothing"):
+            svc.answer(run.id, AugmentationAnswer(question_id=q.id, action="edit", **answer))
+    run = svc.get_run(run.id)  # type: ignore[assignment]
+    assert _writes(stack) == before and run.history == [] and run.answers == 0
+    assert {ghost_q.id, fish_q.id} <= {q.id for q in run.open_questions}
+
+
+def test_r09_a_confirm_that_changes_nothing_closes_the_question_without_a_change() -> None:
+    stack, w = _seeded()
+    svc = _service(stack)
+    run = svc.start_run("w")
+    q = _question(run, "low_confidence", w["fish"].id)
+    before = _writes(stack)
+    res = svc.answer(
+        run.id, AugmentationAnswer(question_id=q.id, action="confirm", confidence=0.3)
+    )  # "keep it at 0.3"
+    assert res.change is None and res.run.history == [] and _writes(stack) == before
+    assert q.issue_key in res.run.kept_keys and q.issue_key not in res.run.ignored_keys
+    assert q.issue_key not in {x.issue_key for x in res.run.open_questions}
+
+
+def test_s1_a_kept_wiki_conflict_is_not_asked_again() -> None:
+    """The verdict is cached by (id, statement, terrain): a confirm keeps the statement,
+    so the next detection would raise the same conflict. A confirm at the confidence
+    already there writes nothing as well (BR-V7-22, TP-V7-13)."""
+    stack, w = _seeded()
+    stack.editors.knowledge.create_knowledge(
+        Knowledge(
+            id="k-up",
+            world_id="w",
+            statement="the river flows uphill",
+            title="uphill",
+            confidence=0.95,
+            provenance=_prov(),
+        ),
+        w["riverton"].id,
+    )
+    svc = _llm_service(stack, _LLM(), _Wiki())
+    run = svc.start_run("w")
+    q = _question(run, "wiki_conflict", "k-up")
+    before = _writes(stack)
+    res = svc.answer(run.id, AugmentationAnswer(question_id=q.id, action="confirm"))
+    assert res.change is None and _writes(stack) == before  # 0.95 stays 0.95
+    assert q.issue_key in res.run.kept_keys
+    assert all(x.issue_key != q.issue_key for x in res.run.open_questions)
+    assert all(i.key != q.issue_key for i in res.run.issues)
+
+
+def test_s1_a_confirm_that_writes_still_keeps_the_wiki_conflict() -> None:
+    stack, w = _seeded()
+    svc = _llm_service(stack, _LLM(), _Wiki())
+    run = svc.start_run("w")
+    q = _question(run, "wiki_conflict", w["fish"].id)  # fish is at 0.3
+    res = svc.answer(run.id, AugmentationAnswer(question_id=q.id, action="confirm"))
+    assert res.change is not None and q.issue_key in res.run.kept_keys
+    assert all(x.issue_key != q.issue_key for x in res.run.open_questions)
+
+
+def test_an_ignored_question_is_listed_as_ignored_only() -> None:  # § 1.4 R-03
+    stack, w = _seeded()
+    svc = _service(stack)
+    run = svc.start_run("w")
+    q = _question(run, "low_confidence", w["fish"].id)
+    res = svc.answer(run.id, AugmentationAnswer(question_id=q.id, action="ignore"))
+    assert res.run.ignored_keys == [q.issue_key] and res.run.kept_keys == []

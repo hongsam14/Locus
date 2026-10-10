@@ -76,21 +76,21 @@
 
 ### Step 1 — 진행 기록과 기준선
 - [x] 1.1 진행 기록을 커밋한다: audit, state, FD 계획(체크), FD 산출물과 리뷰 01·02, 이 계획과 그 리뷰(`docs(aidlc): V7 functional design approved; V7 code plan`).
-- [ ] 1.2 기준선을 잰다: pytest(1138), ruff·black, mypy(11). `v7gate.sh`를 만든다.
+- [x] 1.2 기준선을 잰다(2026-10-11: pytest 1138, ruff·black clean, mypy 11). `v7gate.sh`를 새로 만들었다(§ 1.4 R-04).
 
 ### Step 2 — 합의: 가장 강한 출처, 한 번 세기, 확실한 것부터 (BLM § 1, BR-V7-01~05)
-- [ ] 2.1 `locus/knowledge/consensus.py`
+- [x] 2.1 `locus/knowledge/consensus.py`
   - `region_direct`를 만들 때 같은 (지역, 지식)은 확신이 가장 높은 하나만 둔다(R-07).
   - 순수 함수 `best_origins(pw, region_direct, exclude)`를 더한다(domain-entities § 1.1). 가중이 가장 큰 출처, 동률이면 지역 id가 작은 쪽, `pw`에 없는 지역과 `exclude`는 빠진다.
   - 4단계: `origins`를 지식 id 순으로 돌며 전파·전언·모름을 나눈다. 모름은 지식마다 한 번 센다.
   - 반환 전에 다섯 목록을 각각 `(-confidence, knowledge_id)`로 정렬한다.
-- [ ] 2.2 시험
+- [x] 2.2 시험
   - `tests/knowledge/test_consensus.py`: TP-V7-1(약한 출처가 dict에서 먼저 나와도 0.9 출처로 전파, 동률은 id 작은 지역), TP-V7-2(약한 출처 둘 → 1, 강한 출처가 있으면 0, 겹친 스코프 0.4·0.8 → 어느 순서로든 0.8), TP-V7-3 앞부분(직접 셋 → 내림차순).
   - 새 `tests/knowledge/test_consensus_props.py`: PBT-V7-1~3. 생성기는 이 모듈 안에 둔다. 지역 2~8개, 연결 가중 0~1, 겹치는 직접 스코프, 일부 전역 지식이다. 두 순열을 만들어 결과(다섯 목록의 id 차례, confidence, `unknown_count`)를 비교한다.
   - 새 `tests/play/test_v7_order.py`: TP-V7-3 뒷부분(플레이 지역 보기 `facts`의 첫 셋이 합의 차례)과 BR-V7-05의 소문 씨앗 차례(`_collect_sources`가 확실한 것부터).
   - 합의 차례에 기대던 기존 단언이 깨지면 새 차례로 고치고, 고친 수와 까닭을 code-summary § 4에 적는다(`test_consensus.py`, `test_npc_scope.py`, `test_dialogue.py`, `test_demo.py`, 소문 시험).
   - 돌연변이: (a) 처음 만난 출처를 고르기, (b) 쌍마다 세기, (c) 정렬 빼기, (d) 겹친 스코프에서 먼저 온 것 두기.
-- [ ] 2.3 커밋: `fix(knowledge): a region's knowledge comes from its strongest source, unknowns count once, each list confident first (V7, FR-C6, RE-W01)`
+- [x] 2.3 커밋: `fix(knowledge): a region's knowledge comes from its strongest source, unknowns count once, each list confident first (V7, FR-C6, RE-W01)`
 
 ### Step 3 — 저장 순서와 캐시 (BLM § 2, BR-V7-06~09)
 - [ ] 3.1 `locus/shared/storage/persistence.py` `persist_graph`

@@ -187,3 +187,102 @@ def test_consensus_engine_resolve() -> None:
     view = ConsensusEngine(kg, topo).resolve(a.id)
     assert view.region_id == a.id
     assert view.direct and view.propagated
+
+
+# --------------------------------------------------------------------------- #
+# V7 — the strongest origin, unknowns once, confident first (BR-V7-01..04)
+# --------------------------------------------------------------------------- #
+def _r(rid: str) -> Region:
+    return Region(id=rid, world_id="w", name=rid, level=RegionLevel.TOWN, provenance=_prov())
+
+
+def _direct(kid: str, rid: str, conf: float = 0.9) -> ScopeLink:
+    return ScopeLink(
+        world_id="w", knowledge_id=kid, region_id=rid, scope_type=ScopeType.DIRECT, confidence=conf
+    )
+
+
+def _ids(views) -> list[str]:
+    return [v.knowledge_id for v in views]
+
+
+def test_tp_v7_1_a_knowledge_comes_from_its_strongest_origin() -> None:
+    """RE-W01: the weak origin is met first (its connection is listed first), yet the
+    knowledge both origins hold propagates from the 0.9 one instead of being locked
+    into hearsay by the 0.3 one."""
+    here, weak, strong = _r("here"), _r("weak"), _r("strong")
+    k = _k("both hold it")
+    view = compute_consensus(
+        "here",
+        regions=[here, weak, strong],
+        connections=_conn("here", "weak", 0.3) + _conn("here", "strong", 0.9),
+        scopes=[_direct(k.id, "weak"), _direct(k.id, "strong")],
+        knowledge_by_id={k.id: k},
+    )
+    assert _ids(view.propagated) == [k.id] and not view.hearsay
+    assert view.propagated[0].region_id == "strong"
+    assert abs(view.propagated[0].confidence - 0.9 * 0.9) < 1e-9
+    assert view.unknown_count == 0
+
+
+def test_tp_v7_1_a_tie_goes_to_the_smaller_region_id() -> None:
+    here, b, a = _r("here"), _r("r-b"), _r("r-a")
+    k = _k("both hold it")
+    for order in (["r-b", "r-a"], ["r-a", "r-b"]):
+        conns = [e for rid in order for e in _conn("here", rid, 0.6)]
+        view = compute_consensus(
+            "here",
+            regions=[here, b, a],
+            connections=conns,
+            scopes=[_direct(k.id, rid) for rid in order],
+            knowledge_by_id={k.id: k},
+        )
+        assert view.propagated[0].region_id == "r-a"
+
+
+def test_tp_v7_2_unknown_counts_each_knowledge_once() -> None:
+    here, w1, w2, s = _r("here"), _r("w1"), _r("w2"), _r("s")
+    far, near = _k("only far away"), _k("far and near")
+    view = compute_consensus(
+        "here",
+        regions=[here, w1, w2, s],
+        connections=_conn("here", "w1", 0.1) + _conn("here", "w2", 0.05) + _conn("here", "s", 0.9),
+        scopes=[
+            _direct(far.id, "w1"),
+            _direct(far.id, "w2"),  # two weak origins: one unknown, not two
+            _direct(near.id, "w1"),
+            _direct(near.id, "s"),  # a strong origin: not unknown at all
+        ],
+        knowledge_by_id={far.id: far, near.id: near},
+    )
+    assert view.unknown_count == 1
+    assert _ids(view.propagated) == [near.id]
+
+
+def test_tp_v7_2_a_knowledge_scoped_twice_keeps_its_highest_confidence() -> None:
+    here = _r("here")
+    k = _k("said twice")
+    for scopes in (
+        [_direct(k.id, "here", 0.4), _direct(k.id, "here", 0.8)],
+        [_direct(k.id, "here", 0.8), _direct(k.id, "here", 0.4)],
+    ):
+        view = compute_consensus("here", regions=[here], scopes=scopes, knowledge_by_id={k.id: k})
+        assert [v.confidence for v in view.direct] == [0.8]
+
+
+def test_tp_v7_3_each_list_is_confident_first_then_by_id() -> None:
+    here = _r("here")
+    low, high, mid, tie = _k("low"), _k("high"), _k("mid"), _k("tie")
+    scopes = [
+        _direct(low.id, "here", 0.2),
+        _direct(high.id, "here", 0.9),
+        _direct(mid.id, "here", 0.5),
+        _direct(tie.id, "here", 0.5),
+    ]
+    view = compute_consensus(
+        "here",
+        regions=[here],
+        scopes=scopes,
+        knowledge_by_id={x.id: x for x in (low, high, mid, tie)},
+    )
+    assert _ids(view.direct) == [high.id, *sorted([mid.id, tie.id]), low.id]

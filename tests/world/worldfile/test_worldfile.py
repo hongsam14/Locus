@@ -342,3 +342,80 @@ def test_ex6_a_seed_in_a_region_the_file_lacks_is_dropped_as_an_error() -> None:
     assert not report.ok
     assert any(w.item_id == "seed-lost" and w.severity == "error" for w in report.warnings)
     assert [s.id for s in exporter.export("w").event_seeds] == ["seed-ok"]
+
+
+# --------------------------------------------------------------------------- #
+# V7 — duplicate ids are refused before anything is written (BR-V7-17/18)
+# --------------------------------------------------------------------------- #
+def _stored(graph) -> list:
+    import json
+
+    return sorted(
+        (k, json.dumps(n.properties, sort_keys=True, default=str)) for k, n in graph._nodes.items()
+    )
+
+
+def test_tp_v7_10_a_file_with_duplicate_ids_changes_nothing() -> None:
+    from locus.shared.models import EventSeed
+    from locus.world.worldfile.remap import duplicate_ids
+
+    graph, _s, _c, _e, importer = _stack()
+    assert importer.import_("w", _demo_file("w")).ok
+    before, edges_before = _stored(graph), len(graph._edges)
+
+    file = _demo_file("w")
+    region = file.regions[0]
+    seed = EventSeed(  # across sections: a seed with a region's id
+        id=region.id,
+        world_id="w",
+        region_id=region.id,
+        title="Flood",
+        category="disaster",
+        magnitude=0.5,
+        provenance=Provenance(source=SourceKind.INPUT),
+    )
+    twin = file.knowledge[1].model_copy(update={"id": file.knowledge[0].id})  # in a section
+    bad = file.model_copy(update={"event_seeds": [seed], "knowledge": [*file.knowledge, twin]})
+    assert duplicate_ids(bad) == sorted({region.id, file.knowledge[0].id})
+
+    report = importer.import_("w", bad)
+
+    assert report.ok is False and report.replaced is False
+    assert [(w.stage, w.severity) for w in report.warnings] == [("duplicate-ids", "error")]
+    assert region.id in report.warnings[0].message
+    assert _stored(graph) == before and len(graph._edges) == edges_before
+
+
+def test_tp_v7_10_a_remapped_file_is_checked_on_the_ids_it_would_store() -> None:
+    _g, _s, _c, _e, importer = _stack()
+    file = _demo_file("src")
+    twin = file.regions[1].model_copy(update={"id": file.regions[0].id})
+    report = importer.import_("other", file.model_copy(update={"regions": [*file.regions, twin]}))
+    assert report.ok is False and report.remapped is True
+    assert report.warnings[0].stage == "duplicate-ids"
+    assert file.regions[0].id not in report.warnings[0].message  # the remapped id is named
+
+
+@settings(max_examples=40, deadline=None, suppress_health_check=[HealthCheck.too_slow])
+@given(file=world_files(), data=st.data())
+def test_pbt_v7_5_duplicate_ids_do_not_follow_order(file: WorldFile, data) -> None:
+    from collections import Counter
+
+    from locus.world.worldfile.remap import ID_SECTIONS, duplicate_ids
+
+    every = [item.id for s in ID_SECTIONS for item in getattr(file, s)]
+    updates = {}  # copy a few ids onto other items, in a section or across sections
+    for section in ID_SECTIONS:
+        items = list(getattr(file, section))
+        for i in range(len(items)):
+            if data.draw(st.booleans()) and data.draw(st.booleans()):
+                items[i] = items[i].model_copy(update={"id": data.draw(st.sampled_from(every))})
+        updates[section] = items
+    dup = file.model_copy(update=updates)
+    counts = Counter(item.id for s in ID_SECTIONS for item in getattr(dup, s))
+    found = duplicate_ids(dup)
+    assert found == sorted(i for i, n in counts.items() if n >= 2)
+    shuffled = dup.model_copy(
+        update={s: data.draw(st.permutations(getattr(dup, s))) for s in ID_SECTIONS}
+    )
+    assert duplicate_ids(shuffled) == found

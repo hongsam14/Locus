@@ -129,11 +129,11 @@
 - [x] 4.5 커밋: `fix(world): reads and deletes name the node's kind, so a seed sharing a region's id no longer takes the region with it (V7, FR-C10, U8 #10)`
 
 ### Step 5 — 중복 id 거절 (BLM § 5, BR-V7-17·18)
-- [ ] 5.1 `locus/world/worldfile/remap.py`: `duplicate_ids(file) -> list[str]`(정렬; 절 `regions, entities, relations, knowledge, priors, npcs, event_seeds`, 절 안과 절 사이).
-- [ ] 5.2 `locus/world/worldfile/import_.py`: 재매핑 뒤, `validate_references` 앞에 검사한다. 있으면 아무것도 쓰지 않고 `replaced=false`, 경고 `stage="duplicate-ids"`, severity error, `"duplicate ids in the World File: a, b, …"`(10개까지와 `and N more`)인 리포트를 돌려준다.
-- [ ] 5.3 시험(`tests/world/worldfile/test_worldfile.py`): TP-V7-10(씨앗 id = 지역 id, 같은 id 지식 둘 → 거절, 그래프 쓰기 없음, 옛 월드 그대로), PBT-V7-5(절과 항목 순서를 섞어도 같은 결과, 결과의 id는 실제로 두 번 이상). 데모 불러오기(`tests/world/test_demo.py`)는 그대로 통과한다.
+- [x] 5.1 `locus/world/worldfile/remap.py`: `duplicate_ids(file) -> list[str]`(정렬; 절 `regions, entities, relations, knowledge, priors, npcs, event_seeds`, 절 안과 절 사이).
+- [x] 5.2 `locus/world/worldfile/import_.py`: 재매핑 뒤, `validate_references` 앞에 검사한다. 있으면 아무것도 쓰지 않고 `replaced=false`, 경고 `stage="duplicate-ids"`, severity error, `"duplicate ids in the World File: a, b, …"`(10개까지와 `and N more`)인 리포트를 돌려준다.
+- [x] 5.3 시험(`tests/world/worldfile/test_worldfile.py`): TP-V7-10(씨앗 id = 지역 id, 같은 id 지식 둘 → 거절, 그래프 쓰기 없음, 옛 월드 그대로), PBT-V7-5(절과 항목 순서를 섞어도 같은 결과, 결과의 id는 실제로 두 번 이상). 데모 불러오기(`tests/world/test_demo.py`)는 그대로 통과한다.
   - 돌연변이: 검사 빼기 → TP-V7-10 실패.
-- [ ] 5.4 커밋: `fix(world): a World File with duplicate ids is refused before anything is written (V7, FR-C10)`
+- [x] 5.4 커밋: `fix(world): a World File with duplicate ids is refused before anything is written (V7, FR-C10)`
 
 ### Step 6 — 백업 게이트 (BLM § 3, BR-V7-10·11)
 - [ ] 6.1 `locus/world/build.py`: `BackupFailedError(RuntimeError)`를 `WorldExistsError` 곁에 둔다. `_backup(world_id) -> Path | None`은 미설정이면 `None`, 성공이면 경로, 실패면 `BackupFailedError`다(경고 목록을 받지 않는다).

@@ -14,20 +14,27 @@ from collections.abc import Callable
 from locus.shared.models import BuildWarning
 from locus.world.worldfile.schema import NAMESPACE_LOCUS, WorldFile, WorldFileMeta
 
+# the sections whose items carry an id (connections, scopes and prior links do not)
+ID_SECTIONS = ("regions", "entities", "relations", "knowledge", "priors", "npcs", "event_seeds")
+
 
 def file_ids(file: WorldFile) -> set[str]:
     ids: set[str] = set()
-    for section in (
-        "regions",
-        "entities",
-        "relations",
-        "knowledge",
-        "priors",
-        "npcs",
-        "event_seeds",
-    ):
+    for section in ID_SECTIONS:
         ids.update(item.id for item in getattr(file, section))
     return ids
+
+
+def duplicate_ids(file: WorldFile) -> list[str]:
+    """Ids that come twice — inside one section or across two — sorted; empty when none
+    (V7, BR-V7-17/18). Two nodes of one id would make every read and delete by id
+    ambiguous (U8 #10), so an import refuses the file instead of storing both."""
+    seen: set[str] = set()
+    twice: set[str] = set()
+    for section in ID_SECTIONS:
+        for item in getattr(file, section):
+            (twice if item.id in seen else seen).add(item.id)
+    return sorted(twice)
 
 
 def remapped_id(target_world_id: str, old_id: str) -> str:

@@ -20,7 +20,12 @@ from locus.shared.storage.base import GraphRepository, SearchRepository
 from locus.shared.storage.persistence import persist_graph
 from locus.world.build import WorldExistsError
 from locus.world.worldfile.export import WorldFileExporter, to_json_bytes
-from locus.world.worldfile.remap import remap_ids, set_world_id, validate_references
+from locus.world.worldfile.remap import (
+    duplicate_ids,
+    remap_ids,
+    set_world_id,
+    validate_references,
+)
 from locus.world.worldfile.schema import FORMAT_VERSION, WorldFile
 
 logger = logging.getLogger(__name__)
@@ -55,6 +60,9 @@ class WorldFileImporter:
         source_world_id = file.world.id
         remapped = force_remap or source_world_id != world_id
         file = remap_ids(file, world_id) if remapped else set_world_id(file, world_id)
+        twice = duplicate_ids(file)  # the ids it would store, before anything is written
+        if twice:
+            return self._refused(world_id, file, source_world_id, remapped, force_remap, twice)
         file, warnings = validate_references(file)
 
         exists = world_id in self._graph.list_world_ids()
@@ -118,6 +126,34 @@ class WorldFileImporter:
             backup_path=str(backup_path) if backup_path else None,
             counts=file.counts(),
             warnings=warnings,
+        )
+
+    @staticmethod
+    def _refused(
+        world_id: str,
+        file: WorldFile,
+        source_world_id: str,
+        remapped: bool,
+        forced: bool,
+        twice: list[str],
+    ) -> ImportReport:
+        """A file with duplicate ids: nothing deleted or written, the old world stays
+        (V7, BR-V7-17)."""
+        shown = ", ".join(twice[:10]) + (f" and {len(twice) - 10} more" if len(twice) > 10 else "")
+        return ImportReport(
+            world_id=world_id,
+            format_version=file.format_version,
+            source_world_id=source_world_id,
+            remapped=remapped,
+            forced=forced,
+            counts=file.counts(),
+            warnings=[
+                BuildWarning(
+                    stage="duplicate-ids",
+                    severity="error",
+                    message=f"duplicate ids in the World File: {shown}",
+                )
+            ],
         )
 
     def _backup(self, world_id: str, warnings: list[BuildWarning]) -> Path | None:

@@ -178,12 +178,12 @@
 - [x] 8.5 커밋: `fix(world): augmentation answers ask only for what they can change, refuse an answer that changes nothing, and a kept wiki conflict stays answered (V7, FR-C12, U8 #13)`
 
 ### Step 9 — 운영 문서
-- [ ] 9.1 `aidlc-docs/operations/operations.md`
+- [x] 9.1 `aidlc-docs/operations/operations.md`
   - WorldMeta가 없는 옛 월드는 캐시되지 않아 읽을 때마다 불러온다. 다시 빌드하거나 다시 불러오면 생긴다.
   - 백업이 설정되어 있고 실패하면 교체가 멈춘다(stage `backup`). 디스크·권한을 고치고 다시 한다.
   - 다시 빌드는 NPC·씨앗을 이름이 같은 지역에 이어 붙인다. 못 붙인 것은 리포트 경고(stage `carry-over`)와 백업에 있다.
   - 중복 id World File은 거절된다(stage `duplicate-ids`). 파일을 고친다.
-- [ ] 9.2 커밋: `docs: rebuilds keep NPCs and seeds, a failed backup stops a replace, meta-less worlds are read fresh (V7)`
+- [x] 9.2 커밋: `docs: rebuilds keep NPCs and seeds, a failed backup stops a replace, meta-less worlds are read fresh (V7)`
 
 ### Step 10 — 게이트와 요약
 - [ ] 10.1 게이트: ruff·black, mypy ≤ 11, pytest 두 번(hypothesis 시드 둘), `git diff --stat -- web` 비어 있음.

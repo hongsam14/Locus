@@ -5907,3 +5907,10 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V8 — code review 01 fixes.
 
 ---
+## Code Review 01 — V8 — Fixed
+**Timestamp**: 2026-10-11T07:35:51Z
+**User Input**: (none)
+**AI Response**: All 38 findings fixed in `1bbfe92` (data flow: drags wait for the world a write left, map off until a replaced world answers, overlay yields to a later read, priors from the world, one-sentence augmentation errors with [보강 새로 시작], late answers inert, create-mark failures, functional picks, form key without the spot, NPC writes re-read the inspector only, another world's read not settled), `5bec7d6` (a load the server wrote is a load; refusals said with the reason; focus back on [파일 ▾]; weight slider and kind select stay on; [저장] keeps focus; long words wrap; head counts each connection once; play hint on the page; non-JSON pick sentence; per-connection control names; ▾ hidden), `8207e0c` (question card in the screen's words — the human's choice A — names from the world, key parsing by field name, issue labels on ignored/kept lines, display-language titles, English plurals, aligned words, nine unused keys gone, home unscoped count, room for long scenarios, testTimeout 15 s), `ab88823` and `4e29839` (tests), plus the docs commit (FD amendments BR-V8-34, FC § 4.5, BLM § 4 and § 7.1; code summary § 1/§ 3/§ 4/§ 5 corrected and § 9; review § 8; capture Artifact version 2 measured without mobile emulation: demo 18/18 and long text 10/10 with no sideways scroll). Gate GREEN: vitest 813 (+72), tsc clean, npm audit 0, pytest 1228, mypy 11. First-screen JS 119.74 kB (+0.53 dictionary sentences on top of deviation A). Mutants of the fixes: 47, all caught (8 after adding tests). **V8 COMPLETE.**
+**Context**: CONSTRUCTION / V8 — complete; next V9 (debt and docs).
+
+---

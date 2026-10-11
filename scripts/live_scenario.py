@@ -17,6 +17,7 @@ up -d --build`). It REPLACES the target world (closing its open sessions).
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import sys
 import time
@@ -110,6 +111,10 @@ class Scenario:
         status, data = self.http.call(method, path, body)
         if status not in want:
             raise StepFailed(f"{method} {path} -> {status}: {_short(data)}")
+        # an answer that is not JSON (a proxy's HTML page, a cut body) is a FAIL with what came
+        # back, not an AttributeError further on (V9, FR-T7)
+        if not isinstance(data, (dict, list)):
+            raise StepFailed(f"{method} {path} -> {status}: not JSON: {_short(data)}")
         return data
 
     def _turn(self) -> int:
@@ -283,13 +288,28 @@ class Scenario:
         return f"T{before + 1}"
 
     def s10a_heard_differently(self) -> str:
+        """The blight is heard more strongly near it (V9, FR-T7): the event's own reach is
+        larger in the harbor than in Ironcrag (path weight 1.0 against 0.204 from the meadow,
+        U8 domain-entities § 5.2), and so is the harbor's distortion — above the 0.3 start.
+        The event's ``contributions`` are by region id; each id is the state row's own."""
         state = self._state()
         near, far = state[HARBOR], state[CRAG]
-        if near["distortion"] == far["distortion"]:
-            raise StepFailed(f"same distortion {near['distortion']} at {HARBOR} and {CRAG}")
+        events = self._ok("GET", f"/api/gm/sessions/{self.sid}/events?status=active")
+        blight = [e for e in events if e.get("region_id") == state[SEED_REGION]["region_id"]]
+        if not blight:
+            raise StepFailed(f"no active event in {SEED_REGION}")
+        reach = blight[0].get("contributions") or {}
+        near_c, far_c = reach.get(near["region_id"], 0.0), reach.get(far["region_id"], 0.0)
+        if not near_c > far_c:
+            raise StepFailed(f"the event reaches {HARBOR} {near_c:.2f}, {CRAG} {far_c:.2f}")
+        if not (near["distortion"] > far["distortion"] and near["distortion"] > 0.3):
+            raise StepFailed(
+                f"distortion {HARBOR} {near['distortion']:.2f}, {CRAG} {far['distortion']:.2f}"
+            )
         return (
-            f"{HARBOR}: distortion {near['distortion']:.2f}, rumors {near['active_rumors']}; "
-            f"{CRAG}: distortion {far['distortion']:.2f}, rumors {far['active_rumors']}"
+            f"{HARBOR}: distortion {near['distortion']:.2f} (event {near_c:.2f}), rumors "
+            f"{near['active_rumors']}; {CRAG}: distortion {far['distortion']:.2f} "
+            f"(event {far_c:.2f}), rumors {far['active_rumors']}"
         )
 
     def s10b_ask_about_blight(self) -> str:
@@ -349,7 +369,14 @@ class Scenario:
                     verdict, detail = SKIP, str(skip)
                 except StepFailed as fail:
                     verdict, detail = FAIL, str(fail)
-                except (OSError, KeyError, TypeError, ValueError) as err:  # down, bad shape
+                except (  # down, or an answer of the wrong shape (V9, FR-T7)
+                    OSError,
+                    KeyError,
+                    TypeError,
+                    ValueError,
+                    AttributeError,
+                    http.client.HTTPException,
+                ) as err:
                     verdict, detail = FAIL, f"{type(err).__name__}: {err}"
                 if verdict == FAIL and key in GATES:
                     stopped = key
@@ -367,6 +394,18 @@ def _short(value: Any, limit: int = 160) -> str:
     return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
+POLL_MIN_S = 1.0
+
+
+def poll_seconds(value: float, out: Callable[[str], None]) -> float:
+    """At least ``POLL_MIN_S`` between run polls (V9, FR-T7): with 0 a running run was polled
+    without ever counting towards ``--timeout``, so the script never ended."""
+    if value < POLL_MIN_S:
+        out(f"--poll {value:g} is below {POLL_MIN_S:g}s; polling every {POLL_MIN_S:g}s")
+        return POLL_MIN_S
+    return value
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--base", default="http://localhost:8000", help="the API's base URL")
@@ -375,7 +414,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timeout", type=float, default=300.0, help="seconds one run may take")
     args = parser.parse_args(argv)
     print(f"Locus live scenario: {args.base}, world {args.world!r} (it is replaced)\n")
-    scenario = Scenario(Http(args.base), args.world, poll_s=args.poll, run_timeout_s=args.timeout)
+    poll = poll_seconds(args.poll, print)
+    scenario = Scenario(Http(args.base), args.world, poll_s=poll, run_timeout_s=args.timeout)
     return scenario.run()
 
 

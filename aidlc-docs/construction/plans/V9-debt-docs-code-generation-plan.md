@@ -120,10 +120,10 @@ V9에서 고치지 않고 `next-cycle.md`에 적는다(큰 넘김):
 - [x] 5.5 커밋: `fix(web): the page says what Locus is, in the language on screen, with an icon; env.example lists every setting (V9, FR-D10, FR-T5)`
 
 ### Step 6 — 라이브 시나리오 (FR-T7)
-- [ ] 6.1 `scripts/live_scenario.py`: 10a 방향 단언(§ 1.2), 이상한 응답은 FAIL, poll 하한.
-- [ ] 6.2 `tests/test_live_scenario.py`: `/events` 경로, 방향 단언의 통과와 실패, JSON 아닌 응답의 FAIL, poll 하한.
-- [ ] 6.3 확인: pytest, ruff·black(`scripts`).
-- [ ] 6.4 커밋: `test(live): the scenario checks that a nearer region is distorted more, and a bad answer is a FAIL, not a traceback (V9, FR-T7)`
+- [x] 6.1 `scripts/live_scenario.py`: 10a 방향 단언(§ 1.2), 이상한 응답은 FAIL, poll 하한.
+- [x] 6.2 `tests/test_live_scenario.py`: `/events` 경로, 방향 단언의 통과와 실패, JSON 아닌 응답의 FAIL, poll 하한.
+- [x] 6.3 확인: pytest, ruff·black(`scripts`).
+- [x] 6.4 커밋: `test(live): the scenario checks that a nearer region is distorted more, and a bad answer is a FAIL, not a traceback (V9, FR-T7)`
 
 ### Step 7 — 사전 말투와 옛 키 (W-1, W-2)
 - [ ] 7.1 W-1: 에디터·지도가 보이는 ko 문장의 합니다체를 해요체로. 바꾼 키 목록을 code-summary에 적는다.

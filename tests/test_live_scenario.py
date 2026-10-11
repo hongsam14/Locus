@@ -140,9 +140,21 @@ H, M, G, C, L = (ID[n] for n in NAMES[:5])
 
 class _Server:
     def __init__(
-        self, *, llm=True, seeded=True, health="ok", adjacency=None, run="done", worthy=True
+        self,
+        *,
+        llm=True,
+        seeded=True,
+        health="ok",
+        adjacency=None,
+        run="done",
+        worthy=True,
+        reach=None,
+        dist=None,
     ):
         self.llm, self.seeded, self.health, self.run_status = llm, seeded, health, run
+        # the blight's contributions by region id, and the regions' distortion
+        self.reach = {H: 0.5, C: 0.1} if reach is None else reach
+        self.dist = {H: 0.6, C: 0.35} if dist is None else dist
         self.worthy = worthy  # the witness's judgement at end_talk
         self.adjacency = adjacency or {M: [H, G], H: [L], L: [C]}
         self.turn, self.here = 0, H
@@ -208,10 +220,14 @@ class _Server:
         if p == "/api/gm/sessions/s1/seeds/seed-blight/start":
             self.events[M] = 1
             return 201, {"status": "active", "category": "plague", "magnitude": 0.5}
+        if p == "/api/gm/sessions/s1/events":
+            started = [{"region_id": M, "status": "active", "contributions": self.reach}]
+            return 200, started if M in self.events else []
         if p == "/api/gm/sessions/s1/state":
-            dist = {H: 0.6, C: 0.35}
+            dist = self.dist
             regions = [
                 {
+                    "region_id": ID[n],
                     "region_name": n,
                     "distortion": dist.get(ID[n], 0.3),
                     "active_rumors": 1 if ID[n] in self.reached else 0,
@@ -318,8 +334,94 @@ def test_main_parses_its_options(monkeypatch) -> None:
         return 0
 
     monkeypatch.setattr(live.Scenario, "run", fake_run)
-    assert live.main(["--base", "http://h:9/", "--world", "w2", "--poll", "0.5"]) == 0
-    assert seen == {"base": "http://h:9", "world": "w2", "poll": 0.5}
+    assert live.main(["--base", "http://h:9/", "--world", "w2", "--poll", "2.5"]) == 0
+    assert seen == {"base": "http://h:9", "world": "w2", "poll": 2.5}
+
+
+@pytest.mark.parametrize("given", [0.0, 0.5])
+def test_a_poll_below_one_second_is_raised_to_one_and_said(monkeypatch, capsys, given) -> None:
+    """V9 FR-T7: ``--poll 0`` polled a running run without ever reaching ``--timeout``."""
+    seen = {}
+    monkeypatch.setattr(live.Scenario, "run", lambda self: seen.update(poll=self.poll_s) or 0)
+    assert live.main(["--poll", str(given)]) == 0
+    assert seen == {"poll": 1.0}
+    assert f"--poll {given:g} is below 1s; polling every 1s" in capsys.readouterr().out
+
+
+def test_a_poll_of_one_second_is_kept_without_a_notice(monkeypatch, capsys) -> None:
+    seen = {}
+    monkeypatch.setattr(live.Scenario, "run", lambda self: seen.update(poll=self.poll_s) or 0)
+    assert live.main(["--poll", "1"]) == 0
+    assert seen == {"poll": 1.0} and "--poll" not in capsys.readouterr().out
+
+
+def test_the_nearer_region_hearing_the_event_more_passes_with_the_numbers() -> None:
+    code, verdicts, scenario, _l = _run(_Server())
+    detail = {k: d for k, _v, d in scenario.results}["10a"]
+    assert verdicts["10a"] == PASS
+    assert detail == (
+        f"{live.HARBOR}: distortion 0.60 (event 0.50), rumors 1; "
+        f"{live.CRAG}: distortion 0.35 (event 0.10), rumors 0"
+    )
+
+
+@pytest.mark.parametrize(
+    ("reach", "dist", "said"),
+    [
+        ({H: 0.1, C: 0.5}, None, "the event reaches"),  # the far region hears it more
+        ({H: 0.2, C: 0.2}, None, "the event reaches"),  # nobody nearer
+        ({}, None, "the event reaches"),  # no reach recorded at all
+        (None, {H: 0.35, C: 0.6}, "distortion"),  # the far region more distorted
+        (None, {H: 0.3, C: 0.2}, "distortion"),  # nearer, but not above the 0.3 start
+    ],
+)
+def test_10a_fails_when_the_nearer_region_does_not_hear_more(reach, dist, said) -> None:
+    """V9 FR-T7: 10a asserted only that the two numbers differ, so a reversed spread passed."""
+    code, verdicts, scenario, _l = _run(_Server(reach=reach, dist=dist))
+    assert code == 1 and verdicts["10a"] == FAIL
+    assert {k: d for k, _v, d in scenario.results}["10a"].startswith(said)
+
+
+def test_10a_fails_when_no_event_was_started_in_the_seed_region() -> None:
+    class _NoEvent(_Server):  # only an event elsewhere, one that would pass
+        def call(self, method, path, body=None):
+            if path.startswith("/api/gm/sessions/s1/events"):
+                return 200, [{"region_id": G, "contributions": {H: 0.9, C: 0.0}}]
+            return super().call(method, path, body)
+
+    code, verdicts, scenario, _l = _run(_NoEvent())
+    assert code == 1 and verdicts["10a"] == FAIL
+    assert "no active event in" in {k: d for k, _v, d in scenario.results}["10a"]
+
+
+def test_an_answer_that_is_not_json_is_a_fail_not_a_traceback() -> None:
+    """V9 FR-T7: a proxy's HTML page used to end in an AttributeError traceback."""
+
+    class _Proxy(_Server):
+        def call(self, method, path, body=None):
+            if path.endswith("/export"):
+                return 200, "<html>502 Bad Gateway</html>"
+            return super().call(method, path, body)
+
+    code, verdicts, scenario, _l = _run(_Proxy())
+    assert code == 1 and verdicts["2"] == FAIL
+    assert "not JSON: <html>502 Bad Gateway</html>" in scenario.results[1][2]
+
+
+@pytest.mark.parametrize(
+    "error",
+    [AttributeError("'str' object has no attribute 'get'"), live.http.client.BadStatusLine("x")],
+)
+def test_an_odd_answer_or_a_broken_reply_is_a_fail(error) -> None:
+    class _Odd(_Server):
+        def call(self, method, path, body=None):
+            if path == "/api/capabilities":
+                raise error
+            return super().call(method, path, body)
+
+    code, verdicts, scenario, _l = _run(_Odd())
+    assert code == 1 and verdicts["1"] == FAIL
+    assert type(error).__name__ in scenario.results[0][2]
 
 
 def test_the_far_check_is_made_two_turns_after_the_judgement_or_fails() -> None:

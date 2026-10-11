@@ -146,7 +146,7 @@ export const en: Record<Key, string> = {
   "editor.region.add": "New region",
   "editor.region.name": "Name",
   "editor.region.level": "Level",
-  "editor.region.parent": "Parent",
+  "editor.region.parent": "Parent region",
   "editor.region.noParent": "— none —",
   "editor.region.description": "Description",
   "editor.region.save": "Save",

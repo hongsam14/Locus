@@ -38,7 +38,9 @@ export function EditorHeader({
             {t("label.worldCounts", { regions: world.regions.length, connections: world.connections.length, knowledge: world.knowledge.length })}
           </span>
         )}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* `contents`: the buttons sit on the head line, and the file row opened by [파일 ▾]
+            wraps under the whole line instead of between the two buttons (V8 captures) */}
+        <div className="contents">
           <FileActions worldId={worldId} onLoaded={onLoaded} onBuild={onBuild} />
           <PlayThisWorld worldId={worldId} regions={world?.regions ?? []} />
         </div>

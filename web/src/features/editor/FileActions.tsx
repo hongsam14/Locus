@@ -104,7 +104,9 @@ export function FileActions({
         </Button>
       </span>
       {open && (
-        <div ref={row} id="editor-file-row" data-testid="file-row" className="flex w-full flex-wrap gap-2"
+        // its own line under the head line, after [이 월드로 플레이] on screen (FC § 2); in the
+        // DOM it follows its toggle, so the tab order goes into what the toggle opened
+        <div ref={row} id="editor-file-row" data-testid="file-row" className="order-last flex basis-full flex-wrap gap-2"
           onKeyDown={(e) => e.key === "Escape" && close()}>
           <Button size="sm" data-testid="file-save" onClick={() => void save()}>{t("file.save")}</Button>
           <Button size="sm" data-testid="file-load" disabled={busy}
@@ -129,7 +131,7 @@ export function FileActions({
           e.target.value = ""; // the same file again is a new pick (U3 review S24)
         }} />
       {error && (
-        <div className="w-full" data-testid="file-error">
+        <div className="order-last basis-full" data-testid="file-error">
           <InlineError error={error} />
         </div>
       )}

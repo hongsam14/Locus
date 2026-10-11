@@ -79,6 +79,20 @@ describe("EditorHeader (TP-V8-2, BR-V8-03/28/34)", () => {
     expect(toggle).toHaveFocus();
   });
 
+  it("the opened row wraps under the whole head line, not between [파일 ▾] and [플레이] (V8 captures)", () => {
+    head();
+    fireEvent.click(screen.getByTestId("file-menu"));
+    const line = screen.getByTestId("world-name").parentElement as HTMLElement;
+    const row = screen.getByTestId("file-row");
+    // a flex item of the head line itself: its parent is the line, or a `contents` box in it
+    const box = row.parentElement as HTMLElement;
+    expect(box === line || (box.classList.contains("contents") && box.parentElement === line)).toBe(true);
+    expect(row).toHaveClass("order-last", "basis-full");
+    // the play button is on the same line, before the row in the line's order
+    expect(line).toContainElement(screen.getByTestId("play-this-world"));
+    expect(screen.getByTestId("play-this-world").closest(".order-last")).toBeNull();
+  });
+
   it("a press outside closes the row; an action starting closes it too", () => {
     const { onBuild } = head();
     fireEvent.click(screen.getByTestId("file-menu"));

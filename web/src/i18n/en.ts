@@ -364,7 +364,6 @@ export const en: Record<Key, string> = {
   "word.share.half": "About half",
   "word.share.most": "Most",
   "word.none": "—",
-  "word.rumor.promoted": "Taken as fact",
   "error.session_closed.title": "This session has ended.",
   "error.session_closed.action": "Start a new session.",
   "error.turn_running.title": "A turn is still running.",

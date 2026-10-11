@@ -380,7 +380,6 @@ export const ko = {
   "word.share.half": "절반쯤",
   "word.share.most": "대부분",
   "word.none": "—",
-  "word.rumor.promoted": "사실로 굳어짐",
   "error.session_closed.title": "이 세션은 끝났어요.",
   "error.session_closed.action": "새 세션을 시작하세요.",
   "error.turn_running.title": "다른 턴이 진행 중이에요.",

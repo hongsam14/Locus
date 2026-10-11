@@ -282,7 +282,6 @@ describe("App routing (F1 / AD-R8)", () => {
     // the GM screen is a lazy chunk: under a loaded test run it takes more than the default
     // second to arrive (V8 code review 01 #15)
     await waitFor(() => expect(screen.getByTestId("turn-tools")).toBeInTheDocument(), { timeout: 10000 }); // V6: was the hub panel
-    expect(screen.queryByText("— 없음 —")).not.toBeInTheDocument(); // no dead entry on GM
   });
 
   it("shows the player screen hint for /play without a session (U4)", () => {

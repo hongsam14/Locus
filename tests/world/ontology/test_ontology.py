@@ -238,3 +238,23 @@ def test_u7_the_ontology_builder_hands_its_dedup_bar_to_the_deduplicator(monkeyp
         IngestionResult(world_id="w"), RegionTopology(world_id="w"), world_id="w"
     )
     assert seen["threshold"] == 0.91
+
+
+def test_code_review_19_remapped_scopes_keep_the_highest_confidence() -> None:
+    """After dedup merges k2 into k1, the region's scope is the stronger of the two,
+    whichever came first (BR-V7-02 upstream of the consensus)."""
+    from locus.shared.models import ScopeLink, ScopeType
+    from locus.world.ontology import remap_scopes
+
+    def scope(kid: str, conf: float) -> ScopeLink:
+        return ScopeLink(
+            world_id="w",
+            knowledge_id=kid,
+            region_id="r",
+            scope_type=ScopeType.DIRECT,
+            confidence=conf,
+        )
+
+    for order in ([scope("k1", 0.3), scope("k2", 0.9)], [scope("k2", 0.9), scope("k1", 0.3)]):
+        out = remap_scopes(order, {"k2": "k1"})
+        assert [(s.knowledge_id, s.confidence) for s in out] == [("k1", 0.9)]

@@ -100,6 +100,20 @@ class InMemoryGraphRepository:
                 update={"properties": dict(node.properties)}
             )
 
+    def update_node(self, node: Node) -> bool:
+        """Merge ``properties`` into the stored node of this label and id; never creates
+        one (V7 code review #14)."""
+        if self.fail_on_upsert is not None:
+            raise self.fail_on_upsert
+        key = (node.world_id, node.label, node.id)
+        held = self._nodes.get(key)
+        if held is None:
+            return False
+        self._nodes[key] = held.model_copy(
+            update={"properties": {**held.properties, **node.properties}}
+        )
+        return True
+
     def delete_edges(self, world_id: str, edges: list[EdgeKey]) -> int:
         """U3: delete the matching edges; an empty identity matches every parallel edge."""
         deleted = 0

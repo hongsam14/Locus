@@ -2,23 +2,30 @@
 
 A build makes regions, connections and knowledge from the sources; NPCs and event seeds
 are added in the editor, so a rebuild from the same sources would lose them. Each one
-goes to the new region with the same (normalized name, level) as its old region; two
-such regions are told apart once by their parents' keys. What cannot be placed is not
-carried and is reported, one warning each (it stays in the pre-replace backup).
+goes to the new region with the same (normalized name, level) as its old region. When
+that key is not unique — in the new world, or already in the old one — the parents'
+keys must match too (code review #11). What cannot be placed is not carried and is
+reported, one warning each; it is in the pre-replace backup. What the load already
+dropped (its region gone, or the node unreadable) is reported too, and is in no backup:
+the backup is exported through the same load (code review #2).
 Ids stay, so their translations stay too (V3 keeps the translations of ids still there).
 """
 
 from __future__ import annotations
 
 import unicodedata
+from collections import Counter
 from dataclasses import dataclass, field
 
-from locus.knowledge.loader import NPC_HOME_DANGLING, SEED_REGION_DANGLING
+from locus.knowledge.loader import NPC_HOME_DANGLING, NPC_LABEL, SEED_LABEL, SEED_REGION_DANGLING
 from locus.shared.models import NPC, BuildWarning, EventSeed, Region, WorldSnapshot
 
 STAGE = "carry-over"
 
 RegionKey = tuple[str, str]
+
+_GONE = "its region is not in the old world"
+_UNREAD = "it could not be read from the old world"
 
 
 @dataclass(frozen=True)
@@ -40,6 +47,7 @@ def carry_over(old: WorldSnapshot, new_regions: list[Region], world_id: str) -> 
     for r in new_regions:
         new_by_key.setdefault(region_key(r.name, r.level), []).append(r)
     old_by_id = old.regions_by_id
+    old_count = Counter(region_key(r.name, r.level) for r in old.topo.regions)
 
     def parent_key(region: Region, by_id: dict[str, Region]) -> RegionKey | None:
         parent = by_id.get(region.parent_id) if region.parent_id else None
@@ -50,16 +58,20 @@ def carry_over(old: WorldSnapshot, new_regions: list[Region], world_id: str) -> 
         r = old_by_id.get(region_id)
         if r is None:
             return None, f"its region {region_id} is not in the old world"
+        key = region_key(r.name, r.level)
         where = f"{r.name} ({r.level})"
-        found = new_by_key.get(region_key(r.name, r.level), [])
-        if len(found) > 1:  # once more by the parents' keys
-            want = parent_key(r, old_by_id)
-            found = [c for c in found if parent_key(c, new_by_id) == want] or found
-            if len(found) > 1:
-                return None, f"{len(found)} regions named {where}"
+        found = new_by_key.get(key, [])
         if not found:
             return None, f"no region named {where} in the new world"
-        return found[0], ""
+        if len(found) == 1 and old_count[key] == 1:
+            return found[0], ""
+        want = parent_key(r, old_by_id)
+        matched = [c for c in found if parent_key(c, new_by_id) == want]
+        if len(matched) == 1:
+            return matched[0], ""
+        if len(matched) > 1 or len(found) > 1:
+            return None, f"{len(matched) or len(found)} regions named {where}"
+        return None, f"no region named {where} under its old parent in the new world"
 
     out = CarryOver()
     for npc in old.npcs:
@@ -76,19 +88,18 @@ def carry_over(old: WorldSnapshot, new_regions: list[Region], world_id: str) -> 
             out.warnings.append(_left(f"Event seed {seed.title}", seed.id, why))
         else:
             out.seeds.append(seed.model_copy(update={"region_id": region.id, "world_id": world_id}))
-    # The loader already dropped NPCs and seeds whose region was gone (FD review R-10):
-    # they are not in ``old``, but they are lost with the replace all the same.
-    for w in old.load_warnings:
+    for w in old.load_warnings:  # dropped by the load: not in ``old``, lost all the same
         if w.stage != "load" or not w.item_id:
             continue
-        if w.message.startswith(NPC_HOME_DANGLING):
-            out.warnings.append(_left(f"NPC {w.item_id}", w.item_id, _GONE))
-        elif w.message.startswith(SEED_REGION_DANGLING):
-            out.warnings.append(_left(f"Event seed {w.item_id}", w.item_id, _GONE))
+        for label, what, gone in (
+            (SEED_LABEL, "Event seed", SEED_REGION_DANGLING),
+            (NPC_LABEL, "NPC", NPC_HOME_DANGLING),
+        ):
+            if w.message.startswith(label):
+                why = _GONE if w.message.startswith(gone) else _UNREAD
+                out.warnings.append(_left(f"{what} {w.item_id}", w.item_id, why))
+                break
     return out
-
-
-_GONE = "its region is not in the old world"
 
 
 def _left(what: str, item_id: str, why: str) -> BuildWarning:

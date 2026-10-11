@@ -39,6 +39,7 @@ from locus.shared.models import (
     WikiPrior,
     WikiPriorLink,
     WorldMeta,
+    WorldSnapshot,
 )
 from locus.shared.storage.base import GraphRepository, SearchRepository
 from locus.shared.storage.persistence import persist_graph
@@ -258,11 +259,14 @@ class WorldBuilder:
         onto_build: OntologyBuild | None = None
         kg = None
         carry = CarryOver()
+        old: WorldSnapshot | None = None
         try:
             if exists:
                 try:  # what the editor added since: read fresh, not from the cache (R-08)
                     self._cache.invalidate(world_id)
                     old = self._cache.get(world_id)
+                except LookupError:  # deleted meanwhile (another process): a fresh build
+                    old = None  # (code review #13)
                 except Exception as exc:  # unread, its NPCs and seeds would be lost (R-07)
                     warnings.append(
                         BuildWarning(
@@ -272,6 +276,7 @@ class WorldBuilder:
                         )
                     )
                     return self._report(world_id, warnings, counter)
+            if old is not None:
                 carry = carry_over(old, topology.regions, world_id)
                 try:
                     backup_path = self._backup(world_id)
@@ -318,6 +323,7 @@ class WorldBuilder:
                     )
                 )
             warnings.extend(carry.warnings)  # one per NPC or seed left behind
+            body_from = len(warnings)
             persist_graph(
                 self._graph,
                 self._search,
@@ -338,6 +344,9 @@ class WorldBuilder:
                     last_writer="build",
                 ),
                 warnings=warnings,
+            )
+            body_failed = any(
+                w.stage == "persist-graph" and w.severity == "error" for w in warnings[body_from:]
             )
         except Exception as exc:  # the old world may already be gone: report, don't vanish
             logger.exception("commit phase failed for %s", world_id)
@@ -375,8 +384,9 @@ class WorldBuilder:
             replaced=replaced,
             backup_path=str(backup_path) if backup_path else None,
             priors_created=len(priors) + len(_created_priors(wiki)),
-            carried_npcs=len(carry.npcs),
-            carried_seeds=len(carry.seeds),
+            # a body write that failed carried nothing, whatever was planned (review #10)
+            carried_npcs=0 if body_failed else len(carry.npcs),
+            carried_seeds=0 if body_failed else len(carry.seeds),
         )
 
     # ------------------------------------------------------------------ #
@@ -392,10 +402,10 @@ class WorldBuilder:
 
     def _backup(self, world_id: str) -> Path | None:
         """Write the old world to ``backup_dir`` before replacing it (BR-U2-11). ``None``
-        when no backup is set up (the CLI's and the tests' builders); a backup that is set
-        up and fails raises ``BackupFailedError`` and the replace stops (V7, BR-V7-10)."""
+        when no backup is set up (test builders); a backup that is set up and fails raises
+        ``BackupFailedError`` and the replace stops (V7, BR-V7-10)."""
         if self._exporter is None or self._backup_dir is None:
-            return None
+            return None  # the API and the CLI both set one up (code review #20)
         try:
             data = self._exporter.export_world(world_id)
             self._backup_dir.mkdir(parents=True, exist_ok=True)

@@ -338,3 +338,22 @@ def test_neo4j_rejects_an_unsafe_label() -> None:
     with pytest.raises(ValueError):
         repo.delete_node("w", "x", label="Region) DETACH DELETE (m")
     assert rec == []
+
+
+def test_update_node_changes_an_existing_node_and_never_creates_one() -> None:  # review #14
+    g = _two_kinds_one_id()
+    assert g.update_node(Node(id="x", label="Region", world_id="w", properties={"name": "Mill2"}))
+    assert g.get_node("w", "x", label="Region").properties["name"] == "Mill2"
+    assert g.get_node("w", "x", label="EventSeed").properties["title"] == "Flood"
+    assert g.update_node(Node(id="nope", label="Region", world_id="w", properties={})) is False
+    assert g.get_node("w", "nope") is None
+
+
+def test_neo4j_update_node_matches_and_never_merges() -> None:
+    repo, rec = _neo4j(rows=[{"n": 1}])
+    assert repo.update_node(Node(id="w", label="WorldMeta", world_id="w", properties={"a": 1}))
+    query, params = rec[0]
+    assert query.startswith("MATCH (n:WorldMeta {id: $id, world_id: $world_id}) SET n += $props")
+    assert "MERGE" not in query and params["props"] == {"a": 1}
+    repo, _ = _neo4j(rows=[{"n": 0}])
+    assert repo.update_node(Node(id="w", label="WorldMeta", world_id="w", properties={})) is False

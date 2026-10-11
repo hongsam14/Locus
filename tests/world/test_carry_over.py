@@ -190,9 +190,17 @@ def test_pbt_v7_4_each_item_is_carried_or_named_once(case, data) -> None:
     assert len(out.npcs) + len(out.seeds) + len(out.warnings) == (
         len(old.npcs) + len(old.event_seeds) + dropped
     )
-    new_ids = {r.id for r in new_regions}
-    assert all(n.home_region_id in new_ids for n in out.npcs)
-    assert all(s.region_id in new_ids for s in out.seeds)
+    new_by_id = {r.id: r for r in new_regions}
+    old_by_id = old.regions_by_id
+
+    def same_key(old_id: str, new_id: str) -> bool:  # name and level both (review #8)
+        o, n = old_by_id[old_id], new_by_id[new_id]
+        return region_key(o.name, o.level) == region_key(n.name, n.level)
+
+    old_npc = {n.id: n for n in old.npcs}
+    old_seed = {s.id: s for s in old.event_seeds}
+    assert all(same_key(old_npc[n.id].home_region_id, n.home_region_id) for n in out.npcs)
+    assert all(same_key(old_seed[s.id].region_id, s.region_id) for s in out.seeds)
 
     shuffled = old.model_copy(
         update={
@@ -206,3 +214,63 @@ def test_pbt_v7_4_each_item_is_carried_or_named_once(case, data) -> None:
     }
     assert {(s.id, s.region_id) for s in again.seeds} == {(s.id, s.region_id) for s in out.seeds}
     assert sorted(w.message for w in again.warnings) == sorted(w.message for w in out.warnings)
+
+
+# --------------------------------------------------------------------------- #
+# Code review 01 (#2, #8, #11, #21)
+# --------------------------------------------------------------------------- #
+def test_a_region_of_the_same_name_at_another_level_is_not_a_match() -> None:  # review #8
+    old = _old([_region("o1", "Mill", RegionLevel.TOWN)], [_npc("n1", "o1")])
+    out = carry_over(old, [_region("x1", "Mill", RegionLevel.DISTRICT)], "w")
+    assert out.npcs == [] and "no region named Mill (town)" in out.warnings[0].message
+
+
+def test_a_name_shared_in_the_old_world_needs_its_parent_too() -> None:  # review #11
+    """Two Mills in the old world; the new one keeps only the southern Mill. The southern
+    miller goes there; the northern one is named, not moved south."""
+    old = _old(
+        [
+            _region("o-n", "North", RegionLevel.PROVINCE),
+            _region("o-s", "South", RegionLevel.PROVINCE),
+            _region("o-mill-n", "Mill", parent="o-n"),
+            _region("o-mill-s", "Mill", parent="o-s"),
+        ],
+        [_npc("north", "o-mill-n"), _npc("south", "o-mill-s")],
+    )
+    new = [
+        _region("x-n", "North", RegionLevel.PROVINCE),
+        _region("x-s", "South", RegionLevel.PROVINCE),
+        _region("x-mill-s", "Mill", parent="x-s"),
+    ]
+    out = carry_over(old, new, "w")
+    assert [(n.id, n.home_region_id) for n in out.npcs] == [("south", "x-mill-s")]
+    assert out.warnings[0].message == (
+        "NPC npc north was not carried over: "
+        "no region named Mill (town) under its old parent in the new world"
+    )
+
+
+def test_two_candidates_neither_under_the_old_parent_are_counted() -> None:  # review #21
+    old = _old(
+        [_region("o-p", "Old"), _region("o-mill", "Mill", parent="o-p")], [_npc("n", "o-mill")]
+    )
+    new = [
+        _region("a", "A"),
+        _region("b", "B"),
+        _region("m1", "Mill", parent="a"),
+        _region("m2", "Mill", parent="b"),
+    ]
+    out = carry_over(old, new, "w")
+    assert out.warnings[0].message == "NPC npc n was not carried over: 2 regions named Mill (town)"
+
+
+def test_an_npc_or_seed_the_load_could_not_read_is_named() -> None:  # review #2
+    dropped = [
+        BuildWarning(stage="load", item_id="n8", message="NPC: 1 validation error for NPC"),
+        BuildWarning(stage="load", item_id="s8", message="EventSeed: title too long"),
+    ]
+    out = carry_over(_old([], load_warnings=dropped), [], "w")
+    assert [w.message for w in out.warnings] == [
+        "NPC n8 was not carried over: it could not be read from the old world",
+        "Event seed s8 was not carried over: it could not be read from the old world",
+    ]

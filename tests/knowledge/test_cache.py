@@ -248,3 +248,26 @@ def test_br_v7_07_a_cache_that_does_not_check_versions_still_caches() -> None:  
     cache = WorldCache(loader, check_version=False)
     first = cache.get("w")
     assert cache.get("w") is first and loader.calls == ["w"]
+
+
+def test_tp_v7_5_a_mark_read_that_fails_once_still_leaves_nothing_cached() -> None:
+    """Code review #21: the mark read fails on the hit, then works for the reload; the
+    reloaded snapshot is still served uncached (BLM § 2.2-1)."""
+
+    class _Once(_Loader):
+        def __init__(self) -> None:
+            super().__init__()
+            self.fail_next = False
+
+        def version(self, world_id: str) -> str | None:
+            if self.fail_next:
+                self.fail_next = False
+                raise ConnectionError("graph down for a moment")
+            return "v1"
+
+    loader = _Once()
+    cache = WorldCache(loader)
+    cache.get("w")
+    loader.fail_next = True
+    cache.get("w")
+    assert cache.is_cached("w") is False

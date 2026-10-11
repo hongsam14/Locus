@@ -70,17 +70,16 @@ def scope_knowledge(
 
 
 def remap_scopes(scopes: list[ScopeLink], remap: dict[str, str]) -> list[ScopeLink]:
-    """Repoint scope links onto canonical knowledge ids after dedup; drop dups."""
-    seen: set[tuple[str, str]] = set()
-    out: list[ScopeLink] = []
+    """Repoint scope links onto canonical knowledge ids after dedup; one per (knowledge,
+    region), at its highest confidence whatever order they came in (V7 code review #19)."""
+    best: dict[tuple[str, str], ScopeLink] = {}
     for s in scopes:
         kid = remap.get(s.knowledge_id, s.knowledge_id)
         key = (kid, s.region_id)
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append(s.model_copy(update={"knowledge_id": kid}))
-    return out
+        held = best.get(key)
+        if held is None or s.confidence > held.confidence:
+            best[key] = s.model_copy(update={"knowledge_id": kid})
+    return list(best.values())
 
 
 class OntologyBuilder:

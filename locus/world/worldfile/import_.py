@@ -22,6 +22,7 @@ from locus.world.build import BackupFailedError, WorldExistsError, backup_failed
 from locus.world.worldfile.export import WorldFileExporter, to_json_bytes
 from locus.world.worldfile.remap import (
     duplicate_ids,
+    merge_scopes,
     remap_ids,
     set_world_id,
     validate_references,
@@ -59,17 +60,20 @@ class WorldFileImporter:
     ) -> ImportReport:
         source_world_id = file.world.id
         remapped = force_remap or source_world_id != world_id
+        exists = world_id in self._graph.list_world_ids()
+        if exists and not replace:
+            raise WorldExistsError(f"world already exists: {world_id}")
+        # Before anything is written, and on the file's own ids so the message names what
+        # the designer must fix; a remap maps each id to one new id, so the answer is the
+        # same either way (V7 code review #12).
+        twice = duplicate_ids(file)
         file = remap_ids(file, world_id) if remapped else set_world_id(file, world_id)
-        twice = duplicate_ids(file)  # the ids it would store, before anything is written
         if twice:
             return self._stopped(
                 world_id, file, source_world_id, remapped, force_remap, [_duplicates(twice)]
             )
         file, warnings = validate_references(file)
-
-        exists = world_id in self._graph.list_world_ids()
-        if exists and not replace:
-            raise WorldExistsError(f"world already exists: {world_id}")
+        file = merge_scopes(file)
 
         replaced = False
         backup_path: Path | None = None

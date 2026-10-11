@@ -158,7 +158,7 @@ def test_connection_save_is_one_delete_and_one_upsert() -> None:
     """nfr §1 NFR-3 ②: FD writes only; ``_written`` adds the meta write."""
     stack, r = _towns("A", "B")
     stack.editors.connections.upsert_connection(_conn(r["A"], r["B"]))
-    assert stack.meter.calls == ["delete_edges", "upsert_edges", "upsert_nodes"]
+    assert stack.meter.calls == ["delete_edges", "upsert_edges", "update_node"]
 
 
 # --------------------------------------------------------------------------- #
@@ -252,7 +252,7 @@ def test_set_scopes_is_at_most_one_delete_and_one_upsert() -> None:
     stack.editors.knowledge.create_knowledge(item, r["A"].id)
     stack.meter.calls.clear()
     stack.editors.knowledge.set_scopes("w", item.id, [r["B"].id, r["C"].id])
-    assert stack.meter.calls == ["delete_edges", "upsert_edges", "upsert_nodes"]
+    assert stack.meter.calls == ["delete_edges", "upsert_edges", "update_node"]
 
 
 def test_scopes_need_existing_regions_and_knowledge() -> None:

@@ -98,3 +98,48 @@ def test_tp_v7_6_a_failed_mark_write_is_an_error() -> None:
     log: list = []
     warnings = _persist(_Graph(log, fail_meta=True), _Search(log))
     assert [(w.stage, w.severity) for w in warnings] == [("persist-meta", "error")]
+
+
+def test_tp_v7_6_an_id_collision_leaves_no_mark() -> None:  # code review #21
+    from locus.shared.storage.base import Node
+
+    log: list = []
+    graph = _Graph(log)
+    graph.upsert_nodes(
+        [
+            Node(
+                id="a",
+                label="Region",
+                world_id="other",
+                properties={"id": "a", "world_id": "other"},
+            )
+        ]
+    )
+    warnings = _persist(graph, _Search(log))
+    assert [(w.stage, w.severity) for w in warnings] == [("persist-graph", "error")]
+    assert not graph.find_nodes("w", "WorldMeta")
+
+
+def test_code_review_14_a_meta_touch_never_brings_a_deleted_meta_back() -> None:
+    """``touch_world_meta`` reads the meta, then writes it. When another process deletes
+    the world in between, the write updates nothing instead of creating a fresh mark
+    inside the half-replaced world."""
+    from locus.shared.storage.persistence import touch_world_meta
+
+    class _DeletedBetween(InMemoryGraphRepository):
+        def find_nodes(self, world_id, label, filters=None):
+            found = super().find_nodes(world_id, label, filters)
+            if label == "WorldMeta":
+                self.delete_world(world_id)  # the other process's replace
+            return found
+
+    graph = _DeletedBetween()
+    graph.upsert_nodes([gm_meta := _meta_node()])
+    assert touch_world_meta(graph, "w", last_writer="edit") is False
+    assert graph.get_node("w", gm_meta.id, label="WorldMeta") is None
+
+
+def _meta_node():
+    from locus.shared.storage import graph_mapping as gm
+
+    return gm.worldmeta_to_node(WorldMeta(id="w", name="w"))

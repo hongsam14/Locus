@@ -474,13 +474,49 @@ def test_a_stopped_replace_leaves_the_open_sessions_open() -> None:
 
     play = _Play([_Session("s-open", "open")])
     raw = _file("w").model_dump(mode="json")
-    r = _client(importer=_StoppedImporter(), play=play).post(
+    store, loc = _translations()  # code review #21: and its translations stay
+    store.upsert_many([_row("k1", "w")])
+    r = _client(importer=_StoppedImporter(), play=play, loc=loc).post(
         "/api/world/worlds/w/file?confirm=true", json=raw
     )
     assert r.status_code == 200 and r.json()["ok"] is False
     assert r.json()["closed_session_ids"] == [] and play.sessions.closed == []
+    assert store.get_many([("knowledge", "k1", "statement")], "ko")
     r = _client(builder=_StoppedBuilder(), play=play).post(
         "/api/world/worlds/w/build?confirm=true", json={"memos": ["x"]}
     )
     assert r.status_code == 200 and r.json()["replaced"] is False
     assert play.sessions.closed == []
+
+
+def _translations():
+    """A translation store and the localization container over it (no LLM)."""
+    from locus.localization import TranslationService
+    from locus.localization.storage.memory_repo import InMemoryTranslationRepository
+    from locus.localization.translator import Translator
+    from locus.localization.wiring import LocalizationContainer
+
+    class _NoLLM:
+        def complete(self, prompt, *, system=None):  # pragma: no cover
+            return ""
+
+        def structured(self, prompt, schema, *, system=None):  # pragma: no cover
+            raise NotImplementedError
+
+    store = InMemoryTranslationRepository()
+    return store, LocalizationContainer(
+        translations=TranslationService(store, Translator(_NoLLM()))
+    )
+
+
+def _row(sid: str, world: str):
+    from locus.localization.models import Translation
+
+    return Translation(
+        source_kind="knowledge",
+        source_id=sid,
+        source_field="statement",
+        text="번역",
+        source_hash="h",
+        world_id=world,
+    )

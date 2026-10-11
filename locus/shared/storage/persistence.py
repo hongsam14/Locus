@@ -128,12 +128,13 @@ def persist_graph(
 
 def touch_world_meta(graph_repo: GraphRepository, world_id: str, *, last_writer: str) -> bool:
     """Refresh ``WorldMeta.updated_at``/``last_writer`` after an edit (BR-U2-23). Returns
-    False when the world has no meta node yet (pre-U2 worlds) — nothing is created."""
+    False when the world has no meta node (pre-U2 worlds, or one being replaced) —
+    nothing is created: the write only updates a node still there, so a meta deleted
+    between the read and the write stays deleted (V7 code review #14)."""
     nodes = graph_repo.find_nodes(world_id, "WorldMeta")
     if not nodes:
         return False
     meta = gm.node_to_worldmeta(nodes[0]).model_copy(
         update={"updated_at": datetime.now(UTC), "last_writer": last_writer}
     )
-    graph_repo.upsert_nodes([gm.worldmeta_to_node(meta)])
-    return True
+    return graph_repo.update_node(gm.worldmeta_to_node(meta))

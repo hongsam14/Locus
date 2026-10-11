@@ -87,6 +87,10 @@ class GraphRepository(Protocol):
     def upsert_nodes(self, nodes: list[Node]) -> None: ...
     def upsert_edges(self, edges: list[Edge]) -> None: ...
     def replace_nodes(self, nodes: list[Node]) -> None: ...  # U3: properties replaced whole
+
+    # V7 code review #14: set properties on the node if it exists, never create it.
+    # False when there is none.
+    def update_node(self, node: Node) -> bool: ...
     def delete_edges(self, world_id: str, edges: list[EdgeKey]) -> int: ...  # U3
     def replace_edges(self, edges: list[Edge]) -> None: ...  # U8: edge properties replaced whole
     def edges_touching(

@@ -145,8 +145,14 @@ class _Onto:
 
 
 class _Cache:
-    def get(self, world_id):  # pragma: no cover - the builder never reads
-        raise AssertionError
+    def get(self, world_id):  # pragma: no cover - only a replace reads (V7 code review #21)
+        from locus.shared.models import KnowledgeGraph, RegionTopology, WorldSnapshot
+
+        return WorldSnapshot(
+            world_id=world_id,
+            kg=KnowledgeGraph(world_id=world_id),
+            topo=RegionTopology(world_id=world_id),
+        )
 
     def invalidate(self, world_id) -> None: ...
 

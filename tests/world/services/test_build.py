@@ -432,3 +432,105 @@ def test_tp_v7_9_an_old_world_that_cannot_be_read_is_not_replaced(tmp_path) -> N
     assert [(w.stage, w.severity) for w in report.errors] == [("carry-over", "error")]
     assert "not replaced" in report.errors[0].message
     assert sorted((n.label, n.id) for n in graph._nodes.values()) == before
+
+
+# --------------------------------------------------------------------------- #
+# V7 code review 01 (#2, #9, #10, #13)
+# --------------------------------------------------------------------------- #
+def test_what_the_load_drops_is_named_on_rebuild(tmp_path) -> None:
+    """Review #2, end to end through the real loader: an NPC whose home is gone and a
+    seed that cannot be read (a title over 80) are named, not silently lost."""
+    from locus.shared.models import NPC
+    from locus.shared.storage.base import Node
+    from locus.shared.storage.persistence import persist_graph
+
+    builder, graph, _search, cache = _make(tmp_path)
+    builder.build("w", inputs=None)
+    stray = NPC(
+        id="npc-gone",
+        world_id="w",
+        name="Stray",
+        role="r",
+        description="d",
+        home_region_id="no-such-region",
+        provenance=_prov(),
+    )
+    persist_graph(graph, InMemorySearchRepository(), None, "w", npcs=[stray])
+    graph.upsert_nodes(
+        [
+            Node(
+                id="seed-long",
+                label="EventSeed",
+                world_id="w",
+                properties={
+                    "id": "seed-long",
+                    "world_id": "w",
+                    "region_id": "x",
+                    "title": "x" * 99,
+                },
+            )
+        ]
+    )
+    cache.invalidate("w")
+
+    report = builder.build("w", inputs=None, replace=True)
+
+    left = {w.item_id: w.message for w in report.warnings if w.stage == "carry-over"}
+    assert left == {
+        "npc-gone": "NPC npc-gone was not carried over: its region is not in the old world",
+        "seed-long": "Event seed seed-long was not carried over: it could not be read from the old world",
+    }
+
+
+def test_carried_npcs_go_in_before_the_version_mark(tmp_path) -> None:  # review #9
+    class _Log(InMemoryGraphRepository):
+        def __init__(self) -> None:
+            super().__init__()
+            self.labels: list[str] = []
+
+        def upsert_nodes(self, nodes) -> None:
+            self.labels += [n.label for n in nodes]
+            super().upsert_nodes(nodes)
+
+    graph = _Log()
+    builder, graph, _search, cache = _make(tmp_path, graph=graph, ingest=_Ingest(regions=2))
+    builder.build("w", inputs=None)
+    _add_people(graph, _names(cache))
+    cache.invalidate("w")
+    graph.labels.clear()
+
+    builder.build("w", inputs=None, replace=True)
+
+    assert graph.labels.index("NPC") < graph.labels.index("WorldMeta")
+    assert graph.labels.index("EventSeed") < graph.labels.index("WorldMeta")
+
+
+def test_a_failed_body_write_carries_nothing(tmp_path) -> None:  # review #10
+    builder, graph, _search, cache = _make(tmp_path, ingest=_Ingest(regions=2))
+    builder.build("w", inputs=None)
+    _add_people(graph, _names(cache))
+    cache.invalidate("w")
+    graph.fail_on_upsert = RuntimeError("neo4j down")
+
+    report = builder.build("w", inputs=None, replace=True)
+
+    assert report.ok is False and report.replaced is True
+    assert (report.carried_npcs, report.carried_seeds) == (0, 0)
+
+
+def test_a_world_deleted_while_the_build_prepares_is_built_fresh(tmp_path) -> None:  # #13
+    graph = InMemoryGraphRepository()
+
+    class _DeletesMeanwhile(_Ingest):
+        def ingest_all(self, world_id, inputs):
+            graph.delete_world(world_id)  # another process, during the minutes of LLM work
+            return super().ingest_all(world_id, inputs)
+
+    builder, graph, _search, cache = _make(tmp_path, graph=graph)
+    builder.build("w", inputs=None)
+    gone, *_ = _make(tmp_path, graph=graph, ingest=_DeletesMeanwhile())
+
+    report = gone.build("w", inputs=None, replace=True)
+
+    assert report.ok and report.replaced is False and report.regions_created == 1
+    assert len(cache.get("w").topo.regions) == 1

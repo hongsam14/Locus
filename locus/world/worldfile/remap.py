@@ -11,7 +11,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 
-from locus.shared.models import BuildWarning
+from locus.shared.models import BuildWarning, ScopeLink
 from locus.world.worldfile.schema import NAMESPACE_LOCUS, WorldFile, WorldFileMeta
 
 # the sections whose items carry an id (connections, scopes and prior links do not)
@@ -23,6 +23,21 @@ def file_ids(file: WorldFile) -> set[str]:
     for section in ID_SECTIONS:
         ids.update(item.id for item in getattr(file, section))
     return ids
+
+
+def merge_scopes(file: WorldFile) -> WorldFile:
+    """One scope per (knowledge, region), at its highest confidence. The graph keeps one
+    SCOPED_TO edge per pair, so a file listing a pair twice would otherwise be stored by
+    whichever came last (V7 code review #19, BR-V7-02)."""
+    best: dict[tuple[str, str], ScopeLink] = {}
+    for s in file.scopes:
+        key = (s.knowledge_id, s.region_id)
+        held = best.get(key)
+        if held is None or s.confidence > held.confidence:
+            best[key] = s
+    if len(best) == len(file.scopes):
+        return file
+    return file.model_copy(update={"scopes": list(best.values())})
 
 
 def duplicate_ids(file: WorldFile) -> list[str]:

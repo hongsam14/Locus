@@ -236,7 +236,7 @@ def test_region_delete_write_count_is_nine_plus_npcs() -> None:
         "delete_edges",  # ⑤ connections
         "delete_node",  # ⑥ the region
     ]
-    assert len(fd_writes) == 9 + len(w["npcs"]) and meta == "upsert_nodes"
+    assert len(fd_writes) == 9 + len(w["npcs"]) and meta == "update_node"  # V7 review #14
 
 
 def test_ex3_protected_region_is_refused_and_nothing_written() -> None:

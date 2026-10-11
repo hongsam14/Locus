@@ -27,10 +27,14 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-# The load warnings of an NPC / event seed dropped for a missing region: a rebuild's
-# carry-over reports those too, from the old snapshot's ``load_warnings`` (V7, R-10).
-NPC_HOME_DANGLING = "NPC home region"
-SEED_REGION_DANGLING = "EventSeed region"
+# How a load warning names an NPC / event seed the load dropped: by the node label when
+# the node could not be read, by these phrases when its region is gone. A rebuild's
+# carry-over reports both from the old snapshot's ``load_warnings`` (V7, R-10, code
+# review #2): what the load drops is not in the backup either.
+NPC_LABEL = "NPC"
+SEED_LABEL = "EventSeed"
+NPC_HOME_DANGLING = f"{NPC_LABEL} home region"
+SEED_REGION_DANGLING = f"{SEED_LABEL} region"
 
 
 class WorldLoader:
@@ -39,7 +43,8 @@ class WorldLoader:
 
     def version(self, world_id: str) -> str | None:
         """Cheap change marker: the WorldMeta's ``updated_at``/``last_writer`` (one small
-        read). ``None`` for worlds without meta (pre-U2) — invalidation-only for those."""
+        read). ``None`` for worlds without meta (pre-U2, or mid-replace): the cache never
+        keeps those (V7, BR-V7-07)."""
         metas = self._g.find_nodes(world_id, "WorldMeta")
         if not metas:
             return None
@@ -59,8 +64,8 @@ class WorldLoader:
         entities = nodes("Entity", gm.node_to_entity)
         knowledge = nodes("Knowledge", gm.node_to_knowledge)
         priors = nodes("WikiPrior", gm.node_to_wikiprior)
-        npcs: list[NPC] = nodes("NPC", gm.node_to_npc)
-        seeds = nodes("EventSeed", gm.node_to_seed)
+        npcs: list[NPC] = nodes(NPC_LABEL, gm.node_to_npc)
+        seeds = nodes(SEED_LABEL, gm.node_to_seed)
         metas: list[WorldMeta] = nodes("WorldMeta", gm.node_to_worldmeta)
 
         edges = self._g.get_edges(world_id)

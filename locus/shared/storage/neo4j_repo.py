@@ -174,6 +174,17 @@ class Neo4jGraphRepository(GraphRepository):
                     ) from exc
                 raise
 
+    def update_node(self, node: Node) -> bool:
+        """``SET n += props`` on the node if it exists; never creates one. A version mark
+        touched after an edit must not come back inside a world another process is
+        replacing (V7 code review #14)."""
+        rows = self._run(
+            f"MATCH (n:{_safe_ident(node.label)} {{id: $id, world_id: $world_id}}) "
+            "SET n += $props RETURN count(n) AS n",
+            {"id": node.id, "world_id": node.world_id, "props": node.properties},
+        )
+        return bool(rows) and rows[0].get("n", 0) > 0
+
     def delete_edges(self, world_id: str, edges: list[EdgeKey]) -> int:
         """Delete the given edges (U3); missing ones are skipped. One UNWIND query per
         edge type and identity shape. Returns how many were deleted."""

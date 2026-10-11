@@ -51,6 +51,10 @@ class MeteredGraph(InMemoryGraphRepository):
         self.meter.hit("replace_nodes")
         super().replace_nodes(nodes)
 
+    def update_node(self, node):  # V7 code review #14: the meta touch
+        self.meter.hit("update_node")
+        return super().update_node(node)
+
     def upsert_edges(self, edges):
         self.meter.hit("upsert_edges")
         super().upsert_edges(edges)

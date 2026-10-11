@@ -142,14 +142,14 @@ V9에서 고치지 않고 `next-cycle.md`에 적는다(큰 넘김):
 - [x] 8.7 커밋: `docs: CLAUDE.md, README, web/README and operations match the code after the Follow-up cycle (V9, FR-T4)`
 
 ### Step 9 — 다음 주기 목록 (FR-C14)
-- [ ] 9.1 `aidlc-docs/operations/next-cycle.md`를 다시 쓴다. 이번 주기에 끝난 줄은 지운다(머리, 화면 다듬기, U8 #5(a)·#9~#15, CI 액션, dev audit "4건").
-- [ ] 9.2 남은 것을 출처와 지금 위치로 적는다.
+- [x] 9.1 `aidlc-docs/operations/next-cycle.md`를 다시 쓴다. 이번 주기에 끝난 줄은 지운다(머리, 화면 다듬기, U8 #5(a)·#9~#15, CI 액션, dev audit "4건").
+- [x] 9.2 남은 것을 출처와 지금 위치로 적는다.
   - RE low·정리: W05, W06, W07(일부), W09, W10, W11, W12, W14, W15, W16, W19, W20, W21, W22, W23, W24, P08~P15, F13, F15, T04~T07, T09, T10, T11(일부), T13
   - RE medium 남은 것: W08, W13(일부), W17
   - U8 §3: #1(일부), #6, #7, #8, #12, #13, #14, #18, #19 / U8 §2: C2~C10(C3·C9 일부) / U8 설계 메모 2, 3, 5(확인), 7, 8, 9, 10
   - V1~V8 넘김(§ 1.1의 큰 넘김)
   - 이번 주기 범위 밖(요구 §9): 잠금 파일, Docker non-root·digest 고정, `api` 패키징, 의존성 선언, 0.0.0.0 바인드, Playwright·axe·지도 키보드, UX-26, 어두운 테마 밖, 에디터·GM의 폰 배치
-- [ ] 9.3 커밋: `docs(aidlc): next-cycle list after the Follow-up cycle, each item with its source and place (V9, FR-C14)`
+- [x] 9.3 커밋: `docs(aidlc): next-cycle list after the Follow-up cycle, each item with its source and place (V9, FR-C14)`
 
 ### Step 10 — 마무리
 - [ ] 10.1 `v9gate.sh` 전체 GREEN. 수치: pytest, vitest, mypy 0, audit 0/0, `ResourceWarning` 0, 가장 느린 시험 10개, JS gzip.

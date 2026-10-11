@@ -5914,3 +5914,54 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V8 — complete; next V9 (debt and docs).
 
 ---
+## Code Generation — V9 — Scope question
+**Timestamp**: 2026-10-11T14:58:11Z
+**User Input**: "A. 정해진 범위 + 작은 것 (권장)"
+**AI Response**: Asked which V1–V8 hand-offs V9 takes. A: the unit's scope (FR-T2..T7, FR-C14, FR-D10) plus the small items that end in files V9 opens anyway (editor/map 합니다체 lines, unused old dictionary keys, CI lint of scripts, two test-fake defects U8 #20/#21); the large ones (per-screen dictionaries, 1024 px remount, waiting for in-flight drag saves, SQL engine options, …) go to next-cycle.md with their sources.
+**Context**: CONSTRUCTION / V9 — Code Generation Part 1 (FD and NFR SKIP).
+
+---
+## Code Generation — V9 — Part 1 plan
+**Timestamp**: 2026-10-11T14:58:11Z
+**User Input**: (none)
+**AI Response**: Plan `construction/plans/V9-debt-docs-code-generation-plan.md`: 10 steps (records+baseline, dev audit, mypy 0 + CI step, test hygiene, env.example + index.html, live scenario, dictionary register + old keys, docs, next-cycle list, wrap-up). § 1.2 code facts (the 11 mypy errors and fixes, the timeout-reliant contract test, real retry sleeps, undisposed sqlite engines, live scenario 10a, index.html), § 1.1 the human's scope A and the demo-translation item judged not a product gap.
+**Context**: CONSTRUCTION / V9 — Code Generation Part 1; plan review next.
+
+---
+## Plan Review Requested — Code Generation Plan — V9
+**Timestamp**: 2026-10-11T14:58:11Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/V9-debt-docs-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V9-debt-docs-code-generation-plan-review-01.md`.
+**Context**: Code Generation — V9 — review requested before approval gate.
+
+---
+## Plan Review Completed — Code Generation Part 1 — V9
+**Timestamp**: 2026-10-11T15:00:30Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 4 Minor; open 6 (R-01 the fake's replace_edges relies on upsert_edges replacing whole; R-02 FR-T4/§ G items missing from Step 8 and an unrequested operations note; R-03 setLang already sets documentElement.lang; R-04 contributions are keyed by region id, poll lower bound unspecified; R-05 the negative timing assertion, the player-mode literal and the /health test need concrete form; R-06 full audit in CI or one-off, lock consistency check). Record: `aidlc-docs/construction/plans/reviews/V9-debt-docs-code-generation-plan-review-01.md`. Session re-check: R-01 confirmed (fakes.py replace_edges calls upsert_edges); R-02: README NPC sentence, operations 409 and interrupted-run lines, cache.py docstring and api/errors.py were already fixed in V2/V5/V7 per the survey, but operations.md's "World editor" section (400-406) still describes the pre-V8 editor; R-03 confirmed. Plan frozen until the gate answer.
+**Context**: Code Generation Part 1 — V9 — approval gate next.
+
+---
+## Code Generation Part 1 — V9 — Approval prompt
+**Timestamp**: 2026-10-11T15:00:44Z
+**AI Response**: Asked for approval of `construction/plans/V9-debt-docs-code-generation-plan.md` (10 steps) with the Review brief (R-01..R-06 open) and the session re-check notes for R-02.
+**Context**: CONSTRUCTION / V9 — code plan approval gate.
+
+---
+## Code Generation Part 1 — V9 — Approval
+**Timestamp**: 2026-10-11T15:11:10Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V9 code plan approved; the approval covers the commits the plan lists on feat/follow-up. Review 01 R-01..R-06 recorded as Accepted risk and written into the plan's § 1.4 execution notes with the gate's stated handling. Starting Code Generation Part 2 at Step 1.
+**Context**: CONSTRUCTION / V9 — Code Generation Part 2.
+
+---
+## Plan Review Dispositions — Code Generation Part 1 — V9
+**Timestamp**: 2026-10-11T15:11:10Z
+- R-01 → Accepted risk
+- R-02 → Accepted risk
+- R-03 → Accepted risk
+- R-04 → Accepted risk
+- R-05 → Accepted risk
+- R-06 → Accepted risk
+
+---

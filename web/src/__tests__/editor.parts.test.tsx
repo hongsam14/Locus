@@ -157,6 +157,14 @@ describe("EditorHeader (TP-V8-2, BR-V8-03/28/34)", () => {
     expect(await screen.findByTestId("file-error")).toHaveTextContent(t("notice.loadedDropped", { n: 2 }));
   });
 
+  it("a file that is not a World File says so (#22)", async () => {
+    head();
+    const file = new File(["not json at all"], "notes.txt", { type: "text/plain" });
+    fireEvent.change(screen.getByTestId("file-input"), { target: { files: [file] } });
+    expect(await screen.findByTestId("file-error")).toHaveTextContent(t("error.bad_world_file.title"));
+    expect(api.importWorldFile).not.toHaveBeenCalled();
+  });
+
   it("the load outcome by report", () => {
     const e = (stage: string, severity: "error" | "warning" = "error") => ({ stage, severity, message: stage });
     expect(loadOutcome(importReport({})).kind).toBe("loaded");

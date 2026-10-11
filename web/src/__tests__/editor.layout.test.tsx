@@ -749,6 +749,7 @@ describe("code review 01 #5, #6: the keyboard focus stays where the work is", ()
     fireEvent.keyUp(range, { key: "ArrowRight" });
     await waitFor(() => expect(api.saveConnection).toHaveBeenCalledTimes(1));
     expect(range).toBeEnabled();
+    expect(screen.getByTestId("connection-kind-r1|r2|route")).toBeEnabled(); // the kind too (#6)
     expect(document.activeElement).toBe(range);
     // a second step while the first is out is refused: the thumb goes back to the stored
     // weight until the first save's re-read brings the new one
@@ -858,5 +859,83 @@ describe("code review 01 #38: smaller behaviours of the screen", () => {
     await waitFor(() => expect((api.listWorlds as Mock).mock.calls.length).toBe(lists + 1));
     fireEvent.click(screen.getByText(t("action.close")));
     await ready();
+  });
+});
+
+describe("code review 01 #9: the prior choices are the world's", () => {
+  it("a broken prior link offers the world's priors, read with the world", async () => {
+    (api.exportWorld as Mock).mockResolvedValue({ ...WORLD, priors: [{ id: "p1", world_id: "w", prior_type: "fact",
+      condition: "river", effect: "boats carry news", domains: ["geography"], confidence: 0.8 }] });
+    (api.startRun as Mock).mockResolvedValue(runOf({ open_questions: [lowQ({ id: "q5",
+      issue_key: "dangling:connection:r1|r2|route:wiki_prior_ref:p-gone", type: "dangling", actions: ["edit", "ignore"],
+      needs: { edit: ["ref"] }, ref_kind: "prior",
+      target: { kind: "connection", id: "r1|r2|route", name: "Riverton – Hollow (route)", field: "wiki_prior_ref",
+        connection: { world_id: "w", a_region_id: "r1", b_region_id: "r2", kind: "route" } } })] }));
+    renderEditor();
+    await ready();
+    openTab("augment");
+    fireEvent.click(screen.getByTestId("augment-find"));
+    const ref = await screen.findByTestId("augment-ref");
+    expect(ref).toHaveTextContent("boats carry news");
+    expect(api.listPriors).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("code review 01 #28, #29: what an inspector write keeps and reads", () => {
+  it("a drag of the region open in the inspector keeps what was typed in its form (#28)", async () => {
+    (api.updateRegion as Mock).mockResolvedValue({});
+    renderEditor();
+    await ready();
+    await pickOnMap("r1");
+    fireEvent.change(screen.getByTestId("region-description"), { target: { value: "typed, not saved" } });
+    (api.getEditorRegion as Mock).mockImplementation(async (_w: string, id: string) =>
+      id === "r1" ? { ...view("r1"), region: { ...view("r1").region, position: { x: 0.5, y: 0.5 } } } : view(id));
+    const regionReads = (api.getEditorRegion as Mock).mock.calls.length;
+    const marker = screen.getByTestId("region-marker-r1");
+    const svg = marker.closest("svg") as SVGSVGElement;
+    fireEvent.pointerDown(marker, { clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(svg, { clientX: 140, clientY: 100 });
+    fireEvent.pointerUp(svg, { clientX: 140, clientY: 100 });
+    await waitFor(() => expect((api.getEditorRegion as Mock).mock.calls.length).toBe(regionReads + 1));
+    await act(async () => {});
+    expect(screen.getByTestId("region-description")).toHaveValue("typed, not saved");
+  });
+
+  it("adding a person re-reads the inspector only, not the world (#29, BLM § 5)", async () => {
+    (api.createNpc as Mock).mockResolvedValue({});
+    renderEditor();
+    await ready();
+    await pickOnMap("r1");
+    fireEvent.click(fold("npcs"));
+    fireEvent.click(screen.getByTestId("npc-add"));
+    fireEvent.change(screen.getByTestId("npc-name"), { target: { value: "Bo" } });
+    fireEvent.change(screen.getByTestId("npc-role"), { target: { value: "ferryman" } });
+    fireEvent.change(screen.getByTestId("npc-description"), { target: { value: "rows the ferry" } });
+    const exports = (api.exportWorld as Mock).mock.calls.length;
+    const regionReads = (api.getEditorRegion as Mock).mock.calls.length;
+    fireEvent.click(screen.getByTestId("npc-save"));
+    await waitFor(() => expect(api.createNpc).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect((api.getEditorRegion as Mock).mock.calls.length).toBe(regionReads + 1));
+    expect((api.exportWorld as Mock).mock.calls.length).toBe(exports);
+  });
+});
+
+describe("code review 01 #2: the map waits for the world a load brought", () => {
+  it("between a load and the new world's answer the map tools are off", async () => {
+    (api.importWorldFile as Mock).mockResolvedValue({ world_id: "w", format_version: 1, source_world_id: "w",
+      remapped: false, forced: false, replaced: true, closed_session_ids: [], counts: {}, warnings: [], ok: true });
+    renderEditor();
+    await ready();
+    expect(screen.getByTestId("map-tool-add-region")).toBeEnabled();
+    const after = deferred<WorldExport>();
+    (api.exportWorld as Mock).mockReturnValueOnce(after.promise);
+    const file = new File(['{"format_version": 1}'], "w.world.json", { type: "application/json" });
+    fireEvent.change(screen.getByTestId("file-input"), { target: { files: [file] } });
+    await waitFor(() => screen.getByTestId("file-confirm"));
+    fireEvent.click(screen.getByText(t("action.confirm")));
+    await waitFor(() => expect(screen.getByTestId("map-tool-add-region")).toBeDisabled());
+    await act(async () => after.resolve(WORLD));
+    await waitFor(() => expect(screen.getByTestId("map-tool-add-region")).toBeEnabled());
   });
 });

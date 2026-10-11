@@ -11,6 +11,7 @@ import { useEditorWorld } from "../features/editor/useEditorWorld";
 import { enumLabel } from "../format";
 import { t } from "../i18n";
 import { AugHost } from "../test/editor";
+import { InlineError } from "../ui";
 import type { AugQuestion, AugRun, BuildReport, ConnectionEdge, Region, WorldExport } from "../types";
 
 vi.mock("../api", () => ({
@@ -490,5 +491,12 @@ describe("#38: smaller behaviours of the augmentation tab", () => {
     act(() => result.current.answer(question("k1"), "edit"));
     await waitFor(() => expect(result.current.run?.open_questions.map((q) => q.issue_key)).toEqual(["k2"]));
     expect(result.current.run?.answers).toBe(3);
+  });
+});
+
+describe("#30: a folded server line wraps", () => {
+  it("the error's original text breaks anywhere, so a long id does not push the page sideways", () => {
+    render(<InlineError error={{ title: "x", raw: "region-with-a-very-long-unbroken-identifier-0123456789" }} />);
+    expect(screen.getByText(/very-long-unbroken/).closest("details")).toHaveClass("[overflow-wrap:anywhere]");
   });
 });

@@ -141,6 +141,11 @@ describe("issue keys and target names, as the server really sends them", () => {
     );
   });
 
+  it("knowledge is named by the title the cards show: the display language's first (#24)", () => {
+    const ko: NameSource = { ...src, knowledge: [{ id: "k1", title: "Fish", title_ko: "물고기", statement: "fish swim" } as Knowledge] };
+    expect(issueKeyName("low_confidence:knowledge:k1::", ko)).toBe("물고기");
+  });
+
   it("an ignored or kept line says which issue (#23)", () => {
     expect(issueKeyLine("gap:region:r1::", src)).toBe(`${enumLabel("augmentationIssue", "gap")} · Harbor`);
     expect(issueKeyLine("low_confidence:knowledge:k1::", src)).toBe(`${enumLabel("augmentationIssue", "low_confidence")} · Fish`);

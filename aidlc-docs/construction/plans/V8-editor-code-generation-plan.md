@@ -157,17 +157,17 @@
 
 ### Step 4 — 새 에디터 부품 (frontend-components § 4, BR-V8-03·08·09·12·13·14·27·28·31~34)
 이 단계도 새 파일만 더한다(지금 부품은 그대로).
-- [ ] 4.1 `EditorHeader`, `FileActions`
+- [x] 4.1 `EditorHeader`, `FileActions`
   - [파일 ▾] 펼침: 숨은 input은 줄 밖, Esc·바깥 누름·동작 시작에 닫힘, 초점 복귀, 오류는 머리 아래
   - 교체·닫기 확인(옛 `WorldFileBar` 흐름을 옮김)
   - `PlayThisWorld`(`NewSessionForm` 재사용)
-- [ ] 4.2 `EditorMapPane`, `MapTools`(toolbar, 화살표 키, `aria-pressed`), `MapLegend`
+- [x] 4.2 `EditorMapPane`, `MapTools`(toolbar, 화살표 키, `aria-pressed`), `MapLegend`
   - `NewRegionDialog`(단계 라벨, 상위 묶음 `Select group`, `Textarea`)
   - `NewConnectionDialog`(`CommitRange`, 처음 값·종류 바꿈 규칙, "연결 고치기")
   - `WorldMap mode="edit"`를 바로 쓴다.
-- [ ] 4.3 `RegionTab`, `RegionPicker`(단계 묶음 `Select`), `DangerZone`
-- [ ] 4.4 시험 `editor.parts.test.tsx`: TP-V8-2(머리·파일 펼침), TP-V8-5, TP-V8-7(폼 쪽), TP-V8-13(플레이 시작), TP-V8-15(도구 띠 키보드), 지도 범례 라벨.
-- [ ] 4.5 게이트 GREEN → 커밋 `feat(web): new editor parts — one head with a file menu and a play start, a map pane with tools and a legend, a keyboard region picker and a danger zone (V8, FR-S4)`
+- [x] 4.3 `RegionTab`, `RegionPicker`(단계 묶음 `Select`), `DangerZone`
+- [x] 4.4 시험 `editor.parts.test.tsx`: TP-V8-2(머리·파일 펼침), TP-V8-5, TP-V8-7(폼 쪽), TP-V8-13(플레이 시작), TP-V8-15(도구 띠 키보드), 지도 범례 라벨.
+- [x] 4.5 게이트 GREEN → 커밋 `feat(web): new editor parts — one head with a file menu and a play start, a map pane with tools and a legend, a keyboard region picker and a danger zone (V8, FR-S4)`
 
 ### Step 5 — 바꿔 끼우기: 화면 조립, 기존 부품, 옛 부품 없애기 (BLM 전부, BR-V8-01~34, frontend-components § 7.1)
 - [ ] 5.1 `routes/EditorPage.tsx`를 다시 쓴다.

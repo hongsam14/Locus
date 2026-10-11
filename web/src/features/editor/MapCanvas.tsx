@@ -4,33 +4,12 @@ import { t } from "../../i18n";
 import type { ConnectionEdge, ConnectionKind, Region } from "../../types";
 import { Button, Dialog, Field, Select } from "../../ui";
 
-export type MapTool = "select" | "addRegion" | "connect";
+// V8 (code plan § 1.4 R-06): these live in ./connections now; kept here until this file goes
+import { type MapTool, type NewRegion, sameConnection } from "./connections";
+export { sameConnection };
+export type { MapTool, NewRegion };
 export const LEVELS = ["continent", "province", "town", "district", "terrain"];
 export const KINDS: ConnectionKind[] = ["adjacent", "route", "river", "blocked"];
-
-export interface NewRegion {
-  name: string;
-  level: string;
-  parent_id: string | null;
-  description: string | null;
-  position: { x: number; y: number };
-}
-
-/** The stored connection of this pair and kind, either way round (a pair is one
- * connection, BR-U3-10), or undefined. */
-export function sameConnection(
-  connections: ConnectionEdge[],
-  a: string,
-  b: string,
-  kind: ConnectionKind,
-): ConnectionEdge | undefined {
-  return connections.find(
-    (c) =>
-      c.kind === kind &&
-      ((c.source_region_id === a && c.target_region_id === b) ||
-        (c.source_region_id === b && c.target_region_id === a)),
-  );
-}
 
 /** The editor's map (US-2.2, Q5=A): three tools, always visible, so it is clear what a
  * click does. Select picks and drags (a click alone saves nothing, BR-U3-30); add

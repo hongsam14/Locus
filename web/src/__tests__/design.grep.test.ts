@@ -79,6 +79,28 @@ describe("design rules in the source", () => {
     }
   });
 
+  // V8 (BR-V8-04/05/16/22/27, TP-V8-16): the editor too — and nothing that would make a
+  // 390 px screen scroll sideways: no 20 rem floor, no fixed pixel width (design review 01 R-14)
+  // w-[Npx] or min-w-[Npx]; a max-w-[…] cap is fine
+  const FIXED_WIDTH = /(?<![\w-])(min-)?w-\[\d+px\]/;
+  it("the editor has no toFixed, String(e), outline-none, min-w-80 or fixed pixel width", () => {
+    expect("w-[400px] min-w-[320px]").toMatch(FIXED_WIDTH);
+    expect("max-w-[1240px]").not.toMatch(FIXED_WIDTH);
+    const scope = FILES.filter(
+      (f) => /^src\/features\/editor\//.test(f.path) || /^src\/routes\/EditorPage\.tsx$/.test(f.path),
+    );
+    expect(scope.length).toBeGreaterThan(20); // the check reads the editor files
+    for (const rule of [/\.toFixed\(/, /String\((e|err|error)\)/, /outline-none/, /\bmin-w-80\b/, /min\(\d+px/, FIXED_WIDTH]) {
+      expect(scope.filter((f) => rule.test(f.text)).map((f) => f.path), String(rule)).toEqual([]);
+    }
+  });
+
+  it("nothing imports the old map overlay or session bar (V8, Q2 = A)", () => {
+    expect(offenders(/from\s+["'][./]*(MapOverlay|SessionBar)["']/)).toEqual([]);
+    expect(FILES.some((f) => /(^|\/)(MapOverlay|SessionBar)\.tsx$/.test(f.path))).toBe(false);
+    expect('import { MapOverlay } from "../MapOverlay";').toMatch(/from\s+["'][./]*(MapOverlay|SessionBar)["']/);
+  });
+
   it("uses the display face for the logo only", () => {
     expect(offenders(/font-display/, (p) => p.endsWith("layout/AppShell.tsx"))).toEqual([]);
   });

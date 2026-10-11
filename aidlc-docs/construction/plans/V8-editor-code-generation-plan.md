@@ -194,11 +194,11 @@
 - [x] 5.7 게이트 GREEN → 커밋 `feat(web): editor rebuilt — map beside a 400 px panel of four tabs, a folding inspector with a separate danger zone, one weight control, words for every value and error, play from the editor (V8, FR-S4, UX-17..25, UX-27)`
 
 ### Step 6 — FR-D8 검사와 소스 검사 (BR-V8-15·16·22·05·27, TP-V8-9·16)
-- [ ] 6.1 `fr-d8.test.tsx`: 에디터를 넣는다. 대상은 머리, 범례, 대화상자, 인스펙터, 보강, 사전, 빌드 리포트이고, 단계·종류·보강 값을 전부 돌린다. 원문 enum, `type:action`, 열쇠 글자가 없어야 한다.
-- [ ] 6.2 `design.grep.test.ts`: 범위에 `features/editor/**`와 `routes/EditorPage.tsx`를 더한다.
+- [x] 6.1 `fr-d8.test.tsx`: 에디터를 넣는다. 대상은 머리, 범례, 대화상자, 인스펙터, 보강, 사전, 빌드 리포트이고, 단계·종류·보강 값을 전부 돌린다. 원문 enum, `type:action`, 열쇠 글자가 없어야 한다.
+- [x] 6.2 `design.grep.test.ts`: 범위에 `features/editor/**`와 `routes/EditorPage.tsx`를 더한다.
   - 지금 규칙(`toFixed`, `String(e)`, `outline-none`)을 그대로 건다.
   - 새 규칙: `min-w-80`, 고정 px 폭(`min(\d+px`), `MapOverlay`·`SessionBar` import
-- [ ] 6.3 게이트 GREEN → 커밋 `test(web): the editor shows no raw enum, bare number, error text or fixed width (V8, FR-D8)`
+- [x] 6.3 게이트 GREEN → 커밋 `test(web): the editor shows no raw enum, bare number, error text or fixed width (V8, FR-D8)`
 
 ### Step 7 — 캡처 (사람 확인, BR-V8-04, 캡처 계획)
 - [ ] 7.1 캡처 도구를 새로 만든다(`scratchpad/v8/cap/`)

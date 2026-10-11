@@ -4,7 +4,7 @@ import type { BuildWarning } from "../../types";
 /** The stages a build or import report names (V8 code plan § 1.2). Not a closed enum: the
  * server's `BuildWarning.stage` is a free string, so an unknown stage reads "기타" instead of
  * failing a check against a server enum. */
-const KNOWN = new Set([
+export const BUILD_STAGES = [
   "ingestion",
   "topology",
   "wiki",
@@ -20,7 +20,8 @@ const KNOWN = new Set([
   "duplicate-ids",
   "commit",
   "sessions",
-]);
+] as const;
+const KNOWN = new Set<string>(BUILD_STAGES);
 
 export function stageLabel(stage: string): string {
   return t(`label.stage.${KNOWN.has(stage) ? stage : "other"}`);

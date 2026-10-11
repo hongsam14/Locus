@@ -5,12 +5,14 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { Mock } from "vitest";
 import { resetCapabilities } from "../capabilities";
-import { ENUM_VALUES, numberWithMeaning } from "../format";
+import { ENUM_VALUES, enumLabel, numberWithMeaning } from "../format";
 import { setLang, t } from "../i18n";
+import { BUILD_STAGES } from "../features/editor/buildStages";
+import { EditorPage } from "../routes/EditorPage";
 import { GmPage } from "../routes/GmPage";
 import { HomePage } from "../routes/HomePage";
 import { PlayPage } from "../routes/PlayPage";
-import type { GameSession, MoveOption, RegionView, SessionRumor, TurnRun } from "../types";
+import type { AugQuestion, AugRun, GameSession, MoveOption, RegionView, SessionRumor, TurnRun } from "../types";
 
 vi.mock("../api", () => ({
   api: {
@@ -36,6 +38,14 @@ vi.mock("../api", () => ({
     listDeeds: vi.fn(),
     getPlayer: vi.fn(),
     sessionKnowledge: vi.fn(),
+    // V8: the editor
+    getEditorRegion: vi.fn(),
+    listUnscoped: vi.fn(),
+    priorRefs: vi.fn(),
+    listPriors: vi.fn(),
+    startRun: vi.fn(),
+    getDeletePlan: vi.fn(),
+    uploadBuild: vi.fn(),
   },
 }));
 import { api } from "../api";
@@ -259,5 +269,180 @@ describe("TP-V6-12: the GM screen in words", () => {
     expect(bare && all.slice(Math.max(0, (bare.index ?? 0) - 60), (bare.index ?? 0) + 20)).toBeNull();
     expect(all.match(ABBREV)).toBeNull();
     expect(all).toContain(numberWithMeaning("distortion", 0.42)); // numbers are there, with meanings
+  });
+});
+
+// V8 (BR-V8-15/16/18, TP-V8-9): the editor in words. Every region level, connection kind,
+// augmentation status, target, issue and action, wiki domain and build stage is put on a
+// screen — the head, the legend, both map forms, the inspector with its four sections, the
+// delete plan, the augmentation tab, the grounds tab and a build report — and the shown text
+// is searched for the raw value, a "type:action" or key text, and a bare 0..1 number. The
+// server's own sentences sit folded in <details> by design (BR-V8-22/30); only the summary
+// of a closed one counts as shown.
+describe("TP-V8-9: the editor in words", () => {
+  const ALL_RAW = [
+    ...ENUM_VALUES.regionLevel, ...ENUM_VALUES.connectionKind, ...ENUM_VALUES.augmentationStatus,
+    ...ENUM_VALUES.augmentationTarget, ...ENUM_VALUES.augmentationAction, ...ENUM_VALUES.augmentationIssue,
+    ...ENUM_VALUES.wikiDomain, ...BUILD_STAGES,
+  ];
+  // in English most values are plain words a sentence may use ("pick a region"); there the
+  // values no sentence would write are searched
+  const RAW: Record<"ko" | "en", readonly string[]> = { ko: ALL_RAW, en: ALL_RAW.filter((v) => /[_-]/.test(v)) };
+  const rawOf = (lang: "ko" | "en", text: string) =>
+    RAW[lang].filter((v) => new RegExp(`(?<![\\w-])${v}(?![\\w-])`).test(text));
+  const KEYISH = /[a-z_]+:[a-z_]+|\w\|\w/; // "low_confidence:confirm", "gap:region:…", "r1|r2"
+  const BARE = /(?<![\d.])[01]\.\d+(?!\d)(?! · )/;
+
+  function shownText(): string {
+    const parts: string[] = [];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const closed = n.parentElement?.closest("details:not([open])");
+      if (closed && !n.parentElement?.closest("summary")) continue;
+      parts.push(n.textContent ?? "");
+    }
+    return parts.join(" ");
+  }
+
+  const regions = ENUM_VALUES.regionLevel.map((level, i) => ({ id: `v${i}`, name: `곳${i}`, level,
+    position: { x: 0.1 + i * 0.2, y: 0.2 + (i % 2) * 0.5 } }));
+  const kinds = ENUM_VALUES.connectionKind;
+  const connections = kinds.map((kind, i) => ({ world_id: "w", source_region_id: "v0", target_region_id: `v${i + 1}`,
+    kind, weight: 0.37 }));
+  const keys = kinds.map((kind, i) => ({ world_id: "w", a_region_id: "v0", b_region_id: `v${i + 1}`, kind }));
+  const mill = { id: "k1", world_id: "w", title: "물레방아", statement: "물레방아가 돈다", confidence: 0.73,
+    provenance: { source: "input" } };
+  const targetOf = (kind: string) =>
+    kind === "region" ? { kind, id: "v1", name: "곳1" }
+    : kind === "knowledge" ? { kind, id: "k1", name: "물레방아" }
+    : kind === "entity" ? { kind, id: "e1", name: "옛 종" }
+    : { kind, id: "v0|v1|adjacent", name: "곳0 – 곳1" };
+  const keyOf = (issue: string, kind: string) => `${issue}:${kind}:${targetOf(kind).id}::`;
+  const questions: AugQuestion[] = ENUM_VALUES.augmentationIssue.map((issue, i) => {
+    const kind = ENUM_VALUES.augmentationTarget[i % 4];
+    return { id: `q${i}`, issue_id: `i${i}`, issue_key: keyOf(issue, kind), type: issue, text: `질문 ${i}`,
+      actions: [...ENUM_VALUES.augmentationAction], needs: {},
+      target: { ...targetOf(kind), ...(issue === "dangling" ? { field: "about_entity_ids" } : {}) } } as AugQuestion;
+  });
+  const runOf = (status: AugRun["status"]): AugRun => ({
+    id: `run-${status}`, world_id: "w", status, answers: 4, llm_calls: 1, llm_budget_exhausted: status === "stopped",
+    open_questions: status === "open" ? questions : [],
+    history: ENUM_VALUES.augmentationIssue.flatMap((issue) => ENUM_VALUES.augmentationAction.map((action) =>
+      ({ id: `c-${issue}-${action}`, description: `${issue}:${action}`, added_ids: [], reverted: action === "add" }))),
+    ignored_keys: ENUM_VALUES.augmentationTarget.map((kind) => keyOf("gap", kind)),
+    kept_keys: ENUM_VALUES.augmentationTarget.map((kind) => keyOf("low_confidence", kind)),
+  });
+
+  beforeEach(() => {
+    (api.exportWorld as Mock).mockResolvedValue({ world_id: "w", world: { id: "w", name: "엠버리프" }, regions, connections,
+      entities: [{ id: "e1", name: "옛 종" }], knowledge: [mill], scopes: [], unscoped_knowledge_ids: ["k7"] });
+    (api.listWorlds as Mock).mockResolvedValue([{ id: "w", name: "엠버리프", region_count: 5, open_sessions: 2 }]);
+    (api.getEditorRegion as Mock).mockResolvedValue({
+      region: { ...regions[0], world_id: "w" }, children: [],
+      connections: keys.map((key, i) => ({ key, other_region_id: key.b_region_id, other_region_name: `곳${i + 1}`,
+        weight: 0.37, prior: i === 0 ? { prior_id: "p1", effect: "길이 난다", broken: false } : i === 1 ? { prior_id: "gone", broken: true } : null })),
+      knowledge: [{ knowledge: mill, scope_region_ids: ["v0"] }],
+      npcs: [{ id: "n1", world_id: "w", name: "에이다", role: "방앗간지기", description: "", home_region_id: "v0", traits: [],
+        provenance: { source: "input" } }],
+    });
+    (api.getDeletePlan as Mock).mockResolvedValue({ region_id: "v0", region_name: "곳0", children: [{ id: "v9", name: "곳9" }],
+      connections: keys, npcs: [{ id: "n1", name: "에이다" }], knowledge_to_unscope: [{ id: "k1", name: "물레방아" }],
+      knowledge_scope_removed: [], entities_unlocated: [{ id: "e1", name: "옛 종" }], blocked_by_sessions: ["s7"], seed_ids: ["sd1"] });
+    (api.listUnscoped as Mock).mockResolvedValue([{ ...mill, id: "k7", title: "잃은 종" }]);
+    (api.listPriors as Mock).mockResolvedValue([]);
+    (api.priorRefs as Mock).mockResolvedValue({
+      usages: [{ prior: { id: "p1", world_id: "w", prior_type: "fact", condition: "강이 흐르면", effect: "길이 난다",
+        domains: [...ENUM_VALUES.wikiDomain], confidence: 0.64 }, connections: keys, knowledge: [{ id: "k1", name: "물레방아" }] }],
+      broken: [{ ref_id: "gone", connections: keys.slice(0, 2), knowledge: [] }],
+    });
+    (api.startRun as Mock)
+      .mockResolvedValueOnce(runOf("open"))
+      .mockResolvedValueOnce(runOf("converged"))
+      .mockResolvedValueOnce(runOf("stopped"));
+    (api.uploadBuild as Mock).mockResolvedValue({ world_id: "w", regions_created: 5, connections_created: 4,
+      entities_created: 1, knowledge_created: 2, corroborations_created: 1, unscoped_knowledge_ids: ["k7"], llm_calls: 3,
+      embedding_calls: 1, replaced: true, closed_session_ids: ["s1"], priors_created: 1, ok: true, carried_npcs: 2,
+      carried_seeds: 1, backup_path: "/backups/w.json",
+      warnings: [...BUILD_STAGES, "mystery"].map((stage, i) => ({ stage, message: `server line ${i}`,
+        severity: i % 3 === 0 ? "error" : "warning" })) });
+  });
+
+  afterEach(() => setLang("ko"));
+
+  it.each(["ko", "en"] as const)("%s: head, legend, forms, inspector, delete plan, augmentation, grounds, build report", async (lang) => {
+    setLang(lang);
+    render(
+      <MemoryRouter initialEntries={["/editor/w"]}>
+        <Routes><Route path="/editor/:worldId" element={<EditorPage />} /></Routes>
+      </MemoryRouter>,
+    );
+    const seen: string[] = [];
+    const tab = (name: string) =>
+      fireEvent.mouseDown(screen.getByTestId(`editor-tab-${name}`).closest('[role="tab"]') as HTMLElement, { button: 0 });
+    const escape = async () => {
+      fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    };
+    // the head, the legend, the inspector with all four sections
+    fireEvent.click(await screen.findByTestId("region-marker-v0"));
+    await screen.findByTestId("inspector-section-npcs");
+    for (const k of ["connections", "knowledge", "npcs"]) {
+      fireEvent.click(screen.getByTestId(`inspector-section-${k}`).querySelector("[aria-expanded]") as HTMLElement);
+    }
+    await screen.findByTestId("editor-npc-n1");
+    seen.push(shownText());
+    // the delete plan
+    fireEvent.click(screen.getByTestId("region-delete"));
+    await screen.findByTestId("delete-plan");
+    seen.push(shownText());
+    await escape();
+    // both map forms
+    fireEvent.click(screen.getByTestId("map-tool-add-region"));
+    fireEvent.click(screen.getByTestId("region-marker-v0").closest("svg") as SVGSVGElement);
+    await screen.findByTestId("new-region-form");
+    seen.push(shownText());
+    await escape();
+    fireEvent.click(screen.getByTestId("map-tool-connect"));
+    fireEvent.click(screen.getByTestId("region-marker-v0"));
+    fireEvent.click(screen.getByTestId("region-marker-v1"));
+    fireEvent.change(await screen.findByTestId("connection-kind"), { target: { value: "adjacent" } });
+    await screen.findByTestId("connection-exists");
+    seen.push(shownText());
+    await escape();
+    fireEvent.click(screen.getByTestId("map-tool-select"));
+    // the augmentation tab in each status
+    tab("augment");
+    for (const status of ENUM_VALUES.augmentationStatus) {
+      fireEvent.click(screen.getByTestId("augment-find"));
+      await waitFor(() => expect(screen.getByTestId("augment-status")).toHaveTextContent(enumLabel("augmentationStatus", status)));
+      fireEvent.click(screen.getByTestId("augment-kept").querySelector("summary") as HTMLElement);
+      seen.push(shownText());
+    }
+    // the grounds tab with its references open
+    tab("wiki");
+    fireEvent.click(await screen.findByTestId("prior-refs-p1"));
+    seen.push(shownText());
+    // a build report with every stage, and one the screen does not know
+    fireEvent.click(screen.getByTestId("file-menu"));
+    fireEvent.click(screen.getByTestId("file-build"));
+    fireEvent.change(await screen.findByTestId("build-memo"), { target: { value: "강 마을" } });
+    await waitFor(() => expect(screen.getByTestId("build-submit")).toBeEnabled());
+    fireEvent.click(screen.getByTestId("build-submit"));
+    await screen.findByTestId("build-confirm");
+    fireEvent.click(screen.getByText(t("action.confirm")));
+    await screen.findByTestId("build-report");
+    seen.push(shownText());
+
+    const all = seen.join("\n");
+    expect(rawOf(lang, all)).toEqual([]);
+    const key = all.match(KEYISH);
+    expect(key && all.slice(Math.max(0, (key.index ?? 0) - 60), (key.index ?? 0) + 30)).toBeNull();
+    const bare = all.match(BARE);
+    expect(bare && all.slice(Math.max(0, (bare.index ?? 0) - 60), (bare.index ?? 0) + 20)).toBeNull();
+    // the values are there, in words
+    expect(all).toContain(enumLabel("connectionKind", "river"));
+    expect(all).toContain(numberWithMeaning("weight", 0.37));
+    expect(all).toContain(t("label.stage.other"));
+    expect(all).toContain(t("label.field.about_entity_ids"));
   });
 });

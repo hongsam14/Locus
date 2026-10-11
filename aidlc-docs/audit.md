@@ -5766,3 +5766,96 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V7 — complete; next V8 (editor).
 
 ---
+## Functional Design — V8 — Plan and questions
+**Timestamp**: 2026-10-11T01:35:39Z
+**User Input**: (none)
+**AI Response**: Branch pushed by the human to `93d6358`. V8 (editor, P1) Functional Design plan `construction/plans/V8-editor-functional-design-plan.md`. Current-code inventory: UX-17/19/20/21/22/23/27 and FR-S5/S6/D8 still open; UX-18/24 partly fixed; UX-25 attempted but the selection is cleared before the re-read. Self-decided: WorldMap directly (MapOverlay adapter removed), legend, keyboard region picker, collapsible inspector with a danger zone, one CommitRange weight control, labels for enums and change descriptions, kept/ignored questions by name, build report carried counts and stage labels (incl. V6's "sessions" busy line), describeError everywhere, ui/Tabs, 390px one column, test scans widened, captures rebuilt. Questions: Q1 layout (A GM-like / B wide work area under the map / C three columns), Q2 sessions in the editor (A play only / B none / C GM-like head).
+**Context**: CONSTRUCTION / V8 — Functional Design; awaiting Q1, Q2.
+
+---
+## Functional Design — V8 — Answers
+**Timestamp**: 2026-10-11T01:39:14Z
+**User Input**: Q1 "A. GM과 같은 틀 (권장)"; Q2 "A. 플레이만 (권장)"
+**AI Response**: No ambiguity. Writing the V8 FD artifacts (frontend-components, business-logic-model, business-rules).
+**Context**: CONSTRUCTION / V8 — Functional Design; artifacts next, then the design review.
+
+---
+## Plan Review Requested — Functional Design — V8
+**Timestamp**: 2026-10-11T01:43:21Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: V8 FD artifacts written (frontend-components: layout 1280/390, elements, tree, API, testids; business-logic-model §§ 1–10; business-rules BR-V8-01..34, TP-V8-1..17, capture plan). Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/V8-editor/functional-design/business-logic-model.md` (+ frontend-components.md, business-rules.md, FD plan). Review record: `aidlc-docs/construction/V8-editor/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — V8 — review requested before approval gate.
+
+---
+## Plan Review Completed — Functional Design — V8
+**Timestamp**: 2026-10-11T01:48:26Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 5 Major / 9 Minor; open 14. Record: `aidlc-docs/construction/V8-editor/functional-design/reviews/functional-design-review-01.md`. Major: R-01 drafts keyed by question id (code keys by issue_key, S28), R-02 drag optimism vs useResource/useAction, R-03 pendingSelect never released, R-04 cleanup after a replace differs per flow, R-05 tests-to-change table incomplete.
+**Context**: Functional Design — V8 — builder fix, then re-review (iteration 2).
+
+---
+## Functional Design — V8 — Review findings fixed
+**Timestamp**: 2026-10-11T01:51:14Z
+**User Input**: (none)
+**AI Response**: Fixed R-01..R-14 in the V8 FD. R-01 drafts keyed by issue_key, cleared by the page on success; R-02 drag overlay `moved` on the page, drags not routed through useAction, cleared when the world shows the same spot or on failure; R-03 `pendingSelect {id, gen}` with `worldGen` and five release cases; R-04 one cleanup table for world id change / import / build, 404 on a run the world replaced; R-05 tests-to-change table rebuilt by grep (gm.test import, S23, S24, RegionInspector renders, file menu helper, components 239-240, 51 = 49 it + it.each×2); R-06 generic augmentation 400 sentence; R-07 key reading table incl. connections and field labels; R-08 one section-open rule + known limit on unmounted forms; R-09 file input outside the disclosure, close rules, error placement; R-10 MapPanelLayout props (testId, panelLabel, panelTop, narrowOrder) with GmLayout as a wrapper; R-11 NewSessionForm unchanged (flat list), props listed, no re-read after play; R-12 form vs list CommitRange; R-13 reload() instead of key changes, loading only without data; R-14 grep guard for min-w-80 and fixed px widths, scrollIntoView guard.
+**Context**: Functional Design — V8 — re-review next (iteration 2).
+
+---
+
+## Plan Review Requested — Functional Design — V8 (iteration 2)
+**Timestamp**: 2026-10-11T01:51:14Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 2 of 2) with prior findings R-01..R-14 carried forward. Review record: `aidlc-docs/construction/V8-editor/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — V8 — re-review before approval gate.
+
+---
+## Plan Review Completed — Functional Design — V8 (iteration 2)
+**Timestamp**: 2026-10-11T01:53:46Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. R-01..R-14 Resolved; new R-15 Major (who owns the augmentation calls once drafts move to the page — props, busy after a tab return), R-16 Minor (overlapping drags of one region), R-17 Minor (worldGen counts answers, not read starts; the protection is useResource's abort on reload). Record: `aidlc-docs/construction/V8-editor/functional-design/reviews/functional-design-review-02.md`. Session re-check: R-15 confirmed (AugmentPanel holds run/busy/error/changed/answer; useAction skips onDone after unmount). Artifacts frozen until the gate answer.
+**Context**: Functional Design — V8 — approval gate next.
+
+---
+## Functional Design — V8 — Approval
+**Timestamp**: 2026-10-11T02:44:22Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V8 Functional Design approved. Open findings R-15 (Major), R-16, R-17 (Minor) recorded as Accepted risk and carried into the V8 code plan § 1.1 with the gate's decisions: R-15 a page-held `useAugmentation(worldId)` hook owns start/answer/revert/unignore, run, busy, error, change names and draft clearing; AugmentPanel only shows; R-16 same-region drags wait for the previous save and send only the latest spot, the overlay compares with the last spot sent; R-17 the dependency on useResource aborting earlier reads at reload() is stated, TP-V8-3 adds an earlier read arriving late. NFR SKIP; next: V8 Code Generation Part 1.
+**Context**: CONSTRUCTION / V8 — Functional Design complete.
+
+---
+## Code Generation — V8 — Part 1 plan
+**Timestamp**: 2026-10-11T02:46:14Z
+**User Input**: (none)
+**AI Response**: Plan `construction/plans/V8-editor-code-generation-plan.md`: 8 steps (docs+baseline, shared layout and labels, data hooks and pure helpers, new parts, one switch-over commit with old parts removed and old tests fixed, FR-D8/grep scans, captures, wrap-up). § 1.1 carries FD review 02 R-15 (page-held useAugmentation), R-16 (per-region drag queue), R-17 (reload abort dependency). § 1.2 code facts: build stages are not a closed enum (labels in buildStages.ts, not ENUM_VALUES, because format.enums.backend.test pins every EnumKind to a server enum), the editor is already a lazy chunk, gm.test.tsx:13's MapOverlay import is unused.
+**Context**: CONSTRUCTION / V8 — Code Generation Part 1; plan review next.
+
+---
+
+## Plan Review Requested — Code Generation Plan — V8
+**Timestamp**: 2026-10-11T02:46:14Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/V8-editor-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V8-editor-code-generation-plan-review-01.md`.
+**Context**: Code Generation — V8 — review requested before approval gate.
+
+---
+## Plan Review Completed — Code Generation Part 1 — V8
+**Timestamp**: 2026-10-11T02:52:13Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 6 Minor; open 8 (R-01 Step 5.4 misses ~12 AugmentPanel/UnscopedPanel/NpcDraftCards/BuildPanel/KnowledgeList tests; R-02 no re-read of the inspector / unscoped / wiki panels after a load or build that keeps the selection; R-03 TP-V8-10 screen side and BR-V8-17/19/26/28/33 have no named test step; R-04 worldGen observation and the reload/abort window; R-05 useAugmentation contract, shared guard, U3 #12 404 rule, priors; R-06 new home for MapCanvas exports; R-07 min-w-80 in five places, String(e) is 17; R-08 gate path, done-criterion, PBT generator condition, TP-V8-3 inspector assertion). Record: `aidlc-docs/construction/plans/reviews/V8-editor-code-generation-plan-review-01.md`. Session re-check: R-02 confirmed (`EditorPage.tsx:174,180,186` pass `reloadKey={rev}`). Plan frozen until the gate answer.
+**Context**: Code Generation Part 1 — V8 — approval gate next.
+
+---
+
+## Code Generation Part 1 — V8 — Approval prompt
+**Timestamp**: 2026-10-11T02:52:13Z
+**AI Response**: Asked for approval of `construction/plans/V8-editor-code-generation-plan.md` (8 steps) with the Review brief (R-01..R-08 open).
+**Context**: CONSTRUCTION / V8 — code plan approval gate.
+
+---
+## Code Generation Part 1 — V8 — Approval
+**Timestamp**: 2026-10-11T03:04:56Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V8 code plan approved; the approval covers the commits the plan lists on feat/follow-up. Review 01 R-01..R-08 recorded as Accepted risk and written into the plan's § 1.4 execution notes with the gate's decisions. Starting Code Generation Part 2 at Step 1.
+**Context**: CONSTRUCTION / V8 — Code Generation Part 2.
+
+---

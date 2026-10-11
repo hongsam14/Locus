@@ -111,21 +111,21 @@
 
 ### Step 1 — 진행 기록과 기준선
 - [x] 1.1 진행 기록을 커밋한다: audit, state, V8 FD 계획(체크), FD 산출물·리뷰 01·02, 이 계획과 그 리뷰(`docs(aidlc): V8 functional design approved; V8 code plan`).
-- [ ] 1.2 기준선을 재서 code-summary § 1에 적는다: vitest(664), tsc, `pytest -q`(1228), `npm audit --omit=dev`(0), 첫 화면 JS gzip과 에디터 청크 gzip. `v8gate.sh`를 만든다.
+- [x] 1.2 기준선을 재서 code-summary § 1에 적는다(2026-10-11: vitest 664, tsc clean, pytest 1228, audit 0, 첫 화면 117.19 kB, 에디터 청크 10.12 kB): vitest(664), tsc, `pytest -q`(1228), `npm audit --omit=dev`(0), 첫 화면 JS gzip과 에디터 청크 gzip. `v8gate.sh`를 만든다.
 
 ### Step 2 — 공유 바탕 (frontend-components § 1·5.1, BR-V8-01·02·15, § 1.2)
-- [ ] 2.1 `layout/MapPanelLayout.tsx`(새): props는 FD § 5.3(`wide, testId, panelLabel, head, map, panel, panelTop?, narrowOrder?`). `features/gm/GmLayout.tsx`는 이것을 쓰는 얇은 래퍼가 된다. GM의 DOM·testid·패널 이름은 바뀌지 않는다.
-- [ ] 2.2 `format/enums.ts`: `augmentationIssue: ["gap","low_confidence","wiki_conflict","orphan","dangling","unscoped"]`. `format.enums.backend.test.ts`에 `IssueType`를 더한다.
-- [ ] 2.3 `types.ts`: `BuildReport.carried_npcs?`·`carried_seeds?`, `AugRun.kept_keys?`, `ChangeSet.kept_key?`.
-- [ ] 2.4 `i18n/{ko,en}.ts`: 새 키
+- [x] 2.1 `layout/MapPanelLayout.tsx`(새): props는 FD § 5.3(`wide, testId, panelLabel, head, map, panel, panelTop?, narrowOrder?`). `features/gm/GmLayout.tsx`는 이것을 쓰는 얇은 래퍼가 된다. GM의 DOM·testid·패널 이름은 바뀌지 않는다.
+- [x] 2.2 `format/enums.ts`: `augmentationIssue: ["gap","low_confidence","wiki_conflict","orphan","dangling","unscoped"]`. `format.enums.backend.test.ts`에 `IssueType`를 더한다.
+- [x] 2.3 `types.ts`: `BuildReport.carried_npcs?`·`carried_seeds?`, `AugRun.kept_keys?`, `ChangeSet.kept_key?`.
+- [x] 2.4 `i18n/{ko,en}.ts`: 새 키(사전 줄의 말투 규칙 때문에 키 머리를 `enum`·`label`·`tab`·`action`·`notice`·`hint`·`empty`로 둠: `label.stage.*`, `label.field.*`, `tab.unscoped`…)
   - 라벨: `enum.augmentationIssue.*`, `buildStage.*`, `field.*`
   - 머리·탭: `editor.tab.*`(라벨 고침: "상식 근거", "범위 없는 지식 {n}"), `editor.header.*`, `editor.file.*`, `editor.playThisWorld`, `editor.openSessions`
   - 지도·인스펙터: `editor.legend.*`, `editor.section.*`, `editor.danger.*`, `label.editorPanel`, `label.regionPicker`(있으면 재사용)
   - 보강: `augment.status.*`, `augment.kept`, `augment.unnamed`, `augment.cantSave`, `augment.worldChanged`
   - 빌드: `build.report.carried`, `build.report.stage.more`, `build.report.sessionsNotClosed`
   - ko/en 키 일치 시험이 지킨다.
-- [ ] 2.5 시험: `MapPanelLayout`(넓음·좁음·`narrowOrder`·패널 이름; GM 시험 전부 그대로), enums backend, 사전 일치.
-- [ ] 2.6 게이트 GREEN → 커밋 `feat(web): a shared map + panel layout, augmentation issue labels, build stage and field labels (V8)`
+- [x] 2.5 시험: `MapPanelLayout`(넓음·좁음·`narrowOrder`·패널 이름; GM 시험 전부 그대로), enums backend, 사전 일치.
+- [x] 2.6 게이트 GREEN → 커밋 `feat(web): a shared map + panel layout, augmentation issue labels, build stage and field labels (V8)`
 
 ### Step 3 — 에디터 읽기·쓰기 훅과 순수 함수 (BLM § 1~6, § 1.1, TP-V8-3·4·10·12·18)
 이 단계는 새 파일만 더한다. 지금 `EditorPage`는 그대로 동작한다.

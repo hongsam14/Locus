@@ -6,7 +6,7 @@ import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { api } from "../api";
 import { resetCapabilities } from "../capabilities";
 import { t } from "../i18n";
-import { AppShell, Section, SplitView } from "../layout";
+import { AppShell, MapPanelLayout, Section, SplitView } from "../layout";
 import { toast } from "../ui";
 
 afterEach(() => {
@@ -131,5 +131,38 @@ describe("SplitView and Section", () => {
     rerender(<Section title="Knowledge" collapsible open onOpenChange={onOpenChange}><p>inside</p></Section>);
     expect(toggle).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("inside")).toBeInTheDocument();
+  });
+});
+
+describe("MapPanelLayout (V8 BR-V8-01/02, TP-V8-1)", () => {
+  const parts = {
+    head: <div data-testid="P-head" />,
+    map: <div data-testid="P-map" />,
+    panel: <div data-testid="P-panel" />,
+  };
+  const order = () => [...document.querySelectorAll("[data-testid^='P-']")].map((e) => e.getAttribute("data-testid"));
+
+  it("wide: the head across, then the map beside a named panel; no top block when none is given", () => {
+    render(<MapPanelLayout wide testId="editor-layout" panelLabel="Editor tools" {...parts} />);
+    expect(screen.getByTestId("editor-layout")).toHaveAttribute("data-wide", "true");
+    const panel = screen.getByRole("region", { name: "Editor tools" });
+    expect(panel).toContainElement(screen.getByTestId("P-panel"));
+    expect(panel).not.toContainElement(screen.getByTestId("P-map"));
+    expect(screen.queryByTestId("editor-panel-top")).not.toBeInTheDocument();
+    expect(order()).toEqual(["P-head", "P-map", "P-panel"]);
+  });
+
+  it("narrow: one column, head → map → panel by default, each part once", () => {
+    render(<MapPanelLayout wide={false} testId="editor-layout" panelLabel="Editor tools" {...parts} />);
+    expect(screen.queryByRole("region", { name: "Editor tools" })).not.toBeInTheDocument();
+    expect(order()).toEqual(["P-head", "P-map", "P-panel"]);
+  });
+
+  it("narrow: a given order places the top block where it says", () => {
+    render(
+      <MapPanelLayout wide={false} testId="x-layout" panelLabel="x" panelTop={<div data-testid="P-top" />}
+        narrowOrder={["head", "panelTop", "map", "panel"]} {...parts} />,
+    );
+    expect(order()).toEqual(["P-head", "P-top", "P-map", "P-panel"]);
   });
 });

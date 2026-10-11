@@ -16,6 +16,7 @@ export const ENUM_VALUES = {
   augmentationStatus: ["open", "converged", "stopped"],
   augmentationTarget: ["knowledge", "entity", "region", "connection"],
   augmentationAction: ["confirm", "edit", "remove", "add", "ignore"],
+  augmentationIssue: ["gap", "low_confidence", "wiki_conflict", "orphan", "dangling", "unscoped"], // V8
   deedKind: ["arrival", "statement", "declared_action"],
   rumorOrigin: ["canonical", "deed"],
   wikiDomain: [

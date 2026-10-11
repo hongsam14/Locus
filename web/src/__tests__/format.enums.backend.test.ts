@@ -44,6 +44,7 @@ const BACKEND: Record<EnumKind, string[]> = {
   augmentationStatus: enumClass(aug, "RunStatus"),
   augmentationTarget: literal(aug, /^TargetKind\s*=/),
   augmentationAction: enumClass(aug, "AnswerAction"),
+  augmentationIssue: enumClass(aug, "IssueType"),
   deedKind: enumClass(play, "DeedKind"),
   rumorOrigin: literal(play, /^\s+origin_kind:\s*Literal/),
   wikiDomain: enumClass(shared, "WikiDomain"),

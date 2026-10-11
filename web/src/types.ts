@@ -268,6 +268,8 @@ export interface BuildReport {
   closed_session_ids: string[];
   backup_path?: string | null;
   priors_created?: number;
+  carried_npcs?: number; // V7: the old world's NPCs a rebuild put on the new regions
+  carried_seeds?: number;
   ok: boolean;
 }
 
@@ -421,6 +423,7 @@ export interface ChangeSet {
   description: string;
   added_ids: string[];
   reverted: boolean;
+  kept_key?: string | null; // V7: the question this answer kept; undoing it asks it again
 }
 
 // AugmentationRun — one designer Q&A run over a world, kept by the screen (B2).
@@ -431,6 +434,7 @@ export interface AugRun {
   answers: number;
   open_questions: AugQuestion[];
   ignored_keys: string[];
+  kept_keys?: string[]; // V7: confirmed "keep as it is" — not asked again in this run
   history: ChangeSet[];
   llm_calls: number;
   llm_budget_exhausted: boolean;

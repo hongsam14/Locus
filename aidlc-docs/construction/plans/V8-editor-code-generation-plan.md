@@ -129,20 +129,20 @@
 
 ### Step 3 — 에디터 읽기·쓰기 훅과 순수 함수 (BLM § 1~6, § 1.1, TP-V8-3·4·10·12·18)
 이 단계는 새 파일만 더한다. 지금 `EditorPage`는 그대로 동작한다.
-- [ ] 3.1 `features/editor/useEditorWorld.ts`(새)
+- [x] 3.1 `features/editor/useEditorWorld.ts`(새)
   - 월드(`useResource`)와 열린 세션 수
   - `worldGen`, `pendingSelect {id, gen}`과 다섯 풀림 경우(BLM § 3), `selected`, `connection`
   - 끌기 덮개 `moved`와 `dragSaves` 연결(§ 1.1 R-16)
   - 월드가 바뀌는 일의 비우기 표(BLM § 1의 4)와 `onReplaced()`
   - `reload()`, `retry()`
-- [ ] 3.2 `features/editor/dragSaves.ts`(새): 지역별 하나씩, 마지막 자리 하나만, 실패 처리(§ 1.1 R-16).
-- [ ] 3.3 `features/editor/useAugmentation.ts`(새): § 1.1 R-15. run, busy, error, changed, drafts(`issue_key`), start/answer/revert/unignore, 404 → lost와 "새로 시작" 안내, `reset()`.
-- [ ] 3.4 `features/editor/augmentNames.ts`(새, 순수)
+- [x] 3.2 `features/editor/dragSaves.ts`(새): 지역별 하나씩, 마지막 자리 하나만, 실패 처리(§ 1.1 R-16).
+- [x] 3.3 `features/editor/useAugmentation.ts`(새): § 1.1 R-15. run, busy, error, changed, drafts(`issue_key`), start/answer/revert/unignore, 404 → lost와 "새로 시작" 안내, `reset()`.
+- [x] 3.4 `features/editor/augmentNames.ts`(새, 순수)
   - `issueKeyName(key, world)`: 앞 둘·뒤 둘을 떼고 가운데를 ids로 본다. 종류별로 이름을 찾는다(연결은 "작은 id|큰 id|종류"를 월드 연결에서). 못 찾으면 "이름 없는 항목"이다.
   - `changeLabel(description)`: `type:action`을 라벨로, 모르면 "변경"이다.
   - `fieldLabel(field)`
-- [ ] 3.5 `features/editor/buildStages.ts`(새, 순수): 단계 → 사전 키, 묶음과 수, `sessions` 단계의 수.
-- [ ] 3.6 시험
+- [x] 3.5 `features/editor/buildStages.ts`(새, 순수): 단계 → 사전 키, 묶음과 수, `sessions` 단계의 수.
+- [x] 3.6 시험
   - `editor.data.test.tsx`
     - TP-V8-3: 늦은 다시 읽기, 실패, 그 사이 다른 선택, 앞서 나간 읽기가 늦게 옴
     - TP-V8-12의 끌기: 같은 지역 겹침은 마지막 자리 하나, 실패하면 덮개 비우고 다시 읽기, 다른 지역은 막지 않음
@@ -153,7 +153,7 @@
     - 변경 설명
     - 속성 시험: 어떤 열쇠·설명이 와도 결과에 열쇠 원문이나 `_`가 든 원문 값이 없음
   - 빌드 단계 묶음
-- [ ] 3.7 게이트 GREEN → 커밋 `feat(web): editor data hooks — a new region is selected after the re-read, drags of one region wait their turn, augmentation calls live on the page (V8, UX-25, UX-24)`
+- [x] 3.7 게이트 GREEN → 커밋 `feat(web): editor data hooks — a new region is selected after the re-read, drags of one region wait their turn, augmentation calls live on the page (V8, UX-25, UX-24)`
 
 ### Step 4 — 새 에디터 부품 (frontend-components § 4, BR-V8-03·08·09·12·13·14·27·28·31~34)
 이 단계도 새 파일만 더한다(지금 부품은 그대로).

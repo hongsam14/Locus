@@ -5900,3 +5900,10 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V8 — code review 01.
 
 ---
+## Code Review 01 — V8 — Fix scope
+**Timestamp**: 2026-10-11T06:56:05Z
+**User Input**: "A. 모두 고침 (권장)"; #3 card sentence: "A. 화면이 문장을 만듦 (권장)"
+**AI Response**: Fixing all 38 findings in code commits by area (data flow; load handling, screen and a11y; words and the question card; tests and timeouts) and one docs commit (FD amendments for the card sentence, the load outcome and BR-V8-34's outside press; code summary § 9; review § 8; capture record corrected for #10). Mutants of the fixes after.
+**Context**: CONSTRUCTION / V8 — code review 01 fixes.
+
+---

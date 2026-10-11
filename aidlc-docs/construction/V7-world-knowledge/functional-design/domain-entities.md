@@ -40,7 +40,7 @@ def best_origins(
 | `unknown_count` | 가장 강한 출처도 `hearsay_min` 아래인 지식의 **수**(지식마다 한 번) | — |
 
 - 묶음 사이의 차례는 그대로다: 직접 → 이어받음 → 전역 → 전파 → 전언. 한 지식은 앞 묶음에 들면 뒤 묶음에 나오지 않는다(지금 규칙).
-- 정렬은 `compute_consensus`가 결과를 돌려주기 전에 한다. 그래서 이 결과를 쓰는 곳(플레이 장면의 "아는 것", GM 지식 접힘, 세션 질의, 에디터 미리보기)이 모두 같은 순서를 본다.
+- 정렬은 `compute_consensus`가 결과를 돌려주기 전에 한다. 그래서 이 결과를 쓰는 곳(플레이 장면의 "아는 것", GM 지식 접힘, 세션 질의)이 모두 같은 순서를 본다. 에디터 인스펙터는 합의를 거치지 않는다(코드 리뷰 01 #20).
 
 ## 2. 캐시와 저장 (`locus/knowledge/cache.py`, `locus/shared/storage/persistence.py`)
 
@@ -83,12 +83,14 @@ def region_key(name: str, level: str) -> tuple[str, str]   # (정규화한 이�
 
 - **정규화한 이름**: NFKC, `casefold()`, 앞뒤 공백 제거, 안쪽 공백을 하나로 모은다.
 - **맞추기**: 옛 집 지역 `r`의 열쇠 `region_key(r.name, r.level)`로 새 지역을 찾는다.
-  1. 그 열쇠의 새 지역이 하나면 그 지역이다.
-  2. 여럿이면 각 후보의 부모 열쇠를 옛 `r` 부모의 열쇠와 비교한다. 부모가 없으면 열쇠는 `None`이다. 하나만 같으면 그 지역이다.
+  1. 그 열쇠의 새 지역이 하나이고, 옛 월드에도 그 열쇠의 지역이 하나면 그 지역이다.
+  2. 아니면 각 후보의 부모 열쇠를 옛 `r` 부모의 열쇠와 비교한다. 부모가 없으면 열쇠는 `None`이다. 하나만 같으면 그 지역이다(코드 리뷰 01 #11).
   3. 그래도 하나가 아니거나, 처음부터 없으면 붙이지 않는다.
 - **경고 문장**(영어, 리포트 칸)
   - `"NPC {name} was not carried over: no region named {region} ({level}) in the new world"`
   - 여럿일 때는 `"… : {n} regions named {region} ({level})"`
+  - 후보는 하나인데 옛 부모와 다를 때는 `"… : no region named {region} ({level}) under its old parent in the new world"`
+  - 로더가 버린 것은 `"NPC {id} was not carried over: its region is not in the old world"` 또는 `"…: it could not be read from the old world"`(씨앗은 `Event seed {id}`, 코드 리뷰 01 #2)
   - 씨앗도 같은 꼴이다.
   - 옛 집 지역이 옛 스냅샷에 없으면(이미 깨진 참조) `"… : its region {id} is not in the old world"`다.
 - `world_id`는 새 월드의 것으로 맞춘다(같은 월드를 다시 빌드하므로 보통 같다).
@@ -119,7 +121,11 @@ def delete_node(self, world_id: str, node_id: str, *, label: str | None = None) 
 
 - `label`이 있으면 그 라벨의 노드만 찾고 지운다.
 - 없으면 지금처럼 그 id의 아무 노드다. 둘 이상이면 어느 것인지 정해지지 않는다. 중복을 막아 생기지 않게 한다.
-- 테스트 대역 두 곳(`tests/shared/storage/fakes.py`, `tests/world/services/test_services.py`)도 같은 시그니처를 따른다.
+- 테스트 대역 세 곳(`tests/shared/storage/fakes.py`, `tests/world/services/test_services.py`, `tests/world/editor/helpers.py`)도 같은 시그니처를 따른다.
+
+```python
+def update_node(self, node: Node) -> bool   # [새, 코드 리뷰 01 #14] 있는 노드만 SET, 만들지 않음
+```
 
 ## 8. 보강 질문의 입력 칸 (`locus/world/augmentation/questions.py`)
 

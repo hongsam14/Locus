@@ -5738,3 +5738,31 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V7 — Code Generation complete; awaiting approval.
 
 ---
+## Code Generation — V7 — Approval
+**Timestamp**: 2026-10-10T16:03:03Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V7 code approved. Starting the V7 code review (four angles, review-only agents in separate worktrees), as for V5/V6; the record goes to `construction/V7-world-knowledge/code/reviews/code-review-01.md`.
+**Context**: CONSTRUCTION / V7 — code review.
+
+---
+## Code Review 01 — V7 — Findings
+**Timestamp**: 2026-10-10T17:22:59Z
+**User Input**: (none)
+**AI Response**: Four review-only angles (consensus; replace/cache/carry-over; labels/editor/augmentation; test strength) in separate worktrees, 142 mutants. Record: `aidlc-docs/construction/V7-world-knowledge/code/reviews/code-review-01.md` — 0 high, 9 medium (#1–4 code: tie rounding picks a weaker origin, unmappable NPCs/seeds vanish on rebuild unreported and not in the backup, undo of a kept wiki conflict keeps it hidden, two unlabeled sites know the kind; #5–9 tests: NEEDS pairs, per-list sort, settled-unknowns, carry by level, carried in the same write), 12 low (#10–21). Session re-check: #1 reproduced (propagate_min 0.49 → hearsay from a-far), #2–#4 confirmed in code. Worktrees removed; repo unchanged. Next: the human picks the fix scope.
+**Context**: CONSTRUCTION / V7 — code review 01.
+
+---
+## Code Review 01 — V7 — Fix scope
+**Timestamp**: 2026-10-11T01:00:24Z
+**User Input**: "A. 모두 고침 (권장)"
+**AI Response**: Fixing all 21 findings in three code commits (consensus; replace/carry-over/import; labels/editor/augmentation) and one docs commit (FD amendments for #4, #11, #12, #13 and the wording in #20; code summary; review dispositions; operations). Mutants of the fixes after.
+**Context**: CONSTRUCTION / V7 — code review 01 fixes.
+
+---
+## Code Review 01 — V7 — Fixed
+**Timestamp**: 2026-10-11T01:20:18Z
+**User Input**: (none)
+**AI Response**: All 21 findings fixed in `3b8b15f` (consensus: exact compare, every list's order, settled unknowns, property generator), `abae803` (replace/carry/import: dropped NPCs/seeds named, level kept, carried before the mark, failed body carries 0, shared names need their parent, world gone mid-build is fresh, file's own duplicate ids, update-only meta touch, merged scopes), `fc70ecc` (labels/editor/augmentation: undo releases kept, delete/snapshot by kind, NEEDS table, trimmed compare, stale answers refused, prior id guard, purge by kind), plus the docs commit (FD amendments, code summary § 9, review § 7, operations). Gate GREEN: pytest 1228 (+34), mypy 11, web unchanged. Mutants of the fixes: 30, all caught (r6e, a4, b8 after tightening). **V7 COMPLETE.**
+**Context**: CONSTRUCTION / V7 — complete; next V8 (editor).
+
+---

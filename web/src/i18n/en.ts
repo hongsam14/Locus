@@ -15,10 +15,8 @@ export const en: Record<Key, string> = {
   "badge.rumor": "rumor",
 
 
-  "region.title": "Region knowledge",
   "region.unique": "unique {n}",
   "region.shared": "shared {n}",
-  "region.empty": "Nothing is known here",
 
   "augment.title": "Knowledge augmentation",
   "augment.revert": "Revert",
@@ -33,7 +31,6 @@ export const en: Record<Key, string> = {
   "augment.refKind.prior": "common-sense ground",
   "augment.confidence": "Confidence (0–1, empty: unchanged)",
 
-  "session.none": "— none —",
   "session.play": "Start playing",
   "session.playTitle": "New play session",
   "session.name": "Name",
@@ -42,8 +39,6 @@ export const en: Record<Key, string> = {
 
   "gm.loading": "loading session…",
   "gm.advanceTurn": "Advance turn",
-  "gm.generateAll": "Generate all",
-  "gm.regenAll": "Regenerate all",
 
   "action.original": "original",
   "action.translated": "translation",
@@ -58,8 +53,6 @@ export const en: Record<Key, string> = {
   "progress.busy": "{n} not done (busy)",
   "notif.noTargets": "No empty region to make rumors for",
 
-  "play.npcs": "People here",
-  "play.facts": "What is known",
   "play.hearsayHint": "Faint tales that reached this region. Not everyone here knows them.",
   "play.running": "The world is moving… ({n} turn(s))",
   "play.turnInProgress": "A turn is in progress",
@@ -271,12 +264,9 @@ export const en: Record<Key, string> = {
   "demo.loaded": "loaded",
   "demo.backup": "The previous world was backed up to {path}.",
   "demo.replaceConfirm": "Load {title} fresh? Edits made to this world will be lost.",
-  "llm.offNotice": "No LLM key: the demo, moving and editing work; generating, dialogue and suggestions are off. Put OPENAI_API_KEY in .env and restart to turn them on.",
   "llm.required": "Needs an AI key",
-  "seed.title": "Event seeds",
   "seed.start": "Start",
   "seed.running": "Running",
-  "seed.none": "This world has no event seeds",
   "timeline.seedStarted": "Seed event started: {title}",
   "build.conceptArtsWip": "Uploaded art is not used, or only partly used, to build the world yet",
   "wip.badge": "In progress",
@@ -435,7 +425,6 @@ export const en: Record<Key, string> = {
   "error.network.action": "Check the connection and try again.",
   "error.unknown.title": "Something unexpected went wrong.",
   "notice.llmOff": "No AI key is set, so NPC dialogue and rumor generation are resting. Demo play, moving and editing still work.",
-  "notice.llmNeeded": "Needs an AI key.",
   "empty.noFile": "No file chosen yet",
   "action.retry": "Try again",
   "action.details": "Details",

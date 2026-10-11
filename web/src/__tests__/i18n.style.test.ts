@@ -1,6 +1,8 @@
 // The register of a dictionary line follows its key's first segment (V2 Q2=A, BLM § 4,
 // BR-V2-10, TP-V2-6). Older lines that V4/V6 move over are listed as legacy.
+import { readFileSync } from "node:fs";
 import { dicts } from "../i18n";
+import { sourceFiles, webPath } from "../test/paths";
 
 const CONTROL = ["action", "nav", "tab"];
 const NOTICE = ["notice", "error", "confirm", "empty", "hint"];
@@ -69,5 +71,55 @@ describe("placeholders", () => {
       .filter(([k, v]) => names(v) !== names((dicts.en as Record<string, string>)[k] ?? ""))
       .map(([k]) => k);
     expect(off).toEqual([]);
+  });
+});
+
+
+// V9 W-1: the editor and the map speak 해요체 like every other notice (V8 code-summary § 6).
+// A line that is a name (no period) may end without a sentence; none ends in 합니다체.
+describe("the editor's and the map's lines", () => {
+  const EDITOR = ["editor.", "map.hint.", "delete.", "augment.", "wiki.", "build."];
+  const HAPNIDA = /(니다|니까)(?=[\s.,:?!)]|$)/;
+  const shown = Object.entries(dicts.ko).filter(([k]) => EDITOR.some((p) => k.startsWith(p)));
+
+  it("have no 합니다체 ending, and a sentence ends in 해요체", () => {
+    expect(shown.length).toBeGreaterThan(20);
+    for (const [k, v] of shown) {
+      expect(v, k).not.toMatch(HAPNIDA);
+      if (/\.$/.test(v.trim())) expect(v.trim(), k).toMatch(HAEYO);
+    }
+  });
+
+  it("the 합니다체 check finds the ending mid-line and at the end", () => {
+    expect("연결 {n}개를 지웁니다: {names}").toMatch(HAPNIDA);
+    expect("연결이 없습니다").toMatch(HAPNIDA);
+    expect("연결 {n}개를 지워요: {names}").not.toMatch(HAPNIDA);
+  });
+});
+
+// V9 W-2: a key no screen reads is a line nobody sees and nobody keeps in step. A key counts
+// as used when the source names it, or builds it from a family (`map.hint.${tool}`).
+describe("every dictionary key is used", () => {
+  const app = sourceFiles("src")
+    .filter((path) => !/src\/i18n\/(ko|en)\.ts$/.test(path))
+    .map((path) => readFileSync(webPath(path), "utf8"))
+    .join("\n");
+  const families = [
+    ...app.matchAll(/`([\w.-]+\.)\$\{/g),
+    ...app.matchAll(/["']([A-Za-z]\w*(?:\.\w+)*\.)["']\s*\+/g),
+  ].map((m) => m[1]);
+  const named = (key: string) =>
+    new RegExp(`["'\`]${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["'\`]`).test(app);
+  const used = (key: string) => named(key) || families.some((family) => key.startsWith(family));
+
+  it("by a literal or a family in the app's source", () => {
+    expect(Object.keys(dicts.ko).filter((key) => !used(key))).toEqual([]);
+  });
+
+  it("the check tells a used key from an unused one", () => {
+    expect(families).toContain("map.hint.");
+    expect(used("map.hint.select")).toBe(true); // a family
+    expect(used("nav.play")).toBe(true); // a literal
+    expect(used("session.none")).toBe(false); // gone with V9; no screen showed it
   });
 });

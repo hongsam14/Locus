@@ -220,7 +220,8 @@ describe("i18n after U8", () => {
   });
 
   it("the new keys exist in both dictionaries and the dead ones are gone (C14)", () => {
-    for (const key of ["demo.play", "demo.playerName", "llm.offNotice", "llm.required", "seed.none",
+    // llm.offNotice and seed.none went with V9 W-2: no screen showed them
+    for (const key of ["demo.play", "demo.playerName", "llm.required",
       "timeline.seedStarted", "build.conceptArtsWip", "wip.badge"]) {
       expect(dicts.ko[key]).toBeTruthy();
       expect(dicts.en[key]).toBeTruthy();

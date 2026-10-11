@@ -1,20 +1,9 @@
 // The design system stays the only source of colour and type (V2 BR-V2-01/03/04/09,
 // TP-V2-2). Reads the source files as text, from web/ (src/test/paths).
-import { readdirSync, readFileSync } from "node:fs";
-import { webPath } from "../test/paths";
+import { readFileSync } from "node:fs";
+import { sourceFiles, webPath } from "../test/paths";
 
-function sources(dir: string): string[] {
-  const out: string[] = [];
-  for (const entry of readdirSync(webPath(dir), { withFileTypes: true })) {
-    const path = `${dir}/${entry.name}`;
-    if (entry.isDirectory()) {
-      if (entry.name !== "__tests__" && entry.name !== "test") out.push(...sources(path));
-    } else if (/\.(ts|tsx)$/.test(entry.name) && !entry.name.endsWith(".d.ts")) out.push(path);
-  }
-  return out;
-}
-
-const FILES = sources("src").map((path) => ({ path, text: readFileSync(webPath(path), "utf8") }));
+const FILES = sourceFiles("src").map((path) => ({ path, text: readFileSync(webPath(path), "utf8") }));
 
 // a raw colour: #rgb, #rgba, #rrggbb, #rrggbbaa, or a colour function (review § 2)
 const RAW_COLOUR = /#[0-9a-fA-F]{8}\b|#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3,4}\b(?![0-9a-fA-F])|\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(/;

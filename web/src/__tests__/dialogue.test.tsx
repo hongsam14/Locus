@@ -119,14 +119,14 @@ describe("i18n dictionaries (FD-U5 frontend §2.2)", () => {
 
   it("t() falls back to Korean, then to the key", () => {
     setLang("en");
-    expect(t("play.npcs")).toBe("People here");
+    expect(t("nav.play")).toBe("Play");
     expect(t("no.such.key")).toBe("no.such.key");
-    const saved = dicts.en["play.facts"];
-    delete dicts.en["play.facts"];
+    const saved = dicts.en["lang.label"];
+    delete dicts.en["lang.label"];
     try {
-      expect(t("play.facts")).toBe(dicts.ko["play.facts"]);
+      expect(t("lang.label")).toBe(dicts.ko["lang.label"]);
     } finally {
-      dicts.en["play.facts"] = saved;
+      dicts.en["lang.label"] = saved;
     }
   });
 

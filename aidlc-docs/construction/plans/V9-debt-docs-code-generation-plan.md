@@ -126,11 +126,11 @@ V9에서 고치지 않고 `next-cycle.md`에 적는다(큰 넘김):
 - [x] 6.4 커밋: `test(live): the scenario checks that a nearer region is distorted more, and a bad answer is a FAIL, not a traceback (V9, FR-T7)`
 
 ### Step 7 — 사전 말투와 옛 키 (W-1, W-2)
-- [ ] 7.1 W-1: 에디터·지도가 보이는 ko 문장의 합니다체를 해요체로. 바꾼 키 목록을 code-summary에 적는다.
-- [ ] 7.2 W-2: 앞머리 `play.`·`gm.`·`editor.`·`map.`·`session.`·`home.` 키마다 쓰임을 확인하고(정적·동적), 쓰지 않는 키를 ko·en에서 함께 지운다. 지운 목록을 적는다.
-- [ ] 7.3 시험: `i18n.style.test.ts`에 "에디터·지도 앞머리(`editor.`, `map.hint.`, `delete.`)의 문장은 해요체" 규칙을 더한다(값 이름처럼 마침표 없는 줄은 제외). 사전 일치·자리표시 시험은 그대로 통과.
-- [ ] 7.4 확인: tsc, vitest(fr-d8 포함).
-- [ ] 7.5 커밋: `fix(web): the editor's and the map's lines speak 해요체; dictionary keys no screen uses are gone (V9)`
+- [x] 7.1 W-1: 에디터·지도가 보이는 ko 문장의 합니다체를 해요체로. 바꾼 키 목록을 code-summary에 적는다.
+- [x] 7.2 W-2: 앞머리 `play.`·`gm.`·`editor.`·`map.`·`session.`·`home.` 키마다 쓰임을 확인하고(정적·동적), 쓰지 않는 키를 ko·en에서 함께 지운다. 지운 목록을 적는다.
+- [x] 7.3 시험: `i18n.style.test.ts`에 "에디터·지도 앞머리(`editor.`, `map.hint.`, `delete.`)의 문장은 해요체" 규칙을 더한다(값 이름처럼 마침표 없는 줄은 제외). 사전 일치·자리표시 시험은 그대로 통과.
+- [x] 7.4 확인: tsc, vitest(fr-d8 포함).
+- [x] 7.5 커밋: `fix(web): the editor's and the map's lines speak 해요체; dictionary keys no screen uses are gone (V9)`
 
 ### Step 8 — 문서 (FR-T4)
 - [ ] 8.1 `CLAUDE.md`: Status(Follow-up 주기, V1~V9, 실제 수치), Gates(실제 CI), Conventions(교차 월드 사전 검색은 지금 0건을 돌려줌 — 사실대로, `world_id`는 색인일 뿐 분할이 아님), Code 목록(§ G 표의 빠진 파일과 V2~V8 웹 구조), "127.0.0.1" 주장 바로잡음.

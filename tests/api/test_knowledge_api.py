@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from api.main import create_app
@@ -63,6 +64,27 @@ def test_health_reports_boundaries() -> None:
     body = _client().get("/health").json()
     assert body["status"] == "ok"
     assert body["boundaries"]["knowledge"] is True and body["boundaries"]["play"] is False
+
+
+def test_health_is_degraded_when_an_assembled_server_lacks_a_boundary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """V9 (U8 #21): an assembled server with a boundary down is ``degraded``, not ``ok``."""
+    import api.main as api_main
+
+    monkeypatch.setattr(api_main, "assemble_all", lambda containers: containers)  # nothing comes up
+    container = KnowledgeContainer(
+        loader=None, cache=None, query=_FakeEngine(), params=DEFAULT_PARAMS
+    )
+    with TestClient(create_app(knowledge=container, assemble_missing=True)) as client:
+        body = client.get("/health").json()
+    assert body["status"] == "degraded"
+    assert body["boundaries"] == {
+        "world": False,
+        "knowledge": True,
+        "play": False,
+        "localization": False,
+    }
 
 
 def test_health_503_when_no_boundary_is_up() -> None:

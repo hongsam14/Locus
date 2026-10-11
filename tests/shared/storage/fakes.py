@@ -61,17 +61,34 @@ class InMemoryGraphRepository:
             else:
                 self._nodes[key] = node.model_copy()
 
+    @staticmethod
+    def _edge_key(e: Edge) -> tuple:
+        key_field = edge_identity_field(e)
+        key = e.properties.get(key_field) if key_field else None
+        return (e.world_id, e.type, e.source_id, e.target_id, key)
+
     def upsert_edges(self, edges: list[Edge]) -> None:
+        """Properties merged into a stored edge, as Neo4j's ``SET r += $props`` (V9, U8 #20:
+        the fake used to replace the edge whole, so a test could pass where Neo4j keeps a
+        property the write left out)."""
         if self.fail_on_upsert is not None:
             raise self.fail_on_upsert
         for e in edges:
-            key_field = edge_identity_field(e)
-            key = e.properties.get(key_field) if key_field else None
-            self._edges[(e.world_id, e.type, e.source_id, e.target_id, key)] = e.model_copy()
+            key = self._edge_key(e)
+            if key in self._edges:
+                merged = dict(self._edges[key].properties)
+                merged.update(e.properties)
+                self._edges[key] = e.model_copy(update={"properties": merged})
+            else:
+                self._edges[key] = e.model_copy()
 
     def replace_edges(self, edges: list[Edge]) -> None:
-        """U8: the fake's upsert already replaces an edge whole."""
-        self.upsert_edges(edges)
+        """U8: properties replaced whole, as Neo4j's ``SET r = $props`` (a property left out
+        is removed)."""
+        if self.fail_on_upsert is not None:
+            raise self.fail_on_upsert
+        for e in edges:
+            self._edges[self._edge_key(e)] = e.model_copy(update={"properties": dict(e.properties)})
 
     def edges_touching(
         self, world_id: str, node_ids: list[str], types: list[str] | None = None

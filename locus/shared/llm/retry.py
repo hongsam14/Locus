@@ -14,6 +14,7 @@ one.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -34,6 +35,10 @@ CALL_TIMEOUT_SECONDS = 30.0
 RETRY_AFTER_CAP_SECONDS = 8.0
 
 _backoff = wait_exponential(multiplier=1, min=1, max=4)
+
+# How a wait between attempts is spent. A module attribute read at each wait, so a test can
+# put a recorder in its place and check the waits without sleeping them (V9, FR-T6).
+_sleep: Callable[[float], None] = time.sleep
 
 
 def retry_after_seconds(exc: BaseException | None) -> float | None:
@@ -77,5 +82,6 @@ def with_retry(fn: Callable[..., T]) -> Callable[..., T]:
         stop=stop_after_attempt(MAX_ATTEMPTS),
         wait=retry_wait,
         retry=retry_if_exception_type(Exception),
+        sleep=lambda seconds: _sleep(seconds),
     )(fn)
     return wrapped

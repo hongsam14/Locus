@@ -104,13 +104,13 @@ V9에서 고치지 않고 `next-cycle.md`에 적는다(큰 넘김):
 - [x] 3.4 커밋: `fix(types): mypy is clean and CI checks it; scripts are linted too (V9, FR-T3)`
 
 ### Step 4 — 시험 위생 (FR-T6, W-4)
-- [ ] 4.1 `test_repository_contract.py` U4 롤백 시험: 사건 둘로 B의 막힘을 실제로 단언, `or True` 없앰, 고정 대기 없음(§ 1.2).
-- [ ] 4.2 `test_player_mode.py:611-616`의 `or True`: 실제 값을 단언한다.
-- [ ] 4.3 `locus/shared/llm/retry.py`: 기다리는 함수를 바꿔 끼울 수 있게 한다. `test_retry_and_factory.py`는 자지 않고 기다린 값을 단언한다.
-- [ ] 4.4 sqlite 엔진 닫기(§ 1.2). 그 밖에 시험이 여는 연결이 있으면 같은 규칙으로 닫는다.
-- [ ] 4.5 W-4: `fakes.py`의 `upsert_edges` 병합, `test_keyless_api.py`의 `/health` 단언. 바꾼 대역 위의 시험이 그대로 통과하는지 본다.
-- [ ] 4.6 확인: pytest 1228 이상, `ResourceWarning` 0줄, `--durations=10`에 1 s 넘는 고정 대기 없음(PBT·가드 머신처럼 실제로 계산하는 시험은 제외하고 이름을 적는다).
-- [ ] 4.7 커밋: `test: no test waits on a timeout to pass, retries do not sleep, every sqlite engine is closed (V9, FR-T6)`
+- [x] 4.1 `test_repository_contract.py` U4 롤백 시험: 사건 둘로 B의 막힘을 실제로 단언, `or True` 없앰, 고정 대기 없음(§ 1.2).
+- [x] 4.2 `test_player_mode.py:611-616`의 `or True`: 실제 값을 단언한다.
+- [x] 4.3 `locus/shared/llm/retry.py`: 기다리는 함수를 바꿔 끼울 수 있게 한다. `test_retry_and_factory.py`는 자지 않고 기다린 값을 단언한다.
+- [x] 4.4 sqlite 엔진 닫기(§ 1.2). 그 밖에 시험이 여는 연결이 있으면 같은 규칙으로 닫는다.
+- [x] 4.5 W-4: `fakes.py`의 `upsert_edges` 병합, `test_keyless_api.py`의 `/health` 단언. 바꾼 대역 위의 시험이 그대로 통과하는지 본다.
+- [x] 4.6 확인: pytest 1228 이상, `ResourceWarning` 0줄, `--durations=10`에 1 s 넘는 고정 대기 없음(PBT·가드 머신처럼 실제로 계산하는 시험은 제외하고 이름을 적는다).
+- [x] 4.7 커밋: `test: no test waits on a timeout to pass, retries do not sleep, every sqlite engine is closed (V9, FR-T6)`
 
 ### Step 5 — env.example과 문서 머리 (FR-T5, FR-D10)
 - [ ] 5.1 `env.example`: `SESSION_DB_HOST`, `TRANSLATION_WARM_WORKERS`를 기본값·뜻과 함께 더한다.

@@ -265,6 +265,8 @@ def test_u4_uow_rollback_does_not_erase_other_threads_writes() -> None:
     s = repo.create_session("w")
     a_inside = threading.Event()
     a_release = threading.Event()
+    b_started = threading.Event()
+    b_done = threading.Event()
 
     def thread_a() -> None:
         try:
@@ -278,16 +280,22 @@ def test_u4_uow_rollback_does_not_erase_other_threads_writes() -> None:
 
     def thread_b() -> None:
         a_inside.wait(timeout=5)
+        b_started.set()
         repo.create_player(Player(session_id=s.id, name="Bo", region_id="r1"))  # blocks on lock
+        b_done.set()
 
     ta, tb = threading.Thread(target=thread_a), threading.Thread(target=thread_b)
     ta.start()
     tb.start()
-    a_inside.wait(timeout=5)
-    assert repo.get_player(s.id) is None or True  # B is still blocked (lock held by A)
+    assert a_inside.wait(timeout=5) and b_started.wait(timeout=5)
+    # V9 (FR-T6, RE-T01): B is held by A's lock — asserted before A is let go, without a read
+    # of our own (a read takes the same lock, so it used to wait for A's 5 s time-out)
+    assert not b_done.wait(timeout=0.2)
     a_release.set()
     ta.join(timeout=5)
     tb.join(timeout=5)
+    assert not ta.is_alive() and not tb.is_alive()
+    assert b_done.is_set()
     assert repo.get_player(s.id) is not None  # B's write survived A's rollback
     assert repo.get_region_distortion(s.id, "r1") is None  # A's write was rolled back
 

@@ -609,11 +609,11 @@ def test_ex17_player_less_gm_session_advances_with_full_scope() -> None:
     result = turns.advance(gm_session.id)
     assert result.player is None and result.session.turn == 1
     assert [rc.region_id for rc in result.changes] == ["c"]  # far region kept (BR-U4-30)
-    assert (
-        result.changes[0].region_name == "C"
-        and result.narration == ["C: 1 new rumor, event applied"]
-        or True
-    )
+    # V9 (FR-T6): the values as they are, read first — the counting generator gives this
+    # far region two rumors; the narration says the same number the change carries
+    assert result.changes[0].region_name == "C"
+    assert len(result.changes[0].rumors_added) == 2
+    assert result.narration == ["C: 2 new rumors, event applied"]
     with pytest.raises(InvalidActionError, match="no player"):
         turns.advance(gm_session.id, WaitAction())
 

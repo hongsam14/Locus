@@ -253,6 +253,26 @@ def test_replace_edges_keeps_exactly_the_written_properties() -> None:
     assert edge.properties == {"kind": "route", "weight": 0.5}
 
 
+def test_upsert_edges_merges_into_the_stored_edge_like_neo4j() -> None:
+    """V9 (U8 #20): an upsert keeps a property it leaves out, as ``SET r += $props`` does;
+    only ``replace_edges`` drops it."""
+    g = InMemoryGraphRepository()
+    g.upsert_edges([_conn(weight=0.5, wiki_prior_ref="p1")])
+    g.upsert_edges([_conn(weight=0.7)])
+    (edge,) = g.get_edges("w")
+    assert edge.properties == {"kind": "route", "weight": 0.7, "wiki_prior_ref": "p1"}
+    g.replace_edges([_conn(weight=0.9)])
+    (edge,) = g.get_edges("w")
+    assert edge.properties == {"kind": "route", "weight": 0.9}
+
+
+def test_neo4j_upsert_edges_merges_the_map() -> None:
+    repo, rec = _neo4j()
+    repo.upsert_edges([_conn(weight=0.5)])
+    ((query, _params),) = rec
+    assert "SET r += $props" in query
+
+
 def test_neo4j_replace_edges_merges_by_identity_and_sets_the_whole_map() -> None:
     repo, rec = _neo4j()
     repo.replace_edges([_conn(weight=0.5)])

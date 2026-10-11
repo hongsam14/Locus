@@ -11,7 +11,17 @@ from locus.shared.llm import MAX_ATTEMPTS, ProviderFactory, with_retry
 # --------------------------------------------------------------------------- #
 # Retry policy
 # --------------------------------------------------------------------------- #
-def test_with_retry_succeeds_after_transient_failures() -> None:
+@pytest.fixture
+def waits(monkeypatch: pytest.MonkeyPatch) -> list[float]:
+    """The waits between attempts, recorded instead of slept (V9, FR-T6, RE-T02)."""
+    from locus.shared.llm import retry as retry_module
+
+    seen: list[float] = []
+    monkeypatch.setattr(retry_module, "_sleep", seen.append)
+    return seen
+
+
+def test_with_retry_succeeds_after_transient_failures(waits: list[float]) -> None:
     calls = {"n": 0}
 
     @with_retry
@@ -23,9 +33,10 @@ def test_with_retry_succeeds_after_transient_failures() -> None:
 
     assert flaky() == "ok"
     assert calls["n"] == MAX_ATTEMPTS
+    assert waits == [1.0, 2.0]  # exponential: 1 s, then 2 s — recorded, not slept
 
 
-def test_with_retry_reraises_after_max_attempts() -> None:
+def test_with_retry_reraises_after_max_attempts(waits: list[float]) -> None:
     calls = {"n": 0}
 
     @with_retry
@@ -36,6 +47,7 @@ def test_with_retry_reraises_after_max_attempts() -> None:
     with pytest.raises(ValueError, match="boom"):
         always_fail()
     assert calls["n"] == MAX_ATTEMPTS
+    assert waits == [1.0, 2.0]  # no wait after the last attempt
 
 
 # --------------------------------------------------------------------------- #

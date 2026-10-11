@@ -201,21 +201,21 @@
 - [x] 6.3 게이트 GREEN → 커밋 `test(web): the editor shows no raw enum, bare number, error text or fixed width (V8, FR-D8)`
 
 ### Step 7 — 캡처 (사람 확인, BR-V8-04, 캡처 계획)
-- [ ] 7.1 캡처 도구를 새로 만든다(`scratchpad/v8/cap/`)
+- [x] 7.1 캡처 도구를 새로 만든다(`scratchpad/v8/cap/`)
   - 가짜 API 서버: 데모 한국어판 월드, 열린 세션 1개, 보강 run(질문 셋, 무시 하나, 이대로 둔 것 하나), 빌드 리포트(이어 붙임·경고 포함)
   - `vite build`(스크래치 출력)
   - `/usr/bin/google-chrome` headless + CDP 찍기 스크립트
   - 저장소에는 넣지 않는다.
-- [ ] 7.2 FD 캡처 계획의 장면을 1280·390으로 찍는다. 장마다 `scrollWidth ≤ innerWidth`, 넓음에서 패널이 붙어 있는지, 머리 높이를 잰다.
-- [ ] 7.3 비공개 Artifact 한 장에 올린다. 잰 값, 바뀐 것, 봐 주실 것을 함께 싣는다.
-- [ ] 7.4 가로 스크롤이나 배치 결함이 보이면 그 자리에서 고치고 다시 찍는다. 커밋은 `fix(web): … (V8 captures)`다.
+- [x] 7.2 FD 캡처 계획의 장면을 1280·390으로 찍는다. 장마다 `scrollWidth ≤ innerWidth`, 넓음에서 패널이 붙어 있는지, 머리 높이를 잰다.
+- [x] 7.3 비공개 Artifact 한 장에 올린다. 잰 값, 바뀐 것, 봐 주실 것을 함께 싣는다.
+- [x] 7.4 가로 스크롤이나 배치 결함이 보이면 그 자리에서 고치고 다시 찍는다. 커밋은 `fix(web): … (V8 captures)`다.
 
 ### Step 8 — 마무리
-- [ ] 8.1 전체 게이트
+- [x] 8.1 전체 게이트
   - tsc, vitest: Step 1.2 기준선 이상. 지운 시험(`SessionBar`·`MapOverlay` 묶음)과 새 시험 수를 code-summary § 4에 적는다.
   - `pytest -q`(1228, 바뀌지 않음), `npm audit --omit=dev`(0)
   - JS gzip: 첫 화면이 Step 1.2보다 늘지 않는다. 에디터는 지연 청크다.
-- [ ] 8.2 `construction/V8-editor/code/code-summary.md`
+- [x] 8.2 `construction/V8-editor/code/code-summary.md`
   - § 1 기준선과 결과
   - § 2 파일
   - § 3 BR → 시험 표
@@ -224,7 +224,7 @@
   - § 6 알려진 제약(접힌 폼의 글, 지도 키보드, UX-18 남은 부분)
   - § 7 돌연변이 결과
   - § 8 넘기는 것(V9)
-- [ ] 8.3 audit, state 갱신 → 커밋 `docs(aidlc): V8 code summary`
+- [x] 8.3 audit, state 갱신 → 커밋 `docs(aidlc): V8 code summary`
 
 ---
 

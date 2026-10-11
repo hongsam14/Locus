@@ -5859,3 +5859,24 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V8 — Code Generation Part 2.
 
 ---
+## Code Generation Part 2 — V8 — Steps 1–7
+**Timestamp**: 2026-10-11T04:55:12Z
+**User Input**: (none)
+**AI Response**: Steps 2–7 committed on feat/follow-up: `07e2a34` shared MapPanelLayout + labels; `abe74ae` useEditorWorld / dragSaves / useAugmentation + pure helpers (mutants 7/7); `62d4109` new parts (head, file menu, play start, map pane, tools, legend, picker, danger zone); `c0abf6b` switch-over (EditorPage rewritten, old parts MapOverlay/SessionBar/WorldFileBar/MapCanvas removed with 15 orphan keys, old tests moved per FC § 7.1 + R-01, editor.layout.test 24; mutants page 19/19, parts 18/18); `caed0f3` fr-d8 TP-V8-9 + design.grep editor rules (mutants 11/11); captures: 17 shots at 1280/390, all scrollWidth ≤ innerWidth, published privately https://claude.ai/artifact/RGWSFsM26cNiZHeoUttVuN; capture fixes `0b76594` (file row under the head line, "상위 지역", one name for the weight) and `23a63de` (MapPanelLayout out of the first-screen chunk). Found during TP-V8-3: a closed map dialog returned focus to a tab trigger and Radix re-opened that tab; the pane now returns focus to the opening tool (BR-V8-33).
+**Context**: CONSTRUCTION / V8 — Code Generation Part 2.
+
+---
+## Code Generation Part 2 — V8 — first-screen size question
+**Timestamp**: 2026-10-11T04:55:12Z
+**User Input**: "A. 이탈로 기록 (권장)"
+**AI Response**: Plan Step 8.1 requires the first-screen JS gzip not to grow (baseline 117.19 kB). After the bundling fix it is 119.21 kB (+2.02); the rest is the ko/en dictionary words V8 added, which load with every screen (the home's build dialog uses some). Asked with options A record as deviation / B split editor words into a lazy dictionary / C offset elsewhere; the human chose A. Recorded in code-summary § 5 item 1; per-screen dictionaries go to V9.
+**Context**: CONSTRUCTION / V8 — Code Generation Part 2, Step 8.
+
+---
+## Code Generation Part 2 — V8 — complete
+**Timestamp**: 2026-10-11T04:55:12Z
+**User Input**: (none)
+**AI Response**: Final gates GREEN: tsc clean, vitest 741 (baseline 664 − 4 removed + 81 new), npm audit 0, pytest 1228, ruff/black clean, mypy 11; server code unchanged. Bundle gzip: first screen 119.21 kB (deviation A), editor chunk 13.59 kB, GM 11.93 kB + shared 5.57 kB. Summary `construction/V8-editor/code/code-summary.md` (deviations: first-screen words, build stages outside ENUM_VALUES, page-held augmentation, create mark instead of worldGen, key prefixes, head title from the list, focus return; known limits incl. remount at the 1024 px breakpoint and older 합니다체 strings, carried to V9). Mutants 58/58. Code approval gate next.
+**Context**: CONSTRUCTION / V8 — Code Generation complete; approval gate next.
+
+---

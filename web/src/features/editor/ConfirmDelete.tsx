@@ -1,6 +1,8 @@
+import type { DescribedError } from "../../errors";
+import { enumLabel } from "../../format";
 import { t } from "../../i18n";
 import type { ConnectionKey, Region, RegionDeletePlan } from "../../types";
-import { Modal } from "../../ui";
+import { ConfirmDialog, InlineError } from "../../ui";
 
 const names = (refs: { name: string }[]) => refs.map((r) => r.name).join(", ");
 
@@ -8,7 +10,7 @@ const names = (refs: { name: string }[]) => refs.map((r) => r.name).join(", ");
 function connectionNames(plan: RegionDeletePlan, regions: Region[]): string {
   const name = (id: string) => regions.find((r) => r.id === id)?.name ?? id;
   const other = (k: ConnectionKey) => (k.a_region_id === plan.region_id ? k.b_region_id : k.a_region_id);
-  return plan.connections.map((k) => `${name(other(k))} (${k.kind})`).join(", ");
+  return plan.connections.map((k) => `${name(other(k))} (${enumLabel("connectionKind", k.kind)})`).join(", ");
 }
 
 /** Every delete is confirmed (BR-U3-32). A region shows its delete plan — what moves,
@@ -31,18 +33,19 @@ export function ConfirmDelete({
   plan?: RegionDeletePlan | null;
   regions?: Region[]; // names the far end of each connection that goes
   busy?: boolean;
-  error?: string | null;
+  error?: DescribedError | null;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
   const blocked = (plan?.blocked_by_sessions.length ?? 0) > 0;
   return (
-    <Modal
+    <ConfirmDialog
       open={open}
       title={plan ? t("delete.region.title", { name: plan.region_name }) : (title ?? t("delete.title"))}
-      confirmTone="danger"
+      tone="danger"
       confirmLabel={t("delete.confirm")}
-      busy={busy || blocked}
+      busy={busy}
+      confirmDisabled={blocked}
       onConfirm={onConfirm}
       onCancel={onCancel}
     >
@@ -83,11 +86,11 @@ export function ConfirmDelete({
         )}
         {blocked && (
           <p className="text-danger" data-testid="delete-blocked">
-            {t("delete.region.blocked", { ids: plan?.blocked_by_sessions.join(", ") ?? "" })}
+            {t("delete.region.blocked", { n: plan?.blocked_by_sessions.length ?? 0 })}
           </p>
         )}
-        {error && <p className="text-danger">{error}</p>}
+        {error && <InlineError error={error} />}
       </div>
-    </Modal>
+    </ConfirmDialog>
   );
 }

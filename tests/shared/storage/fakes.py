@@ -5,6 +5,12 @@ world-scoped, ``delete_world`` removes everything of a world, and a node ``id`` 
 already exists in ANOTHER world raises ``ConstraintViolation`` (the Neo4j unique
 ``id`` constraint). ``shuffle`` returns reads in a scrambled order so tests can prove
 they do not depend on storage order (TP-U2-1).
+
+Nodes are kept by (world, label, id), as Neo4j merges by label and id (V7): one id may
+be a Region and an EventSeed at once. A read or delete given a ``label`` sees that node
+only; without one, a read gets the id's first node and a delete takes every node of the
+id. Edges carry no labels, so a labeled delete removes the id's edges only when no node
+of that id is left — looser than Neo4j, which detaches the deleted node's own edges.
 """
 
 from __future__ import annotations
@@ -23,7 +29,7 @@ from locus.shared.storage.base import (
 
 class InMemoryGraphRepository:
     def __init__(self, *, shuffle: random.Random | None = None) -> None:
-        self._nodes: dict[tuple[str, str], Node] = {}  # (world_id, id) -> node
+        self._nodes: dict[tuple[str, str, str], Node] = {}  # (world_id, label, id) -> node
         self._edges: dict[tuple, Edge] = {}  # (world, type, src, dst, identity)
         self.shuffle = shuffle
         self.fail_on_upsert: Exception | None = None  # tests inject persist failures
@@ -42,37 +48,54 @@ class InMemoryGraphRepository:
         if self.fail_on_upsert is not None:
             raise self.fail_on_upsert
         for node in nodes:
-            for (wid, nid), _existing in self._nodes.items():
+            for wid, _label, nid in self._nodes:
                 if nid == node.id and wid != node.world_id:
                     raise ConstraintViolation(
                         f"{node.label} id {node.id!r} already exists in world {wid!r}"
                     )
-            key = (node.world_id, node.id)
+            key = (node.world_id, node.label, node.id)
             if key in self._nodes:
                 merged = dict(self._nodes[key].properties)
                 merged.update(node.properties)
                 self._nodes[key] = node.model_copy(update={"properties": merged})
             else:
-                self._nodes[key] = node.model_copy()
+                self._nodes[key] = node.model_copy(deep=True)
+
+    @staticmethod
+    def _edge_key(e: Edge) -> tuple:
+        key_field = edge_identity_field(e)
+        key = e.properties.get(key_field) if key_field else None
+        return (e.world_id, e.type, e.source_id, e.target_id, key)
 
     def upsert_edges(self, edges: list[Edge]) -> None:
+        """Properties merged into a stored edge, as Neo4j's ``SET r += $props`` (V9, U8 #20:
+        the fake used to replace the edge whole, so a test could pass where Neo4j keeps a
+        property the write left out)."""
         if self.fail_on_upsert is not None:
             raise self.fail_on_upsert
         for e in edges:
-            key_field = edge_identity_field(e)
-            key = e.properties.get(key_field) if key_field else None
-            self._edges[(e.world_id, e.type, e.source_id, e.target_id, key)] = e.model_copy()
+            key = self._edge_key(e)
+            if key in self._edges:
+                merged = dict(self._edges[key].properties)
+                merged.update(e.properties)
+                self._edges[key] = e.model_copy(update={"properties": merged})
+            else:
+                self._edges[key] = e.model_copy(deep=True)
 
     def replace_edges(self, edges: list[Edge]) -> None:
-        """U8: the fake's upsert already replaces an edge whole."""
-        self.upsert_edges(edges)
+        """U8: properties replaced whole, as Neo4j's ``SET r = $props`` (a property left out
+        is removed)."""
+        if self.fail_on_upsert is not None:
+            raise self.fail_on_upsert
+        for e in edges:
+            self._edges[self._edge_key(e)] = e.model_copy(update={"properties": dict(e.properties)})
 
     def edges_touching(
         self, world_id: str, node_ids: list[str], types: list[str] | None = None
     ) -> list[Edge]:
         ids = set(node_ids)
         out = [  # read the store directly: not a whole-world get_edges (U3 review C10)
-            e.model_copy()
+            e.model_copy(deep=True)
             for e in self._edges.values()
             if e.world_id == world_id
             and (types is None or e.type in types)
@@ -85,14 +108,28 @@ class InMemoryGraphRepository:
         if self.fail_on_upsert is not None:
             raise self.fail_on_upsert
         for node in nodes:
-            for (wid, nid), _existing in self._nodes.items():
+            for wid, _label, nid in self._nodes:
                 if nid == node.id and wid != node.world_id:
                     raise ConstraintViolation(
                         f"{node.label} id {node.id!r} already exists in world {wid!r}"
                     )
-            self._nodes[(node.world_id, node.id)] = node.model_copy(
+            self._nodes[(node.world_id, node.label, node.id)] = node.model_copy(
                 update={"properties": dict(node.properties)}
             )
+
+    def update_node(self, node: Node) -> bool:
+        """Merge ``properties`` into the stored node of this label and id; never creates
+        one (V7 code review #14)."""
+        if self.fail_on_upsert is not None:
+            raise self.fail_on_upsert
+        key = (node.world_id, node.label, node.id)
+        held = self._nodes.get(key)
+        if held is None:
+            return False
+        self._nodes[key] = held.model_copy(
+            update={"properties": {**held.properties, **node.properties}}
+        )
+        return True
 
     def delete_edges(self, world_id: str, edges: list[EdgeKey]) -> int:
         """U3: delete the matching edges; an empty identity matches every parallel edge."""
@@ -112,8 +149,12 @@ class InMemoryGraphRepository:
             deleted += len(doomed)
         return deleted
 
-    def delete_node(self, world_id: str, node_id: str) -> None:
-        self._nodes.pop((world_id, node_id), None)
+    def delete_node(self, world_id: str, node_id: str, *, label: str | None = None) -> None:
+        for key in [k for k in self._nodes if k[0] == world_id and k[2] == node_id]:
+            if label is None or key[1] == label:
+                del self._nodes[key]
+        if any(k[0] == world_id and k[2] == node_id for k in self._nodes):
+            return  # another label still holds the id: its edges stay
         self._edges = {
             k: e
             for k, e in self._edges.items()
@@ -131,14 +172,19 @@ class InMemoryGraphRepository:
             self.shuffle.shuffle(items)
         return items
 
-    def get_node(self, world_id: str, node_id: str) -> Node | None:
-        n = self._nodes.get((world_id, node_id))
-        return n.model_copy() if n else None
+    def get_node(self, world_id: str, node_id: str, *, label: str | None = None) -> Node | None:
+        if label is not None:
+            n = self._nodes.get((world_id, label, node_id))
+        else:
+            n = next(
+                (v for k, v in self._nodes.items() if k[0] == world_id and k[2] == node_id), None
+            )
+        return n.model_copy(deep=True) if n else None
 
     def find_nodes(self, world_id: str, label: str, filters: dict | None = None) -> list[Node]:
         out = [
-            n.model_copy()
-            for (wid, _), n in self._nodes.items()
+            n.model_copy(deep=True)
+            for (wid, _label, _id), n in self._nodes.items()
             if wid == world_id
             and n.label == label
             and all(n.properties.get(k) == v for k, v in (filters or {}).items())
@@ -147,14 +193,14 @@ class InMemoryGraphRepository:
 
     def get_edges(self, world_id: str, types: list[str] | None = None) -> list[Edge]:
         out = [
-            e.model_copy()
+            e.model_copy(deep=True)
             for e in self._edges.values()
             if e.world_id == world_id and (types is None or e.type in types)
         ]
         return self._ordered(out)
 
     def list_world_ids(self) -> list[str]:
-        return sorted({wid for wid, _ in self._nodes})
+        return sorted({key[0] for key in self._nodes})
 
 
 class InMemorySearchRepository:

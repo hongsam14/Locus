@@ -6,7 +6,7 @@ Depends only on ``shared``; used by the API layer to decorate responses.
 
 from __future__ import annotations
 
-from locus.localization.models import Translation
+from locus.localization.models import SeedReport, Translation
 from locus.localization.ports import TranslationKey, TranslationStore
 from locus.localization.service import Enrichment, TranslationService, source_hash
 from locus.localization.storage.memory_repo import InMemoryTranslationRepository
@@ -15,6 +15,7 @@ from locus.localization.translator import Translator
 from locus.localization.wiring import LocalizationContainer, assemble_localization
 
 __all__ = [
+    "SeedReport",
     "Translation",
     "TranslationKey",
     "TranslationStore",

@@ -5,7 +5,9 @@ variable/nested parts (``provenance``, timeline ``payload``, turn-run
 ``action``/``result``) are JSON columns (JSONB on PostgreSQL, generic JSON
 elsewhere so the same adapter runs against SQLite in offline tests). Ids are
 application-generated (``new_id``); ``created_at`` is set by the DB server
-(``func.now()``, FD-S1 Q4=A).
+(``CURRENT_TIMESTAMP``, FD-S1 Q4=A), except on timeline entries, messages, deeds and
+appraisals, which take a strictly increasing application clock (``storage/clock.py``)
+so their order holds within one transaction.
 
 U4 (BR-U4-32): every SQL statement lives in ``_PgStores``, which works over one
 ``Connection``. The repository's public methods each open ``engine.begin()``
@@ -18,7 +20,6 @@ turn commits or rolls back together (BR-U4-14).
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, TypeVar
 
@@ -288,7 +289,8 @@ class _PgStores:
         # CURRENT_TIMESTAMP default is the transaction start time — identical for every
         # row, which left `ORDER BY turn, created_at` tied and the turn's entries in
         # arbitrary order (code review U4 #1). Stamp them in the application with a
-        # strictly increasing clock instead (deviation from BR-S1-8 for this table only).
+        # strictly increasing clock instead (deviation from BR-S1-8; messages, deeds and
+        # appraisals do the same).
         self._conn.execute(
             timeline_entries.insert().values(
                 id=entry.id,
@@ -489,17 +491,13 @@ class _PgStores:
         rows = self._conn.execute(stmt).mappings().all()
         return [_row_to_run(r) for r in rows]
 
-    def fail_stale_runs(self, *, reason: str) -> int:
-        res = self._conn.execute(
-            update(turn_runs)
+    def list_running_runs(self) -> list[TurnRun]:
+        stmt = (
+            select(turn_runs)
             .where(turn_runs.c.status == TurnRunStatus.RUNNING.value)
-            .values(
-                status=TurnRunStatus.FAILED.value,
-                error=reason,
-                finished_at=datetime.now(timezone.utc),
-            )
+            .order_by(turn_runs.c.started_at, turn_runs.c.id)
         )
-        return int(res.rowcount or 0)
+        return [_row_to_run(r) for r in self._conn.execute(stmt).mappings().all()]
 
     # -- conversations (U5) ----------------------------------------------- #
     def create_conversation(self, conversation: Conversation) -> Conversation:
@@ -978,8 +976,8 @@ class PostgresPlayRepository:
     def list_runs(self, session_id: str, status: str | None = None) -> list[TurnRun]:
         return self._tx(lambda s: s.list_runs(session_id, status))
 
-    def fail_stale_runs(self, *, reason: str) -> int:
-        return self._tx(lambda s: s.fail_stale_runs(reason=reason))
+    def list_running_runs(self) -> list[TurnRun]:
+        return self._tx(lambda s: s.list_running_runs())
 
     # -- conversations (U5) ----------------------------------------------- #
     def create_conversation(self, conversation: Conversation) -> Conversation:

@@ -1,41 +1,50 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { DescribedError } from "../../errors";
+import { enumLabel } from "../../format";
 import { t } from "../../i18n";
 import type { Region } from "../../types";
-import { Button, Field } from "../../ui";
+import { Button, Dialog, Field, InlineError, Select } from "../../ui";
+import { english, type NameOf } from "./names";
 
-/** Player-mode session start (US-3.1): a name and a start region, both required. */
+/** Player-mode session start (US-3.1): a name and a start region, both required. The form
+ * stays mounted while closed: when it opens for another world the region choice empties and
+ * the name stays (RE-F03, BR-V4-08). `worldId` is optional — a caller without it is as before.
+ * V4 code review 01: regions by the world's name map and the level in words (#8, BR-V4-10);
+ * a failed start is said inside the form, where the person is looking (#22). */
 export function NewSessionForm({
   open,
+  worldId,
   regions,
+  nameOf = english,
+  error = null,
   busy = false,
   onSubmit,
   onCancel,
 }: {
   open: boolean;
+  worldId?: string;
   regions: Region[];
+  nameOf?: NameOf;
+  error?: DescribedError | null;
   busy?: boolean;
   onSubmit: (name: string, startRegionId: string) => void;
   onCancel: () => void;
 }) {
   const [name, setName] = useState("");
   const [regionId, setRegionId] = useState("");
+  useEffect(() => setRegionId(""), [worldId]);
   if (!open) return null;
   const valid = name.trim().length >= 1 && name.trim().length <= 40 && regionId !== "";
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4"
-      role="dialog"
-      aria-modal="true"
-      data-testid="new-session-form"
-    >
+    <Dialog open title={t("session.playTitle")} size="sm" testId="new-session-form"
+      onOpenChange={(o) => !o && onCancel()}>
       <form
-        className="sketch-border sketch-shadow bg-paper-card p-4 max-w-sm w-full flex flex-col gap-3"
+        className="flex flex-col gap-3"
         onSubmit={(e) => {
           e.preventDefault();
           if (valid && !busy) onSubmit(name.trim(), regionId);
         }}
       >
-        <h2 className="font-display text-lg">{t("session.playTitle")}</h2>
         <Field
           label={t("session.name")}
           data-testid="new-session-name"
@@ -43,22 +52,24 @@ export function NewSessionForm({
           maxLength={40}
           onChange={(e) => setName(e.target.value)}
         />
-        <label className="inline-flex flex-col gap-0.5 text-sm">
-          <span className="text-ink-soft">{t("session.startRegion")}</span>
-          <select
-            data-testid="new-session-region"
-            value={regionId}
-            onChange={(e) => setRegionId(e.target.value)}
-            className="sketch-border bg-paper-card px-2 py-1 text-sm"
-          >
-            <option value="">{t("session.pickRegion")}</option>
-            {regions.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name} · {r.level}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Select
+          label={t("session.startRegion")}
+          data-testid="new-session-region"
+          value={regionId}
+          options={[
+            { value: "", label: t("session.pickRegion") },
+            ...regions.map((r) => ({
+              value: r.id,
+              label: `${nameOf("regions", r.id, "name", r.name)} · ${enumLabel("regionLevel", r.level)}`,
+            })),
+          ]}
+          onChange={setRegionId}
+        />
+        {error && (
+          <div data-testid="new-session-error">
+            <InlineError error={error} />
+          </div>
+        )}
         <div className="flex justify-end gap-2">
           <Button size="sm" type="button" data-testid="new-session-cancel" onClick={onCancel}>
             {t("action.cancel")}
@@ -74,6 +85,6 @@ export function NewSessionForm({
           </Button>
         </div>
       </form>
-    </div>
+    </Dialog>
   );
 }

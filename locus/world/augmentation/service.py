@@ -17,6 +17,7 @@ from locus.world.augmentation.types import (
     AugmentationAnswer,
     AugmentationRun,
     ChangeAlreadyRevertedError,
+    IssueType,
     QuestionTarget,
     RevertOrderError,
     RunFinishedError,
@@ -64,8 +65,16 @@ class AugmentationService:
             if issue is None:
                 raise LookupError(f"issue not found in this run: {question.issue_id}")
             change = self._engine.apply(run.world_id, issue, question, answer)
-            if AnswerAction(answer.action) == AnswerAction.IGNORE:
+            action = AnswerAction(answer.action)
+            if action == AnswerAction.IGNORE:
                 run.ignored_keys.append(issue.key)
+            elif action == AnswerAction.CONFIRM and (
+                issue.type == IssueType.WIKI_CONFLICT or change is None
+            ):  # kept as it is: a cached verdict would ask the same again (V7, S-1, R-09)
+                if issue.key not in run.kept_keys:
+                    run.kept_keys.append(issue.key)
+                if change is not None:
+                    change.kept_key = issue.key  # an undo asks it again (review #3)
             run.answers += 1
             changed: list[QuestionTarget] = []
             if change is not None:
@@ -97,6 +106,8 @@ class AugmentationService:
                 raise RevertOrderError("revert the later changes first")
             self._engine.revert(run.world_id, change)
             change.reverted = True
+            if change.kept_key in run.kept_keys:  # the answer is undone: ask it again
+                run.kept_keys.remove(change.kept_key)
             self._refresh_or_clear(state)
             return run
 
@@ -141,7 +152,7 @@ class AugmentationService:
             return True
 
         found, snapshot = self._engine.detect(run.world_id, state, take)
-        run.issues = select(found, run.ignored_keys)
+        run.issues = select(found, [*run.ignored_keys, *run.kept_keys])
         if not run.issues:
             run.status, run.open_questions = RunStatus.CONVERGED, []
         elif run.answers >= self._max_answers:

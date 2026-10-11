@@ -29,15 +29,25 @@ from locus.play.models import (
 )
 from locus.play.player import movement
 from locus.play.ports import PlayRepository, PlayUnitOfWork
+from locus.play.turn.guard import TurnGuard
+from locus.play.write_section import WriteSection
 from locus.shared.config.tuning import PlayTuning
 from locus.shared.models import NPC, Region, WorldSnapshot
 
 
 class DeedService(SessionAppService):
-    def __init__(self, repo: PlayRepository, snapshots: SnapshotSource, *, tuning: PlayTuning):
+    def __init__(
+        self,
+        repo: PlayRepository,
+        snapshots: SnapshotSource,
+        *,
+        tuning: PlayTuning,
+        guard: TurnGuard | None = None,
+    ):
         super().__init__(repo)
         self._snapshots = snapshots
         self._tuning = tuning
+        self.section = WriteSection(repo, guard, tuning)  # the GM void's save (V5)
 
     # -- writes -------------------------------------------------------------
     def arrival(
@@ -314,15 +324,22 @@ class DeedService(SessionAppService):
 
     def void(self, session_id: str, deed_id: str) -> VoidResult:
         """Undo a deed (BR-U6-27). The router holds the GM write lease (`_idle`) from
-        here to the commit, so no turn can seed or spread it meanwhile (BR-U6-28)."""
+        here to the commit, so no turn can seed or spread it meanwhile (BR-U6-28).
+        V5 (BR-V5-09): the deed is read again in the session's section; a void that
+        came first leaves this one with nothing to do and no second line."""
         session = self._require_open(session_id)
         deed = self._repo.get_deed(session_id, deed_id)
         if deed is None:
             raise LookupError(f"deed not found: {deed_id}")
         if deed.voided:
             return VoidResult(deed_id=deed_id)
-        names = names_of(self._snapshots.get(session.world_id))  # read before the UoW
-        with self._repo.uow() as u:
+        names = names_of(self._snapshots.get(session.world_id))  # read before the section
+        with self.section.open(session_id) as (u, session):
+            deed = u.deeds.get_deed(session_id, deed_id)
+            if deed is None:
+                raise LookupError(f"deed not found: {deed_id}")
+            if deed.voided:
+                return VoidResult(deed_id=deed_id)
             deed.voided = True
             deed.voided_turn = session.turn
             u.deeds.update_deed(deed)

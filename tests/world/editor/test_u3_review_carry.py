@@ -108,11 +108,13 @@ def test_c3_s12_a_delete_by_the_wrong_kind_is_404_and_keeps_the_other_document()
 
 
 def test_c4_delete_any_takes_knowledge_and_entities_only() -> None:
+    """V7 code review #4: by the question's target kind, not by what the id reads first."""
     stack, w = _aldermoor()
-    with pytest.raises(ValueError, match="cannot delete a NPC"):
-        stack.editors.delete_any("w", w["npcs"][0].id)
-    assert stack.editors.delete_any("w", w["k1"].id) is True
-    assert stack.editors.delete_any("w", "nothing") is False
+    with pytest.raises(ValueError, match="cannot delete a npc"):
+        stack.editors.delete_any("w", w["npcs"][0].id, "npc")
+    assert stack.editors.delete_any("w", w["k1"].id, "entity") is False  # not an entity
+    assert stack.editors.delete_any("w", w["k1"].id, "knowledge") is True
+    assert stack.editors.delete_any("w", "nothing", "knowledge") is False
 
 
 # --------------------------------------------------------------------------- #

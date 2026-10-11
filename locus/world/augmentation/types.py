@@ -138,6 +138,9 @@ class ChangeSet(_Aug):
     edges_removed: list[EdgeSnapshot] = Field(default_factory=list)
     reverted: bool = False
     revert_started: bool = False  # set once a revert passed its checks (U3 review S03)
+    # the question this answer kept (``AugmentationRun.kept_keys``): undoing the answer
+    # asks it again (V7 code review #3)
+    kept_key: str | None = None
 
 
 class AugmentationRun(_Aug):
@@ -148,13 +151,17 @@ class AugmentationRun(_Aug):
     open_questions: list[AugmentationQuestion] = Field(default_factory=list)
     issues: list[Issue] = Field(default_factory=list)
     ignored_keys: list[str] = Field(default_factory=list)
+    # V7 (S-1, R-09): confirmed "keep as it is" where detection would ask again — a wiki
+    # conflict, or a confirm that changed nothing. Not asked again in this run; kept
+    # apart from ``ignored_keys``, which the screen lists as ignored.
+    kept_keys: list[str] = Field(default_factory=list)
     history: list[ChangeSet] = Field(default_factory=list)
     llm_calls: int = 0
     llm_budget_exhausted: bool = False
 
 
 class AnswerResult(_Aug):
-    change: ChangeSet | None = None  # None for ignore (not in the history)
+    change: ChangeSet | None = None  # None for ignore, or a confirm that changed nothing
     run: AugmentationRun
     changed: list[QuestionTarget] = Field(default_factory=list)
 

@@ -1,7 +1,10 @@
 """localization boundary composition: ``assemble_localization(shared) -> LocalizationContainer``.
 
 Disabled (``TRANSLATION_ENABLED=false``) or without a SQL engine, the container
-carries ``translations=None`` and the API layer shows originals.
+carries ``translations=None`` and the API layer shows originals. Without an LLM the
+service still exists but has no translator: it reads the cache and seeds a demo's
+translations, and never warms (V3, BR-V3-02). A keyless server therefore also creates
+the ``translations`` table at start-up (code plan memo R-05).
 """
 
 from __future__ import annotations
@@ -39,8 +42,10 @@ def assemble_localization(
         pg = PostgresTranslationRepository(engine=shared.sql_engine)
         pg.ensure_schema()
         store = pg
-    if shared.llm is None:
-        return LocalizationContainer(translations=None)
+    if shared.llm is None:  # V3: cache reads and seeding only, no warm and no pool
+        return LocalizationContainer(
+            translations=TranslationService(store, None, default_lang=s.translation_target_lang)
+        )
     pool = ThreadPoolExecutor(max_workers=s.translation_warm_workers, thread_name_prefix="xlate")
     service = TranslationService(
         store,

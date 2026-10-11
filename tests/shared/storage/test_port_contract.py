@@ -253,6 +253,47 @@ def test_replace_edges_keeps_exactly_the_written_properties() -> None:
     assert edge.properties == {"kind": "route", "weight": 0.5}
 
 
+def test_upsert_edges_merges_into_the_stored_edge_like_neo4j() -> None:
+    """V9 (U8 #20): an upsert keeps a property it leaves out, as ``SET r += $props`` does;
+    only ``replace_edges`` drops it."""
+    g = InMemoryGraphRepository()
+    g.upsert_edges([_conn(weight=0.5, wiki_prior_ref="p1")])
+    g.upsert_edges([_conn(weight=0.7)])
+    (edge,) = g.get_edges("w")
+    assert edge.properties == {"kind": "route", "weight": 0.7, "wiki_prior_ref": "p1"}
+    g.replace_edges([_conn(weight=0.9)])
+    (edge,) = g.get_edges("w")
+    assert edge.properties == {"kind": "route", "weight": 0.9}
+
+
+def test_the_fake_keeps_its_own_copy_of_what_was_written_and_read() -> None:
+    """Code review 01 #25: a stored edge or node shared its ``properties`` dict with the
+    caller and with every reader, which Neo4j never does."""
+    g = InMemoryGraphRepository()
+    written = _conn(weight=0.5)
+    g.upsert_edges([written])
+    written.properties["weight"] = 9.0
+    (read,) = g.get_edges("w")
+    read.properties["leak"] = True
+    (touched,) = g.edges_touching("w", [written.source_id])
+    touched.properties["leak2"] = True
+    assert g.get_edges("w")[0].properties == {"kind": "route", "weight": 0.5}
+    node = Node(id="n", world_id="w", label="Region", properties={"name": "A"})
+    g.upsert_nodes([node])
+    node.properties["name"] = "B"
+    stored = g.get_node("w", "n", label="Region")
+    assert stored is not None and stored.properties["name"] == "A"
+    stored.properties["name"] = "C"
+    assert g.get_node("w", "n", label="Region").properties["name"] == "A"
+
+
+def test_neo4j_upsert_edges_merges_the_map() -> None:
+    repo, rec = _neo4j()
+    repo.upsert_edges([_conn(weight=0.5)])
+    ((query, _params),) = rec
+    assert "SET r += $props" in query
+
+
 def test_neo4j_replace_edges_merges_by_identity_and_sets_the_whole_map() -> None:
     repo, rec = _neo4j()
     repo.replace_edges([_conn(weight=0.5)])
@@ -278,3 +319,82 @@ def test_edges_touching_returns_only_edges_with_an_end_in_the_ids() -> None:
     repo.edges_touching("w", ["b"], ["LIVES_IN"])
     ((query, params),) = rec
     assert "a.id IN $ids OR b.id IN $ids" in query and params["types"] == ["LIVES_IN"]
+
+
+# --------------------------------------------------------------------------- #
+# V7 — reads and deletes that name the node's kind (BR-V7-19, TP-V7-11)
+# --------------------------------------------------------------------------- #
+def _two_kinds_one_id() -> InMemoryGraphRepository:
+    g = InMemoryGraphRepository()
+    g.upsert_nodes(
+        [
+            Node(id="x", label="Region", world_id="w", properties={"name": "Mill"}),
+            Node(id="x", label="EventSeed", world_id="w", properties={"title": "Flood"}),
+            Node(id="y", label="Region", world_id="w", properties={"name": "Ford"}),
+        ]
+    )
+    g.upsert_edges(
+        [Edge(type="CONNECTED_TO", source_id="x", target_id="y", world_id="w", properties={})]
+    )
+    return g
+
+
+def test_one_id_may_be_two_kinds_and_a_label_reads_its_own() -> None:
+    g = _two_kinds_one_id()
+    assert g.get_node("w", "x", label="Region").properties["name"] == "Mill"
+    assert g.get_node("w", "x", label="EventSeed").properties["title"] == "Flood"
+    assert g.get_node("w", "x", label="NPC") is None
+    assert g.get_node("w", "x") is not None  # any kind
+
+
+def test_a_labeled_delete_leaves_the_other_kind_and_its_edges() -> None:
+    g = _two_kinds_one_id()
+    g.delete_node("w", "x", label="EventSeed")
+    assert g.get_node("w", "x", label="EventSeed") is None
+    assert g.get_node("w", "x", label="Region") is not None
+    assert len(g.get_edges("w", ["CONNECTED_TO"])) == 1
+
+
+def test_an_unlabeled_delete_takes_every_kind_of_the_id() -> None:
+    g = _two_kinds_one_id()
+    g.delete_node("w", "x")
+    assert g.get_node("w", "x") is None and g.get_edges("w") == []
+
+
+def test_neo4j_a_label_narrows_the_read_and_the_delete() -> None:
+    repo, rec = _neo4j()
+    repo.get_node("w", "x", label="EventSeed")
+    repo.delete_node("w", "x", label="EventSeed")
+    repo.get_node("w", "x")
+    repo.delete_node("w", "x")
+    queries = [q for q, _ in rec]
+    assert queries[0].startswith("MATCH (n:EventSeed {id: $id, world_id: $world_id}) RETURN")
+    assert queries[1] == "MATCH (n:EventSeed {id: $id, world_id: $world_id}) DETACH DELETE n"
+    assert queries[2].startswith("MATCH (n {id: $id, world_id: $world_id}) RETURN")
+    assert queries[3] == "MATCH (n {id: $id, world_id: $world_id}) DETACH DELETE n"
+
+
+def test_neo4j_rejects_an_unsafe_label() -> None:
+    repo, rec = _neo4j()
+    with pytest.raises(ValueError):
+        repo.delete_node("w", "x", label="Region) DETACH DELETE (m")
+    assert rec == []
+
+
+def test_update_node_changes_an_existing_node_and_never_creates_one() -> None:  # review #14
+    g = _two_kinds_one_id()
+    assert g.update_node(Node(id="x", label="Region", world_id="w", properties={"name": "Mill2"}))
+    assert g.get_node("w", "x", label="Region").properties["name"] == "Mill2"
+    assert g.get_node("w", "x", label="EventSeed").properties["title"] == "Flood"
+    assert g.update_node(Node(id="nope", label="Region", world_id="w", properties={})) is False
+    assert g.get_node("w", "nope") is None
+
+
+def test_neo4j_update_node_matches_and_never_merges() -> None:
+    repo, rec = _neo4j(rows=[{"n": 1}])
+    assert repo.update_node(Node(id="w", label="WorldMeta", world_id="w", properties={"a": 1}))
+    query, params = rec[0]
+    assert query.startswith("MATCH (n:WorldMeta {id: $id, world_id: $world_id}) SET n += $props")
+    assert "MERGE" not in query and params["props"] == {"a": 1}
+    repo, _ = _neo4j(rows=[{"n": 0}])
+    assert repo.update_node(Node(id="w", label="WorldMeta", world_id="w", properties={})) is False

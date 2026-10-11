@@ -48,9 +48,9 @@ def diff_sets(ids_a: set[str], ids_b: set[str]) -> tuple[list[str], list[str], l
     return sorted(ids_a & ids_b), sorted(ids_a - ids_b), sorted(ids_b - ids_a)
 
 
-def level_path(region: Region, snapshot: WorldSnapshot) -> list[str]:
-    """Names from the top ancestor down to ``region`` (cycle-safe). Pure."""
-    names = [region.name]
+def _lineage(region: Region, snapshot: WorldSnapshot) -> list[Region]:
+    """``region`` and its ancestors, top ancestor first (cycle-safe). Pure."""
+    chain = [region]
     seen = {region.id}
     cur = region
     while cur.parent_id and cur.parent_id not in seen:
@@ -58,9 +58,20 @@ def level_path(region: Region, snapshot: WorldSnapshot) -> list[str]:
         if parent is None:
             break
         seen.add(parent.id)
-        names.append(parent.name)
+        chain.append(parent)
         cur = parent
-    return list(reversed(names))
+    return list(reversed(chain))
+
+
+def level_path(region: Region, snapshot: WorldSnapshot) -> list[str]:
+    """Names from the top ancestor down to ``region`` (cycle-safe). Pure."""
+    return [r.name for r in _lineage(region, snapshot)]
+
+
+def level_path_ids(region: Region, snapshot: WorldSnapshot) -> list[str]:
+    """The ids of ``level_path``, same order — a screen finds each name in the world's
+    name map (V3, BR-V3-24). Pure."""
+    return [r.id for r in _lineage(region, snapshot)]
 
 
 def region_briefs(snapshot: WorldSnapshot, *, top_k: int = 3) -> list[RegionBrief]:

@@ -12,7 +12,9 @@ from locus.shared.models.graph import LocusModel
 class BuildWarning(LocusModel):
     """A non-fatal issue surfaced during a build (graceful degradation)."""
 
-    stage: str  # ingestion | topology | wiki | ontology | persist-graph | persist-search | embed | import | load
+    # ingestion | topology | wiki | ontology | persist-graph | persist-search | embed |
+    # import | load; V7: persist-meta | backup | carry-over | duplicate-ids
+    stage: str
     item_id: str | None = None
     message: str
     # error = the build/import could not do what it promised (persist failure, an input
@@ -42,6 +44,10 @@ class BuildReport(LocusModel):
     closed_session_ids: list[str] = Field(default_factory=list)  # filled by the API/CLI layer
     backup_path: str | None = None  # pre-replace World File backup (BR-U2-11)
     priors_created: int = 0  # distilled + LLM-fallback WikiPriors stored by this build (U3)
+    # V7 (FR-C9): the old world's NPCs and event seeds a rebuild put on the new regions;
+    # each one it could not place is a "carry-over" warning
+    carried_npcs: int = 0
+    carried_seeds: int = 0
 
     @computed_field  # type: ignore[prop-decorator]
     @property

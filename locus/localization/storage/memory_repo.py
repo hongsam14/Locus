@@ -76,3 +76,16 @@ class InMemoryTranslationRepository:
         for key in doomed:
             del self._translations[key]
         return len(doomed)
+
+    def purge_world_except(self, world_id: str, keep_ids: set[str]) -> int:
+        """Delete the rows marked with ``world_id`` whose source id is not in ``keep_ids``
+        (V3, code review 01 #1): a replaced world keeps the translations of the ids it
+        still has; the source hash decides whether each is still shown."""
+        doomed = [
+            key
+            for key, t in self._translations.items()
+            if t.world_id == world_id and t.source_id not in keep_ids
+        ]
+        for key in doomed:
+            del self._translations[key]
+        return len(doomed)

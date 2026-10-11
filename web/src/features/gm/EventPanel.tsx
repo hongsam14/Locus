@@ -1,146 +1,87 @@
 import { useState } from "react";
 import { t } from "../../i18n";
-import type { EventCategory, EventLifecycle, SessionEvent } from "../../types";
-import { Badge, Button, Card, Field, LocalizedText, Range } from "../../ui";
+import type { SessionEvent } from "../../types";
+import { Button, StatusView } from "../../ui";
+import { Section } from "../../layout";
+import { EventCard } from "./EventCard";
+import type { GmRes } from "./useGmData";
 
-const EVENT_TONE: Record<string, "neutral" | "event" | "danger"> = {
-  active: "event",
-  suggested: "danger",
-  resolved: "neutral",
-};
+const STEP = 10;
 
-const CATEGORIES: EventCategory[] = ["war", "plague", "politics", "disaster", "festival", "discovery"];
-
-export interface NewEvent {
-  region_id: string;
-  category: EventCategory;
-  description: string;
-  magnitude: number;
-  lifecycle: EventLifecycle | null;
-}
-
-/** Session events with their lifecycle buttons, and the create form for the selected
- * region. A suggestion can be approved or discarded, never resolved (BR-U7-7); only an
- * active event can be resolved. Regions read by name (FR-D3). */
+/** The session's events in three groups — suggested, running, ended (V6 frontend-components
+ * § 4.2, BR-V6-33): an empty group says so in a line; the ended ones are folded and come ten
+ * at a time, newest first. Each card holds its own write (BR-V6-09). */
 export function EventPanel({
   events,
-  regionId,
-  regionNames,
+  regionName,
   closed,
   onApprove,
   onDiscard,
   onResolve,
-  onCreate,
+  onPickRegion,
 }: {
-  events: SessionEvent[];
-  regionId: string | null;
-  regionNames: Record<string, string>;
+  events: GmRes<SessionEvent[]>;
+  regionName(regionId: string): string;
   closed: boolean;
-  onApprove: (eventId: string) => void;
-  onDiscard: (eventId: string) => void;
-  onResolve: (eventId: string) => void;
-  onCreate: (body: NewEvent) => void;
+  onApprove(eventId: string): Promise<boolean>;
+  onDiscard(eventId: string): Promise<boolean>;
+  onResolve(eventId: string): Promise<boolean>;
+  onPickRegion(regionId: string): void;
 }) {
-  const [category, setCategory] = useState<EventCategory>("war");
-  const [description, setDescription] = useState("");
-  const [magnitude, setMagnitude] = useState(0.5);
-  const [lifecycle, setLifecycle] = useState<EventLifecycle | "">("");
-  return (
-    <>
-      <h4 className="font-display text-base mt-3 mb-1">{t("gm.events")}</h4>
-      <div data-testid="events" className="flex flex-col gap-1.5 text-sm">
-        {events.map((ev) => (
-          <Card key={ev.id} data-testid={`event-${ev.id}`} className="flex flex-wrap items-center gap-1.5">
-            <Badge data-testid={`event-status-${ev.id}`} tone={EVENT_TONE[ev.status] ?? "neutral"}>
-              {ev.status}
-            </Badge>
-            <span className="text-ink-soft text-xs">
-              {regionNames[ev.region_id] ?? ev.region_id} · {ev.category} · m{ev.magnitude.toFixed(2)} ·{" "}
-              {ev.lifecycle}
-            </span>
-            <LocalizedText testId={`event-desc-${ev.id}`} ko={ev.description_ko} original={ev.description} />
-            {ev.status === "suggested" && (
-              <>
-                <Button size="sm" data-testid={`approve-${ev.id}`} onClick={() => onApprove(ev.id)} disabled={closed}>
-                  {t("gm.approve")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  data-testid={`discard-${ev.id}`}
-                  onClick={() => onDiscard(ev.id)}
-                  disabled={closed}
-                >
-                  {t("gm.discard")}
-                </Button>
-              </>
-            )}
-            {ev.status === "active" && (
-              <Button size="sm" data-testid={`resolve-${ev.id}`} onClick={() => onResolve(ev.id)} disabled={closed}>
-                {t("gm.resolve")}
-              </Button>
-            )}
-          </Card>
-        ))}
-      </div>
-      {regionId && (
-        <Card data-testid="event-form" className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-          <select
-            data-testid="event-category"
-            value={category}
-            disabled={closed}
-            onChange={(e) => setCategory(e.target.value as EventCategory)}
-            className="sketch-border bg-paper-card px-1.5 py-1"
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <Field
-            data-testid="event-description"
-            placeholder={t("gm.eventDescription")}
-            value={description}
-            disabled={closed}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <label className="flex items-center gap-1">
-            m{magnitude.toFixed(2)}
-            <Range
-              data-testid="event-magnitude"
-              min={0}
-              max={1}
-              step={0.05}
-              value={magnitude}
-              disabled={closed}
-              onChange={(e) => setMagnitude(Number(e.target.value))}
-            />
-          </label>
-          <select
-            data-testid="event-lifecycle"
-            value={lifecycle}
-            disabled={closed}
-            onChange={(e) => setLifecycle(e.target.value as EventLifecycle | "")}
-            className="sketch-border bg-paper-card px-1.5 py-1"
-          >
-            <option value="">{t("gm.lifecycleDefault")}</option>
-            <option value="one_shot">one_shot</option>
-            <option value="persistent">persistent</option>
-          </select>
-          <Button
-            size="sm"
-            variant="primary"
-            data-testid="event-create-btn"
-            disabled={closed}
-            onClick={() =>
-              onCreate({ region_id: regionId, category, description, magnitude, lifecycle: lifecycle || null })
-            }
-          >
-            {t("gm.createEvent")}
-          </Button>
-        </Card>
+  const [ended, setEnded] = useState(STEP);
+  if (!events.data) {
+    return <StatusView state={events.state === "error" ? "error" : "loading"} error={events.error} onRetry={events.reload} skeleton="cards" />;
+  }
+  const all = events.data;
+  const of = (status: string) => all.filter((e) => e.status === status);
+  const resolved = of("resolved").sort((a, b) => (b.resolved_turn ?? b.created_turn) - (a.resolved_turn ?? a.created_turn));
+  const cards = (list: SessionEvent[]) =>
+    list.map((ev) => (
+      <EventCard
+        key={ev.id}
+        event={ev}
+        regionName={regionName(ev.region_id)}
+        closed={closed}
+        onApprove={() => onApprove(ev.id)}
+        onDiscard={() => onDiscard(ev.id)}
+        onResolve={() => onResolve(ev.id)}
+        onPickRegion={() => onPickRegion(ev.region_id)}
+      />
+    ));
+  const group = (id: string, title: string, list: SessionEvent[], empty: string) => (
+    <section data-testid={`events-${id}`} tabIndex={-1} className="flex flex-col gap-1.5">
+      <h3 className="font-heading text-lg">
+        {title} <span className="text-sm text-muted">{list.length}</span>
+      </h3>
+      {list.length === 0 ? (
+        <p data-testid={`events-empty-${id}`} className="text-sm text-muted">{empty}</p>
+      ) : (
+        cards(list)
       )}
-    </>
+    </section>
+  );
+  return (
+    <div data-testid="events" className="flex flex-col gap-4">
+      <h2 className="sr-only">{t("tab.events")}</h2>
+      {group("suggested", t("label.eventsSuggested"), of("suggested"), t("empty.eventsSuggested"))}
+      {group("active", t("label.eventsActive"), of("active"), t("empty.eventsActive"))}
+      <div data-testid="events-resolved" tabIndex={-1}>
+        <Section level={3} collapsible defaultOpen={false}
+          title={<>{t("label.eventsResolved")} <span className="text-sm text-muted">{resolved.length}</span></>}>
+          {resolved.length === 0 ? (
+            <p data-testid="events-empty-resolved" className="text-sm text-muted">{t("empty.eventsResolved")}</p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {cards(resolved.slice(0, ended))}
+              {resolved.length > ended && (
+                <Button size="sm" className="self-start" data-testid="events-more" onClick={() => setEnded((n) => n + STEP)}>
+                  {t("action.showMore", { n: Math.min(STEP, resolved.length - ended) })}
+                </Button>
+              )}
+            </div>
+          )}
+        </Section>
+      </div>
+    </div>
   );
 }

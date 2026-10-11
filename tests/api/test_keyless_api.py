@@ -45,7 +45,11 @@ def test_tp_u8_8_without_a_key_llm_routes_are_503_and_the_rest_works() -> None:
         "vlm": False,
         "embedding": False,
     }
-    assert client.get("/health").json()["status"] == "ok"
+    # V9 (U8 #21): with injected containers the status is "ok" whatever is up, so the
+    # assertion is on what makes it true — without a key, world and play still stand
+    health = client.get("/health").json()
+    assert health["status"] == "ok"
+    assert health["boundaries"]["world"] is True and health["boundaries"]["play"] is True
 
     # the visitor's path: demo -> session at the start region -> a move -> a seed
     demos = client.get("/api/world/demos").json()

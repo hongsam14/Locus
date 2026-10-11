@@ -119,7 +119,9 @@ class _Emb:
         return [[0.0, 1.0] for _ in texts]
 
 
-def _make(tmp_path, *, graph=None, search=None, ingest=None, llm=None, emb=None):
+def _make(
+    tmp_path, *, graph=None, search=None, ingest=None, llm=None, emb=None, exporter="default"
+):
     graph = graph or InMemoryGraphRepository()
     search = search or InMemorySearchRepository()
     cache = WorldCache(WorldLoader(graph))
@@ -131,8 +133,8 @@ def _make(tmp_path, *, graph=None, search=None, ingest=None, llm=None, emb=None)
         ingestion_factory=lambda llm_, vlm_: ingest or _Ingest(),
         topology_factory=lambda wiki: _Topo(),
         ontology_factory=lambda llm_, emb_, wiki: _Onto(llm_, emb_),
-        exporter=WorldFileExporter(cache),
-        backup_dir=tmp_path / "backups",
+        exporter=WorldFileExporter(cache) if exporter == "default" else exporter,
+        backup_dir=tmp_path / "backups" if exporter is not None else None,
     )
     return builder, graph, search, cache
 
@@ -287,3 +289,248 @@ def test_u8_review_2_a_failed_build_frees_its_world(tmp_path) -> None:
         builder.build("w", inputs=None)
     builder._ingestion_factory = lambda llm_, vlm_: _Ingest()  # type: ignore[assignment]
     assert builder.build("w", inputs=None).ok
+
+
+# --------------------------------------------------------------------------- #
+# V7 — a failed backup stops the replace before anything is deleted (TP-V7-7)
+# --------------------------------------------------------------------------- #
+class _BrokenExporter:
+    def export_world(self, world_id):
+        raise OSError("disk full")
+
+
+def test_tp_v7_7_a_failed_backup_leaves_the_old_world(tmp_path) -> None:
+    builder, graph, _search, cache = _make(tmp_path)
+    builder.build("w", inputs=None)
+    old = sorted((n.label, n.id) for n in graph._nodes.values())
+    deleted: list = []
+    real_delete = graph.delete_world
+    graph.delete_world = lambda wid: (deleted.append(wid), real_delete(wid))  # type: ignore
+
+    broken, *_ = _make(tmp_path, graph=graph, exporter=_BrokenExporter())
+    report = broken.build("w", inputs=None, replace=True)
+
+    assert report.ok is False and report.replaced is False and report.backup_path is None
+    assert [(w.stage, w.severity) for w in report.errors] == [("backup", "error")]
+    assert "not replaced" in report.errors[0].message and "disk full" in report.errors[0].message
+    assert deleted == [] and sorted((n.label, n.id) for n in graph._nodes.values()) == old
+    assert len(cache.get("w").topo.regions) == 1
+
+
+def test_br_v7_11_a_builder_without_a_backup_still_replaces(tmp_path) -> None:
+    builder, graph, *_ = _make(tmp_path, exporter=None)
+    builder.build("w", inputs=None)
+    report = builder.build("w", inputs=None, replace=True)
+    assert report.ok and report.replaced is True and report.backup_path is None
+
+
+# --------------------------------------------------------------------------- #
+# V7 — a rebuild keeps the world's NPCs and event seeds (TP-V7-8, TP-V7-9)
+# --------------------------------------------------------------------------- #
+def _add_people(graph, regions_by_name: dict, *, npc_homes=("R0", "R1"), seed_home="R1"):
+    """What the editor would add after a build: NPCs and an event seed."""
+    from locus.shared.models import NPC, EventSeed
+    from locus.shared.storage.persistence import persist_graph
+
+    npcs = [
+        NPC(
+            id=f"npc-{i}",
+            world_id="w",
+            name=f"Npc {i}",
+            role="miller",
+            description="d",
+            home_region_id=regions_by_name[home],
+            provenance=_prov(),
+        )
+        for i, home in enumerate(npc_homes)
+    ]
+    seed = EventSeed(
+        id="seed-0",
+        world_id="w",
+        region_id=regions_by_name[seed_home],
+        title="Flood",
+        category="disaster",
+        magnitude=0.5,
+        provenance=_prov(),
+    )
+    persist_graph(graph, InMemorySearchRepository(), None, "w", npcs=npcs, seeds=[seed])
+    return npcs, seed
+
+
+def _names(cache) -> dict:
+    return {r.name: r.id for r in cache.get("w").topo.regions}
+
+
+def test_tp_v7_8_a_rebuild_carries_npcs_and_seeds_onto_the_new_regions(tmp_path) -> None:
+    builder, graph, _search, cache = _make(tmp_path, ingest=_Ingest(regions=2))
+    builder.build("w", inputs=None)
+    old_ids = _names(cache)
+    _add_people(graph, old_ids)
+    cache.invalidate("w")
+
+    report = builder.build("w", inputs=None, replace=True)
+
+    assert report.ok and report.replaced is True
+    assert (report.carried_npcs, report.carried_seeds) == (2, 1)
+    after = cache.get("w")
+    new_ids = _names(cache)
+    assert set(new_ids.values()).isdisjoint(old_ids.values())  # new regions
+    homes = {n.id: n.home_region_id for n in after.npcs}
+    assert homes == {"npc-0": new_ids["R0"], "npc-1": new_ids["R1"]}
+    assert [(s.id, s.region_id) for s in after.event_seeds] == [("seed-0", new_ids["R1"])]
+
+
+def test_tp_v7_8_an_npc_whose_region_is_gone_is_named_not_carried(tmp_path) -> None:
+    builder, graph, _search, cache = _make(tmp_path, ingest=_Ingest(regions=2))
+    builder.build("w", inputs=None)
+    _add_people(graph, _names(cache))
+    cache.invalidate("w")
+    shrunk, *_ = _make(tmp_path, graph=graph, ingest=_Ingest(regions=1))  # no R1 now
+
+    report = shrunk.build("w", inputs=None, replace=True)
+
+    assert report.ok and (report.carried_npcs, report.carried_seeds) == (1, 0)
+    left = [w for w in report.warnings if w.stage == "carry-over"]
+    assert sorted(w.item_id for w in left) == ["npc-1", "seed-0"]
+    assert all(w.severity == "warning" for w in left)
+
+
+def test_tp_v7_9_the_old_world_is_read_fresh_not_from_the_cache(tmp_path) -> None:
+    """The cache still holds the world as it was before the editor's NPC (same version
+    mark: the NPC went in without touching WorldMeta); the rebuild reads it fresh."""
+    builder, graph, _search, cache = _make(tmp_path, ingest=_Ingest(regions=2))
+    builder.build("w", inputs=None)
+    assert cache.get("w").npcs == [] and cache.is_cached("w")
+    _add_people(graph, _names(cache))
+    assert cache.get("w").npcs == []  # stale on purpose
+
+    report = builder.build("w", inputs=None, replace=True)
+
+    assert report.carried_npcs == 2 and len(cache.get("w").npcs) == 2
+
+
+def test_tp_v7_9_an_old_world_that_cannot_be_read_is_not_replaced(tmp_path) -> None:
+    class _Unreadable(WorldCache):
+        fail = False
+
+        def get(self, world_id):
+            if self.fail:
+                raise ConnectionError("graph read failed")
+            return super().get(world_id)
+
+    graph = InMemoryGraphRepository()
+    builder, graph, search, _cache = _make(tmp_path, graph=graph)
+    builder.build("w", inputs=None)
+    before = sorted((n.label, n.id) for n in graph._nodes.values())
+    cache = _Unreadable(WorldLoader(graph))
+    cache.fail = True
+    builder._cache = cache  # the same builder, reading through a failing cache
+
+    report = builder.build("w", inputs=None, replace=True)
+
+    assert report.ok is False and report.replaced is False
+    assert [(w.stage, w.severity) for w in report.errors] == [("carry-over", "error")]
+    assert "not replaced" in report.errors[0].message
+    assert sorted((n.label, n.id) for n in graph._nodes.values()) == before
+
+
+# --------------------------------------------------------------------------- #
+# V7 code review 01 (#2, #9, #10, #13)
+# --------------------------------------------------------------------------- #
+def test_what_the_load_drops_is_named_on_rebuild(tmp_path) -> None:
+    """Review #2, end to end through the real loader: an NPC whose home is gone and a
+    seed that cannot be read (a title over 80) are named, not silently lost."""
+    from locus.shared.models import NPC
+    from locus.shared.storage.base import Node
+    from locus.shared.storage.persistence import persist_graph
+
+    builder, graph, _search, cache = _make(tmp_path)
+    builder.build("w", inputs=None)
+    stray = NPC(
+        id="npc-gone",
+        world_id="w",
+        name="Stray",
+        role="r",
+        description="d",
+        home_region_id="no-such-region",
+        provenance=_prov(),
+    )
+    persist_graph(graph, InMemorySearchRepository(), None, "w", npcs=[stray])
+    graph.upsert_nodes(
+        [
+            Node(
+                id="seed-long",
+                label="EventSeed",
+                world_id="w",
+                properties={
+                    "id": "seed-long",
+                    "world_id": "w",
+                    "region_id": "x",
+                    "title": "x" * 99,
+                },
+            )
+        ]
+    )
+    cache.invalidate("w")
+
+    report = builder.build("w", inputs=None, replace=True)
+
+    left = {w.item_id: w.message for w in report.warnings if w.stage == "carry-over"}
+    assert left == {
+        "npc-gone": "NPC npc-gone was not carried over: its region is not in the old world",
+        "seed-long": "Event seed seed-long was not carried over: it could not be read from the old world",
+    }
+
+
+def test_carried_npcs_go_in_before_the_version_mark(tmp_path) -> None:  # review #9
+    class _Log(InMemoryGraphRepository):
+        def __init__(self) -> None:
+            super().__init__()
+            self.labels: list[str] = []
+
+        def upsert_nodes(self, nodes) -> None:
+            self.labels += [n.label for n in nodes]
+            super().upsert_nodes(nodes)
+
+    graph = _Log()
+    builder, graph, _search, cache = _make(tmp_path, graph=graph, ingest=_Ingest(regions=2))
+    builder.build("w", inputs=None)
+    _add_people(graph, _names(cache))
+    cache.invalidate("w")
+    graph.labels.clear()
+
+    builder.build("w", inputs=None, replace=True)
+
+    assert graph.labels.index("NPC") < graph.labels.index("WorldMeta")
+    assert graph.labels.index("EventSeed") < graph.labels.index("WorldMeta")
+
+
+def test_a_failed_body_write_carries_nothing(tmp_path) -> None:  # review #10
+    builder, graph, _search, cache = _make(tmp_path, ingest=_Ingest(regions=2))
+    builder.build("w", inputs=None)
+    _add_people(graph, _names(cache))
+    cache.invalidate("w")
+    graph.fail_on_upsert = RuntimeError("neo4j down")
+
+    report = builder.build("w", inputs=None, replace=True)
+
+    assert report.ok is False and report.replaced is True
+    assert (report.carried_npcs, report.carried_seeds) == (0, 0)
+
+
+def test_a_world_deleted_while_the_build_prepares_is_built_fresh(tmp_path) -> None:  # #13
+    graph = InMemoryGraphRepository()
+
+    class _DeletesMeanwhile(_Ingest):
+        def ingest_all(self, world_id, inputs):
+            graph.delete_world(world_id)  # another process, during the minutes of LLM work
+            return super().ingest_all(world_id, inputs)
+
+    builder, graph, _search, cache = _make(tmp_path, graph=graph)
+    builder.build("w", inputs=None)
+    gone, *_ = _make(tmp_path, graph=graph, ingest=_DeletesMeanwhile())
+
+    report = gone.build("w", inputs=None, replace=True)
+
+    assert report.ok and report.replaced is False and report.regions_created == 1
+    assert len(cache.get("w").topo.regions) == 1

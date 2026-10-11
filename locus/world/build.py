@@ -39,9 +39,11 @@ from locus.shared.models import (
     WikiPrior,
     WikiPriorLink,
     WorldMeta,
+    WorldSnapshot,
 )
 from locus.shared.storage.base import GraphRepository, SearchRepository
 from locus.shared.storage.persistence import persist_graph
+from locus.world.carry_over import CarryOver, carry_over
 from locus.world.ingestion.service import IngestionService, WorldInputs
 from locus.world.ontology.builder import OntologyBuild, OntologyBuilder
 from locus.world.topology.builder import TopologyBuild, TopologyBuilder
@@ -54,6 +56,11 @@ logger = logging.getLogger(__name__)
 
 class WorldExistsError(RuntimeError):
     """The world already exists and ``replace`` was not requested (409 / exit 1)."""
+
+
+class BackupFailedError(RuntimeError):
+    """The old world was set up to be backed up and could not be: a replace stops before
+    anything is deleted (V7, BR-V7-10). The message is the cause."""
 
 
 class BuildInProgressError(RuntimeError):
@@ -251,9 +258,31 @@ class WorldBuilder:
         backup_path: Path | None = None
         onto_build: OntologyBuild | None = None
         kg = None
+        carry = CarryOver()
+        old: WorldSnapshot | None = None
         try:
             if exists:
-                backup_path = self._backup(world_id, warnings)
+                try:  # what the editor added since: read fresh, not from the cache (R-08)
+                    self._cache.invalidate(world_id)
+                    old = self._cache.get(world_id)
+                except LookupError:  # deleted meanwhile (another process): a fresh build
+                    old = None  # (code review #13)
+                except Exception as exc:  # unread, its NPCs and seeds would be lost (R-07)
+                    warnings.append(
+                        BuildWarning(
+                            stage="carry-over",
+                            severity="error",
+                            message=f"the old world could not be read; it was not replaced: {exc}",
+                        )
+                    )
+                    return self._report(world_id, warnings, counter)
+            if old is not None:
+                carry = carry_over(old, topology.regions, world_id)
+                try:
+                    backup_path = self._backup(world_id)
+                except BackupFailedError as exc:  # before anything is deleted (R-07)
+                    warnings.append(backup_failed_warning(exc))
+                    return self._report(world_id, warnings, counter)
                 self._graph.delete_world(world_id)
                 replaced = True  # the graph is gone from here on, whatever happens next
                 self._cache.invalidate(world_id)
@@ -293,6 +322,8 @@ class WorldBuilder:
                         "lookups kept the computed weight without a prior",
                     )
                 )
+            warnings.extend(carry.warnings)  # one per NPC or seed left behind
+            body_from = len(warnings)
             persist_graph(
                 self._graph,
                 self._search,
@@ -304,6 +335,8 @@ class WorldBuilder:
                 connections=topology.connections,
                 scopes=kg.scopes,
                 relations=kg.relations,
+                npcs=carry.npcs,  # V7: the old world's, on the new regions (FR-C9)
+                seeds=carry.seeds,
                 meta=WorldMeta(
                     id=world_id,
                     name=getattr(inputs, "name", None) or world_id,
@@ -311,6 +344,9 @@ class WorldBuilder:
                     last_writer="build",
                 ),
                 warnings=warnings,
+            )
+            body_failed = any(
+                w.stage == "persist-graph" and w.severity == "error" for w in warnings[body_from:]
             )
         except Exception as exc:  # the old world may already be gone: report, don't vanish
             logger.exception("commit phase failed for %s", world_id)
@@ -348,6 +384,9 @@ class WorldBuilder:
             replaced=replaced,
             backup_path=str(backup_path) if backup_path else None,
             priors_created=len(priors) + len(_created_priors(wiki)),
+            # a body write that failed carried nothing, whatever was planned (review #10)
+            carried_npcs=0 if body_failed else len(carry.npcs),
+            carried_seeds=0 if body_failed else len(carry.seeds),
         )
 
     # ------------------------------------------------------------------ #
@@ -361,10 +400,12 @@ class WorldBuilder:
             embedding_calls=counter.embedding_calls,
         )
 
-    def _backup(self, world_id: str, warnings: list[BuildWarning]) -> Path | None:
-        """Write the old world to ``backup_dir`` before replacing it (BR-U2-11). Best effort."""
+    def _backup(self, world_id: str) -> Path | None:
+        """Write the old world to ``backup_dir`` before replacing it (BR-U2-11). ``None``
+        when no backup is set up (test builders); a backup that is set up and fails raises
+        ``BackupFailedError`` and the replace stops (V7, BR-V7-10)."""
         if self._exporter is None or self._backup_dir is None:
-            return None
+            return None  # the API and the CLI both set one up (code review #20)
         try:
             data = self._exporter.export_world(world_id)
             self._backup_dir.mkdir(parents=True, exist_ok=True)
@@ -376,9 +417,17 @@ class WorldBuilder:
             )
             return path
         except Exception as exc:
-            warnings.append(BuildWarning(stage="backup", message=f"backup skipped: {exc}"))
             logger.warning("world backup failed for %s: %s", world_id, exc)
-            return None
+            raise BackupFailedError(str(exc)) from exc
+
+
+def backup_failed_warning(exc: BackupFailedError) -> BuildWarning:
+    """The report line of a replace stopped by its backup (build and World File import)."""
+    return BuildWarning(
+        stage="backup",
+        severity="error",
+        message=f"backup failed; the world was not replaced: {exc}",
+    )
 
 
 def _created_priors(wiki) -> list[WikiPrior]:

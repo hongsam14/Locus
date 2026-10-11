@@ -317,6 +317,16 @@ class _RecordingGraphRepo:
     def find_nodes(self, world_id, label, filters=None):
         return [n for n in self.nodes if n.label == label and n.world_id == world_id]
 
+    def get_node(self, world_id, node_id, *, label=None):  # V7: the prior's id check
+        return next(
+            (
+                n
+                for n in self.nodes
+                if n.id == node_id and n.world_id == world_id and label in (None, n.label)
+            ),
+            None,
+        )
+
 
 class _RecordingSearchRepo:
     def __init__(self) -> None:
@@ -357,3 +367,23 @@ def test_wiki_admin_upsert_invalidates_cache() -> None:
     admin = WikiAdmin(graph, search, embedding=None, cache=cache)
     admin.upsert_prior(_prior("w"))
     assert cache.invalidated == ["w"]
+
+
+def test_code_review_17_a_prior_cannot_take_an_id_another_kind_holds() -> None:
+    """V7: a new duplicate id would make reads and deletes by id ambiguous again."""
+    import pytest
+
+    from locus.shared.models import Region, RegionLevel, WorldMeta
+    from locus.shared.storage.persistence import persist_graph
+    from tests.world.editor.helpers import Stack
+
+    stack = Stack()
+    region = Region(id="r1", world_id="w", name="R", level=RegionLevel.TOWN, provenance=_prov())
+
+    persist_graph(
+        stack.graph, stack.search, None, "w", regions=[region], meta=WorldMeta(id="w", name="W")
+    )
+    admin = WikiAdmin(stack.graph, stack.search, embedding=None, cache=stack.cache)
+    with pytest.raises(ValueError, match="already a Region"):
+        admin.upsert_prior(_prior("w").model_copy(update={"id": "r1"}))
+    assert stack.graph.get_node("w", "r1", label="WikiPrior") is None

@@ -10,7 +10,7 @@ from __future__ import annotations
 from locus.knowledge.cache import SnapshotSource
 from locus.knowledge.consensus import DEFAULT_PARAMS, ConsensusEngine, ConsensusParams
 from locus.play.base import SessionAppService, SnapshotNames
-from locus.play.errors import LlmUnavailableError
+from locus.play.errors import LlmUnavailableError, RumorInactiveError
 from locus.play.models import (
     DEFAULT_DISTORTION_DEGREE,
     Deed,
@@ -25,6 +25,9 @@ from locus.play.ports import PlayRepository
 from locus.play.rumor import dynamics as rumor_dynamics
 from locus.play.rumor.generator import RumorGenerator
 from locus.play.turn.budget import LlmBudget
+from locus.play.turn.guard import TurnGuard
+from locus.play.write_section import WriteSection
+from locus.shared.config.tuning import PlayTuning
 from locus.shared.models import Provenance, SourceKind
 from locus.shared.models.util import clamp01
 
@@ -54,12 +57,16 @@ class RumorService(SnapshotNames, SessionAppService):
         params: ConsensusParams = DEFAULT_PARAMS,
         *,
         birth_support: float = 0.0,
+        tuning: PlayTuning | None = None,
+        guard: TurnGuard | None = None,
     ) -> None:
         super().__init__(repo)
         self._gen = generator  # None without an LLM provider: reads still work (#13)
         self._snapshots = snapshots
         self._params = params
         self._birth_support = birth_support  # seed support for new rumors (BR-H1-21)
+        # V5 (BR-V5-01): drafts outside, the save and its line in the session's section
+        self.section = WriteSection(repo, guard, tuning)
 
     @property
     def llm_available(self) -> bool:
@@ -84,14 +91,25 @@ class RumorService(SnapshotNames, SessionAppService):
         self._require_generator()
         session = self._require_open(session_id)
         degrees = degrees or self._chain_degrees(session_id, region_id)
-        rumors = self._generate_for_region(session, region_id, degrees)
+        drafts, _complete = self._draft_for_region(session, region_id, degrees)  # LLM, outside
         name = self._region_name(session, region_id)
-        self._timeline(
-            session,
-            TimelineKind.GENERATE,
-            f"generated {len(rumors)} rumors in {name}",
-            {"region_id": region_id, "region_name": name, "rumor_ids": [r.id for r in rumors]},
-        )
+        # V5 (RE-P02, RE-P05, BR-V5-13): saved with its line in the section; a session
+        # closed while the drafts were made gets nothing (409), and a bulk generate's
+        # five writes draft together but save one at a time.
+        with self.section.open(session_id) as (u, session):
+            rumors = u.rumors.upsert_rumors(drafts) if drafts else []
+            u.timeline.append_timeline(
+                self._entry(
+                    session,
+                    TimelineKind.GENERATE,
+                    f"generated {len(rumors)} rumors in {name}",
+                    {
+                        "region_id": region_id,
+                        "region_name": name,
+                        "rumor_ids": [r.id for r in rumors],
+                    },
+                )
+            )
         return rumors
 
     def regenerate_region(self, session_id: str, region_id: str) -> RegenerateResult:
@@ -100,16 +118,9 @@ class RumorService(SnapshotNames, SessionAppService):
         U7: the replaced rumors are deactivated, never deleted (BR-U7-16)."""
         self._require_generator()
         session = self._require_open(session_id)
-        existing = self._repo.list_rumors(session_id, region_id)
         name = self._region_name(session, region_id)  # FR-D3
-        # FR-UX2.5 / BR-X3-9 (X3): preserve promoted rumors; drop only the
-        # non-promoted ones then regenerate. (Was Q4=A drop-all incl. promoted.)
-        # U6 (BR-U6-29): a player's deed rumors are only undone by a GM void, never by a
-        # regenerate — keep them with the promoted ones and drop canonical rumors only.
-        kept = [r for r in existing if r.promoted or r.origin_kind != "canonical"]
-        dropped = [r for r in existing if not r.promoted and r.origin_kind == "canonical"]
         degrees = self._chain_degrees(session_id, region_id)
-        # Draft BEFORE deleting anything. The generator swallows LLM failures and
+        # Draft BEFORE deactivating anything. The generator swallows LLM failures and
         # returns an empty chain, so deleting first destroyed the region's rumors
         # (support, promotion history, provenance) and still answered 200 during an
         # LLM outage (code review U4 #3). Reseed from canonical knowledge only —
@@ -117,42 +128,56 @@ class RumorService(SnapshotNames, SessionAppService):
         fresh, complete = self._draft_for_region(
             session, region_id, degrees, include_existing=False
         )
-        if not complete:
-            # Part of the chain failed: replacing now would delete rumors we cannot
-            # replace. `fresh == []` alone was not enough — it also means "no canonical
-            # source to seed", which legitimately clears the region (U4-2 #6).
-            self._timeline(
-                session,
-                TimelineKind.REGENERATE,
-                f"regenerated {name}: generation incomplete, kept everything",
-                {
-                    "region_id": region_id,
-                    "region_name": name,
-                    "deactivated": [],
-                    "kept": [r.id for r in existing],
-                    "rumor_ids": [],
-                    "skipped": True,
-                    "reason": "llm_incomplete",
-                },
-            )
-            return RegenerateResult(kept=existing, skipped_reason="llm_incomplete")
-        if not fresh and not dropped:
-            self._timeline(
-                session,
-                TimelineKind.REGENERATE,
-                f"regenerated {name}: nothing to seed",
-                {
-                    "region_id": region_id,
-                    "region_name": name,
-                    "deactivated": [],
-                    "kept": [r.id for r in existing],
-                    "rumor_ids": [],
-                    "skipped": True,
-                    "reason": "no_sources",
-                },
-            )
-            return RegenerateResult(kept=existing, skipped_reason="no_sources")
-        with self._repo.uow() as u:  # swap in one transaction (BR-U4-14)
+        # V5 (RE-P07, BR-V5-11): what to drop is chosen in the section, from the rumors as
+        # they are now — a regenerate that saved meanwhile is replaced, not left beside.
+        # The swap is one transaction (BR-U4-14), the skip lines too.
+        with self.section.open(session_id) as (u, session):
+            existing = u.rumors.list_rumors(session_id, region_id)
+            # FR-UX2.5 / BR-X3-9 (X3): preserve promoted rumors; drop only the
+            # non-promoted ones then regenerate. (Was Q4=A drop-all incl. promoted.)
+            # U6 (BR-U6-29): a player's deed rumors are only undone by a GM void, never by
+            # a regenerate — keep them with the promoted ones and drop canonical ones only.
+            kept = [r for r in existing if r.promoted or r.origin_kind != "canonical"]
+            dropped = [r for r in existing if not r.promoted and r.origin_kind == "canonical"]
+            if not complete:
+                # Part of the chain failed: replacing now would delete rumors we cannot
+                # replace. `fresh == []` alone was not enough — it also means "no canonical
+                # source to seed", which legitimately clears the region (U4-2 #6).
+                u.timeline.append_timeline(
+                    self._entry(
+                        session,
+                        TimelineKind.REGENERATE,
+                        f"regenerated {name}: generation incomplete, kept everything",
+                        {
+                            "region_id": region_id,
+                            "region_name": name,
+                            "deactivated": [],
+                            "kept": [r.id for r in existing],
+                            "rumor_ids": [],
+                            "skipped": True,
+                            "reason": "llm_incomplete",
+                        },
+                    )
+                )
+                return RegenerateResult(kept=existing, skipped_reason="llm_incomplete")
+            if not fresh and not dropped:
+                u.timeline.append_timeline(
+                    self._entry(
+                        session,
+                        TimelineKind.REGENERATE,
+                        f"regenerated {name}: nothing to seed",
+                        {
+                            "region_id": region_id,
+                            "region_name": name,
+                            "deactivated": [],
+                            "kept": [r.id for r in existing],
+                            "rumor_ids": [],
+                            "skipped": True,
+                            "reason": "no_sources",
+                        },
+                    )
+                )
+                return RegenerateResult(kept=existing, skipped_reason="no_sources")
             # Deactivated, never deleted: a kept rumor's `distorted_from_id` keeps pointing
             # at a row, so its chain can still be walked to the root (BR-U7-16, RE C6).
             for r in dropped:
@@ -177,24 +202,35 @@ class RumorService(SnapshotNames, SessionAppService):
         return RegenerateResult(kept=kept, fresh=saved, deactivated_ids=[r.id for r in dropped])
 
     def adjust_support(self, session_id: str, rumor_id: str, support: float) -> SessionRumor:
+        """Set a rumor's support. V5 (RE-P01, Q2=A, BR-V5-08): the rumor is read again in
+        the section; one switched off meanwhile (a deed void, a regenerate) is refused
+        with ``RumorInactiveError`` (409 ``rumor_inactive``) and never comes back."""
         session = self._require_open(session_id)
-        rumor = self._repo.get_rumor(session_id, rumor_id)
-        if rumor is None:
+        found = self._repo.get_rumor(session_id, rumor_id)
+        if found is None:
             raise LookupError(f"rumor not found: {rumor_id}")
-        rumor.support = rumor_dynamics.settle(support)
-        saved = self._repo.upsert_rumor(rumor)
-        name = self._region_name(session, rumor.region_id)
-        self._timeline(
-            session,
-            TimelineKind.ADJUST_SUPPORT,
-            f"support of a rumor in {name} -> {rumor.support:.2f}",
-            {
-                "rumor_id": rumor_id,
-                "support": rumor.support,
-                "region_id": rumor.region_id,
-                "region_name": name,
-            },
-        )
+        name = self._region_name(session, found.region_id)
+        with self.section.open(session_id) as (u, session):
+            rumor = u.rumors.get_rumor(session_id, rumor_id)
+            if rumor is None:
+                raise LookupError(f"rumor not found: {rumor_id}")
+            if not rumor.active:
+                raise RumorInactiveError("the rumor is no longer active")
+            rumor.support = rumor_dynamics.settle(support)
+            saved = u.rumors.upsert_rumor(rumor)
+            u.timeline.append_timeline(
+                self._entry(
+                    session,
+                    TimelineKind.ADJUST_SUPPORT,
+                    f"support of a rumor in {name} -> {rumor.support:.2f}",
+                    {
+                        "rumor_id": rumor_id,
+                        "support": rumor.support,
+                        "region_id": rumor.region_id,
+                        "region_name": name,
+                    },
+                )
+            )
         return saved
 
     def append_for_turn(
@@ -355,24 +391,6 @@ class RumorService(SnapshotNames, SessionAppService):
                 complete = False
             drafts.extend(chain)
         return drafts, complete
-
-    def _generate_for_region(
-        self,
-        session: GameSession,
-        region_id: str,
-        degrees: list[float],
-        *,
-        min_source_support: float | None = None,
-        include_existing: bool = True,
-    ) -> list[SessionRumor]:
-        drafts, _complete = self._draft_for_region(
-            session,
-            region_id,
-            degrees,
-            min_source_support=min_source_support,
-            include_existing=include_existing,
-        )
-        return self._repo.upsert_rumors(drafts) if drafts else []
 
     def _collect_sources(
         self,

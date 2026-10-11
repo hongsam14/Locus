@@ -2,11 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# System deps for healthcheck tooling (curl already in slim? ensure present)
+# curl for the compose healthcheck (`curl -sf http://localhost:8000/health`)
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install the package (locus = core boundaries, api = FastAPI composition root)
+# Install the locus package (pyproject installs `locus*` only, with the demo data); `api`
+# (the FastAPI composition root) stays as source under /app and imports from the WORKDIR
 COPY pyproject.toml README.md LICENSE ./
 COPY locus ./locus
 COPY api ./api

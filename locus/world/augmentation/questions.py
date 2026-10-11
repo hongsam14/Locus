@@ -35,14 +35,21 @@ ACTIONS: dict[str, list[AnswerAction]] = {
     IssueType.DANGLING: [A.EDIT, A.REMOVE, A.IGNORE],
     IssueType.UNSCOPED: [A.EDIT, A.REMOVE, A.IGNORE],
 }
-# inputs each action takes (U3 review C2, S06: an edit may also set title and confidence)
-NEEDS: dict[str, dict[str, list[Input]]] = {
-    IssueType.GAP: {A.ADD: ["statement", "title"]},
-    IssueType.LOW_CONFIDENCE: {A.EDIT: ["statement", "title", "confidence"]},
-    IssueType.WIKI_CONFLICT: {A.EDIT: ["statement", "title", "confidence"]},
-    IssueType.ORPHAN: {A.EDIT: ["region"]},
-    IssueType.DANGLING: {A.EDIT: ["ref"]},
-    IssueType.UNSCOPED: {A.EDIT: ["region"]},
+# inputs each action takes, by (issue type, target kind) (U3 review C2, S06; V7 BR-V7-21):
+# an entity has no title, so its edit asks for the description (the statement field) and
+# the confidence only (U8 #13). A pair not listed takes no input.
+_KNOWLEDGE_EDIT: dict[str, list[Input]] = {A.EDIT: ["statement", "title", "confidence"]}
+NEEDS: dict[tuple[str, str], dict[str, list[Input]]] = {
+    (IssueType.GAP, "region"): {A.ADD: ["statement", "title"]},
+    (IssueType.LOW_CONFIDENCE, "knowledge"): _KNOWLEDGE_EDIT,
+    (IssueType.LOW_CONFIDENCE, "entity"): {A.EDIT: ["statement", "confidence"]},
+    (IssueType.WIKI_CONFLICT, "knowledge"): _KNOWLEDGE_EDIT,  # detected on knowledge only
+    (IssueType.ORPHAN, "entity"): {A.EDIT: ["region"]},
+    **{
+        (IssueType.DANGLING, kind): {A.EDIT: ["ref"]}
+        for kind in ("region", "entity", "connection", "knowledge")
+    },
+    (IssueType.UNSCOPED, "knowledge"): {A.EDIT: ["region"]},
 }
 REF_KIND: dict[str, RefKind] = {  # dangling field -> its new reference's kind
     "parent_id": "region",
@@ -138,7 +145,10 @@ class QuestionGenerator:
                     text=text,
                     target=target,
                     actions=list(ACTIONS[issue.type]),
-                    needs={str(a): list(i) for a, i in NEEDS[issue.type].items()},
+                    needs={
+                        str(a): list(i)
+                        for a, i in NEEDS.get((issue.type, issue.target_kind), {}).items()
+                    },
                     ref_kind=(
                         REF_KIND.get(issue.field or "")
                         if issue.type == IssueType.DANGLING

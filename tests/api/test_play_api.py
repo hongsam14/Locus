@@ -56,6 +56,7 @@ def test_ex13_region_screen_and_player_routes() -> None:
     assert r.status_code == 200, r.text
     view = r.json()
     assert view["region_name"] == "R1" and view["level_path"] == ["R1"] and view["level"] == "town"
+    assert view["level_path_ids"] == [view["region_id"]]  # V3 (BR-V3-24): the path's ids
     assert view["facts"] and view["facts"][0]["statement"] == "fact"
     assert view["facts"][0]["statement_ko"] is None  # translation key present, cache-only
     assert view["hearsay"] == [] and view["rumors"] == [] and view["moves"] == []
@@ -225,7 +226,7 @@ def test_u4_2_a_shut_down_executor_answers_503_not_500() -> None:
     executor.shutdown(timeout=2)  # e.g. a graceful shutdown racing a request
     r = client.post(f"/api/play/sessions/{sid}/act", json={"type": "wait"})
     assert r.status_code == 503
-    assert not p.guard.is_running(sid)  # and the guard was released
+    assert not p.guard.turn_running(sid)  # and the guard was released
     assert client.get(f"/api/play/sessions/{sid}/turn-runs").json()[0]["status"] == "failed"
 
 

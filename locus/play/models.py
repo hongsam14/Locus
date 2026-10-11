@@ -389,12 +389,14 @@ class RegionView(LocusModel):
     level: str
     description: str = ""
     level_path: list[str] = Field(default_factory=list)
+    level_path_ids: list[str] = Field(default_factory=list)  # V3: the ids of level_path
     npcs: list[NPC] = Field(default_factory=list)
     facts: list[KnowledgeView] = Field(default_factory=list)  # direct + inherited + global
     hearsay: list[KnowledgeView] = Field(default_factory=list)
     rumors: list[SessionRumor] = Field(default_factory=list)  # active session rumors
     moves: list[MoveOption] = Field(default_factory=list)
-    turn_running: bool = False
+    turn_running: bool = False  # V5 (BR-V5-22): a turn run only
+    gm_busy: bool = False  # V5: a GM write or the editor holds a lease (FR-C5)
     llm_available: bool = True
     declare_max_chars: int = 300  # U6: the server's declaration limit for the input box
 

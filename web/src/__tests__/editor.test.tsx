@@ -5,20 +5,23 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "../api/http";
 import { resetCapabilities } from "../capabilities";
-import { AugmentPanel } from "../features/editor/AugmentPanel";
 import { BuildPanel } from "../features/editor/BuildPanel";
+import { changeLabel } from "../features/editor/augmentNames";
 import { ConfirmDelete } from "../features/editor/ConfirmDelete";
 import { NpcDraftCards } from "../features/editor/NpcDraftCards";
 import { isDrag } from "../features/editor/drag";
-import { MapCanvas } from "../features/editor/MapCanvas";
+import { EditorHeader } from "../features/editor/EditorHeader";
+import { EditorMapPane } from "../features/editor/EditorMapPane";
 import { KnowledgeList } from "../features/editor/KnowledgeList";
-import { WorldFileBar } from "../features/editor/WorldFileBar";
-import { MapOverlay } from "../MapOverlay";
+import { WorldMap } from "../map";
 import { EditorPage } from "../routes/EditorPage";
 import { RegionInspector } from "../features/editor/RegionInspector";
 import { UnscopedPanel } from "../features/editor/UnscopedPanel";
 import { WikiPanel } from "../features/editor/WikiPanel";
+import { describeError } from "../errors";
+import { enumLabel, numberWithMeaning } from "../format";
 import { t } from "../i18n";
+import { ALL_OPEN, AugHost, openFileMenu } from "../test/editor";
 import type {
   AugQuestion,
   AugRun,
@@ -82,13 +85,15 @@ describe("drag threshold (BR-U3-30)", () => {
   });
 });
 
-describe("MapCanvas tools (Q5=A)", () => {
+// V8 intended change (frontend-components § 7.1): the old canvas is the map pane over `WorldMap`
+describe("EditorMapPane tools (Q5=A)", () => {
   function setup() {
     const props = {
       onSelect: vi.fn(), onSelectConnection: vi.fn(), onMove: vi.fn(),
-      onCreateRegion: vi.fn(), onCreateConnection: vi.fn(),
+      onCreateRegion: vi.fn(), onCreateConnection: vi.fn(), onMapFile: vi.fn(),
     };
-    render(<MapCanvas regions={regions} connections={[]} selectedId={null} selectedConnection={null} {...props} />);
+    render(<EditorMapPane loading={false} regions={regions} connections={[]} selectedId={null} selectedConnection={null}
+      busy={false} disabled={false} mapUrl={null} mapName={null} {...props} />);
     return props;
   }
 
@@ -115,6 +120,19 @@ describe("MapCanvas tools (Q5=A)", () => {
     fireEvent.change(screen.getByTestId("new-region-name"), { target: { value: "Mill" } });
     fireEvent.click(screen.getByTestId("new-region-save"));
     expect(p.onCreateRegion).toHaveBeenCalledWith(expect.objectContaining({ name: "Mill", level: "town" }));
+  });
+
+  it("S21: a pane with nothing to edit does not drag (V8)", () => {
+    const onMove = vi.fn();
+    render(<EditorMapPane loading={false} regions={regions} connections={[]} selectedId={null} selectedConnection={null}
+      busy={false} disabled mapUrl={null} mapName={null} onSelect={vi.fn()} onSelectConnection={vi.fn()}
+      onMove={onMove} onCreateRegion={vi.fn()} onCreateConnection={vi.fn()} onMapFile={vi.fn()} />);
+    const marker = screen.getByTestId("region-marker-r1");
+    const svg = marker.closest("svg") as SVGSVGElement;
+    fireEvent.pointerDown(marker, { clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(svg, { clientX: 130, clientY: 100 });
+    fireEvent.pointerUp(svg, { clientX: 130, clientY: 100 });
+    expect(onMove).not.toHaveBeenCalled();
   });
 
   it("connect: two regions in turn open the connection form", () => {
@@ -144,8 +162,10 @@ const VIEW: EditorRegionView = {
 
 describe("RegionInspector (US-2.2·2.3·2.4·2.5)", () => {
   beforeEach(() => (api.getEditorRegion as Mock).mockResolvedValue(VIEW));
+  // V8: four folding sections whose folds the page holds; here all unfolded
   const open = () =>
-    render(<RegionInspector worldId="w" regionId="r1" regions={regions} onChanged={() => {}} onDeleted={() => {}} />);
+    render(<RegionInspector worldId="w" regionId="r1" regions={regions} open={ALL_OPEN} onOpenChange={() => {}}
+      onChanged={() => {}} onDeleted={() => {}} />);
 
   it("shows translated knowledge, broken grounds, and adds knowledge to this region", async () => {
     (api.createKnowledge as Mock).mockResolvedValue({});
@@ -159,16 +179,22 @@ describe("RegionInspector (US-2.2·2.3·2.4·2.5)", () => {
       expect.objectContaining({ statement: "a dry well", world_id: "w" })));
   });
 
-  it("reads the region again when the page re-read the world, so a save keeps a drag", async () => {
-    // U3 review #1 (BR-U3-1): the form saves the whole region; a stale view undid a drag
+  it("reads the region again when the page asks (after a drag save), so a save keeps the drag", async () => {
+    // U3 review #1 (BR-U3-1): the form saves the whole region; a stale view undid a drag.
+    // V8 intended change (§ 7.1, design review 01 R-13): the page calls the inspector's
+    // registered reload() instead of bumping a reloadKey
     (api.updateRegion as Mock).mockResolvedValue({});
-    const props = { worldId: "w", regionId: "r1", regions, onChanged: () => {}, onDeleted: () => {} };
-    const { rerender } = render(<RegionInspector {...props} reloadKey={0} />);
+    let reload = () => {};
+    const props = { worldId: "w", regionId: "r1", open: ALL_OPEN, onOpenChange: () => {}, onChanged: () => {},
+      onDeleted: () => {}, registerReload: (_panel: string, fn: () => void) => { reload = fn; return () => {}; } };
+    const { rerender } = render(<RegionInspector {...props} regions={regions} />);
     await waitFor(() => screen.getByTestId("region-form"));
     (api.getEditorRegion as Mock).mockResolvedValue({
       ...VIEW, region: { ...VIEW.region, position: { x: 0.5, y: 0.5 } },
     });
-    rerender(<RegionInspector {...props} reloadKey={1} />); // the page moved the marker
+    // the page saved a drag of this region: its map spot moved and it asks for a re-read
+    rerender(<RegionInspector {...props} regions={regions.map((r) => (r.id === "r1" ? { ...r, position: { x: 0.5, y: 0.5 } } : r))} />);
+    act(() => reload());
     await waitFor(() => expect(api.getEditorRegion).toHaveBeenCalledTimes(2));
     fireEvent.change(screen.getByTestId("region-description"), { target: { value: "by the river" } });
     fireEvent.click(screen.getByTestId("region-save"));
@@ -176,16 +202,32 @@ describe("RegionInspector (US-2.2·2.3·2.4·2.5)", () => {
       expect.objectContaining({ position: { x: 0.5, y: 0.5 }, description: "by the river" })));
   });
 
-  it("an empty or unreadable weight box saves nothing and shows the saved weight again", async () => {
-    // U3 review #5: Number("") is 0, which blocked the path
+  it("a save while a drag's save is still out keeps the dragged spot (code review 01 #8)", async () => {
+    // the region read is the old spot; the map already shows the drag
+    (api.updateRegion as Mock).mockResolvedValue({});
+    const moved = regions.map((r) => (r.id === "r1" ? { ...r, position: { x: 0.7, y: 0.7 } } : r));
+    render(<RegionInspector worldId="w" regionId="r1" regions={moved} open={ALL_OPEN} onOpenChange={() => {}}
+      onChanged={() => {}} onDeleted={() => {}} />);
+    await waitFor(() => screen.getByTestId("region-form"));
+    fireEvent.click(screen.getByTestId("region-save"));
+    await waitFor(() => expect(api.updateRegion).toHaveBeenCalledWith("w",
+      expect.objectContaining({ position: { x: 0.7, y: 0.7 } })));
+  });
+
+  it("the weight slider saves nothing while it moves and once when let go", async () => {
+    // U3 review #5 kept its aim (no stray save); V8 intended change (§ 7.1, BR-V8-13, design
+    // review 01 R-12): one CommitRange instead of a number box — no typed value to refuse
+    (api.saveConnection as Mock).mockResolvedValue([]);
     open();
-    const box = (await screen.findByTestId("connection-weight-r1|r2|route")) as HTMLInputElement;
-    for (const typed of ["", "abc", "1.5"]) {
-      fireEvent.change(box, { target: { value: typed } });
-      fireEvent.blur(box);
-      expect(box.value).toBe("0.6");
-    }
+    const range = (await screen.findByTestId("connection-weight-r1|r2|route")) as HTMLInputElement;
+    expect(range.value).toBe("0.6");
+    fireEvent.change(range, { target: { value: "0.3" } });
+    fireEvent.change(range, { target: { value: "0.25" } });
+    expect(screen.getByTestId("connection-weight-label-r1|r2|route")).toHaveTextContent(numberWithMeaning("weight", 0.25));
     expect(api.saveConnection).not.toHaveBeenCalled();
+    fireEvent.pointerUp(range);
+    await waitFor(() => expect(api.saveConnection).toHaveBeenCalledTimes(1));
+    expect((api.saveConnection as Mock).mock.calls[0][1]).toMatchObject({ weight: 0.25, kind: "route" });
   });
 
   it("sets scopes to the picked regions", async () => {
@@ -222,13 +264,14 @@ describe("RegionInspector (US-2.2·2.3·2.4·2.5)", () => {
     (api.getDeletePlan as Mock).mockResolvedValue(plan);
     (api.deleteRegion as Mock).mockResolvedValue({ ...plan, deleted_ids: ["r1", "n1"] });
     const onDeleted = vi.fn();
-    render(<RegionInspector worldId="w" regionId="r1" regions={regions} onChanged={() => {}} onDeleted={onDeleted} />);
+    render(<RegionInspector worldId="w" regionId="r1" regions={regions} open={ALL_OPEN} onOpenChange={() => {}}
+      onChanged={() => {}} onDeleted={onDeleted} />);
     await waitFor(() => screen.getByTestId("region-delete"));
     fireEvent.click(screen.getByTestId("region-delete"));
     await waitFor(() => expect(screen.getByTestId("delete-plan")).toHaveTextContent("Ada"));
     fireEvent.click(screen.getByText(t("delete.confirm")));
     await waitFor(() => expect(api.deleteRegion).toHaveBeenCalledWith("w", "r1"));
-    expect(onDeleted).toHaveBeenCalled();
+    expect(onDeleted).toHaveBeenCalledWith("Riverton", expect.any(String));
   });
 });
 
@@ -238,8 +281,21 @@ describe("ConfirmDelete (BR-U3-9/16)", () => {
     render(<ConfirmDelete open plan={{ region_id: "r1", region_name: "Riverton", children: [],
       connections: [], npcs: [], knowledge_to_unscope: [], knowledge_scope_removed: [],
       entities_unlocated: [], blocked_by_sessions: ["s1"] }} onConfirm={onConfirm} onCancel={() => {}} />);
-    expect(screen.getByTestId("delete-blocked")).toHaveTextContent("s1");
+    // V8 (BLM § 9): the count of sessions, not their inner ids
+    expect(screen.getByTestId("delete-blocked")).toHaveTextContent(t("delete.region.blocked", { n: 1 }));
+    expect(screen.getByTestId("delete-blocked")).not.toHaveTextContent("s1");
     expect(screen.getByText(t("delete.confirm"))).toBeDisabled();
+  });
+
+  it("a blocked delete can still be cancelled (V2 review #1)", () => {
+    const onCancel = vi.fn();
+    render(<ConfirmDelete open plan={{ region_id: "r1", region_name: "Riverton", children: [],
+      connections: [], npcs: [], knowledge_to_unscope: [], knowledge_scope_removed: [],
+      entities_unlocated: [], blocked_by_sessions: ["s1"] }} onConfirm={() => {}} onCancel={onCancel} />);
+    fireEvent.click(screen.getByRole("button", { name: t("action.cancel") }));
+    expect(onCancel).toHaveBeenCalled();
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    expect(onCancel).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -249,11 +305,11 @@ describe("UnscopedPanel (BR-U3-14)", () => {
       .mockResolvedValueOnce([{ id: "k9", world_id: "w", statement: "lost", title: "lost", confidence: 1, provenance: { source: "input" } }])
       .mockResolvedValueOnce([]);
     (api.setScopes as Mock).mockResolvedValue({ region_ids: ["r2"] });
-    // U8 intended change: U3 review C12 — the panel no longer reads again on its own; the
-    // page re-reads the world and bumps reloadKey, as EditorPage does
+    // V8 intended change (§ 7.1, R-13): the panel reads again with reload() after its own
+    // write; the page holds the picked region (UX-24)
     function Page() {
-      const [rev, setRev] = useState(0);
-      return <UnscopedPanel worldId="w" regions={regions} reloadKey={rev} onChanged={() => setRev((r) => r + 1)} />;
+      const [picks, setPicks] = useState<Record<string, string>>({});
+      return <UnscopedPanel worldId="w" regions={regions} picks={picks} onPicks={setPicks} onChanged={() => {}} />;
     }
     render(<Page />);
     await waitFor(() => screen.getByTestId("unscoped-k9"));
@@ -284,12 +340,15 @@ describe("AugmentPanel (BR-U3-24..28)", () => {
       .mockResolvedValueOnce({ change: second, changed: [],
         run: runOf({ answers: 2, history: [first, second] }) });
     (api.revert as Mock).mockResolvedValue(runOf({ answers: 2, history: [first, { ...second, reverted: true }] }));
-    render(<AugmentPanel worldId="w" regions={regions} entities={[]} onChanged={() => {}} />);
+    render(<AugHost regions={regions} />);
     fireEvent.click(screen.getByTestId("augment-find"));
     await waitFor(() => expect(screen.getByTestId("augment-target")).toHaveTextContent("mill"));
     expect(screen.queryByTestId("augment-action-add")).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId("augment-action-confirm"));
     await waitFor(() => expect(screen.getAllByTestId("augment-change")).toHaveLength(1));
+    // V8 (BR-V8-18): the change in words, not the server's "type:action"
+    expect(screen.getByTestId("augment-change")).toHaveTextContent(changeLabel("low_confidence:confirm"));
+    expect(screen.getByTestId("augment-change")).not.toHaveTextContent("low_confidence:confirm");
     fireEvent.click(screen.getByTestId("augment-action-confirm"));
     await waitFor(() => expect(screen.getAllByTestId("augment-change")).toHaveLength(2));
     expect(api.startRun).toHaveBeenCalledTimes(1); // the run is kept (B2)
@@ -301,28 +360,24 @@ describe("AugmentPanel (BR-U3-24..28)", () => {
     await waitFor(() => expect(screen.getByText(t("augment.reverted"))).toBeInTheDocument());
   });
 
-  it("hands its run id to the page and reads the run again when it comes back", async () => {
-    // U3 review #2 (BR-U3-26): a click on the map unmounts the tab; the run must survive
+  it("the run outlives the panel: back from another tab it is there, not read or started again", async () => {
+    // U3 review #2 (BR-U3-26): a click on the map unmounts the tab; the run must survive.
+    // V8 intended change (code plan § 1.1 R-15): the page holds the run itself, so the
+    // panel coming back neither re-reads it by id nor starts a new one
     const change = { id: "c1", description: "low_confidence:confirm", added_ids: [], reverted: false };
     (api.startRun as Mock).mockResolvedValue(runOf());
-    (api.getRun as Mock).mockResolvedValue(runOf({ answers: 1, history: [change] }));
-    const onRunId = vi.fn();
-    const { unmount } = render(
-      <AugmentPanel worldId="w" regions={regions} entities={[]} onChanged={() => {}} onRunId={onRunId} />,
-    );
+    (api.answer as Mock).mockResolvedValue({ change, changed: [], run: runOf({ answers: 1, history: [change] }) });
+    const { rerender } = render(<AugHost regions={regions} />);
     fireEvent.click(screen.getByTestId("augment-find"));
-    await waitFor(() => expect(onRunId).toHaveBeenCalledWith("run1"));
-    unmount();
-    render(<AugmentPanel worldId="w" regions={regions} entities={[]} onChanged={() => {}} runId="run1" />);
-    await waitFor(() => expect(api.getRun).toHaveBeenCalledWith("run1"));
-    await waitFor(() => expect(screen.getAllByTestId("augment-revert")[0]).not.toBeDisabled());
+    await waitFor(() => screen.getByTestId("augment-action-confirm"));
+    fireEvent.click(screen.getByTestId("augment-action-confirm"));
+    await waitFor(() => expect(screen.getAllByTestId("augment-change")).toHaveLength(1));
+    rerender(<AugHost regions={regions} show={false} />);
+    expect(screen.queryByTestId("augment-panel")).not.toBeInTheDocument();
+    rerender(<AugHost regions={regions} />);
+    expect(screen.getAllByTestId("augment-revert")[0]).not.toBeDisabled();
     expect(api.startRun).toHaveBeenCalledTimes(1);
-  });
-
-  it("a run the server no longer has is reported lost when the panel comes back", async () => {
-    (api.getRun as Mock).mockRejectedValue(new HttpError(404, "Not Found", "run not found"));
-    render(<AugmentPanel worldId="w" regions={regions} entities={[]} onChanged={() => {}} runId="gone" />);
-    await waitFor(() => expect(screen.getByTestId("augment-lost")).toBeInTheDocument());
+    expect(api.getRun).not.toHaveBeenCalled();
   });
 
   it("a lost run (404 after a restart) offers a new search", async () => {
@@ -330,7 +385,7 @@ describe("AugmentPanel (BR-U3-24..28)", () => {
     (api.answer as Mock).mockRejectedValue(new HttpError(404, "Not Found", "run not found"));
     // U8 intended change: U3 review #12 — a 404 is "lost" only when the run is gone too
     (api.getRun as Mock).mockRejectedValue(new HttpError(404, "Not Found", "run not found"));
-    render(<AugmentPanel worldId="w" regions={regions} entities={[]} onChanged={() => {}} />);
+    render(<AugHost regions={regions} />);
     fireEvent.click(screen.getByTestId("augment-find"));
     await waitFor(() => screen.getByTestId("augment-action-ignore"));
     await act(async () => fireEvent.click(screen.getByTestId("augment-action-ignore")));
@@ -350,7 +405,8 @@ describe("WikiPanel (BR-U3-31)", () => {
     render(<WikiPanel worldId="w" regions={regions} />);
     await waitFor(() => screen.getByTestId("prior-p1"));
     fireEvent.click(screen.getByTestId("prior-refs-p1"));
-    expect(screen.getByTestId("prior-p1")).toHaveTextContent("Riverton–Hollow route");
+    // V8 (BR-V8-15): the kind in words
+    expect(screen.getByTestId("prior-p1")).toHaveTextContent(`Riverton–Hollow ${enumLabel("connectionKind", "route")}`);
     expect(screen.getByTestId("wiki-broken")).toHaveTextContent("mill");
   });
 });
@@ -441,9 +497,11 @@ describe("U8 editor", () => {
     expect(screen.getAllByTestId("wip-badge")).toHaveLength(1); // only that field
   });
 
-  it("a build 503 for a missing provider reads 'LLM key required'", async () => {
-    (api.uploadBuild as Mock).mockRejectedValue(new HttpError(503, "Service Unavailable",
-      '{"detail":"world build (LLM provider) unavailable"}'));
+  it.each([
+    ['{"detail":"world build (LLM provider) unavailable","code":"llm_unavailable"}'], // V2 review #2
+    ['{"detail":"world build (LLM provider) unavailable"}'], // a server without codes
+  ])("a build 503 for a missing provider reads 'LLM key required' (%s)", async (body) => {
+    (api.uploadBuild as Mock).mockRejectedValue(new HttpError(503, "Service Unavailable", body));
     build();
     fireEvent.change(screen.getByTestId("build-memo"), { target: { value: "a river town" } });
     fireEvent.click(screen.getByTestId("build-submit"));
@@ -534,7 +592,10 @@ describe("U3 review carry: the editor screen", () => {
     fireEvent.pointerDown(marker, { clientX: 100, clientY: 100 });
     fireEvent.pointerMove(svg, { clientX: 120, clientY: 100 });
     fireEvent.pointerUp(svg, { clientX: 120, clientY: 100 });
-    await waitFor(() => expect(screen.getByTestId("editor-error")).toHaveTextContent("graph down"));
+    // V8 (BR-V8-22): a sentence, the server's words folded under it
+    const said = describeError(new HttpError(500, "Server Error", "graph down"));
+    await waitFor(() => expect(screen.getByTestId("editor-error")).toHaveTextContent(said.title));
+    expect(screen.getByTestId("editor-error").querySelector("details")).toHaveTextContent("graph down");
     expect((api.exportWorld as Mock).mock.calls.length).toBe(exports + 1);
   });
 
@@ -545,12 +606,14 @@ describe("U3 review carry: the editor screen", () => {
 
   it("#14: a closed build panel keeps no files — reopened, [build] needs new input", async () => {
     editor();
-    await waitFor(() => screen.getByTestId("file-build"));
+    await waitFor(() => screen.getByTestId("file-menu"));
+    openFileMenu(); // V8: [build] sits under [파일 ▾]
     fireEvent.click(screen.getByTestId("file-build"));
     const art = new File(["x"], "old-map.png", { type: "image/png" });
     fireEvent.change(screen.getByTestId("build-images"), { target: { files: [art] } });
     await waitFor(() => expect(screen.getByTestId("build-submit")).toBeEnabled());
     fireEvent.click(screen.getByText(t("action.close")));
+    openFileMenu();
     fireEvent.click(screen.getByTestId("file-build"));
     await waitFor(() => expect(api.capabilities).toHaveBeenCalled());
     expect(screen.getByTestId("build-submit")).toBeDisabled();
@@ -564,9 +627,11 @@ describe("U3 review carry: the editor screen", () => {
     fireEvent.click(screen.getByTestId("region-marker-r2"));
     fireEvent.click(screen.getByTestId("region-marker-r1"));
     expect(screen.getByTestId("connection-form")).toHaveTextContent(t("editor.connection.edit"));
-    expect(screen.getByTestId("connection-exists")).toHaveTextContent("0.35");
+    // V8 (§ 7.1, BR-V8-13): the number with its meaning, one CommitRange
+    expect(screen.getByTestId("connection-exists")).toHaveTextContent(numberWithMeaning("weight", 0.35));
     expect(screen.getByTestId("connection-weight")).toHaveValue("0.35");
     fireEvent.change(screen.getByTestId("connection-weight"), { target: { value: "0.5" } });
+    fireEvent.pointerUp(screen.getByTestId("connection-weight"));
     fireEvent.click(screen.getByTestId("connection-save"));
     await waitFor(() => expect(api.saveConnection).toHaveBeenCalledTimes(1));
     expect((api.saveConnection as Mock).mock.calls[0][1]).toMatchObject({
@@ -601,11 +666,14 @@ describe("U3 review carry: the editor screen", () => {
     expect(screen.getByTestId("map-tool-connect")).toBeDisabled();
   });
 
-  it("S01: with no open session the bar offers a session start", async () => {
+  it("S01: with no open session the head offers play — the player form, no bare session", async () => {
+    // V8 intended change (Q2 = A, BR-V8-27): [이 월드로 플레이] replaces the session bar
     editor();
-    fireEvent.click(await screen.findByTestId("start-session-band"));
-    expect(await screen.findByTestId("session-new-btn")).toBeInTheDocument();
-    expect(screen.queryByTestId("open-sessions-band")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("play-this-world")).toBeEnabled());
+    fireEvent.click(screen.getByTestId("play-this-world"));
+    expect(await screen.findByTestId("new-session-name")).toBeInTheDocument();
+    expect(screen.queryByTestId("open-sessions")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("session-new-btn")).not.toBeInTheDocument();
   });
 
   it("S05: a delete refused because a player walked in shows who, and stays off", async () => {
@@ -616,10 +684,13 @@ describe("U3 review carry: the editor screen", () => {
     (api.getDeletePlan as Mock).mockResolvedValue(plan);
     (api.deleteRegion as Mock).mockRejectedValue(new HttpError(409, "Conflict", JSON.stringify(
       { detail: { message: "a player of an open session stands in this region", session_ids: ["s7"] } })));
-    render(<RegionInspector worldId="w" regionId="r1" regions={regions} onChanged={() => {}} onDeleted={() => {}} />);
+    render(<RegionInspector worldId="w" regionId="r1" regions={regions} open={ALL_OPEN} onOpenChange={() => {}}
+      onChanged={() => {}} onDeleted={() => {}} />);
     fireEvent.click(await screen.findByTestId("region-delete"));
     fireEvent.click(await screen.findByText(t("delete.confirm")));
-    await waitFor(() => expect(screen.getByTestId("delete-blocked")).toHaveTextContent("s7"));
+    // V8 (BLM § 9): how many sessions, not their ids
+    await waitFor(() => expect(screen.getByTestId("delete-blocked")).toHaveTextContent(t("delete.region.blocked", { n: 1 })));
+    expect(screen.getByTestId("delete-blocked")).not.toHaveTextContent("s7");
     expect(screen.getByText(t("delete.confirm"))).toBeDisabled();
     expect(screen.getByTestId("confirm-delete")).not.toHaveTextContent("409");
   });
@@ -631,7 +702,7 @@ describe("U3 review carry: the editor screen", () => {
       entities_unlocated: [{ id: "e1", name: "Old Bell" }], blocked_by_sessions: [] };
     render(<ConfirmDelete open plan={plan} regions={regions} onConfirm={() => {}} onCancel={() => {}} />);
     const list = screen.getByTestId("delete-plan");
-    expect(list).toHaveTextContent("Hollow (route)");
+    expect(list).toHaveTextContent(`Hollow (${enumLabel("connectionKind", "route")})`); // V8: the kind in words
     expect(list).toHaveTextContent("mill");
     expect(list).toHaveTextContent("Old Bell");
   });
@@ -641,9 +712,10 @@ describe("U3 review carry: the editor screen", () => {
     (api.getEditorRegion as Mock)
       .mockImplementationOnce(() => new Promise((r) => (first = r)))
       .mockResolvedValueOnce({ ...VIEW, region: { ...VIEW.region, name: "Riverton (new)" } });
-    const props = { worldId: "w", regionId: "r1", regions, onChanged: () => {}, onDeleted: () => {} };
-    const { rerender } = render(<RegionInspector {...props} reloadKey={0} />);
-    rerender(<RegionInspector {...props} reloadKey={1} />);
+    let reload = () => {};
+    render(<RegionInspector worldId="w" regionId="r1" regions={regions} open={ALL_OPEN} onOpenChange={() => {}}
+      onChanged={() => {}} onDeleted={() => {}} registerReload={(_p, fn) => { reload = fn; return () => {}; }} />);
+    act(() => reload()); // V8: the page's reload() instead of a reloadKey
     await waitFor(() => expect(screen.getByTestId("region-inspector")).toHaveTextContent("Riverton (new)"));
     await act(async () => first({ ...VIEW, region: { ...VIEW.region, name: "Riverton (old)" } }));
     expect(screen.getByTestId("region-inspector")).not.toHaveTextContent("Riverton (old)");
@@ -654,8 +726,10 @@ describe("U3 review carry: the editor screen", () => {
     (api.listUnscoped as Mock)
       .mockImplementationOnce(() => new Promise((r) => (first = r)))
       .mockResolvedValueOnce([]);
-    const { rerender } = render(<UnscopedPanel worldId="w" regions={regions} reloadKey={0} onChanged={() => {}} />);
-    rerender(<UnscopedPanel worldId="w" regions={regions} reloadKey={1} onChanged={() => {}} />);
+    let reload = () => {};
+    render(<UnscopedPanel worldId="w" regions={regions} picks={{}} onPicks={() => {}} onChanged={() => {}}
+      registerReload={(_p, fn) => { reload = fn; return () => {}; }} />);
+    act(() => reload()); // V8: the page's reload() instead of a reloadKey
     await waitFor(() => screen.getByText(t("editor.unscoped.none")));
     await act(async () => first([{ id: "k9", world_id: "w", statement: "lost", title: "lost", confidence: 1, provenance: { source: "input" } }]));
     expect(screen.queryByTestId("unscoped-k9")).not.toBeInTheDocument();
@@ -678,7 +752,9 @@ describe("U3 review carry: the editor screen", () => {
     const had = proto.setPointerCapture;
     proto.setPointerCapture = (id: number) => void captured.push(id);
     try {
-      render(<MapOverlay regions={regions} connections={[]} selectedId={null} draggable onSelect={() => {}} onMove={onMove} />);
+      // V8 intended change (§ 7.1): the adapter is gone; `WorldMap` in edit mode directly
+      render(<WorldMap mode="edit" label="map" regions={regions} connections={[]} selectedId={null} draggable
+        onSelect={() => {}} onMove={onMove} />);
       const marker = screen.getByTestId("region-marker-r1");
       const svg = marker.closest("svg") as SVGSVGElement;
       for (const end of ["pointerCancel", "lostPointerCapture"] as const) {
@@ -695,7 +771,8 @@ describe("U3 review carry: the editor screen", () => {
   });
 
   it("S24: the file box is emptied after a pick, so the same file can be picked again", async () => {
-    render(<MemoryRouter><WorldFileBar worldId="w" name="W" openSessions={0} regions={regions}
+    // V8 intended change (§ 7.1): the World File bar is the head's [파일 ▾]; the input stays mounted
+    render(<MemoryRouter><EditorHeader worldId="w" world={undefined} name="W" openSessions={0}
       onLoaded={() => {}} onBuild={() => {}} /></MemoryRouter>);
     const input = screen.getByTestId("file-input") as HTMLInputElement;
     const set = vi.fn();
@@ -706,12 +783,12 @@ describe("U3 review carry: the editor screen", () => {
     await waitFor(() => expect(screen.getByTestId("file-confirm")).toHaveTextContent(t("file.replaceConfirm")));
   });
 
-  it("C8: the World File bar asks replace, then the session question, then loads with confirm", async () => {
+  it("C8: the World File load asks replace, then the session question, then loads with confirm", async () => {
     (api.importWorldFile as Mock)
       .mockRejectedValueOnce(new HttpError(409, "Conflict", '{"detail":{"open_sessions":3,"session_ids":["a","b","c"]}}'))
       .mockResolvedValueOnce({ ok: true });
     const onLoaded = vi.fn();
-    render(<MemoryRouter><WorldFileBar worldId="w" name="W" openSessions={3} regions={regions}
+    render(<MemoryRouter><EditorHeader worldId="w" world={undefined} name="W" openSessions={3}
       onLoaded={onLoaded} onBuild={() => {}} /></MemoryRouter>);
     const file = new File(['{"format_version": 1}'], "w.world.json", { type: "application/json" });
     fireEvent.change(screen.getByTestId("file-input"), { target: { files: [file] } });
@@ -744,7 +821,7 @@ describe("U3 review carry: the augmentation screen", () => {
   const answered = (run: AugRun) => ({ change: null, changed: [], run });
   async function open(run: AugRun) {
     (api.startRun as Mock).mockResolvedValue(run);
-    render(<AugmentPanel worldId="w" regions={regions} entities={[{ id: "e1", name: "Old Bell" }]} onChanged={() => {}} />);
+    render(<AugHost regions={regions} entities={[{ id: "e1", name: "Old Bell" }]} />);
     fireEvent.click(screen.getByTestId("augment-find"));
     await waitFor(() => screen.getAllByTestId("augment-question"));
   }
@@ -754,7 +831,9 @@ describe("U3 review carry: the augmentation screen", () => {
     (api.getRun as Mock).mockResolvedValue(runOf({ open_questions: [low()] }));
     await open(runOf({ open_questions: [low()] }));
     await act(async () => fireEvent.click(screen.getByTestId("augment-action-confirm")));
-    await waitFor(() => expect(screen.getByTestId("augment-error").textContent).toBe("region not found: gone"));
+    // V8 (BLM § 1.4, BR-V8-22): a sentence that says what to do, the server's reason folded
+    await waitFor(() => expect(screen.getByTestId("augment-error")).toHaveTextContent(t("notice.augmentWorldChanged")));
+    expect(screen.getByTestId("augment-error").querySelector("details")).toHaveTextContent("region not found: gone");
     expect(api.getRun).toHaveBeenCalledWith("run1");
     expect(screen.queryByTestId("augment-lost")).not.toBeInTheDocument();
     expect(screen.getAllByTestId("augment-question")).toHaveLength(1);
@@ -780,6 +859,10 @@ describe("U3 review carry: the augmentation screen", () => {
     fireEvent.change(screen.getByTestId("augment-confidence"), { target: { value: "1.5" } });
     await act(async () => fireEvent.click(screen.getByTestId("augment-action-confirm")));
     expect((api.answer as Mock).mock.calls[0][1]).toMatchObject({ action: "confirm", statement: undefined, confidence: undefined });
+    // V8 intended change (BLM § 6.2): an answer that went through clears that card's draft
+    await waitFor(() => expect(screen.getByTestId("augment-statement")).toHaveValue(""));
+    fireEvent.change(screen.getByTestId("augment-statement"), { target: { value: "typed" } });
+    fireEvent.change(screen.getByTestId("augment-confidence"), { target: { value: "1.5" } });
     await act(async () => fireEvent.click(screen.getByTestId("augment-action-edit")));
     expect((api.answer as Mock).mock.calls[1][1]).toMatchObject({ action: "edit", statement: "typed", confidence: undefined });
   });
@@ -878,5 +961,33 @@ describe("U8 review #2: the build panel across a close", () => {
     expect(screen.getByTestId("build-memo")).toHaveValue("");
     expect(screen.queryByTestId("build-report")).not.toBeInTheDocument();
     expect(screen.getByTestId("build-submit")).toBeDisabled();
+  });
+});
+
+// V8 code review 01 #24, #38 (I1): the inspector's words and its one-second "saved"
+describe("RegionInspector: the title it names, the saved label's second", () => {
+  const props = { worldId: "w", regionId: "r1", regions, open: ALL_OPEN, onOpenChange: () => {}, onChanged: () => {}, onDeleted: () => {} };
+
+  it("the delete confirm names knowledge by the title its card shows", async () => {
+    (api.getEditorRegion as Mock).mockResolvedValue({ ...VIEW, knowledge: [{ knowledge: { ...VIEW.knowledge[0].knowledge,
+      title: "Watermill", title_ko: "물레방아" }, scope_region_ids: ["r1"] }] });
+    render(<RegionInspector {...props} />);
+    fireEvent.click(await screen.findByRole("button", { name: t("action.deleteKnowledge", { name: "물레방아" }) }));
+    expect(await screen.findByTestId("confirm-delete")).toHaveTextContent(t("delete.knowledge", { name: "물레방아" }));
+  });
+
+  it("[저장] says it saved, and after a second is [저장] again", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      (api.getEditorRegion as Mock).mockResolvedValue(VIEW);
+      (api.updateRegion as Mock).mockResolvedValue({});
+      render(<RegionInspector {...props} />);
+      fireEvent.click(await screen.findByTestId("region-save"));
+      await waitFor(() => expect(screen.getByTestId("region-save")).toHaveTextContent(t("notice.saved")));
+      act(() => vi.advanceTimersByTime(1001));
+      expect(screen.getByTestId("region-save")).toHaveTextContent(t("editor.region.save"));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -158,7 +158,7 @@ def test_connection_save_is_one_delete_and_one_upsert() -> None:
     """nfr §1 NFR-3 ②: FD writes only; ``_written`` adds the meta write."""
     stack, r = _towns("A", "B")
     stack.editors.connections.upsert_connection(_conn(r["A"], r["B"]))
-    assert stack.meter.calls == ["delete_edges", "upsert_edges", "upsert_nodes"]
+    assert stack.meter.calls == ["delete_edges", "upsert_edges", "update_node"]
 
 
 # --------------------------------------------------------------------------- #
@@ -252,7 +252,7 @@ def test_set_scopes_is_at_most_one_delete_and_one_upsert() -> None:
     stack.editors.knowledge.create_knowledge(item, r["A"].id)
     stack.meter.calls.clear()
     stack.editors.knowledge.set_scopes("w", item.id, [r["B"].id, r["C"].id])
-    assert stack.meter.calls == ["delete_edges", "upsert_edges", "upsert_nodes"]
+    assert stack.meter.calls == ["delete_edges", "upsert_edges", "update_node"]
 
 
 def test_scopes_need_existing_regions_and_knowledge() -> None:
@@ -321,3 +321,70 @@ def test_tp_u3_6_edits_keep_the_world_file_round_trip(file: WorldFile, ops: list
     reread = again.exporter.export("w")
     stamp = {"exported_at": None}
     assert reread.model_copy(update=stamp).to_json() == out.model_copy(update=stamp).to_json()
+
+
+# --------------------------------------------------------------------------- #
+# V7 — delete_held reads and deletes by the kind it was asked for (FD review R-02)
+# --------------------------------------------------------------------------- #
+def _shared_id_world(*, knowledge: bool, entity: bool) -> Stack:
+    from locus.shared.models import Entity, EntityType
+
+    stack = Stack()
+    persist_graph(
+        stack.graph,
+        stack.search,
+        None,
+        "w",
+        knowledge=(
+            [Knowledge(id="k1", world_id="w", statement="s", title="t", provenance=_prov())]
+            if knowledge
+            else []
+        ),
+        entities=(
+            [
+                Entity(
+                    id="k1",
+                    world_id="w",
+                    name="Ida",
+                    entity_type=EntityType.PERSON,
+                    description="a miller",
+                    provenance=_prov(),
+                )
+            ]
+            if entity
+            else []
+        ),
+        meta=WorldMeta(id="w", name="W"),
+    )
+    stack.cache.invalidate("w")
+    return stack
+
+
+def test_delete_held_takes_its_own_kind_when_another_shares_the_id() -> None:
+    stack = _shared_id_world(knowledge=True, entity=True)  # an unlabeled read finds the entity
+    stack.editors.knowledge.delete_knowledge("w", "k1")
+    assert stack.graph.get_node("w", "k1", label="Knowledge") is None
+    assert stack.graph.get_node("w", "k1", label="Entity") is not None
+    assert ("delete_node", "k1", "Knowledge") in stack.graph.calls_with  # TP-V7-12
+
+
+def test_delete_held_leaves_another_kinds_node_and_document() -> None:
+    stack = _shared_id_world(knowledge=False, entity=True)
+    with pytest.raises(LookupError):
+        stack.editors.knowledge.delete_knowledge("w", "k1")
+    assert stack.graph.get_node("w", "k1", label="Entity") is not None
+    assert ("w", "k1") in stack.search.docs
+
+
+def test_delete_held_still_clears_the_document_of_a_node_already_gone() -> None:
+    stack = _shared_id_world(knowledge=True, entity=False)
+    stack.graph.delete_node("w", "k1")  # a cut delete: graph gone, document left
+    with pytest.raises(LookupError):
+        stack.editors.knowledge.delete_knowledge("w", "k1")
+    assert ("w", "k1") not in stack.search.docs
+
+
+def test_a_node_read_by_kind_finds_it_behind_another_kind_of_the_same_id() -> None:
+    stack = _shared_id_world(knowledge=True, entity=True)  # an unlabeled read finds the entity
+    node = stack.editors.writes.node("w", "k1", "Knowledge")
+    assert node is not None and node.label == "Knowledge"

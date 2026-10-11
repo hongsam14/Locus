@@ -7,7 +7,7 @@ from typing import TypeVar
 
 from fastapi import APIRouter, Depends
 
-from api.deps import display_lang, get_localization, get_play
+from api.deps import display_lang, get_localization, get_play, lang_settings
 from api.errors import PLAY_ERRORS, http_error
 from api.schemas import (
     DeedViewOut,
@@ -17,6 +17,7 @@ from api.schemas import (
     RumorOut,
     SupportUpdate,
     WorldStateOut,
+    carry_seed_translation,
     enrichment_for,
     localize,
     localize_deed_views,
@@ -34,6 +35,7 @@ from locus.play.models import (
 )
 from locus.play.turn.advancer import TurnResult
 from locus.play.wiring import PlayContainer
+from locus.shared.config import Settings
 
 router = APIRouter(prefix="/api/gm", tags=["gm"])
 
@@ -191,11 +193,10 @@ def set_distortion(
     p: PlayContainer = Depends(get_play),
 ) -> RegionDistortion:
     try:
-        p.distortions.set_region_distortion(session_id, region_id, body.degree)
+        # the row as the service saved it (P10; V5: no second read of the store)
+        return p.distortions.set_region_distortion(session_id, region_id, body.degree)
     except PLAY_ERRORS as exc:
         raise http_error(exc) from exc
-    # the stored row (P10): the service has checked the region, so it exists now
-    return next(r for r in p.repo.list_region_distortions(session_id) if r.region_id == region_id)
 
 
 @router.get("/sessions/{session_id}/state", response_model=WorldStateOut)
@@ -221,8 +222,9 @@ def list_distortions(
 # --- turn --------------------------------------------------------------------- #
 @router.post("/sessions/{session_id}/advance", response_model=TurnResult)
 def advance(session_id: str, p: PlayContainer = Depends(get_play)) -> TurnResult:
-    """Manual GM turn: the same engine the player's actions drive (U4, BR-U4-16);
-    runs without an LLM (rumor drafts skipped). 409 while a run is in progress."""
+    """Manual GM turn: the same engine the player's actions drive (U4, BR-U4-16), run in
+    the request; with an LLM it drafts rumors like any turn, without one it skips them.
+    409 while a run is in progress."""
     try:
         return p.turns.advance(session_id).turns[-1]
     except PLAY_ERRORS as exc:
@@ -289,12 +291,18 @@ def start_seed(
     seed_id: str,
     p: PlayContainer = Depends(get_play),
     loc: LocalizationContainer | None = Depends(get_localization),
+    settings: Settings = Depends(lang_settings),
 ) -> EventOut:
-    """Start a seed as an ACTIVE event under the GM lease (409 closed / turn / running)."""
+    """Start a seed as an ACTIVE event under the GM lease (409 closed / turn / running).
+    The seed's translation becomes the event description's (V3, BR-V3-17); the response
+    stays untranslated like every write, and the next events read finds it."""
     try:
         event = p.seeds.start(session_id, seed_id)
     except PLAY_ERRORS as exc:
         raise http_error(exc) from exc
+    carry_seed_translation(
+        loc, event, seed_id, langs=settings.supported_langs, session_id=session_id
+    )
     return _events_out(loc, session_id, [event], enrich=False)[0]
 
 

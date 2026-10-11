@@ -15,5 +15,9 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/setupTests.ts"],
+    globalSetup: ["./src/test/globalSetup.ts"],
+    // screen tests render whole pages; under a loaded run (CI, parallel files) some pass 5 s
+    // and failed as time-outs that hid real results (V8 code review 01 #15)
+    testTimeout: 15_000,
   },
 });

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "../../i18n";
 import type { NPC, NpcDraft } from "../../types";
-import { Button, Card, Field } from "../../ui";
+import { Button, Card, Field, Textarea } from "../../ui";
 import { NpcDraftCards } from "./NpcDraftCards";
 
 export interface NpcFields {
@@ -34,7 +34,7 @@ export function NpcEditorList({
   const [adding, setAdding] = useState(false);
   return (
     <div className="flex flex-col gap-1.5" data-testid="npc-list">
-      {npcs.length === 0 && <div className="text-xs text-ink-soft">{t("editor.npc.none")}</div>}
+      {npcs.length === 0 && <div className="text-xs text-muted">{t("editor.npc.none")}</div>}
       {npcs.map((n) =>
         editing === n.id ? (
           <NpcForm key={n.id} initial={n} busy={busy} onCancel={() => setEditing(null)}
@@ -44,13 +44,14 @@ export function NpcEditorList({
             }} />
         ) : (
           <Card key={n.id} data-testid={`editor-npc-${n.id}`} className="text-sm flex flex-col gap-0.5">
-            <strong>{n.name}</strong>
-            <span className="text-xs text-ink-soft">{n.role} · {n.traits.join(", ")}</span>
-            <span className="text-xs">{n.description}</span>
-            <div className="flex gap-1">
+            <strong className="[overflow-wrap:anywhere]">{n.name}</strong>
+            <span className="text-xs text-muted [overflow-wrap:anywhere]">{n.role} · {n.traits.join(", ")}</span>
+            <span className="text-xs [overflow-wrap:anywhere]">{n.description}</span>
+            <div className="flex flex-wrap gap-1">
               <Button size="sm" disabled={busy} data-testid={`npc-edit-${n.id}`}
-                onClick={() => setEditing(n.id)}>{t("editor.knowledge.edit")}</Button>
+                onClick={() => setEditing(n.id)}>{t("action.editNpc")}</Button>
               <Button size="sm" variant="danger" disabled={busy} data-testid={`npc-delete-${n.id}`}
+                aria-label={t("action.deleteNpc", { name: n.name })}
                 onClick={() => onDelete(n)}>✕</Button>
             </div>
           </Card>
@@ -89,7 +90,7 @@ function NpcForm({ initial, busy, onSubmit, onCancel }: {
         onChange={(e) => setName(e.target.value)} />
       <Field label={t("editor.npc.role")} data-testid="npc-role" value={role}
         onChange={(e) => setRole(e.target.value)} />
-      <Field label={t("editor.npc.description")} data-testid="npc-description" value={description}
+      <Textarea label={t("editor.npc.description")} data-testid="npc-description" value={description} rows={2}
         onChange={(e) => setDescription(e.target.value)} />
       <Field label={t("editor.npc.traits")} value={traits} onChange={(e) => setTraits(e.target.value)} />
       <div className="flex gap-1">

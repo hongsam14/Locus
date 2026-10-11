@@ -1,275 +1,291 @@
 # Code Structure
 
-> Reverse Engineering — Purpose Restructure Cycle (2026-09-29). 기준 커밋 `ee61277`. 줄 수는 공백·주석 포함 `wc -l` 값이다.
+> Reverse Engineering — Follow-up Cycle (2026-10-07). 기준 커밋 `240e82d`. 2026-09-29 판을 대체한다.
+> 줄 수는 `wc -l`(공백·주석 포함)이다.
 
 ## Build System
 
-- **Type**: Python setuptools(`pyproject.toml`) + npm(`web/package.json`).
+- **Type**: setuptools(Python) + npm(web) + Docker Compose.
 - **Configuration**:
-  - `pyproject.toml`
-    - 패키지 `locus*`만 포함한다. `api/`는 패키지에 들지 않아서 Docker 이미지에서 빠진다.
-    - 콘솔 스크립트는 `locus = locus.__main__:main`.
-    - ruff(E,W,F,I,B,C4; line 100), black(100), mypy(`check_untyped_defs`, 강제하지 않음).
-    - pytest 기본 `--cov=locus`.
-  - `requirements.txt` / `requirements-dev.txt`: `sqlalchemy`와 `psycopg`가 빠져 있어 pyproject와 어긋난다.
-  - `web/package.json`: 스크립트는 `dev`, `build`, `test`(vitest), `lint`(`tsc --noEmit`). ESLint와 Prettier는 없다.
-  - `docker-compose.yml`, `Dockerfile`, `web/Dockerfile`(node:20 빌드 → nginx), `web/nginx.conf`(SPA fallback + `/api` 프록시).
-  - CI 없음. `.github/`, pre-commit, Makefile이 없다.
+  - `pyproject.toml`:
+    - 패키지 정의: `locus` 0.1.0, `requires-python >=3.11`, `license = "MIT"`(SPDX), 콘솔 스크립트 `locus = locus.__main__:main`.
+    - `packages.find include=["locus*"]`라서 **`api/`는 휠에 들어가지 않는다**(RE-T07).
+    - 패키지 데이터 `world/demo/worlds/*.json`, `world/demo/worlds/*/*`.
+    - 도구 설정: ruff(E,W,F,I,B,C4, 줄 100), black(100), mypy(`check_untyped_defs`, `ignore_missing_imports`), pytest `addopts --cov=locus`.
+  - `requirements.txt`·`requirements-dev.txt`: pyproject와 같아야 한다. `tests/test_packaging.py`가 강제한다. **lock 파일은 없다.**
+  - `web/package.json`: scripts `dev`, `build`(`tsc -b && vite build`), `preview`, `test`(`vitest run`), `lint`(`tsc --noEmit`). `package-lock.json`이 v3이다.
+  - `web/vite.config.ts`: react·tailwind 플러그인, dev 프록시 `/api` → `:8000`, vitest jsdom.
+  - `Dockerfile`(app), `web/Dockerfile`(web), `web/nginx.conf`, `docker-compose.yml`, `env.example`, `.github/workflows/ci.yml`.
 
 ## Key Classes/Modules
 
 ```mermaid
-flowchart LR
-    models["models"]
-    config["config"]
-    llm["llm"]
-    storage["storage"]
-    ingestion["ingestion"]
-    topology["topology"]
-    ontology["ontology"]
-    wiki["commonsense_wiki"]
-    consensus["consensus"]
-    query["query"]
-    services["services"]
-    augmentation["augmentation"]
-    session["session"]
-    translation["translation"]
-    api["api"]
-
-    llm --> config
-    ingestion --> llm
-    ingestion --> models
-    topology --> wiki
-    ontology --> wiki
-    ontology --> llm
-    wiki --> storage
-    wiki --> llm
-    consensus --> models
-    query --> consensus
-    query --> storage
-    services --> ingestion
-    services --> topology
-    services --> ontology
-    services --> query
-    augmentation --> storage
-    session --> query
-    session --> consensus
-    session --> llm
-    translation --> session
-    config -.->|"역방향"| session
-    api --> services
-    api --> query
-    api --> augmentation
-    api --> session
-    api --> translation
+flowchart TB
+    subgraph SharedB["locus/shared (3,046)"]
+        Cfg["config: Settings, tuning"]
+        Llm["llm: ports, OpenAI, retry, counting"]
+        Mdl["models: graph, io, reports, enums, util"]
+        Sto["storage: ports, neo4j, opensearch, mapping, persistence, sql"]
+    end
+    subgraph KnowB["locus/knowledge (717)"]
+        Cache["WorldCache + WorldLoader"]
+        Cons["consensus + propagation (pure)"]
+        Qry["QueryEngine"]
+    end
+    subgraph WorldB["locus/world (6,455)"]
+        Bld["WorldBuilder"]
+        Ing["ingestion"]
+        Top["topology"]
+        Ont["ontology"]
+        Wiki["wiki"]
+        Aug["augmentation"]
+        Edt["editor: Editors bundle"]
+        WF["worldfile"]
+        Demo["demo: DemoWorlds"]
+    end
+    subgraph PlayB["locus/play (8,524)"]
+        Sess["SessionService"]
+        Plr["player: PlayService, movement, log"]
+        Turn["turn: TurnAdvancer, guard, executor, budget, quota"]
+        Npc["npc: NpcDialogueService, scope, prompts"]
+        Deed["deeds: DeedService"]
+        Rum["rumor: RumorService, spread, dynamics"]
+        Evt["event: EventService, SeedService, dynamics"]
+        PSto["storage: PostgresPlayRepository, UoW"]
+    end
+    subgraph L10nB["locus/localization (684)"]
+        TS["TranslationService"]
+    end
+    subgraph ApiB["api (2,544)"]
+        Main["main: assemble_all, lifespan"]
+        Rt["routers: world, world_editor, knowledge, play, gm"]
+    end
+    Bld --> Ing
+    Bld --> Top
+    Bld --> Ont
+    Bld --> Wiki
+    Turn --> Npc
+    Turn --> Deed
+    Turn --> Rum
+    Turn --> Evt
+    Turn --> PSto
+    Plr --> Turn
+    Npc --> Qry
+    Rt --> Bld
+    Rt --> Edt
+    Rt --> Turn
+    Rt --> TS
+    Edt --> Cache
+    Qry --> Cons
+    Qry --> Cache
 ```
 
 텍스트 대안:
-- 대부분의 패키지가 `models`에 의존한다.
-- 역방향 의존이 둘 있다.
-  - `config → session`: `settings.rumor_dynamics_params`.
-  - `translation → session`: 번역 캐시가 `SessionRepository`에 들어 있다.
+- `shared`: 설정, LLM 포트·어댑터, 모델, 저장소 포트·어댑터가 있다.
+- `knowledge`: `WorldCache`와 로더, 순수 합의, `QueryEngine`이 있다.
+- `world`: `WorldBuilder`가 수집·토폴로지·온톨로지·wiki를 이끈다. 편집기 묶음, 보강, World File, 데모가 함께 있다.
+- `play`: `TurnAdvancer`가 NPC·행적·소문·사건 서비스와 저장소를 쓴다. `PlayService`가 플레이어 행동을 턴 엔진에 넘긴다.
+- `localization`: `TranslationService`가 있다.
+- `api`: 라우터가 빌더·편집기·턴 엔진·번역을 부른다.
 
 ### Existing Files Inventory
 
-#### `locus/` 최상위
-- `locus/__init__.py` (3) — `__version__`
-- `locus/__main__.py` (122) — CLI `init-schema` / `build-world` / `export`. 테스트 커버리지 0%.
-- `locus/demo.py` (46) — Aldermoor 데모 입력(인라인 메모·지도 + `examples/demo_world/map.png`)
+**`locus/shared/`** (3,046줄)
+- `config/settings.py` — `Settings`(.env), 검증기, `knowledge_tuning()`/`world_tuning()`/`play_tuning()`, `get_settings()`
+- `config/tuning.py` — `KnowledgeTuning`·`WorldTuning`·`PlayTuning`(28 필드)와 기본 표
+- `llm/base.py` — `LLMProvider`·`VLMProvider`·`EmbeddingProvider` 포트
+- `llm/factory.py` — `ProviderFactory`(키 없으면 `RuntimeError`)
+- `llm/openai_provider.py` — LangChain 어댑터(재시도 0 + 30초)
+- `llm/retry.py` — `with_retry`(tenacity 3회, `Retry-After`, 상한 8초)
+- `llm/counting.py` — `LLMCallCounter`
+- `models/enums.py` — `RegionLevel`, `EntityType`, `ScopeType`, `ConnectionKind`, `PriorType`, `WikiDomain`, `SourceKind`, `EventCategory`, `EventLifecycle`
+- `models/graph.py` — 노드·엣지 도메인 모델, `new_id`, `fallback_title`
+- `models/io.py` — `IngestionResult`, `RegionTopology`, `KnowledgeGraph`, `WorldSnapshot`, `SearchDoc`/`SearchHit`, 합의 뷰, `RegionBrief`
+- `models/reports.py` — `BuildWarning`, `BuildReport`, `ImportReport`, `GraphSummary`
+- `models/util.py` — `clamp01`, `normalize_name`, `index_by_name`, `LEVEL_RANK`, `rank_of`
+- `storage/base.py` — `Node`/`Edge`/`EdgeKey`, `ConstraintViolation`, `GraphRepository`·`SearchRepository` 포트
+- `storage/neo4j_repo.py` — Neo4j 어댑터(라벨 없는 읽기·삭제, 항목별 auto-commit)
+- `storage/opensearch_repo.py` — OpenSearch 어댑터, `index_mapping`, `build_search_body`
+- `storage/graph_mapping.py` — 순수 매핑 모델↔Node/Edge/SearchDoc
+- `storage/persistence.py` — `persist_graph`, `touch_world_meta`
+- `storage/schema.py` — `SchemaInitializer`, `ensure_world_schema`
+- `storage/sql.py` — `make_engine`, 방언별 `upsert_stmt`
+- `text.py` — `MATERIAL`, `one_line`
+- `wiring.py` — `SharedContainer`, `assemble_shared`
 
-#### `locus/models` — 도메인 어휘
-- `enums.py` (95) — RegionLevel, EntityType, ScopeType, ConnectionKind, PriorType, WikiDomain, SourceKind(`SESSION_*` 포함)
-- `graph.py` (202) — `LocusModel`, `Provenance`, `Coord`, `World`(미사용), Region, Entity, Relation, Knowledge, WikiPrior, WikiPriorLink, ConnectionEdge, ScopeLink, `new_id`, `fallback_title`
-- `io.py` (121) — IngestionResult, RegionTopology, KnowledgeGraph, SearchDoc/Hit, KnowledgeView(`*_ko` 포함), ConsensusView, QueryResult, RegionDiff
-- `reports.py` (54) — BuildWarning, BuildReport, WikiBuildReport(미사용), GraphSummary
-- `__init__.py` (82) — 재노출
+**`locus/knowledge/`** (717줄)
+- `cache.py` — `WorldCache`(세대 번호, WorldMeta 버전)
+- `loader.py` — `WorldLoader.load`, `version()`
+- `consensus.py` — `compute_consensus`, `ConsensusEngine`
+- `propagation.py` — `best_path_weights`
+- `query.py` — `QueryEngine`과 순수 보조 함수
+- `wiring.py` — `KnowledgeContainer`, `assemble_knowledge`
 
-#### `locus/config`
-- `settings.py` (116) — `Settings`(LLM, Neo4j, OpenSearch, 세션 DB, RUMOR_*, TRANSLATION_*, `debug`(미사용)), `get_settings`
+**`locus/world/`** (6,455줄)
+- `build.py` — `WorldBuilder`(준비/커밋, 백업, 동시 빌드 거절)
+- `wiring.py` — `WorldContainer`, `assemble_world`
+- `refs.py` — `ConnectionKey`, `NameRef`
+- `npc_drafts.py` — `NpcDraftService`
+- `ingestion/` — `service.py`(`WorldInputs`, `IngestionService`, `merge_results`), `text_ingestor.py`, `map_image_ingestor.py`, `structured_map_ingestor.py`, `concept_art_ingestor.py`(진행 중), `mapping.py`, `schemas.py`
+- `topology/` — `builder.py`, `hierarchy.py`, `naming.py`, `weights.py`
+- `ontology/` — `builder.py`, `corroboration.py`, `dedup.py`, `reconciler.py`, `similarity.py`, `schemas.py`
+- `wiki/` — `base.py`(`CommonsenseWiki`), `distiller.py`(진행 중), `linker.py`, `admin.py`, `cross_world.py`(진행 중), `schemas.py`
+- `augmentation/` — `service.py`, `engine.py`, `detectors.py`, `questions.py`, `apply.py`, `run_store.py`, `types.py`, `graph.py`(진행 중)
+- `editor/` — `writes.py`, `regions.py`, `connections.py`, `knowledge.py`, `npcs.py`, `entities.py`, `catalog.py`, `bundle.py`, `models.py`
+- `worldfile/` — `schema.py`, `export.py`, `import_.py`, `remap.py`
+- `demo/__init__.py` — `DemoWorlds`, `check_packaged`. `demo/worlds/`는 데이터다: `manifest.json`, `emberleaf.world.json`(지역 12·연결 20·엔티티 8·지식 23·스코프 21·prior 2·NPC 15·씨앗 3), `emberleaf/{memo.md,map.json}`
 
-#### `locus/llm`
-- `base.py` (50) — LLMProvider, VLMProvider, EmbeddingProvider 포트
-- `factory.py` (61) — `ProviderFactory` (openai만)
-- `openai_provider.py` (113) — OpenAI 어댑터 3종 (커버리지 35%)
-- `retry.py` (35) — `with_retry`, `CALL_TIMEOUT_SECONDS`
+**`locus/play/`** (8,524줄)
+- `__init__.py` — 공개 재수출(파사드 없음)
+- `base.py` — `SessionClosedError`, 이름표 보조, `SessionAppService`
+- `errors.py` — 플레이 오류 8종
+- `models.py` — 플레이 도메인 모델 전체
+- `ports.py` — 저장소 Protocol 10개 + `PlayUnitOfWork` + `PlayRepository`
+- `wiring.py` — `PlayContainer`, `assemble_play`
+- `session_service.py` — 세션 시작(GM·플레이어)·닫기·목록
+- `distortion_service.py` — 왜곡도 목록·GM 설정
+- `region_knowledge.py` — `region_sources`, `SessionKnowledgeService`
+- `world_state.py` — `region_rows`, `summarize_state`, `WorldStateService`
+- `deeds/` — `service.py`(`DeedService`), `caps.py`
+- `event/` — `service.py`, `dynamics.py`, `seeds.py`, `suggester.py`, `suggest_context.py`
+- `gm/narrator.py` — `GmNarrator`
+- `npc/` — `dialogue.py`(`NpcDialogueService`), `scope.py`, `prompts.py`
+- `player/` — `movement.py`, `service.py`(`PlayService`), `log.py`
+- `rumor/` — `service.py`, `generator.py`, `spread.py`, `dynamics.py`, `feedback.py`, `promotion.py`
+- `storage/` — `postgres_repo.py`(1,328), `memory_repo.py`, `schema.py`(테이블 11), `clock.py`
+- `turn/` — `advancer.py`(970), `executor.py`, `guard.py`, `budget.py`, `quota.py`, `summary.py`, `changes.py`
 
-#### `locus/ingestion`
-- `service.py` (80) — `WorldInputs`, `IngestionService`, `merge_results`
-- `text_ingestor.py` (70) — 메모 → LLM `TextExtraction`
-- `map_image_ingestor.py` (89) — 지도 이미지 → VLM → LLM `MapExtraction`, 장벽 지형 → 연결 힌트
-- `structured_map_ingestor.py` (164) — GeoJSON / Locus JSON 파서 (LLM 없음)
-- `concept_art_ingestor.py` (46) — 컨셉아트 → VLM → 저신뢰 엔티티
-- `mapping.py` (211) — 정규화, 변환, 병합, 저신뢰 표시 (`to_terrain_entity` 미사용)
-- `schemas.py` (81) — LLM 출력 DTO
+**`locus/localization/`** (684줄)
+- `service.py`, `translator.py`, `models.py`, `ports.py`, `storage/{postgres_repo,memory_repo,schema}.py`, `wiring.py`
 
-#### `locus/topology`
-- `builder.py` (124) — `TopologyBuilder`, `collect_connection_candidates`
-- `hierarchy.py` (57) — `assign_hierarchy`
-- `weights.py` (53) — `BASE_WEIGHT`, `TERRAIN_MODIFIER`, `compute_weight`
+**`locus/__main__.py`** (355줄) — CLI `init-schema`, `world build|export|import|demo|list`, 별칭 `build-world`·`export`
 
-#### `locus/ontology`
-- `builder.py` (127) — `OntologyBuilder`, `scope_knowledge`, `remap_scopes`
-- `corroboration.py` (103) — WikiPrior 기반 LLM 고증
-- `dedup.py` (132) — 임베딩 후보 + LLM 판정 + union-find
-- `reconciler.py` (204) — VLM 엔티티 교차 병합, 고아 엔티티 지역 연결
-- `similarity.py` (35) — `cosine`, `candidate_pairs`
-- `schemas.py` (39) — LLM 판정 DTO
+**`api/`** (2,544줄)
+- `main.py` — `create_app`, `assemble_all`, lifespan, 메타 라우트
+- `deps.py` — `Containers`, `get_*`, `need_service`, `display_lang`
+- `errors.py` — `PLAY_ERRORS`, `http_error`
+- `schemas.py` — DTO, `enrichment_for`, `localize*`, `purge_translations`
+- `uploads.py` — `BodyLimitMiddleware`, 업로드 칸 검사
+- `routers/world.py`(516), `routers/world_editor.py`(326), `routers/gm.py`(404), `routers/play.py`(228), `routers/knowledge.py`(56)
 
-#### `locus/consensus`
-- `engine.py` (159) — `ConsensusParams`, `compute_consensus`, `ConsensusEngine`
-- `propagation.py` (34) — `best_path_weights` (최대 곱 경로)
+**`web/src/`** (77파일, 7,851줄 + 테스트 9파일 3,742줄)
+- 최상위:
+  - 진입·라우팅: `main.tsx`, `App.tsx`(라우트 5)
+  - 데이터·상태: `i18n.ts`(887, ko/en 323키), `types.ts`(699, DTO), `capabilities.ts`
+  - 지도·세션 컴포넌트: `MapOverlay.tsx`, `SessionBar.tsx`, `layout.ts`, `viz.ts`
+  - 스타일·테스트 설정: `index.css`, `setupTests.ts`
+- `api/` — `http.ts`, `index.ts`, `world.ts`, `play.ts`, `gm.ts`, `knowledge.ts`, `meta.ts`
+- `routes/` — `HomePage.tsx`, `EditorPage.tsx`, `PlayPage.tsx`(352), `GmPage.tsx`, `AppNav.tsx`
+- `features/home/` — `DemoCards.tsx`, `DemoCard.tsx`
+- `features/editor/`:
+  - 지도: `MapCanvas.tsx`, `drag.ts`
+  - 인스펙터: `RegionInspector.tsx`, `RegionForm.tsx`, `ConnectionList.tsx`, `KnowledgeList.tsx`, `NpcEditorList.tsx`, `NpcDraftCards.tsx`, `ConfirmDelete.tsx`
+  - 탭 패널: `UnscopedPanel.tsx`, `AugmentPanel.tsx`, `AugmentQuestion.tsx`, `WikiPanel.tsx`
+  - 빌드·파일: `BuildPanel.tsx`, `BuildReportPanel.tsx`, `WorldFileBar.tsx`
+- `features/gm/`:
+  - 허브와 패널: `GmHub.tsx`, `ManualTurnPanel.tsx`, `EventPanel.tsx`, `SeedPanel.tsx`, `DistortionPanel.tsx`, `RumorPanel.tsx`, `TimelinePanel.tsx`
+  - GmPage가 직접 두는 것: `DeedPanel.tsx`, `PlayerStrip.tsx`, `WorldStateOverlay.tsx`, `RegionKnowledgePanel.tsx`
+  - 일괄 실행: `useBulkRumors.ts`, `bulk.ts`
+- `features/play/`:
+  - 장면: `RegionScene.tsx`, `NpcList.tsx`, `DialoguePanel.tsx`
+  - 행동: `ActionBar.tsx`, `MovePanel.tsx`, `NarrationCard.tsx`, `PlayLog.tsx`
+  - 보조: `summary.ts`, `LangToggle.tsx`(모든 화면의 AppNav가 씀), `NewSessionForm.tsx`
+- `ui/` — `Button`, `Panel`, `Card`, `Badge`, `Field`, `Range`, `CommitRange`, `Modal`, `Toast`, `NotificationCenter`, `LocalizedText`, `LlmNotice`, `InProgressBadge`, `index.ts`
 
-#### `locus/query`
-- `loader.py` (30) — `WorldLoader` (월드 전체 로드, 캐시 없음)
-- `engine.py` (80) — `QueryEngine`, `view_items`, `canonical_known`(세션 전용), `split_shared_unique`, `diff_sets`
+**`tests/`** (110파일, 20,434줄) — `tests/<boundary>/` + `tests/api/` + 루트(`test_boundaries.py`, `test_packaging.py`, `test_demo_as_data.py`, `test_cli.py`, `test_live_scenario.py`). 도우미는 `tests/shared/storage/fakes.py`, `tests/play/{helpers,strategies}.py`, `tests/world/{strategies.py, editor/helpers.py}`, `tests/api/play_fixtures.py`, `tests/conftest.py`(hypothesis 프로필)다.
 
-#### `locus/commonsense_wiki`
-- `base.py` (114) — `CommonsenseWiki` 조회 + LLM 폴백
-- `distiller.py` (73) — `PriorDistiller`
-- `linker.py` (102) — `WikiPriorLinker`
-- `admin.py` (41) — `WikiAdmin`
-- `cross_world.py` (79) — `CrossWorldWikiExplorer` (실환경에서 필터가 맞지 않음)
-- `schemas.py` (28) — LLM DTO
-
-#### `locus/augmentation`
-- `types.py` (84) — IssueType, AnswerAction, SessionStatus, Issue, Question, Answer, ChangeSet, Session
-- `detectors.py` (153) — 빈틈, 끊긴 관계, 저신뢰, wiki 충돌, 고아 탐지
-- `questions.py` (61) — `QuestionGenerator`
-- `apply.py` (79) — `apply_answer`, `revert`
-- `engine.py` (34) — `AugmentationEngine`
-- `service.py` (64) — `AugmentationService`
-- `session_store.py` (31) — `InMemorySessionStore`
-- `graph.py` (37) — LangGraph 래퍼 (**호출되지 않음**)
-
-#### `locus/services`
-- `orchestrator.py` (133) — `PipelineOrchestrator`
-- `editor.py` (39) — `GraphEditor`
-- `exporter.py` (21) — `Exporter`
-
-#### `locus/storage`
-- `base.py` (95) — `Node`, `Edge`, `TraversalSpec`, `Path`, GraphRepository·SearchRepository 포트
-- `neo4j_repo.py` (207) — `Neo4jGraphRepository`
-- `opensearch_repo.py` (167) — `OpenSearchRepository`, `index_mapping`, `build_search_body`
-- `graph_mapping.py` (336) — 도메인↔노드·엣지·검색 문서 매핑
-- `persistence.py` (92) — `persist_graph`
-- `schema.py` (20) — `SchemaInitializer`
-- `postgres_session_repo.py` (706) — `PostgresSessionRepository` (세션 전용인데 이 패키지에 있음)
-
-#### `locus/session`
-- `models.py` (248) — GameSession, SessionRumor, RegionDistortion, TimelineEntry, SessionEvent, Translation, RegionTurnChange, enum
-- `repository.py` (83) — `SessionRepository` 포트 (약 27 메서드)
-- `memory_repo.py` (213) — 인메모리 어댑터
-- `base.py` (79) — `SessionClosedError`, `clamp`, `require_region`, `SessionAppService`
-- `service.py` (59) — `SessionService`
-- `game_master.py` (127) — `GameMasterService` 파사드
-- `rumor_service.py` (191) — `RumorService`
-- `rumor_generator.py` (87) — `RumorGenerator`, `RumorDraft`
-- `event_service.py` (183) — `EventService`
-- `event_suggester.py` (72) — `EventSuggester`
-- `distortion_service.py` (31) — `DistortionService`
-- `turn.py` (229) — `TurnAdvancer`, `TurnResult`
-- `turn_changes.py` (72) — `shape_region_changes`
-- `dynamics.py` (107) — 이벤트 델타·전파·복원 (`merge_add` 등은 사실상 죽은 코드)
-- `rumor_dynamics.py` (125) — 지지도 감쇠·가지치기·원본 자격·되먹임
-- `rumor_feedback_service.py` (50) — `RumorFeedbackService`
-- `promotion.py` (33) — `evaluate`
-- `query.py` (102) — `SessionQueryEngine`
-- `__init__.py` (89) — 재노출 (docstring이 낡음)
-
-#### `locus/translation`
-- `translator.py` (50) — `Translator`
-- `service.py` (146) — `source_hash`, `TranslationService`
-
-#### `api/`
-- `main.py` (138) — `create_app`, `_wire_default` (단일 조립 루트), `/health`
-- `routers/query.py` (44) — NPC 서빙 2개
-- `routers/authoring.py` (117) — 기획자 12개
-- `routers/session.py` (245) — 세션 19개
-
-#### `web/src` (1,968줄, 테스트 제외)
-- `main.tsx` (10), `App.tsx` (121) — 셸, 상태, 레이아웃
-- `Toolbar.tsx` (50) — world id, Load, Build demo, 로컬 지도 이미지
-- `MapOverlay.tsx` (126), `layout.ts` (23), `viz.ts` (22) — SVG 토폴로지 오버레이
-- `RegionPanel.tsx` (93) — 캐노니컬·세션 지역 지식 목록
-- `AugmentPanel.tsx` (94) — 보강 Q&A (동작하지 않음)
-- `SessionBar.tsx` (95) — 세션 목록·생성·종료
-- `SessionPanel.tsx` (518) — GameMaster 허브 (UI 코드의 26%)
-- `api.ts` (184) — fetch 래퍼 + 25 메서드
-- `types.ts` (172) — 손으로 쓴 DTO 타입 (백엔드와 이미 어긋남)
-- `i18n.ts` (88) — 한국어 사전 (대부분 GM 문자열)
-- `index.css` (63) — Tailwind v4 테마 토큰, 스케치 유틸리티
-- `ui/` — Button, Panel, Card, Badge, Field, Range, LocalizedText, Modal, Toast, NotificationCenter, index
-- `__tests__/pure.test.ts` (44), `__tests__/components.test.tsx` (344)
-
-#### 기타
-- `examples/demo_world/` — `memo.txt`, `map.json`, `map.png`, `generate_map.py`
-- `scripts/setup-volumes.sh` — `./data` 바인드 마운트 디렉터리 생성
-- `tests/` — 35 파일, 272 테스트 함수 (§ code-quality-assessment 참조)
+**`scripts/`** — `live_scenario.py`(운영자용 15단계), `setup-volumes.sh`
 
 ## Design Patterns
 
-### Ports & Adapters (Hexagonal)
-- **Location**: `storage/base.py`, `llm/base.py`, `session/repository.py`, `augmentation/session_store.py`.
-- **Purpose**: 외부 I/O를 mock할 수 있게 해서 오프라인 테스트를 가능하게 한다.
-- **Implementation**: `typing.Protocol` 포트와 운영 어댑터(Neo4j, OpenSearch, OpenAI, PostgreSQL). 캐노니컬 쪽에는 공유 인메모리 어댑터가 없고 테스트 파일마다 fake를 따로 만든다. 세션 쪽에는 인메모리 어댑터와 계약 테스트가 있다.
+### 다섯 경계 + 합성 루트
+- **Location**: `locus/{shared,knowledge,world,play,localization}`, `api/`, `locus/__main__.py`.
+- **Purpose**: 의존 방향을 한쪽으로 고정한다.
+- **Implementation**: 경계마다 `assemble_<boundary>()`와 타입 컨테이너를 둔다. 서비스 로케이터는 없다. `tests/test_boundaries.py`가 AST로 import 행렬을 검사한다.
 
-### Pipeline Orchestrator
-- **Location**: `services/orchestrator.py`.
-- **Purpose**: 수집 → 토폴로지 → wiki → 온톨로지 → 저장 순서를 정한다.
-- **Implementation**: 생성자 주입 + `from_factory`. 단, `CommonsenseWiki`를 안에서 직접 만들고, `set_wiki`로 상태를 바꾸며, `hasattr`로 덕 타이핑한다. DI 원칙과 어긋나고, 동시 빌드에서 경합이 생길 수 있다.
+### Ports & Adapters
+- **Location**: `shared/storage/base.py`, `shared/llm/base.py`, `play/ports.py`, `localization/ports.py`.
+- **Purpose**: 모든 외부 I/O를 가짜로 바꿔 끼워 오프라인 테스트를 한다.
+- **Implementation**: Protocol 포트, 지연 import 어댑터, 인메모리 쌍둥이(`tests/shared/storage/fakes.py`, `play/storage/memory_repo.py`).
 
 ### Pure Functional Core
-- **Location**: `consensus/*`, `topology/weights.py`, `session/{dynamics,rumor_dynamics,promotion,turn_changes}.py`, `ingestion/mapping.py`.
-- **Purpose**: 결정적 계산을 I/O에서 떼어 테스트(PBT 포함)하기 쉽게 한다.
-- **Implementation**: 모듈 수준 순수 함수 + 상수 또는 파라미터 dataclass.
+- **Location**: `knowledge/consensus.py`·`propagation.py`, `play/rumor/spread.py`·`dynamics.py`, `play/event/dynamics.py`, `play/player/movement.py`, `play/npc/scope.py`, `world/worldfile/remap.py`, `world/augmentation/detectors.py`, `world/ingestion/mapping.py`, `world/topology/{hierarchy,naming,weights}.py`.
+- **Purpose**: 규칙을 PBT로 검증한다.
+- **Implementation**: 상태 없는 함수다. 서비스는 읽고 → 순수 계산 → 쓰기를 한다.
 
-### Single-Responsibility Services + Facade
-- **Location**: `session/{rumor,event,distortion,turn,rumor_feedback}_service.py` + `game_master.py`.
-- **Purpose**: 기능마다 서비스를 하나씩 두고(사용자 선호) 파사드로 묶는다.
-- **Implementation**: 하위 서비스를 주입하고, 주입이 없으면 기본값을 만든다. 파사드는 넘기기만 해서 레이어 하나를 더할 뿐이다(`_repo` 미사용, `**kwargs`로 타입 소실).
+### Single-Responsibility Services, no facade
+- **Location**: `play/*`, `world/editor/*`.
+- **Purpose**: 기능 하나에 클래스 하나를 둔다(사용자 선호와 같다).
+- **Implementation**: `PlayContainer`에 서비스 15개, `Editors` 묶음에 편집기 5개가 있다. 라우터가 컨테이너에서 필요한 서비스를 꺼낸다.
 
-### Aggregate
-- **Location**: `session/models.py::SessionEvent`.
-- **Purpose**: 이벤트 상태 전이(`approve`, `resolve`, `accumulate`)를 모델 안에 캡슐화한다.
+### Single Turn Entry Point + Unit of Work
+- **Location**: `play/turn/advancer.py`, `play/storage/postgres_repo.py`.
+- **Purpose**: 턴 하나를 계산 → 초안(LLM) → 저장(UoW 하나)으로 나눈다. LLM은 UoW 밖에서만 부른다.
+- **Implementation**: `TurnAdvancer.advance/begin`, `TurnGuard`, 배경 실행기, `LlmBudget`, 실패 보상 `_fail`이 있다.
 
-### Read-through Cache with Background Warm
-- **Location**: `translation/service.py`.
-- **Purpose**: 번역 때문에 읽기가 막히지 않게 한다.
-- **Implementation**: 캐시(source_hash 검증)가 맞으면 채우고, 없는 것은 `ThreadPoolExecutor`로 번역해 일괄 upsert한다.
+### Prepare/Commit Build with Backup
+- **Location**: `world/build.py`, `world/worldfile/import_.py`.
+- **Purpose**: 준비 단계의 실패는 옛 월드를 남긴다.
+- **Implementation**: 커밋 전에 World File로 백업하고, `finally`에서 캐시를 무효화한다. 트랜잭션은 없다. 백업이 실패해도 진행한다(RE-W04).
 
-### Composition Root
-- **Location**: `api/main.py::_wire_default`.
-- **Purpose**: DI 조립을 한 곳에 모은다.
-- **Implementation**: 캐노니컬·세션·번역을 함께 조립한다. 제품 축 두 개가 한 루트에 섞여 있다.
+### Write Order instead of Transactions
+- **Location**: 지역 삭제 ①~⑥(`world/editor/regions.py`), NPC 쓰기 순서, 보강 되돌리기의 `revert_started`.
+- **Purpose**: 끊겨도 끊긴 참조가 남지 않게 하고, 재시도로 끝낸다.
+
+### Snapshot Cache with Generation + Version Marker
+- **Location**: `knowledge/cache.py`.
+- **Purpose**: 프로세스 안에서는 세대 번호로, 다른 프로세스의 쓰기는 WorldMeta 버전으로 감지한다(빈틈: RE-W02).
+
+### Read-through Translation Cache with Background Warm
+- **Location**: `localization/service.py`, `api/schemas.py`.
+- **Purpose**: 번역이 응답을 막지 않게 한다.
+- **Implementation**: `source_hash`로 무효화하고, in-flight 중복을 제거하며, 스레드 풀에서 warm한다.
+
+### Command Log + Latest-first Undo
+- **Location**: `world/augmentation/apply.py`.
+- **Purpose**: 보강 답을 되돌린다.
+- **Implementation**: `ChangeSet`(노드 전/후 + 엣지 diff)을 남기고, run 밖에서 고쳐졌으면 409를 준다.
+
+### Demo as Data
+- **Location**: `world/demo/__init__.py` + `manifest.json`.
+- **Purpose**: 코드에 데모 이름을 두지 않는다(`tests/test_demo_as_data.py`).
+
+### Frontend
+- 기능 폴더와 라우트 컴포넌트, 프리미티브(`ui/`)를 쓴다. 상태 라이브러리는 없다(모듈 상태 + `useSyncExternalStore`, 효과 + 시퀀스 ref).
+- 늦은 답 무시 방식이 셋 섞여 있다. 쓰기 래퍼는 화면마다 따로 있다(`screen-inventory.md` §4).
 
 ## Critical Dependencies
 
-### LangChain / langchain-openai
-- **Version**: 1.3.14 / 1.4.3 (선언 `>=0.1` / `>=0.0.5`)
-- **Usage**: `llm/openai_provider.py`에서만 쓴다.
-- **Purpose**: OpenAI 구조화 출력, VLM, 임베딩.
+### FastAPI 0.141.1 / Starlette 1.6.0 / uvicorn 0.52.1
+- **Usage**: `api/` 전체, `yield` 의존성(GM 리스), lifespan, multipart 업로드.
+- **Purpose**: HTTP 합성 루트.
 
-### neo4j driver
-- **Version**: 5.28.4
-- **Usage**: `storage/neo4j_repo.py`
-- **Purpose**: 캐노니컬 그래프 저장소
+### Pydantic 2.13 / pydantic-settings 2.15
+- **Usage**: 모든 도메인 모델(`extra="forbid"`), DTO, `Settings`.
 
-### opensearch-py
-- **Version**: 2.8.0
-- **Usage**: `storage/opensearch_repo.py`
-- **Purpose**: 하이브리드 검색 (실제로 읽는 것은 WikiPrior뿐)
+### neo4j 5.28.4 (서버 5.15)
+- **Usage**: `shared/storage/neo4j_repo.py`.
+- **Purpose**: 캐노니컬 그래프. 라벨 없는 Cypher가 많다(RE-W13).
 
-### SQLAlchemy + psycopg
-- **Version**: 2.0.51 + 3.3.4
-- **Usage**: `storage/postgres_session_repo.py` (Core, ORM 아님)
-- **Purpose**: 세션과 번역 캐시
+### opensearch-py 2.8.0 (서버 2.13.0)
+- **Usage**: `shared/storage/opensearch_repo.py`.
+- **Purpose**: 지식·prior 검색, kNN.
 
-### FastAPI
-- **Version**: 0.141.1
-- **Usage**: `api/`
-- **Purpose**: HTTP 서빙 (`on_event` 사용 중이고, deprecated 경고가 난다)
+### SQLAlchemy 2.0.51 + psycopg 3.3.4
+- **Usage**: `play/storage`, `localization/storage`, `shared/storage/sql.py`.
+- **Purpose**: 세션·번역. Core 쿼리, `ON CONFLICT` upsert, `FOR UPDATE`.
 
-### LangGraph
-- **Version**: 1.2.10
-- **Usage**: `augmentation/graph.py`에서만 쓰는데, 이 파일은 호출되지 않는다.
-- **Purpose**: 없음. 죽은 코드를 위한 필수 의존성이다.
+### LangChain (langchain-core 1.5.3, langchain-openai 1.4.3) / openai 2.53.0
+- **Usage**: `shared/llm/openai_provider.py`(지연 import).
+- **Purpose**: LLM·VLM·임베딩. 구조화 출력.
+
+### LangGraph 1.2.10
+- **Usage**: `world/augmentation/graph.py`뿐이다. 진행 중이고 연결되지 않았다.
+- **Purpose**: 없음(필수 의존성으로 선언만 됨).
+
+### tenacity 9.1.4
+- **Usage**: `shared/llm/retry.py`. 모든 예외에 재시도한다(RE-W20).
+
+### React 18.3 / react-router 7.18 / Vite 8 / Tailwind 4.3 / TypeScript 5.9
+- **Usage**: `web/`.
+- **Purpose**: SPA, 디자인 토큰(`@theme`), 빌드.

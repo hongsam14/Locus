@@ -268,6 +268,8 @@ export interface BuildReport {
   closed_session_ids: string[];
   backup_path?: string | null;
   priors_created?: number;
+  carried_npcs?: number; // V7: the old world's NPCs a rebuild put on the new regions
+  carried_seeds?: number;
   ok: boolean;
 }
 
@@ -285,6 +287,12 @@ export interface ImportReport {
   ok: boolean;
 }
 
+/** What a demo load answers (V3): the import report plus the seeding of its translations. */
+export interface DemoLoadReport extends ImportReport {
+  translations_seeded?: number;
+  translations_stale?: number;
+}
+
 export interface WorldInfo {
   id: string;
   name: string;
@@ -293,6 +301,20 @@ export interface WorldInfo {
   updated_at?: string | null;
   last_writer?: string | null;
   open_sessions?: number | null;
+  name_ko?: string | null; // V3: in the display language, from the translation cache
+  description_ko?: string | null;
+}
+
+/** `GET /api/world/worlds/{w}/names` (V3, Q5=A): the world's region, NPC, event-seed and
+ * world text in the display language, `{id: {field: text}}`. Only translated fields are
+ * there; a screen falls back to the English it holds. */
+export interface WorldNames {
+  world_id: string;
+  lang: string;
+  world: Record<string, string>;
+  regions: Record<string, Record<string, string>>;
+  npcs: Record<string, Record<string, string>>;
+  event_seeds: Record<string, Record<string, string>>;
 }
 
 /** A manifest demo as the home screen sees it (U8, domain-entities §1). */
@@ -303,6 +325,9 @@ export interface DemoInfo {
   credits?: string | null;
   start_region_id: string;
   has_sources: boolean;
+  title_ko?: string | null; // V3: the card in the display language, from the manifest
+  description_ko?: string | null;
+  credits_ko?: string | null;
 }
 
 /** Which providers the server has (U8, `GET /api/capabilities`). */
@@ -398,6 +423,7 @@ export interface ChangeSet {
   description: string;
   added_ids: string[];
   reverted: boolean;
+  kept_key?: string | null; // V7: the question this answer kept; undoing it asks it again
 }
 
 // AugmentationRun — one designer Q&A run over a world, kept by the screen (B2).
@@ -408,6 +434,7 @@ export interface AugRun {
   answers: number;
   open_questions: AugQuestion[];
   ignored_keys: string[];
+  kept_keys?: string[]; // V7: confirmed "keep as it is" — not asked again in this run
   history: ChangeSet[];
   llm_calls: number;
   llm_budget_exhausted: boolean;
@@ -565,12 +592,14 @@ export interface RegionView {
   level: string;
   description: string;
   level_path: string[];
+  level_path_ids?: string[]; // V3: the ids of level_path, for the name map
   npcs: NPC[];
   facts: KnowledgeView[];
   hearsay: KnowledgeView[];
   rumors: SessionRumor[];
   moves: MoveOption[];
   turn_running: boolean;
+  gm_busy?: boolean; // V5 adds it: a GM write holds the session (V4 reads it as false when absent)
   llm_available: boolean;
   declare_max_chars?: number; // U6: the server's declaration limit
 }

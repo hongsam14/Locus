@@ -55,7 +55,8 @@ def test_409_bodies_say_closed_or_busy() -> None:
         busy = client.put(f"/api/gm/sessions/{sid}/regions/r1/distortion", json={"degree": 0.4})
     finally:
         play.guard.release(sid)
-    assert busy.status_code == 409 and "turn in progress" in busy.json()["detail"]
+    assert busy.status_code == 409 and busy.json()["code"] == "turn_running"
+    assert "a turn is running" in busy.json()["detail"] and sid not in busy.json()["detail"]
     play.repo.close_session(sid)
     closed = client.put(f"/api/gm/sessions/{sid}/regions/r1/distortion", json={"degree": 0.4})
     assert closed.status_code == 409 and "session is closed" in closed.json()["detail"]

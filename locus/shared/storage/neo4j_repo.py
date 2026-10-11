@@ -1,6 +1,6 @@
 """Neo4j implementation of GraphRepository (US-9.1).
 
-Idempotent MERGE-based upserts, world_id scoping, weighted traversal. The
+Idempotent MERGE-based upserts and world_id-scoped reads and deletes. The
 ``neo4j`` driver is imported lazily so the module can be imported (and query
 construction unit-tested) without the package or a live database.
 """
@@ -8,6 +8,7 @@ construction unit-tested) without the package or a live database.
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
 from locus.shared.storage.base import (
     ConstraintViolation,
@@ -17,6 +18,9 @@ from locus.shared.storage.base import (
     Node,
     edge_identity_field,
 )
+
+if TYPE_CHECKING:
+    from neo4j import Driver
 
 _IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
@@ -28,18 +32,23 @@ def _safe_ident(value: str) -> str:
     return value
 
 
+def _label_clause(label: str | None) -> str:
+    """``:Label`` for a node pattern, or nothing for "any node of this id"."""
+    return f":{_safe_ident(label)}" if label is not None else ""
+
+
 class Neo4jGraphRepository(GraphRepository):
     def __init__(self, *, uri: str, user: str, password: str) -> None:
         self._uri = uri
         self._auth = (user, password)
-        self._driver = None
+        self._driver: Driver | None = None
 
     # -- lifecycle -------------------------------------------------------- #
     def connect(self) -> None:
         from neo4j import GraphDatabase
 
-        self._driver = GraphDatabase.driver(self._uri, auth=self._auth)
-        self._driver.verify_connectivity()
+        self._driver = driver = GraphDatabase.driver(self._uri, auth=self._auth)
+        driver.verify_connectivity()
 
     def disconnect(self) -> None:
         if self._driver is not None:
@@ -68,8 +77,9 @@ class Neo4jGraphRepository(GraphRepository):
     def ensure_schema(self) -> None:
         """Create uniqueness constraints + world_id indexes (idempotent).
 
-        World nodes are not persisted (CL-A1=A); every label is keyed by id and
-        partitioned by world_id.
+        A world's own metadata is one ``WorldMeta`` node. Each label's ``id`` is unique
+        across all worlds (the constraint is per label); ``world_id`` is an index every
+        read filters on, not a partition.
         """
         for label in self.NODE_LABELS:
             self._run(
@@ -169,6 +179,17 @@ class Neo4jGraphRepository(GraphRepository):
                     ) from exc
                 raise
 
+    def update_node(self, node: Node) -> bool:
+        """``SET n += props`` on the node if it exists; never creates one. A version mark
+        touched after an edit must not come back inside a world another process is
+        replacing (V7 code review #14)."""
+        rows = self._run(
+            f"MATCH (n:{_safe_ident(node.label)} {{id: $id, world_id: $world_id}}) "
+            "SET n += $props RETURN count(n) AS n",
+            {"id": node.id, "world_id": node.world_id, "props": node.properties},
+        )
+        return bool(rows) and rows[0].get("n", 0) > 0
+
     def delete_edges(self, world_id: str, edges: list[EdgeKey]) -> int:
         """Delete the given edges (U3); missing ones are skipped. One UNWIND query per
         edge type and identity shape. Returns how many were deleted."""
@@ -196,9 +217,9 @@ class Neo4jGraphRepository(GraphRepository):
         return deleted
 
     # -- reads ------------------------------------------------------------ #
-    def get_node(self, world_id: str, node_id: str) -> Node | None:
+    def get_node(self, world_id: str, node_id: str, *, label: str | None = None) -> Node | None:
         rows = self._run(
-            "MATCH (n {id: $id, world_id: $world_id}) "
+            f"MATCH (n{_label_clause(label)} {{id: $id, world_id: $world_id}}) "
             "RETURN labels(n) AS labels, properties(n) AS props LIMIT 1",
             {"id": node_id, "world_id": world_id},
         )
@@ -279,9 +300,9 @@ class Neo4jGraphRepository(GraphRepository):
             for row in rows
         ]
 
-    def delete_node(self, world_id: str, node_id: str) -> None:
-        self._run(
-            "MATCH (n {id: $id, world_id: $world_id}) DETACH DELETE n",
+    def delete_node(self, world_id: str, node_id: str, *, label: str | None = None) -> None:
+        self._run(  # a label keeps another kind's node of the same id, and its edges (V7)
+            f"MATCH (n{_label_clause(label)} {{id: $id, world_id: $world_id}}) DETACH DELETE n",
             {"id": node_id, "world_id": world_id},
         )
 

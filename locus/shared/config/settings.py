@@ -127,6 +127,9 @@ class Settings(BaseSettings):
     )
     event_suggest_max: int = Field(default=5, ge=1, alias="EVENT_SUGGEST_MAX")
     event_suggest_max_regions: int = Field(default=30, ge=1, alias="EVENT_SUGGEST_MAX_REGIONS")
+    # V5 (BR-V5-03): a GM write waits at most this long for its session's short write
+    # (bounded: "wait forever" overflows the lock's timeout, code review 01 #5)
+    gm_write_wait_s: float = Field(default=5.0, gt=0, le=600, alias="GM_WRITE_WAIT_S")
 
     # --- Localization (UX Improvement / X1) ---
     # Translate LLM-generated session content (rumors, events) and canonical
@@ -253,6 +256,7 @@ class Settings(BaseSettings):
             event_support_reinforce=self.event_support_reinforce,
             max_event_suggestions=self.event_suggest_max,
             suggest_max_regions=self.event_suggest_max_regions,
+            gm_write_wait_s=self.gm_write_wait_s,
         )
 
 

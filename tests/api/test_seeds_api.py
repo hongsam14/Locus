@@ -95,7 +95,8 @@ def test_a_seed_start_is_refused_when_closed_busy_or_unknown() -> None:
         busy = client.post(f"/api/gm/sessions/{sid}/seeds/seed-blight/start")
     finally:
         play.guard.release(sid)
-    assert busy.status_code == 409 and "turn in progress" in busy.json()["detail"]
+    assert busy.status_code == 409 and busy.json()["code"] == "turn_running"
+    assert "a turn is running" in busy.json()["detail"] and sid not in busy.json()["detail"]
     play.repo.close_session(sid)
     closed = client.post(f"/api/gm/sessions/{sid}/seeds/seed-blight/start")
     assert closed.status_code == 409 and "closed" in closed.json()["detail"]

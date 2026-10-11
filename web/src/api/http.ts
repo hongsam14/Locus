@@ -18,15 +18,27 @@ export function withLang(path: string): string {
 
 /** A non-2xx answer (U3, U7 review C16). The message keeps the old form
  * `${status} ${statusText}: ${body}` (review 02 R-16): code that prints `String(e)` or
- * looks at the text is unchanged; new code reads `.status` through `statusOf`. */
+ * looks at the text is unchanged; new code reads `.status` through `statusOf`. Since V2
+ * the server's error body is `{"detail", "code"}`: both are read once here (FR-D9). */
 export class HttpError extends Error {
   readonly status: number;
   readonly body: string;
+  readonly code?: string;
+  readonly detail?: unknown;
   constructor(status: number, statusText: string, body: string) {
     super(`${status} ${statusText}: ${body}`);
     this.name = "Error"; // String(e) stays "Error: 409 …"
     this.status = status;
     this.body = body;
+    try {
+      const parsed = JSON.parse(body) as { detail?: unknown; code?: unknown } | null;
+      if (parsed && typeof parsed === "object") {
+        this.detail = parsed.detail;
+        if (typeof parsed.code === "string" && parsed.code) this.code = parsed.code;
+      }
+    } catch {
+      /* not JSON: no detail, no code */
+    }
   }
 }
 
@@ -37,11 +49,29 @@ export function statusOf(err: unknown): number | null {
   return m ? Number(m[1]) : null;
 }
 
-/** What a 409 means (U6 review #10/#11): the session is closed for good, or a turn (or
- * another GM write) is running and a retry later will do. `null` for any other error. */
-export function conflictKind(err: unknown): "closed" | "busy" | null {
+export type ConflictKind = "closed" | "turn_running" | "gm_busy" | "rumor_inactive" | "conflict";
+
+const CONFLICT_CODES: Record<string, ConflictKind> = {
+  session_closed: "closed",
+  turn_running: "turn_running",
+  gm_busy: "gm_busy",
+  rumor_inactive: "rumor_inactive",
+};
+
+/** What a 409 means (U6 review #10/#11, V6 code plan § 1.1 R-05): the session is closed for
+ * good; a turn is running; another GM write holds the session past the wait; the rumor is
+ * gone; or another conflict (`seed_running`, `world_exists` …). A server without codes
+ * says "session is closed" or nothing more: the rest reads as a running turn, as before.
+ * `null` for any other error. */
+export function conflictKind(err: unknown): ConflictKind | null {
   if (statusOf(err) !== 409) return null;
-  return /session is closed/i.test(String(err)) ? "closed" : "busy";
+  if (err instanceof HttpError && err.code) return CONFLICT_CODES[err.code] ?? "conflict";
+  return /session is closed/i.test(String(err)) ? "closed" : "turn_running"; // a server without codes
+}
+
+/** A 409 that a retry later will clear: a running turn or a GM write holding the session. */
+export function isBusy(kind: ConflictKind | null): boolean {
+  return kind === "turn_running" || kind === "gm_busy";
 }
 
 /** What a 409 body says about the world's sessions (U8; U3 review design memo 10): open
@@ -109,7 +139,9 @@ export function useReplaceConfirm() {
 
 /** A 503 because the server has no LLM provider (U8, BR-U8-27). */
 export function needsLlm(err: unknown): boolean {
-  return statusOf(err) === 503 && /llm|provider|openai_api_key/i.test(String(err));
+  if (statusOf(err) !== 503) return false;
+  if (err instanceof HttpError && err.code) return err.code === "llm_unavailable";
+  return /llm|provider|openai_api_key/i.test(String(err)); // a server without codes
 }
 
 export async function http<T>(path: string, init?: RequestInit): Promise<T> {

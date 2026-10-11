@@ -8,7 +8,7 @@ import type { Mock } from "vitest";
 import { DeedPanel } from "../features/gm/DeedPanel";
 import { ActionBar } from "../features/play/ActionBar";
 import { PlayLog } from "../features/play/PlayLog";
-import { RegionScene } from "../features/play/RegionScene";
+import { KnownHere } from "../features/play/RegionScene";
 import { t } from "../i18n";
 import { PlayPage } from "../routes/PlayPage";
 import type { DeedViewOut, RegionView, SessionRumor, TurnRun } from "../types";
@@ -130,7 +130,9 @@ describe("PlayPage with declarations", () => {
     renderPlay();
     fireEvent.change(await screen.findByTestId("declare-input"), { target: { value: "x" } });
     fireEvent.click(screen.getByTestId("declare-btn"));
-    await waitFor(() => expect(screen.getByTestId("play-error")).toHaveTextContent("400"));
+    // V4 intended change: a refused action is said in the action's place (action-error), not
+    // as the page's read error (play-error); the original "400" is kept, folded
+    await waitFor(() => expect(screen.getByTestId("action-error")).toHaveTextContent("400"));
     expect(screen.getByTestId("declare-input")).toHaveValue("x");
     (api.act as Mock).mockRejectedValueOnce(new HttpError(409, "Conflict", "turn in progress"));
     fireEvent.click(screen.getByTestId("declare-btn"));
@@ -149,8 +151,10 @@ describe("PlayPage with declarations", () => {
 
 describe("deed badge and the player log (US-6.5, frontend §2.4/§2.5)", () => {
   it("a deed rumor carries the deed badge, a canonical one does not", () => {
-    render(<RegionScene view={view({ rumors: [rumor(), rumor({ id: "ru2", origin_kind: "canonical" })] })} />);
-    expect(screen.getByTestId("deed-badge-ru1")).toHaveTextContent(t("badge.deed"));
+    // V4 intended change: the region's parts (KnownHere) replace the one panel, and the
+    // player reads their own deed as "your story" (the GM keeps badge.deed)
+    render(<KnownHere view={view({ rumors: [rumor(), rumor({ id: "ru2", origin_kind: "canonical" })] })} />);
+    expect(screen.getByTestId("deed-badge-ru1")).toHaveTextContent(t("label.yourStory"));
     expect(screen.queryByTestId("deed-badge-ru2")).not.toBeInTheDocument();
   });
 
@@ -183,21 +187,35 @@ describe("DeedPanel (US-5.6)", () => {
     reached_region_ids: ["a", "b"], reached_region_names: ["Riverton", "Hollow"],
   });
 
-  it("shows the appraisals and where the rumors reached", async () => {
-    (api.listDeeds as Mock).mockResolvedValue([deedView()]);
-    render(<DeedPanel sessionId="s1" closed={false} />);
-    expect(await screen.findByTestId("deed-appraisals-d1")).toHaveTextContent("Mara");
-    expect(screen.getByTestId("deed-appraisals-d1")).toHaveTextContent("admiring");
-    expect(screen.getByTestId("deed-reached-d1")).toHaveTextContent("Riverton · Hollow (1/2)");
+  // V6: the panel shows the session's deed read and voids through the screen's write (code
+  // plan Step 5); a refused void is told in the dialog (BLM § 6), not in a notice line.
+  const panel = (list: DeedViewOut[], onVoid = vi.fn().mockResolvedValue(undefined)) => {
+    render(<DeedPanel deeds={{ data: list, state: "ready", reload: vi.fn() }} closed={false} onVoid={onVoid} />);
+    return onVoid;
+  };
+
+  it("witnesses read by the map of names, like the judge beside them (V6 captures)", () => {
+    const nameOf = (kind: string, id: string, _f: string, fb: string) => (kind === "npcs" && id === "n1" ? "마라" : fb);
+    render(<DeedPanel deeds={{ data: [deedView()], state: "ready", reload: vi.fn() }} closed={false} nameOf={nameOf} onVoid={vi.fn()} />);
+    expect(screen.getByTestId("deed-witnesses-d1")).toHaveTextContent("마라");
+    expect(screen.getByTestId("deed-appraisals-d1")).toHaveTextContent("마라");
   });
 
-  it("voids after the confirmation and tells the page", async () => {
-    (api.listDeeds as Mock).mockResolvedValue([deedView()]);
-    (api.voidDeed as Mock).mockResolvedValue({ deed_id: "d1", deactivated_rumor_ids: ["ru1"] });
-    const onChanged = vi.fn();
-    render(<DeedPanel sessionId="s1" closed={false} onChanged={onChanged} />);
-    fireEvent.click(await screen.findByTestId("void-d1"));
-    expect(screen.getByTestId("void-confirm")).toHaveTextContent(t("deed.voidConfirm", { n: 1 }));
+  it("shows the appraisals and where the rumors reached; the slant is the NPC's own words (R-01)", () => {
+    panel([deedView()]);
+    expect(screen.getByTestId("deed-appraisals-d1")).toHaveTextContent("Mara");
+    expect(screen.getByTestId("deed-appraisals-d1")).toHaveTextContent(`${t("label.slant")}: admiring`);
+    expect(screen.getByTestId("deed-reached-d1")).toHaveTextContent("Riverton · Hollow");
+    expect(screen.getByTestId("deed-reached-d1")).toHaveTextContent(t("label.rumorsLive", { live: 1, all: 2 })); // review #40
+    expect(screen.getByTestId("deed-appraisals-d1")).toHaveTextContent(t("label.noteworthy"));
+  });
+
+  it("voids after the confirmation; the two dialog buttons never share a name", async () => {
+    const onVoid = panel([deedView()]);
+    fireEvent.click(screen.getByTestId("void-d1"));
+    expect(screen.getByTestId("void-d1")).toHaveTextContent(t("deed.void"));
+    expect(t("deed.void")).not.toBe(t("action.cancel")); // UX-39
+    expect(screen.getByTestId("void-confirm")).toHaveTextContent(t("confirm.voidDeed", { n: 1 }));
     // The two dialog buttons never share a name (review U6 #2: both read "취소" in ko).
     const dialog = within(screen.getByRole("dialog"));
     expect(dialog.getAllByRole("button").map((b) => b.textContent)).toEqual([
@@ -206,20 +224,30 @@ describe("DeedPanel (US-5.6)", () => {
     ]);
     expect(t("deed.voidConfirmBtn")).not.toBe(t("action.cancel"));
     await act(async () => fireEvent.click(dialog.getByRole("button", { name: t("deed.voidConfirmBtn") })));
-    await waitFor(() => expect(api.voidDeed).toHaveBeenCalledWith("s1", "d1"));
-    expect(onChanged).toHaveBeenCalled();
+    expect(onVoid).toHaveBeenCalledWith("d1");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
-  it("a void during a turn shows a notice; a voided deed has no void button", async () => {
-    (api.listDeeds as Mock).mockResolvedValue([deedView(), { ...deedView({ id: "d2", voided: true }) }]);
-    (api.voidDeed as Mock).mockRejectedValue(new HttpError(409, "Conflict", "turn in progress"));
-    render(<DeedPanel sessionId="s1" closed={false} />);
-    expect(await screen.findByTestId("deed-voided-d2")).toBeInTheDocument();
+  it("a void during a turn is told in the dialog; a voided deed has no void button", async () => {
+    panel(
+      [deedView(), { ...deedView({ id: "d2", voided: true }) }],
+      vi.fn().mockRejectedValue(new HttpError(409, "Conflict", '{"detail":"a turn","code":"turn_running"}')),
+    );
+    expect(screen.getByTestId("deed-voided-d2")).toHaveTextContent(t("deed.voided"));
     expect(screen.queryByTestId("void-d2")).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId("void-d1"));
     await act(async () =>
       fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: t("deed.voidConfirmBtn") })),
     );
-    expect(await screen.findByTestId("deed-notice")).toHaveTextContent(t("play.turnInProgress"));
+    expect(within(screen.getByRole("dialog")).getByRole("alert")).toHaveTextContent(t("error.turn_running.title"));
+  });
+
+  it("a void refused while another GM change saves says that, not 'a turn' (V6 BR-V6-20)", async () => {
+    panel([deedView()], vi.fn().mockRejectedValue(new HttpError(409, "Conflict", '{"detail":"held","code":"gm_busy"}')));
+    fireEvent.click(screen.getByTestId("void-d1"));
+    await act(async () =>
+      fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: t("deed.voidConfirmBtn") })),
+    );
+    expect(within(screen.getByRole("dialog")).getByRole("alert")).toHaveTextContent(t("error.gm_busy.title"));
   });
 });

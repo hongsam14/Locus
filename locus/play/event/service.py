@@ -33,13 +33,17 @@ from locus.play.models import (
     TimelineKind,
     default_lifecycle,
 )
-from locus.play.ports import PlayRepository
+from locus.play.ports import PlayRepository, PlayUnitOfWork
+from locus.play.turn.guard import TurnGuard
+from locus.play.write_section import WriteSection
 from locus.shared.config.tuning import PlayTuning
 from locus.shared.models import Provenance, SourceKind
 from locus.shared.models.util import clamp01
 
 if TYPE_CHECKING:  # wired by assemble_play
     from locus.play.deeds.service import DeedService
+
+SUGGESTED_BY = "llm:event"  # SessionEvent.provenance.generated_by of an LLM suggestion
 
 
 class EventService(SnapshotNames, SessionAppService):
@@ -53,10 +57,14 @@ class EventService(SnapshotNames, SessionAppService):
         suggester: EventSuggester | None = None,
         deeds: DeedService | None = None,
         tuning: PlayTuning | None = None,
+        guard: TurnGuard | None = None,
     ) -> None:
         super().__init__(repo)
         self._snapshots = snapshots
         self._tuning = tuning or PlayTuning()  # n cap and prompt size (U7, BR-U7-9/10)
+        # V5 (BR-V5-01): each write's save runs in the session's section; a started seed
+        # shares it (BR-V5-06)
+        self.section = WriteSection(repo, guard, self._tuning)
         self._deeds = deeds  # U6: recent deeds feed the suggestion context (BR-U6-31)
         self._suggester = suggester  # optional LLM event proposals (BR-P2-16)
 
@@ -89,9 +97,45 @@ class EventService(SnapshotNames, SessionAppService):
         from (U8, BR-U8-17); a GM's own event keeps the defaults."""
         session = self._require_open(session_id)
         name = require_region(self._snapshots, session.world_id, region_id).name  # C16
+        with self.section.open(session_id) as (u, session):  # the row and its line (RE-P05)
+            return self.create_in(
+                u,
+                session,
+                region_id,
+                name,
+                category=category,
+                magnitude=magnitude,
+                description=description,
+                lifecycle=lifecycle,
+                provenance=provenance,
+                timeline_extra=timeline_extra,
+            )
+
+    def create_in(
+        self,
+        u: PlayUnitOfWork,
+        session: GameSession,
+        region_id: str,
+        region_name: str,
+        *,
+        category: EventCategory,
+        magnitude: float,
+        description: str = "",
+        lifecycle: EventLifecycle | None = None,
+        provenance: Provenance | None = None,
+        timeline_extra: Mapping[str, str] | None = None,
+    ) -> SessionEvent:
+        """Save an ACTIVE event and its line inside the caller's open section — the
+        region was checked and named before it (a started seed, code review 01 #7)."""
         cat = EventCategory(category)
+        extra = dict(timeline_extra or {})
+        summary = (
+            f"started seed {extra['seed_title']!r} in {region_name}"
+            if "seed_title" in extra
+            else f"created {cat.value} event in {region_name}"
+        )
         event = SessionEvent(
-            session_id=session_id,
+            session_id=session.id,
             region_id=region_id,
             category=cat,
             description=description,
@@ -102,25 +146,21 @@ class EventService(SnapshotNames, SessionAppService):
             provenance=provenance
             or Provenance(source=SourceKind.SIMULATION, generated_by="gm:event"),
         )
-        saved = self._repo.create_event(event)
-        extra = dict(timeline_extra or {})
-        summary = (
-            f"started seed {extra['seed_title']!r} in {name}"
-            if "seed_title" in extra
-            else f"created {cat.value} event in {name}"
-        )
-        self._timeline(
-            session,
-            TimelineKind.EVENT_CREATED,
-            summary,
-            {
-                "event_id": saved.id,
-                "region_id": region_id,
-                "region_name": name,
-                "category": cat.value,
-                "magnitude": saved.magnitude,
-                **extra,
-            },
+        saved = u.events.create_event(event)
+        u.timeline.append_timeline(
+            self._entry(
+                session,
+                TimelineKind.EVENT_CREATED,
+                summary,
+                {
+                    "event_id": saved.id,
+                    "region_id": region_id,
+                    "region_name": region_name,
+                    "category": cat.value,
+                    "magnitude": saved.magnitude,
+                    **extra,
+                },
+            )
         )
         return saved
 
@@ -132,12 +172,15 @@ class EventService(SnapshotNames, SessionAppService):
             return event
         if event.is_suggested():  # approve first (BR-U7-7, RE C5)
             raise InvalidActionError(f"a suggested event must be approved first: {event_id}")
-        name = self._region_name(session, event.region_id)  # before the transaction (C16)
+        name = self._region_name(session, event.region_id)  # before the section (C16)
+        present = {r.id for r in self._snapshots.get(session.world_id).topo.regions}
         # Restore, status and timeline in ONE transaction: a failure part-way used to
         # leave some regions restored while the event stayed ACTIVE, so the next turn
         # accumulated a second contribution and the symmetric restore was permanently
         # broken (code review U4 #4). Deterministic body, no LLM — BR-U4-14 allows it.
-        with self._repo.uow() as u:
+        # V5 (#9, BR-V5-05): in the session's section, so two resolves restore one
+        # after the other and neither writes back a degree read before the other's.
+        with self.section.open(session_id) as (u, session):
             # the event as it is now, row locked: a GM set may have cleared a region's
             # contribution since the read above (U3 review #10)
             fresh = u.events.get_event(session_id, event_id, for_update=True)
@@ -146,7 +189,8 @@ class EventService(SnapshotNames, SessionAppService):
             if fresh.is_resolved():
                 return fresh
             event = fresh
-            restored = dict(event.contributions)
+            # only regions the world still has: no row for a deleted one (BR-V5-21)
+            restored = {rid: d for rid, d in event.contributions.items() if rid in present}
             if restored:  # symmetric restore (target + propagated neighbours)
                 cur = {
                     rd.region_id: rd.distortion_degree
@@ -180,8 +224,12 @@ class EventService(SnapshotNames, SessionAppService):
             raise ValueError(f"only SUGGESTED events can be discarded: {event_id}")
         name = self._region_name(session, event.region_id)
         # The line first, in the same unit of work: the row is gone afterwards, so the
-        # line keeps what was discarded (BR-U7-8, FR-E4).
-        with self._repo.uow() as u:
+        # line keeps what was discarded (BR-U7-8, FR-E4). V5 (BR-V5-07): read again in the
+        # section — an approve or a discard may have come first.
+        with self.section.open(session_id) as (u, session):
+            event = self._fresh_event(u, session_id, event_id)
+            if not event.is_suggested():
+                raise ValueError(f"only SUGGESTED events can be discarded: {event_id}")
             u.timeline.append_timeline(
                 self._entry(
                     session,
@@ -226,68 +274,101 @@ class EventService(SnapshotNames, SessionAppService):
             turn=session.turn,
             n=n,
         )
+        names = names_of(snapshot)
+        # by id or unambiguous name among all the world's regions: an event in a region
+        # the prompt left out but a line named is still the world's (U7 review §3)
+        matched = [(d, ctx.match_region(d.region_id, every)) for d in drafts]
+        kept = [(d, rid) for d, rid in matched if rid is not None]  # BR-P2-10
+        if not kept:
+            # nothing to save, but a session closed during the call still answers 409
+            # (BLM § 2, code review 01 #8)
+            self._require_open(session_id)
+            return []
         out: list[SessionEvent] = []
-        for d in drafts:
-            # by id or unambiguous name among all the world's regions: an event in a region
-            # the prompt left out but a line named is still the world's (U7 review §3)
-            region_id = ctx.match_region(d.region_id, every)
-            if region_id is None:  # not a region of this world (BR-P2-10)
-                continue
-            cat = EventCategory(d.category)
-            event = SessionEvent(
-                session_id=session_id,
-                region_id=region_id,
-                category=cat,
-                description=d.description,
-                magnitude=clamp01(d.magnitude),
-                lifecycle=default_lifecycle(cat),
-                status=EventStatus.SUGGESTED,
-                created_turn=session.turn,
-                provenance=Provenance(source=SourceKind.SIMULATION, generated_by="llm:event"),
-            )
-            saved = self._repo.create_event(event)
-            out.append(saved)
-            name = self._region_name(session, region_id)
-            self._timeline(
-                session,
-                TimelineKind.EVENT_SUGGESTED,
-                f"suggested {cat.value} event in {name}",
-                {
-                    "event_id": saved.id,
-                    "region_id": region_id,
-                    "region_name": name,
-                    "category": cat.value,
-                    "magnitude": saved.magnitude,
-                    "description": saved.description,
-                },
-            )
+        # V5 (BR-V5-01/02, RE-P05): the LLM ran outside; the rows and their lines are
+        # saved together in the section, and a session closed meanwhile gets nothing.
+        with self.section.open(session_id) as (u, session):
+            for d, region_id in kept:
+                cat = EventCategory(d.category)
+                event = SessionEvent(
+                    session_id=session_id,
+                    region_id=region_id,
+                    category=cat,
+                    description=d.description,
+                    magnitude=clamp01(d.magnitude),
+                    lifecycle=default_lifecycle(cat),
+                    status=EventStatus.SUGGESTED,
+                    created_turn=session.turn,
+                    provenance=Provenance(source=SourceKind.SIMULATION, generated_by=SUGGESTED_BY),
+                )
+                saved = u.events.create_event(event)
+                out.append(saved)
+                name = region_name(names, region_id)
+                u.timeline.append_timeline(
+                    self._entry(
+                        session,
+                        TimelineKind.EVENT_SUGGESTED,
+                        f"suggested {cat.value} event in {name}",
+                        {
+                            "event_id": saved.id,
+                            "region_id": region_id,
+                            "region_name": name,
+                            "category": cat.value,
+                            "magnitude": saved.magnitude,
+                            "description": saved.description,
+                        },
+                    )
+                )
         return out
 
     def approve_event(self, session_id: str, event_id: str) -> SessionEvent:
         """Approve a SUGGESTED event -> ACTIVE (FR-P2.3, CL2.1=A)."""
         session = self._require_open(session_id)
         event = self._require_event(session_id, event_id)
-        if not event.is_suggested():
+        if event.is_resolved():
             raise ValueError(f"only SUGGESTED events can be approved: {event_id}")
-        event.approve()
-        saved = self._repo.update_event(event)
         name = self._region_name(session, event.region_id)
-        self._timeline(
-            session,
-            TimelineKind.EVENT_APPROVED,
-            f"approved the {event.category} event in {name}",
-            {
-                "event_id": event_id,
-                "region_id": event.region_id,
-                "region_name": name,
-                "category": EventCategory(event.category).value,
-            },
-        )
+        # V5 (RE-P06, BR-V5-07): read again in the section. A suggestion approved
+        # meanwhile → the event as it is, no second line; discarded meanwhile → 404;
+        # anything else that is not a suggestion (resolved, or created ACTIVE by the GM or
+        # a seed) → 400 (code review 01 #9).
+        with self.section.open(session_id) as (u, session):
+            event = self._fresh_event(u, session_id, event_id)
+            if (
+                EventStatus(event.status) is EventStatus.ACTIVE
+                and event.provenance.generated_by == SUGGESTED_BY
+            ):
+                return event
+            if not event.is_suggested():
+                raise ValueError(f"only SUGGESTED events can be approved: {event_id}")
+            event.approve()
+            saved = u.events.update_event(event)
+            u.timeline.append_timeline(
+                self._entry(
+                    session,
+                    TimelineKind.EVENT_APPROVED,
+                    f"approved the {event.category} event in {name}",
+                    {
+                        "event_id": event_id,
+                        "region_id": event.region_id,
+                        "region_name": name,
+                        "category": EventCategory(event.category).value,
+                    },
+                )
+            )
         return saved
 
     # -- internals -----------------------------------------------------------
     def _require_event(self, session_id: str, event_id: str) -> SessionEvent:
         event = self._repo.get_event(session_id, event_id)
+        if event is None:
+            raise LookupError(f"event not found: {event_id}")
+        return event
+
+    @staticmethod
+    def _fresh_event(u: PlayUnitOfWork, session_id: str, event_id: str) -> SessionEvent:
+        """The event as it is now, row locked, inside a section (BR-V5-07)."""
+        event = u.events.get_event(session_id, event_id, for_update=True)
         if event is None:
             raise LookupError(f"event not found: {event_id}")
         return event

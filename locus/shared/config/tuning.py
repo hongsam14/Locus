@@ -95,3 +95,5 @@ class PlayTuning:
     event_support_reinforce: float = 0.1  # support gain in event-influenced regions
     max_event_suggestions: int = 5  # n of one suggestion request (400 above)
     suggest_max_regions: int = 30  # regions shown to the event suggester
+    # V5 (BR-V5-03): how long a GM write waits for its session's short-write section
+    gm_write_wait_s: float = 5.0

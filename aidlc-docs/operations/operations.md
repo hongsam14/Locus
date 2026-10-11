@@ -1,6 +1,6 @@
-# Operations — Locus (placeholder)
+# Operations — Locus
 
-AI-DLC Operations is a **placeholder** stage. For the MVP, operation is local via Docker Compose; no production deploy/monitoring workflow is in scope yet.
+Operation is local via Docker Compose (three profiles); there is no production deploy or monitoring workflow yet. Sections follow the cycles that added them; a note in 〔brackets〕 marks where a later unit changed a line.
 
 ## Run (local)
 ```bash
@@ -25,6 +25,8 @@ docker compose --profile service --profile tools down   # stop everything
 3. Query: `GET /api/knowledge/worlds/{world_id}/regions/{id}?include_hearsay=true` ; author: `/api/world/*` (U1 route prefixes).
 4. Designer cross-world reference: `GET /api/world/worlds/{id}/related-priors` — priors from OTHER
    worlds sharing this world's domain tags (read-through; never enters NPC build/query).
+   〔Follow-up V9: it finds nothing today — the filter asks for a top-level `domains` the index
+   keeps under `meta.domains`; next-cycle § 7.〕
 5. `locus world export --world <id> --out <file.world.json>` — World File v1 (also the NPC-runtime static bundle).
 
 > MVP-improvement cycle (2026-06-09) changed only application/data layers — no infra/deploy change.
@@ -41,12 +43,12 @@ locus init-schema --play --localization   # U1: flags pick a subset — --world 
    seeds a default per-region distortion). History: `GET /api/play/worlds/{world_id}/sessions`. GameMaster tools live under `/api/gm/*`.
 2. GameMaster (per turn): generate rumors `POST …/sessions/{sid}/regions/{rid}/rumors` (LLM degree-chain
    distortion of direct + propagated knowledge + existing rumors), regenerate, `PUT …/rumors/{id}/support`,
-   `PUT …/regions/{rid}/distortion`, `POST …/sessions/{sid}/advance-turn` (re-evaluate promotion, turn++).
+   `PUT …/regions/{rid}/distortion`, `POST …/sessions/{sid}/advance-turn` (re-evaluate promotion, turn++). 〔Since U4 the route is `POST /api/gm/sessions/{sid}/advance`, the same engine as a player's action; "advance-turn" below means it.〕
 3. NPC session query: `GET …/sessions/{sid}/regions/{rid}/knowledge` — Knowledge(+promoted rumors as
    direct-like)+rumors; distance-based `propagated`/auto-rumor excluded (designer-only).
 4. Timeline / history: `GET …/sessions/{sid}/timeline`; past (closed) sessions are read-only.
 5. Web: SessionBar (create/select/close) + SessionPanel (GameMaster hub: turn, timeline, generate,
-   support/distortion sliders, PROMOTED badge).
+   support/distortion sliders, PROMOTED badge). 〔Follow-up V6: the GM screen `/gm/:sessionId` replaced SessionBar/SessionPanel — `web/README.md`〕
 
 > This cycle ADDS PostgreSQL (session-only) to the infra tier; Neo4j/OpenSearch stack unchanged.
 > LLM rumor generation needs `OPENAI_API_KEY` and is graceful (a failed step is skipped, the turn proceeds).
@@ -64,6 +66,7 @@ Adds **Events** that dynamically evolve per-region distortion over turns. **No n
    live values `GET …/sessions/{sid}/distortions`; events `GET …/sessions/{sid}/events?status=`.
 4. Web: SessionPanel adds an event create form, session-wide event list (Approve/Discard/Resolve), a
    "Suggest events" button, and shows the real per-region distortion. Timeline records EVENT_* entries.
+   〔Follow-up V6: the GM screen `/gm/:sessionId` replaced SessionBar/SessionPanel — `web/README.md`〕
 
 > Distortion/propagation/support evolution are **deterministic** (LLM-independent); only event *suggestion*
 > uses the LLM and is graceful (no suggester / failure → no suggestions, the turn still advances).
@@ -86,7 +89,7 @@ support(공신력) is now the rumor "aliveness" lever, so the set stays finite w
 
 **Build path fixes**: topology now sees this world's persisted common-sense priors (wiki injected before
 `topology.build`); a barrier terrain not bordering exactly 2 regions is reported in `IngestionResult.errors`
-instead of being silently dropped. Web SessionPanel loads its reads in parallel.
+instead of being silently dropped. Web SessionPanel loads its reads in parallel. 〔Follow-up V6: the GM screen `/gm/:sessionId` replaced SessionBar/SessionPanel — `web/README.md`〕
 
 ## World File · demo · backups (Purpose Restructure U2, 2026-09-30)
 - **Save / load a world (World File v1)** — `locus world export --world <id> --out <id>.world.json`, `locus world import --world <id> --file <file> [--replace/--no-replace] [--remap] [--force]`. API: `GET /api/world/worlds/{id}/file` (download), `POST /api/world/worlds/{id}/file?replace=&confirm=&remap=` (JSON body) or `POST .../file/upload` (multipart). Legacy export JSON (no `format_version`) is accepted as v0; other versions → 422. Loading a file into a different world id remaps every id deterministically (`uuid5`); `remap=true` / `--remap` forces it (recovery from an `id collision with another world` error).
@@ -94,6 +97,11 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
 - **Build** — `locus world build --world <id> --inputs <file.json>` (images base64 in `map_images`/`concept_arts`); API `POST /api/world/worlds/{id}/build` (JSON) or `.../build/upload` (multipart fields: `memos`, `maps`, `images` (repeatable), `name`, `description`). `BuildReport.ok` is false only for error-severity warnings (persist failure, unreadable input, zero regions); item-level problems and unresolved names are warnings; `unscoped_knowledge_ids` lists knowledge that found no region; `llm_calls`/`embedding_calls` count that build.
 - **Replacing a world** — build/import/demo replace an existing world by default (`replace=true`). Before deleting, the old world is exported to `LOCUS_DATA_DIR/backups/<id>-<UTC>.world.json` (compose: the `locus_data` volume at `/app/data`). Recover with `locus world import --world <id> --file <backup>`. If the world has **open sessions**, the API answers 409 (`open_sessions`, `session_ids`) until `confirm=true`; the CLI exits 1 until `--force`; confirmed/forced replaces close those sessions and list them in `closed_session_ids`.
 - **Single worker** — play and the editor read one in-process `WorldCache` per worker; run the API with **one uvicorn worker** (compose does). Writes (build, import, edit, augmentation, prior edit) invalidate it.
+- **Replace safety (V7, 2026-10-11)**
+  - **A failed backup stops the replace.** The API and the CLI both back up to `LOCUS_DATA_DIR/backups` before a replace. When that file cannot be written, nothing is deleted: the report is `ok=false`, `replaced=false`, with an error line of stage `backup`, and open sessions stay open. Fix the disk or the permissions of the backup directory and run it again.
+  - **A rebuild keeps NPCs and event seeds.** A build makes regions, connections and knowledge; NPCs and seeds are added in the editor. `world build` / `POST …/build` reads the old world fresh, then puts each NPC and seed on the new region with the same name and level (case, width and spacing ignored; two such regions are told apart by their parents). When a name is shared (two regions of one name and level, in the old world or the new one), the parents must match too. The report counts them (`carried_npcs`, `carried_seeds`; 0 when the body write failed); each one it could not place is a warning of stage `carry-over` and is still in the backup. An NPC or seed the load already dropped (its region gone, or the node unreadable) is a `carry-over` warning too, but it is **not** in the backup: the backup is exported through the same load. If the old world cannot be read, nothing is replaced (stage `carry-over`, error); if it was deleted meanwhile by another process, the build is a fresh one. A World File import does not carry: the file holds the whole world.
+  - **A World File with duplicate ids is refused** (stage `duplicate-ids`, error; the first ten ids of the file are named, as written in the file). Nothing is written and the old world stays. Fix the file: one id per item across `regions`, `entities`, `relations`, `knowledge`, `priors`, `npcs`, `event_seeds`. A scope listed twice for one knowledge and region is stored once, at its highest confidence.
+  - **The version mark is written last, and a world without one is not cached.** A world built before U2 has no `WorldMeta`, so every read loads it from Neo4j; rebuild it or load it again from a World File and it gets one. A read during another process's replace gets the half-written world once and never caches it.
 - **Without `OPENAI_API_KEY`** 〔U8 정정〕 — the API starts and `/health` reports `ok` (the LLM is not a boundary). `GET /api/capabilities` says `{"llm": false, …}`. The routes that need an LLM answer 503: build (`…/build`, `…/build/upload`, `…/demo/{name}/build`), NPC drafts, rumor generate/regenerate, event suggestion, NPC dialogue `start`/`say`. Everything else works: World File, demo load, world list, the editor, augmentation Q&A (templates), wiki priors, sessions, moves, turns, seeds, GM manual events.
 - `locus world list` prints stored worlds with name, region count and last update (`WorldMeta`; pre-U2 worlds show `name=id`). Old aliases `locus build-world` / `locus export` still work for one cycle.
 
@@ -111,17 +119,48 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   calls. GM manual generate/regenerate ignore the caps (intentional). `llm_calls` in the
   results counts *reserved* calls (upper bound).
 - **Concurrency**: one running turn per session (in-process guard). A second action, a GM
-  manual turn, closing the session, or a GM write (rumors / support / distortion / events)
-  while a run is in flight answers **409 `turn in progress`**; reads are never blocked. The
-  guard is process-local: keep **`--workers 1`** (compose already does). Raising the worker
-  count breaks two things, not one: two workers can run turns for the same session at the
-  same time, and a starting worker's `fail_stale_runs` marks **another worker's live run**
-  `failed` (code review U4 #5, accepted for this demo scale — there is no cross-process
-  fencing).
+  manual turn, closing the session, or a GM write (rumors / support / distortion / events /
+  seeds / deed void) while a run is in flight answers **409 `turn_running`**; reads are never
+  blocked. The 409 bodies carry a `code` and a sentence with no session id, run id or lease
+  token (V5).
+  - **GM writes (V5)**: a GM write holds a lease on the session for its whole length, LLM
+    call included; leases share the session with each other (a bulk generate of five runs
+    at once) and keep turns out — a player action then answers **409 `gm_busy`**, and the
+    player screen's `gm_busy` flag is true (`turn_running` is a turn only). The part that
+    reads and writes the rows — fresh read, checks, rows and their timeline line in one
+    transaction — runs one at a time per session (the **short write**). It waits at most
+    **`GM_WRITE_WAIT_S`** (default 5 s, at most 600); past that the write answers 409 `gm_busy` and writes
+    nothing. The save takes milliseconds, so the wait only bites when something hangs.
+  - **Close (V5)**: closing a session keeps new turns out at once (a turn started then is 409
+    `session_closed`) and waits only for a save in progress, not for a GM write's LLM call;
+    that write then finds the session closed, answers 409 `session_closed` and saves nothing.
+    A world replace closes its sessions the same way; only a session mid-turn blocks it
+    (`sessions_busy`).
+  - The guard and the short write are process-local: keep **`--workers 1`** (compose already
+    does). Raising the worker count breaks three things: two workers can run turns for the
+    same session at the same time, GM writes in two workers are no longer one at a time, and
+    a starting worker's restart recovery compensates **another worker's live run** (code
+    review U4 #5, accepted for this demo scale — there is no cross-process fencing).
 - **Background executor**: one daemon worker thread, FIFO across sessions. A queued run is
   shown as `running` before it actually starts (demo scale: fine). On shutdown the API waits
   `TURN_SHUTDOWN_TIMEOUT_S` (30s) for the current run; a hung LLM call does not block process
-  exit. On startup any run still `running` is marked `failed` (`error=interrupted`).
+  exit. On startup, before any request, every run still `running` (cut by the restart) is
+  compensated like a failed run (V5): only the turns that ran stay charged, a move with no
+  turn run is undone with its deeds, the run becomes `failed` with `error=interrupted`, and a
+  `turn_run_failed` line says `error_type: "Interrupted"`.
+  - A run whose turns all committed (only its result was lost) is marked `failed` /
+    `interrupted` with nothing to undo and no timeline line.
+  - A session with more than one `running` run (a run whose failure could not even be
+    recorded, then a later action) has only its newest run compensated; the older ones are
+    marked `interrupted_uncompensated` for an operator.
+  - If a run's compensation itself fails, the run is marked `failed` with
+    `error=interrupted_uncompensated` and the API logs an ERROR line with the run and
+    session ids. Find such runs with `GET /api/play/sessions/{s}/turn-runs?status=failed`
+    (look at `error`) or in SQL:
+    `select id, session_id from turn_runs where error = 'interrupted_uncompensated';`
+    Then check that player's position and turn charge by hand (`GET …/player`, the
+    session timeline). If even that mark fails (storage down), the run stays `running` and
+    the next start tries again.
 - **LLM outage**: each LLM call makes 3 attempts with a 30s timeout
   (`locus/shared/llm/retry.py`). Between attempts it waits 1s then 2s, or what the server
   asked for in `Retry-After` / `retry-after-ms` (rate limits, 503), capped at 8s. Worst case
@@ -134,8 +173,9 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   (moves, waits, events, promotion); only rumor drafts are skipped (`llm_available=false`).
 - **Timeline order**: a turn's entries are written in one transaction, so they are stamped
   by the application with a strictly increasing clock (`locus/play/storage/clock.py`) rather
-  than the database default, and read back ordered by `(turn, created_at, id)`. This is the
-  one table whose `created_at` is not DB server time.
+  than the database default, and read back ordered by `(turn, created_at, id)`. 〔Follow-up
+  V9: messages, deeds and appraisals take the same clock; the other tables keep DB server
+  time.〕
 - **Failure records**: a failed run stores the fixed message `turn processing failed`; the
   timeline `turn_run_failed` payload holds only the exception class name (details go to the
   server log). Turns already committed stay.
@@ -167,8 +207,8 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   outage" above). The web image's nginx waits 130s for `/api/` (`web/nginx.conf`), so a slow
   answer is not cut off with a 504 while the backend still saves it. A reverse proxy in
   front of the API needs the same allowance. The call runs before the transaction, so a failed call stores nothing: no
-  conversation row and no message. A call that still fails after its retries answers **500**,
-  because BR-U5-30 only says the error is raised and gives no status. An empty answer is
+  conversation row and no message. A call that still fails after its retries answers **503**
+  with code `llm_failed` (`api/errors.py`; it was a 500 when U5 shipped). An empty answer is
   replaced by a fixed line in the display language.
 - **Display language**: `SUPPORTED_LANGS` (default `ko,en`) is the `?lang=` allow-list.
   `TRANSLATION_TARGET_LANG` is the default, and startup fails if it is not in the list.
@@ -192,7 +232,8 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   leave one harmless row behind, which the next purge removes. A failed purge is logged and
   never fails the request. **Known gap**: the CLI (`locus world build|import|demo` with a
   replace) builds no localization container and purges nothing. Those orphan rows go away
-  with the next API-side replace of that world.
+  with the next API-side replace of that world. 〔Follow-up V3: `world demo` now purges and
+  seeds as the API does; `world build` and `world import` still do not.〕
 - **Accepted risks** (local single-player demo, no auth): the player's text goes into the
   prompt as is. The guard is the system prompt's knowledge boundary plus the length cap, so a
   crafted line can still make the NPC invent things outside its knowledge. Because recent
@@ -273,7 +314,8 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
 - **Failed and interrupted runs**
   - A run that fails before any turn advanced deletes its deeds: an undone move's arrival, a
     declaration, a statement, and their appraisals. Their timeline lines stay as an audit trail.
-  - A run marked `interrupted` at restart keeps the deeds its prep step committed (accepted).
+  - V5: a run cut by a restart is compensated the same way at the next start, so it no
+    longer keeps the deeds its prep step committed (see "Background executor").
 - **Env** (`env.example`): `SPREAD_MIN_WEIGHT` (0.15), `DEED_SEED_MIN_SALIENCE` (0.5),
   `MAX_SPREAD_PER_REGION_TURN` (1), `DECLARE_MAX_CHARS` (300), `NPC_MAX_DEEDS` (5),
   `APPRAISAL_MAX_DEEDS` (8).
@@ -299,6 +341,7 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   - The GM tools are split by feature under `web/src/features/gm/`:
     - `GmHub` holds the state.
     - `ManualTurnPanel`, `EventPanel`, `DistortionPanel`, `RumorPanel`, `TimelinePanel` and `DeedPanel` draw it.
+  - 〔Follow-up V6: `GmHub` and `ManualTurnPanel` are gone. The GM screen is reached from the top bar's menu; `GmSessionView` and `useGmData` hold one session's state; `TurnTools` and `TurnBand` sit over five tabs (`GmTabs`: region, events, seeds, record, deeds); the player strip's [back to play] returns to the player screen.〕
 - **World state**
   - `GET /api/gm/sessions/{s}/state` returns one row per world region: distortion, feedback share, active / promoted / deed rumors and active events.
   - The map overlay ("World state") colors regions in five distortion bands and badges `active/promoted` (plus `✦deed`).
@@ -362,8 +405,8 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
 
 ## World editor (Purpose Restructure U3, 2026-10-01)
 - **Screens**
-  - `/` lists the worlds (name, regions, last edit, open sessions) with [Edit] and [Start session], and [Build from sources]. 〔U8〕 Demo cards from the manifest sit above the list, with or without worlds (no [Load the demo] button).
-  - `/editor/:worldId`: the World File bar (save = download, load = replace after a yes, close open sessions after a second yes, build from sources, the "open sessions" band), the map, and the Region / Unscoped / Augment / Wiki tabs.
+  - `/` lists the worlds (name, regions, last edit, open sessions) with [Edit] and [Start session], and [Build from sources]. 〔U8〕 Demo cards from the manifest sit above the list, with or without worlds (no [Load the demo] button). 〔Follow-up V4: a demo card owns its demo world; "my worlds" lists the rest with [continue], [new session], [edit]; [build a world from sources] heads the list.〕
+  - `/editor/:worldId` 〔Follow-up V8: the GM's frame〕: a head with the world's name and counts, [play this world] and the file menu (save = download, load = replace after a yes, close open sessions after a second yes, build from sources); the map with its tools beside a 400 px panel of four tabs — Region (the inspector: fields, connections, knowledge and scopes, NPCs; region delete apart) / Unscoped / Augment / Wiki. Below 1024 px one column: the head, the map, then the panel (new region and new connection open as dialogs). The open-sessions band is gone; a world with open sessions says so in the head.
   - The map has three tools: select/move (a click saves nothing; a drag over 4px saves the position once), add region (click an empty spot), connect (click two regions in turn).
 - **Edits** (`/api/world/worlds/{w}/…`, `api/routers/world_editor.py`)
   - An edit replaces the node's properties whole: a cleared field is gone (build and import still merge).
@@ -375,7 +418,8 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
 - **Region delete** (`GET …/delete-plan`, `DELETE …/regions/{r}`)
   - What happens, in this order: children move under the deleted region's parent; entities lose their location; its scopes go (knowledge stays — an item scoped only there becomes "unscoped"); its NPCs are deleted (search document, then node); both directions of its connections go; then the region.
   - A cut part-way leaves no dangling id, and sending the same delete again finishes it.
-  - The router holds the GM lease of every open session of the world over the check and the delete: a session mid-turn is 409 ("turn in progress"), and a region where an open session's player stands is 409 with those session ids.
+  - The router holds the GM lease of every open session of the world over the check and the delete: a session mid-turn is 409 `turn_running`, and a region where an open session's player stands is 409 with those session ids. While it holds them, a player action in those sessions is 409 `gm_busy`.
+  - V5: an ACTIVE event in the deleted region ends on the session's next turn. Its build-up on neighbouring regions is given back, nothing is written for the deleted region, and the timeline line `event_resolved` carries `reason: "region_removed"`. A GM resolve of such an event also gives back only the regions still there.
   - Known limit: a session started, or a GM write made, while the delete runs is not held; such a session may point at the deleted region (the play screen then answers that the player's region no longer exists).
 - **Augmentation Q&A**
   - Detectors: gap, low_confidence, wiki_conflict (reads `terrain_kind`), orphan, dangling (a `parent_id`, `located_in`, connection `wiki_prior_ref`, or an id in `derived_from_prior_ids` / `about_entity_ids` that points at nothing — one issue per id), unscoped.
@@ -399,20 +443,41 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   - Entries are checked once at assembly; a bad entry is left out with a warning (`DemoWorlds.problems`). `python -c "from locus.world.demo import check_packaged; print(check_packaged())"` prints the problems of the installed package ([] when fine; the CI images job runs it).
   - Adding a demo: put `<name>.world.json` (and its sources) in that folder and add an entry; a reinstall (`pip install .` / the image build) ships it.
   - Old command → new: `world demo --name aldermoor` → `world demo --name emberleaf`; `build-world --demo` (alias) → `world build --demo emberleaf`. The old Aldermoor file lives on only as a test fixture (`tests/fixtures/aldermoor/`).
-  - [play now] on a card: load the demo into the world id of its name if it is not there (or on [load fresh]), start a session named "여행자"/"Traveler" at `start_region_id`, open `/play/:id`. Loading never calls an LLM.
+  - [play now] on a card: load the demo into the world id of its name if it is not there (or on [load fresh]), start a session named "여행자"/"Traveler" at `start_region_id`, open `/play/:id`. Loading never calls an LLM; with `OPENAI_API_KEY` set it does call the embedding API for the search documents (without a key it loads with no embeddings).
 - **Event seeds**
   - World File optional section `event_seeds` (format_version stays 1): `id`, `region_id`, `title`, `description`, `category`, `magnitude`, optional `lifecycle`. Stored as `EventSeed` nodes; a region delete removes its seeds (the delete plan lists `seed_ids`).
   - `GET /api/gm/sessions/{sid}/seeds` (each with its region name and running event id) and `POST /api/gm/sessions/{sid}/seeds/{seed_id}/start` → 201 with an ACTIVE event (no LLM), under the GM lease. A second start while its event runs is 409; after a resolve it starts again. The timeline line reads "씨앗 사건 시작: {title}".
   - Hosts running the API outside compose: run `locus init-schema --world` once after upgrading (the `EventSeed` constraint). Compose runs `init-schema` on every start.
-- **Keyless** — `GET /api/capabilities` → `{llm, vlm, embedding}` from the assembled providers. The home, editor and GM screens show one line when `llm` is false and turn the LLM buttons off with "LLM 키가 필요합니다"; a failed read turns nothing off; a 503 naming the provider reads the same.
+- **Keyless** — `GET /api/capabilities` → `{llm, vlm, embedding}` from the assembled providers. The home, editor and GM screens show one line when `llm` is false and turn the LLM buttons off with "LLM 키가 필요합니다"; a failed read turns nothing off; a 503 naming the provider reads the same. 〔Follow-up V2: one band under the top bar of every screen (`AppShell`), and the buttons say "AI 키가 있어야 해요".〕
 - **Ports and profiles**
   - Infra ports bind 127.0.0.1 and take `NEO4J_HTTP_PORT`, `NEO4J_BOLT_PORT`, `OPENSEARCH_PORT`, `SESSION_DB_PORT`, `DASHBOARD_PORT` from `.env` (defaults unchanged). `API_PORT`/`WEB_PORT` stay open on all addresses.
   - A host where 7474/7687 are taken (another Neo4j): add `NEO4J_HTTP_PORT=17474` and `NEO4J_BOLT_PORT=17687` to `.env`; with host uvicorn also set `NEO4J_URI=bolt://localhost:17687`.
   - `web` has a healthcheck (`wget -q --spider http://127.0.0.1/`).
-- **CI** — `.github/workflows/ci.yml`: backend (ruff, black, pytest with a printed hypothesis seed: re-run a failure with `pytest --hypothesis-seed=<seed>`), frontend (`npm ci`, tsc, vitest), audit (`npm audit --omit=dev --audit-level=moderate`), images (both builds, `check_packaged()` in the installed package, `import api.main`). No secrets, no services. mypy stays local (baseline 11).
-- **Live scenario** — `python scripts/live_scenario.py --base http://localhost:8000 --world emberleaf` after `docker compose --profile service up -d --build`. Standard library only, not in CI. It **replaces** the target world, then walks the demo: health and capabilities, demo load (12 regions), a session at the harbor, a move, a talk, a declaration, the end of the talk (when the witness judges the deeds, BR-U6-7), the blight seed, the walk back, the one-hop deed rumor, a wait, the two regions' distortion, a talk about the blight, no deed rumor in Ironcrag by T+2, the world state. Each step prints PASS/FAIL/SKIP (LLM steps SKIP without a key; the spread steps SKIP when no deed was judged worth telling, and a noteworthy judgement with no rumor is a FAIL); any FAIL exits 1. Its first step is the compose check (Infra R-01).
-- **Known gap (A8-10)** — replacing a world from the CLI (`world import`/`world demo`/`world build`) does not purge its translations; the API paths (and so the screens) do. Stale rows are filtered by source hash on read; they only take space.
+- **CI** — `.github/workflows/ci.yml`: backend (ruff, black, pytest with a printed hypothesis seed: re-run a failure with `pytest --hypothesis-seed=<seed>`), frontend (`npm ci`, tsc, vitest), audit (`npm audit --omit=dev --audit-level=moderate`), images (both builds, `check_packaged()` in the installed package, `import api.main`). No secrets, no services. 〔Follow-up V9: backend also runs `mypy locus api` (0 errors) and lints `scripts`.〕
+- **Live scenario** — `python scripts/live_scenario.py --base http://localhost:8000 --world emberleaf` after `docker compose --profile service up -d --build`. Standard library only, not in CI. It **replaces** the target world, then walks the demo: health and capabilities, demo load (12 regions), a session at the harbor, a move, a talk, a declaration, the end of the talk (when the witness judges the deeds, BR-U6-7), the blight seed, the walk back, the one-hop deed rumor, a wait, the two regions' distortion (〔V9〕 the blight reaches the harbor more than Ironcrag, and the harbor is the more distorted, above 0.3), a talk about the blight, no deed rumor in Ironcrag by T+2, the world state. Each step prints PASS/FAIL/SKIP (LLM steps SKIP without a key; the spread steps SKIP when no deed was judged worth telling, and a noteworthy judgement with no rumor is a FAIL); any FAIL exits 1. Its first step is the compose check (Infra R-01). 〔V9〕 An answer that is not JSON, or a broken reply, is a FAIL with what came back, not a traceback; `--poll` is at least 1 s.
+- **Known gap (A8-10)** — replacing a world from the CLI (`world import`/`world demo`/`world build`) does not purge its translations; the API paths (and so the screens) do. Stale rows are filtered by source hash on read; they only take space. 〔Follow-up V3: `world demo` now purges and seeds them as the API does; `world import` and `world build` still do not.〕
 - **License** — MIT (`LICENSE`, `pyproject.toml`). The demo world's credits are in the manifest and the README.
+
+## Follow-up cycle (V1~V9, 2026-10-07 → 2026-10-12)
+What an operator needs from this cycle. Line-level changes sit where they belong, marked 〔Follow-up Vn〕.
+- **Screens** — rebuilt on one design system (V2): a dark theme from tokens in `web/src/index.css`, self-hosted fonts, Korean first with an English switch. Home, play (V4), GM (V6) and editor (V8) are described in `web/README.md`.
+- **GM writes** (V5) are serialized per session in the process (see "GM writes (V5)" above). The guarantee holds with **one API worker** (`--workers 1`, as compose runs it). A second worker would need a cross-process lock.
+- **Korean display** (V3)
+  - The demo's Korean names and texts ship as `locus/world/demo/worlds/emberleaf.ko.json` (the manifest's `translations.ko`).
+  - A demo load seeds them: the API path, and `locus world demo` since V3.
+  - Other text is translated by the background warm, `TRANSLATION_WARM_WORKERS` threads (`env.example`).
+- **CI**
+  - Runs on `ubuntu-26.04` with current actions (V1).
+  - The backend job also runs `mypy locus api` (0 errors) and lints `scripts` (V9).
+  - pytest fails on any ResourceWarning (V9).
+- **Dependencies**: `langchain-openai>=0.2` (V9). The providers pass the key as a pydantic v2 `SecretStr`.
+- **Real-stack checks**
+  - The steps and expected answers are in `construction/build-and-test/follow-up/integration-test-instructions.md`: the live scenario, PG smoke P1–P6 and the row lock, the V7 Neo4j checks, nginx heads, an editor and GM walk.
+  - A graceful `docker compose restart app` lets a running turn finish (up to `TURN_SHUTDOWN_TIMEOUT_S`). Only a crash (`docker compose kill app`) leaves an interrupted run for the startup recovery.
+- **Host clean-up**
+  - Tests used to write World File backups into the repo's `./data/backups` on every run (from V7 to V9).
+  - Since V9 code review 01 they write to a temporary folder.
+  - The old `emberleaf-2026…world.json` files there can be deleted by hand. Keep the `*-before-u8-cleanup` backups and any you made yourself.
 
 ## Web UI
 ```bash
@@ -424,14 +489,15 @@ npm run build        # tsc + vite build -> web/dist
 - Screens: `/` (demo cards, world list), `/editor/:worldId`, `/gm/:sessionId`, `/play/:sessionId`. See `web/README.md`.
 
 ## Observability (current)
-- Structured stdout from CLI/app; container healthchecks (Neo4j HTTP, OpenSearch cluster health, **Postgres `pg_isready`**).
+- Structured stdout from CLI/app; container healthchecks: Neo4j HTTP, OpenSearch cluster health, Postgres `pg_isready`, **app** `curl -sf http://localhost:8000/health` (15 s, 30 s start period), **web** `wget -q --spider http://127.0.0.1/`.
+- `GET /health` is `ok` when every assembled boundary is up, `degraded` when some are down, and 503 `unavailable` when none is (V9 tests the first two); an app given its containers (tests) is always `ok`. `GET /api/capabilities` says which providers are assembled.
 - Dashboards/alerting: out of scope (future Operations expansion).
 
 ## Localization & UX (UX Improvement cycle, 2026-08-11)
 - **Translation (X1)**: LLM-backed ko translation of session content (rumors/events) + canonical Knowledge, cached in the PostgreSQL `translations` table (created by `init-schema`, additive). Reuses the OpenAI provider. Config: `TRANSLATION_ENABLED`(기본 true), `TRANSLATION_TARGET_LANG`(ko). **Reads never block on the LLM** — cache-only on read, misses warm on a background thread; so the first view of new content may show English, then Korean on refetch. Disabled → all English (graceful).
-- **Turn-change notifications**: `advance-turn` returns `region_changes` (per-region promoted/demoted/pruned/events/added); the web SessionPanel shows one auto-dismiss toast per changed region.
+- **Turn-change notifications**: `advance-turn` returns `region_changes` (per-region promoted/demoted/pruned/events/added); the web SessionPanel shows one auto-dismiss toast per changed region. 〔Follow-up V6: the GM screen shows them in one result band under the turn tools.〕
 - **Regenerate preserves promoted**: `regenerate_region` keeps promoted rumors and reseeds the rest from **canonical knowledge only** (promoted rumors are not reused as chain seeds). Applies to per-region and "전체 재생성".
-- **Frontend (X2/X3)**: Tailwind v4 ("Doodly" paper+ink theme) + self-hosted Gaegu Korean handwriting font (`@fontsource/gaegu`, no CDN). Korean UI labels + timeline i18n (U5: every label is in a ko and an en dictionary in `web/src/i18n.ts`; see the dialogue section for the toggle). Build: `cd web && npm ci && npm run build` (U8: the peer conflict is gone).
+- **Frontend (X2/X3)**: Tailwind v4 ("Doodly" paper+ink theme) + self-hosted Gaegu Korean handwriting font (`@fontsource/gaegu`, no CDN). Korean UI labels + timeline i18n (U5: every label is in a ko and an en dictionary in `web/src/i18n.ts`; see the dialogue section for the toggle). Build: `cd web && npm ci && npm run build` (U8: the peer conflict is gone). 〔Follow-up V2: a dark "lamplit tavern" theme replaced Doodly and Gaegu — self-hosted Noto Sans KR, Nanum Myeongjo and IM Fell English SC, tokens in `web/src/index.css`; the dictionaries are `web/src/i18n/{ko,en}.ts`.〕
 - **No new infra**: canonical graph unchanged; only additive session-layer `translations` table + response-only ko fields + `region_changes`. Rollback is additive-safe.
 
 ## Future Operations (not implemented)

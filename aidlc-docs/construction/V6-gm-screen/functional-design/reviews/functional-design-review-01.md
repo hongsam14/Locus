@@ -1,0 +1,45 @@
+## Review
+
+**Verdict:** READY
+**Reviewer:** architecture-reviewer
+**Stage:** Functional Design — V6 GM 화면
+**Reviewed artifact:** `aidlc-docs/construction/V6-gm-screen/functional-design/business-logic-model.md`
+**Class:** adversarial
+**Iteration:** 1
+**Date:** 2026-10-08T10:45:37Z
+
+### Findings
+
+| ID | Severity | Location | Finding | Required action | Status |
+|---|---|---|---|---|---|
+| R-01 | Major | aidlc-docs/construction/V6-gm-screen/functional-design/business-rules.md > BR-V6-24, TP-V6-12 (계획 "수치" 항목, frontend-components § 4 [행적] 탭) | BR-V6-24는 "판단의 slant"를 `enumLabel`로 보이라고 하고 TP-V6-12는 "slant 값 전체"로 "원문 값이 없음"을 검사한다. 그러나 `ENUM_VALUES`(web/src/format/enums.ts)에 slant 종류가 없고, `web/src/__tests__/format.enums.test.ts:34`가 "slant is not an enum (free text from the LLM)"을 단언한다. 서버도 값을 제한하지 않는다(`locus/play/npc/prompts.py:103` "one or two words", `dialogue.py:273`은 길이만 자른다). 현재 `DeedPanel.tsx:119`는 `a.slant`를 그대로 찍는다. 값의 유한 집합이 없으므로 라벨 표와 "전 값 순회" 테스트를 만들 수 없다. 상위 `component-methods.md` § 1.4의 `EnumKind`에는 slant가 들어 있어 상위와 코드가 서로 다르고, 설계가 어느 쪽을 따르는지 정하지 않았다 | slant를 어떻게 보이는지 정한다. 예: LLM 자유 문장이므로 라벨 변환 없이 NPC 말투 문구로 보이고 FR-D8의 enum 목록에서 뺀다. 또는 값 집합을 서버에 닫고 `ENUM_VALUES`/`format.enums.test.ts`/`format.enums.backend.test.ts`를 함께 바꾼다. 어느 쪽이든 BR-V6-24 대상 목록과 TP-V6-12를 고쳐 검증 가능하게 하고, 상위 `component-methods.md`와 다르다면 그렇다고 적는다 | New |
+| R-02 | Major | aidlc-docs/construction/V6-gm-screen/functional-design/frontend-components.md > § 5 트리, § 5.2 마지막 항목; business-logic-model.md > § 1.1, § 1.3, § 7 | 늦은 답 방어(BR-V6-15/16, TP-V6-6)의 핵심 장치인 `key={sessionId}` 경계와 상태 소유가 서로 맞지 않는다. (1) § 1.3은 세션을 바꾸면 "열린 탭"까지 새로 마운트되어 남지 않는다고 하는데, § 5.2는 `GmPage`가 `selected`와 `tab`을 가진다고 한다. `GmPage`는 키 바깥이다. (2) `useGmData`/`useGmSession`이 어느 컴포넌트에서 호출되는지가 트리에 없다. `GmLayout`의 지도 슬롯은 `worldState`(useGmData)를 쓰고 지도는 키 바깥 "GmPage가 가진다"라고 했으므로, 훅이 키 바깥이면 옛 세션의 events/timeline/seeds/deeds가 그대로 비치고 안이면 지도가 매번 다시 마운트된다. (3) `useResource`는 새 키를 읽는 동안 옛 키의 data를 남긴다(`hooks/useResource.ts` 머리 주석). § 1.1은 세션과 월드에만 id 일치 확인을 두었다. 지역 키 소문 `["sid", regionId, lang]`은 § 7이 지역 지식 패널의 다시 마운트를 없앴으므로(BR-V6-10) 지역을 바꾸면 새 지역 이름 아래에 옛 지역 소문 카드와 그 [공신력 저장]이 읽는 동안 남는다. TP-V6-6은 세션 전환만 검사한다 | 트리에 `useGmData`/`useGmSession`/`selected`/`tab`/`mapUrl`을 각각 어느 컴포넌트가 가지고 키 안인지 밖인지 적고, § 1.3과 § 5.2의 모순을 푼다. 자원마다 "자기 키의 data만 쓴다"는 규칙(예: `rumor.region_id === regionId`, `session_id` 비교)과 읽는 동안 지역 탭이 보이는 것(로딩 또는 빈 줄)을 정한다. TP-V6-6에 지역 바꾸기 중 옛 지역 소문 미표시 단언을 더한다 | New |
+| R-03 | Minor | aidlc-docs/construction/V6-gm-screen/functional-design/frontend-components.md > § 5.2 `useGmData.patchRumor/patchDistortion`; business-logic-model.md > § 2 | `Resource<T>`(`useResource.ts`)는 `data/state/error/pending/reload`만 가지고 값을 고치는 길이 없다. 그런데 § 3은 쓰기의 답으로 "그 카드/지역 탭의 왜곡·몫"을 바로 고친다고 하며, § 5.1의 공유 바탕 변경 목록(Select, conflictKind, describeError)에는 `useResource` 변경이 없다. 겹침 상태를 어디에 두는지, 뒤따르는 reload 답과 어떻게 합치는지가 없다. 또 § 2는 플레이어 읽기의 키에 `rev`를 넣고(`["gm-player", sid, rev]`) "다른 실패는 마지막 값을 둔다"고 하지만, 키가 바뀐 뒤의 실패에서는 `useResource`가 이전 키의 data를 버린다(`mine` 검사). rev가 오를 때마다 새 키이므로 "다시 읽는 동안 로딩 없음"(BR-V6-10)도 이 자원에는 맞지 않을 수 있다 | patch 겹침을 `useGmData` 안의 별도 상태로 둘지 `useResource`에 setter를 더할지 정하고, 플레이어 띠는 rev를 키에 넣지 않고 `reload`로 읽거나 문장을 실제 동작에 맞춘다 | New |
+| R-04 | Minor | aidlc-docs/construction/V6-gm-screen/functional-design/business-logic-model.md > § 1.1(3), § 1.5, § 3 표 | 세션 목록(`listSessions(world_id)`)의 키가 월드라서 같은 월드에서는 다시 읽지 않는다. § 3 표는 "세션 끝내기"에서만 목록을 다시 읽는다. 그래서 (a) [플레이어 없는 새 세션] 뒤 `/gm/:새 id`로 가면 새 세션이 고르기 목록에 없다(고른 값이 옵션에 없음), (b) 턴 진행 뒤 목록 항목의 "N턴" 라벨이 낡아 `PlayerStrip`의 N턴과 어긋난다(BR-V6-26이 "N턴 · 상태 · 날짜"를 약속한다) | 새 세션과 턴 진행(그리고 다른 세션의 turn이 바뀌는 쓰기)에서 목록을 다시 읽도록 표를 고치거나, 현재 세션의 라벨을 `getSession`에서 만든다고 정한다. 테스트에 새 세션 뒤 목록 포함 단언을 더한다 | New |
+| R-05 | Minor | aidlc-docs/construction/V6-gm-screen/functional-design/frontend-components.md > § 5.1 `conflictKind` | "`isBusy`로 바꾸므로 동작이 그대로다"는 사실이 아니다. 지금 `conflictKind`(`api/http.ts:54-58`)는 code가 있는 `session_closed` 아닌 409 전부(`seed_running`, `rumor_inactive`, `world_exists` …)를 "busy"로 돌려준다. `isBusy = turn_running | gm_busy`가 되면 `useTurnRun.ts:165`의 busy 갈래(알림 + 다시 읽기 + 이어 받기), `DeedPanel`, 기존 `gm.test.tsx:272-277`/`errors.describe.prop.test.ts:83-84`가 새 "conflict" 갈래에서 다르게 움직인다. 또 § 5 트리는 반환형에서 `"conflict"`를 뺐고 § 5.1은 넣어 두 곳이 다르다 | 반환형을 한 곳에 확정하고, 새 갈래(`conflict`, `rumor_inactive`, 옛 서버의 code 없는 409)가 플레이어·GM 각 호출부에서 하는 일을 표로 적는다. "동작 그대로" 문구는 고친다 | New |
+| R-06 | Minor | aidlc-docs/construction/V6-gm-screen/functional-design/business-logic-model.md > § 4.2, § 4.3 | 일괄 생성은 지역 요청 5개를 같은 세션에 동시에 보낸다. 서버는 이것들을 리스로 겹치게 하고(`guard.py` 머리), 턴·닫기와 겹치면 모두 409다. § 4.2는 `llm_unavailable`과 "그 밖"만 가르므로 `session_closed`/`turn_running`/`gm_busy`로 전부 실패해도 "실패 K"만 남는다(#15와 같은 꼴). § 4.3의 "다음 지역을 꺼내지 않는다"는 `bulk.ts`의 `mapLimit`(중단 신호 없음)을 바꿔야 하는데 § 5 트리와 영향 파일에 `bulk.ts`가 없다. 일괄 중 [세션 끝내기]가 열려 있는지도 정해져 있지 않다 | 실패 이유 분류에 409 갈래를 넣고(첫 409가 닫힘/턴 진행이면 중단하고 그 문장을 보임), `mapLimit`/`useBulkRumors` 변경을 트리에 적는다. 일괄 중 세션 끝내기·세션 바꾸기 상호작용을 한 줄로 정한다 | New |
+| R-07 | Minor | aidlc-docs/construction/V6-gm-screen/functional-design/business-logic-model.md > § 5(6) | "새로"는 [턴 진행] 직전에 "기억한 기록 id 집합"에 없는 줄이다. 기록이 아직 읽히는 중이거나 읽기에 실패한 상태에서 누르면 집합이 비어 모든 줄이 "새로"가 되고, 다른 곳(플레이어 탭)이 만든 줄도 섞인다. 또 모든 쓰기(14종 중 대부분)가 `getTimeline` 전체를 다시 읽는데(§ 3 표), 서버 쪽 쪽 나누기는 계획서의 한 줄(V9 이월)에만 있고 business-rules에는 없다 | 기록이 준비되지 않았을 때의 규칙(배지를 달지 않음)을 BR-V6-08에 더한다. 전체 읽기의 비용 한계를 알려진 제약으로 BR 또는 BLM에 옮겨 적는다 | New |
+| R-08 | Minor | aidlc-docs/construction/V6-gm-screen/functional-design/frontend-components.md > § 2(오른쪽 열 높이), § 4.1(8행); business-logic-model.md > § 7 | (1) 오른쪽 열 높이를 `calc(100vh - 머리 높이 - 여백)`로 하는데 머리 높이는 AppShell 내비, LLM 띠, 오류 줄, 끝난 세션 띠, 플레이어 띠로 달라진다. 값을 어떻게 얻는지가 없어 열 안과 페이지의 이중 스크롤이나 잘림이 생길 수 있다. (2) V2 `Tabs`(Radix)는 숨은 탭을 언마운트하는데(`ui/Tabs.tsx`), § 4.1은 "NPC가 아는 것 펼친 상태는 지역을 바꿔도 유지"라고 하고 사건 폼의 입력 중인 설명도 탭 전환에서 지켜지는지 정하지 않았다. (3) 390px에서 결과 띠의 지역 이름을 누르면 탭은 지도 아래에 있어 화면 밖일 수 있는데 "스크롤하지 않음"만 있고 눌렀다는 표시가 없다 | 높이 계산 방법(CSS 변수나 `sticky` + `max-height` 규칙)을 한 줄 정하고, 펼침 상태와 폼 초안의 소유(탭 바깥으로 올리는지 잃어도 되는지)를 적는다. 좁은 폭의 띠 클릭 반응을 정한다 | New |
+| R-09 | Minor | aidlc-docs/construction/V6-gm-screen/functional-design/business-logic-model.md > § 6; 상위 V5 code-summary § 7 | V5가 V6에 넘긴 항목 가운데 "월드 교체 경고 'busy and could not be closed'"(`api/routers/world.py:174`)는 V6 설계에 없고 이월 처리도 없다. 소비 화면은 `features/editor/BuildPanel.tsx`와 `features/home/DemoCard.tsx`(`openSessionsOf`)여서 V6가 아니라 V4/V8 몫일 가능성이 크다. 어느 유닛이 맡는지 적히지 않으면 아무도 안 한다. 같은 절의 "승인 두 번 누름은 화면이 막는다"는 BR-V6-09의 카드별 바쁨이 덮는다 | § 6 또는 § 8에 "월드 교체의 gm_busy 문장은 V8(에디터)/V4(홈)로 넘김"과 같이 맡을 유닛을 적는다 | New |
+| R-10 | Minor | aidlc-docs/construction/V6-gm-screen/functional-design/business-logic-model.md > § 1.1, § 1.2; business-rules.md > BR-V6-18 | `useGmSession.state`가 세션과 월드 둘만 합친다. 같은 세 번째·네 번째 읽기인 `worldNames`와 `listSessions`가 실패하면 화면이 무엇을 보이는지(이름표를 영어 폴백으로 조용히 쓰는지, 세션 고르기가 비는지)와 [다시 시도]가 그것을 다시 읽는지가 없다. BR-V6-18의 검증도 세션/월드만 본다 | 두 읽기의 실패 동작을 정한다(폴백이면 그렇다고 적는다). 필요하면 [다시 시도]의 대상에 포함한다 | New |
+
+### Checks Run
+
+| Check | Result | Interpretation |
+|---|---|---|
+| 설계가 이름 붙인 파일 존재(`GmPage.tsx`, `features/gm/*`, `SessionBar.tsx`, `MapOverlay.tsx`, `hooks/*`, `format/*`, `errors/*`, `api/gm.ts`, `api/play.ts`) | 모두 존재 | OK |
+| 설계가 쓰는 api 함수(`getSession`, `listSessions`, `startSession`, `closeSession`, `getPlayer`, `listTurnRuns`, `getWorldState`, `getTimeline`, `listDeeds`, `listSeeds` …) | 모두 `web/src/api/{gm,play}.ts`에 있음 | OK |
+| 서버 409/503 코드(`session_closed`, `gm_busy`, `turn_running`, `rumor_inactive`, `seed_running`, `llm_unavailable`) | `api/errors.py:56-70`에 있음 | OK. `error.session_closed/turn_running/llm_unavailable` 문장은 있고 `error.gm_busy`/`error.rumor_inactive`는 없음(설계가 새로 더한다고 적음) |
+| GM 쓰기 라우트의 리스(`_idle`) | 쓰기 9곳에 있음, `advance`는 턴 슬롯으로 막힘(리스가 있으면 `gm_busy`) | BLM § 2, § 5의 409 설명과 맞음 |
+| `adjust_support`/`approve`/`resolve`/`set_distortion` 서비스의 타임라인 쓰기와 `world_state`의 집계 | 쓰기 뒤 다시 읽기 표(§ 3)의 자원 집합과 일치. 지지도는 승격을 일으키지 않아 `공신력 저장 → 기록`만도 맞음 | OK |
+| `useResource`/`useAction`/`useMounted`의 의미 대조 | 새 키 동안 옛 data 유지, 키가 바뀐 뒤 오류에서 data 버림, setter 없음, `useAction`은 언마운트 뒤 `onDone` 안 부름 | R-02, R-03의 근거 |
+| `ENUM_VALUES` 종류와 BR-V6-24/TP-V6-12 목록 | slant 없음, `format.enums.test.ts:34`가 반대를 단언 | R-01 |
+| `conflictKind` 호출부 grep | `useTurnRun`, `DeedPanel`, `GmHub`, `DialoguePanel` + 테스트 2개 파일 | 설계는 셋만 적음(`DialoguePanel`은 `"closed"`만 보아 영향 없음). R-05 |
+| 요구사항 ID(FR-S3/S5/S6/L1/D5/D7/D8/D9/C5/C13, A-5) 해석, UX-34~42 → BR 대응 | 모두 상위에 있고 UX-34~42 각각 BR이 있음 | OK. `RE-F10`(행적 빈 상태)도 BR-V6-33이 덮음 |
+| 유닛 완료 조건(unit-of-work V6) 7개와 BR/TP 대응 | 모두 대응 | OK |
+| V5 이월(§ 7) 항목 대응 | `rumor_inactive`/`gm_busy` 문장·`region_removed` 줄·플레이어 `gm_busy`(`useTurnRun.ts:165-168`)·`rumor_inactive` 뒤 다시 읽기 반영. 월드 교체 경고만 미처리 | R-09 |
+| BR-V6-01..35, TP-V6-1..17 번호 | 빠짐·중복 없음 | OK |
+
+### Summary
+
+Critical은 없고 Major 둘(R-01 slant 표기 계약의 모순, R-02 `key={sessionId}` 경계와 상태 소유·옛 키 data 처리의 미정)이라 READY이지만, 이 둘은 코드 단계에서 추측으로 풀면 늦은 답 방어와 FR-D8 검사가 어긋나므로 승인 전에 FD에서 확정하길 권한다. 나머지는 Minor로, 읽기 훅의 patch 방식, 세션 목록 갱신, `conflictKind` 행동 변화, 일괄 생성의 409 처리를 한 번에 정리하면 된다.

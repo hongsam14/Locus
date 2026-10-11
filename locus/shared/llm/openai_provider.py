@@ -8,9 +8,9 @@ actually instantiated. Tests mock the providers rather than calling OpenAI.
 from __future__ import annotations
 
 import base64
-from typing import TypeVar
+from typing import Any, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 
 from locus.shared.llm.base import EmbeddingProvider, LLMProvider, VLMProvider
 from locus.shared.llm.retry import CALL_TIMEOUT_SECONDS, with_retry
@@ -25,7 +25,7 @@ class OpenAILLMProvider(LLMProvider):
         from langchain_openai import ChatOpenAI
 
         self._client = ChatOpenAI(
-            api_key=api_key,
+            api_key=SecretStr(api_key),
             model=model,
             temperature=temperature,
             timeout=CALL_TIMEOUT_SECONDS,
@@ -69,7 +69,7 @@ class OpenAIVLMProvider(VLMProvider):
         from langchain_openai import ChatOpenAI
 
         self._client = ChatOpenAI(
-            api_key=api_key,
+            api_key=SecretStr(api_key),
             model=model,
             temperature=temperature,
             timeout=CALL_TIMEOUT_SECONDS,
@@ -82,7 +82,7 @@ class OpenAIVLMProvider(VLMProvider):
         from langchain_core.messages import HumanMessage, SystemMessage
 
         b64 = base64.b64encode(image).decode("ascii")
-        content = [
+        content: list[str | dict[str, Any]] = [
             {"type": "text", "text": prompt},
             {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
         ]
@@ -108,7 +108,7 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
         # The SDK default (2 retries, no timeout) let one embed send 9 requests or block
         # a worker forever (review U5 #10).
         self._client = OpenAIEmbeddings(
-            api_key=api_key, model=model, timeout=CALL_TIMEOUT_SECONDS, max_retries=0
+            api_key=SecretStr(api_key), model=model, timeout=CALL_TIMEOUT_SECONDS, max_retries=0
         )
         self._dimension = dimension
 

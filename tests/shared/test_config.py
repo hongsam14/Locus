@@ -41,6 +41,21 @@ def test_dialogue_knobs_default_and_load_from_env(monkeypatch: pytest.MonkeyPatc
         _settings()
 
 
+def test_v5_gm_write_wait_defaults_loads_and_must_be_positive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """V5 BR-V5-03: how long a GM write waits for the session's save section."""
+    assert _settings().play_tuning().gm_write_wait_s == 5.0
+    monkeypatch.setenv("GM_WRITE_WAIT_S", "0.5")
+    assert _settings().play_tuning().gm_write_wait_s == 0.5
+    monkeypatch.setenv("GM_WRITE_WAIT_S", "0")
+    with pytest.raises(ValidationError):
+        _settings()
+    monkeypatch.setenv("GM_WRITE_WAIT_S", "inf")  # "wait forever" is refused (review 01 #5)
+    with pytest.raises(ValidationError):
+        _settings()
+
+
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [
@@ -85,6 +100,8 @@ def test_both_providers_pin_sdk_retries_off(monkeypatch: pytest.MonkeyPatch) -> 
     OpenAIVLMProvider(api_key="k", model="m")
     assert [kw["max_retries"] for kw in seen] == [0, 0]
     assert all(kw["timeout"] == 30.0 for kw in seen)
+    # V9 passes the key as a SecretStr; the client must get the key itself (review 01 #24)
+    assert [kw["api_key"].get_secret_value() for kw in seen] == ["k", "k"]
 
 
 def test_review_10_the_embedding_client_is_bounded_too(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -103,6 +120,7 @@ def test_review_10_the_embedding_client_is_bounded_too(monkeypatch: pytest.Monke
 
     OpenAIEmbeddingProvider(api_key="k", model="m", dimension=8)
     assert seen[0]["max_retries"] == 0 and seen[0]["timeout"] == 30.0
+    assert seen[0]["api_key"].get_secret_value() == "k"
 
 
 def test_u6_deed_knobs_default_and_load_from_env(monkeypatch: pytest.MonkeyPatch) -> None:

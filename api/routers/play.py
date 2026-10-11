@@ -4,8 +4,8 @@ Contracts (U4 code plan, 유닛 컨텍스트): ``POST /worlds/{w}/sessions`` wit
 body keeps the pre-U4 GM session (200 ``GameSession``); with a ``PlayerCreate``
 body it starts a player-mode session (201 ``SessionStartOut``). ``POST
 /sessions/{s}/act`` answers 202 with the ``TurnRun`` and the turns run in the
-background; ``GET /sessions/{s}/turn-runs/{id}`` is the poll. NPC dialogue lands
-here in U5.
+background; ``GET /sessions/{s}/turn-runs/{id}`` is the poll. NPC dialogue
+(``/sessions/{s}/npcs/{n}/start|say|history``, U5) is here too.
 """
 
 from __future__ import annotations

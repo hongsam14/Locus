@@ -147,3 +147,119 @@ def test_build_reads_a_named_demo_s_sources_and_the_alias_takes_the_first() -> N
     assert inputs.name == "Emberleaf Isle" and inputs.memos
     with pytest.raises(SystemExit, match="demo world not found"):
         cli._load_inputs(None, "nope")
+
+
+# --- V3: world demo seeds the demo's translations (BR-V3-28, TP-V3-9, plan R-01..R-03) --- #
+def test_demo_without_a_database_says_so_on_stderr_and_keeps_stdout_json(fake_env, capsys) -> None:
+    assert cli.main(["world", "demo", "--name", "emberleaf", "--world", "w"]) == 0
+    out = capsys.readouterr()
+    assert json.loads(out.out)["ok"]  # stdout is still the one JSON report (plan R-02)
+    assert out.err.strip() == "translations: skipped (no database configured)"
+
+
+def test_demo_seeds_when_the_service_is_there(fake_env, capsys, monkeypatch) -> None:
+    from locus.localization import (
+        InMemoryTranslationRepository,
+        LocalizationContainer,
+        TranslationService,
+    )
+
+    store = InMemoryTranslationRepository()
+    loc = LocalizationContainer(translations=TranslationService(store, None))
+    monkeypatch.setattr(cli, "assemble_localization", lambda shared: loc)
+    shared = cli.assemble_shared()
+    shared.sql_engine = object()  # a database is configured
+    assert cli.main(["world", "demo", "--name", "emberleaf", "--world", "w"]) == 0
+    out = capsys.readouterr()
+    assert json.loads(out.out)["ok"]
+    assert out.err.strip() == "translations: ko seeded 123, stale 0, unknown 0"
+    assert len(store._translations) == 123  # noqa: SLF001
+
+
+def test_demo_with_an_unreachable_database_skips_and_exits_0(fake_env, capsys, monkeypatch) -> None:
+    class OperationalError(Exception):
+        pass
+
+    def unreachable(shared):
+        raise OperationalError("connection refused")
+
+    monkeypatch.setattr(cli, "assemble_localization", unreachable)
+    cli.assemble_shared().sql_engine = object()
+    assert cli.main(["world", "demo", "--name", "emberleaf", "--world", "w"]) == 0
+    assert capsys.readouterr().err.strip() == (
+        "translations: skipped (database unreachable: OperationalError)"
+    )
+
+
+def test_demo_with_translation_off_says_off(fake_env, capsys, monkeypatch) -> None:
+    settings = cli.get_settings()
+    monkeypatch.setattr(settings, "translation_enabled", False)
+    assert cli.main(["world", "demo", "--name", "emberleaf", "--world", "w"]) == 0
+    assert capsys.readouterr().err.strip() == "translations: off"
+
+
+def test_demo_replace_prunes_ids_the_world_lost_and_a_failed_replace_purges(
+    fake_env, capsys, monkeypatch
+) -> None:
+    # BR-V3-14/28 with code review 01 #1/#9: the purge runs on a replace whether or not ok
+    from locus.localization import (
+        InMemoryTranslationRepository,
+        LocalizationContainer,
+        Translation,
+        TranslationService,
+    )
+    from locus.shared.models import BuildWarning, ImportReport
+
+    store = InMemoryTranslationRepository()
+    loc = LocalizationContainer(translations=TranslationService(store, None))
+    monkeypatch.setattr(cli, "assemble_localization", lambda shared: loc)
+    cli.assemble_shared().sql_engine = object()
+    assert cli.main(["world", "demo", "--name", "emberleaf", "--world", "w"]) == 0
+
+    def row(id_: str) -> Translation:
+        return Translation(
+            source_kind="region",
+            source_id=id_,
+            source_field="name",
+            text="t",
+            source_hash="h",
+            world_id="w",
+        )
+
+    store.upsert_many([row("lost-region")])
+    assert cli.main(["world", "demo", "--name", "emberleaf", "--world", "w"]) == 0  # replace
+    rows = list(store._translations.values())  # noqa: SLF001
+    assert "lost-region" not in {t.source_id for t in rows}  # an id the world lacks: pruned
+    assert len([t for t in rows if t.world_id == "w"]) == 123  # the demo's rows kept and reseeded
+    capsys.readouterr()
+
+    def failed(self, name, world_id, *, replace=True):
+        return ImportReport(
+            world_id=world_id,
+            format_version=1,
+            source_world_id=name,
+            replaced=True,
+            warnings=[BuildWarning(stage="import", message="commit failed", severity="error")],
+        )
+
+    monkeypatch.setattr(cli.DemoWorlds, "load", failed)
+    cli.main(["world", "demo", "--name", "emberleaf", "--world", "w"])
+    assert capsys.readouterr().err.strip().endswith("skipped (the load was not ok)")
+    assert not [t for t in store._translations.values() if t.world_id == "w"]  # noqa: SLF001
+
+
+def test_demo_with_no_supported_language_says_so(fake_env, capsys, monkeypatch) -> None:
+    from locus.localization import (
+        InMemoryTranslationRepository,
+        LocalizationContainer,
+        TranslationService,
+    )
+
+    loc = LocalizationContainer(
+        translations=TranslationService(InMemoryTranslationRepository(), None)
+    )
+    monkeypatch.setattr(cli, "assemble_localization", lambda shared: loc)
+    cli.assemble_shared().sql_engine = object()
+    monkeypatch.setattr(cli.get_settings(), "supported_langs_raw", "en")
+    assert cli.main(["world", "demo", "--name", "emberleaf", "--world", "w"]) == 0
+    assert capsys.readouterr().err.strip() == "translations: no supported language"

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { t } from "../../i18n";
 import type { Region } from "../../types";
-import { Button, Field } from "../../ui";
-import { LEVELS } from "./MapCanvas";
+import { Button, Field, Select, Textarea } from "../../ui";
+import { levelOptions, regionOptions } from "./connections";
 
 /** Regions under ``id`` (its children, theirs, …): a parent must not be one (BR-U3-7). */
 export function descendantsOf(id: string, regions: Region[]): Set<string> {
@@ -21,61 +21,52 @@ export function descendantsOf(id: string, regions: Region[]): Set<string> {
 }
 
 /** The region's own fields (US-2.2 첫째): name, level, parent, description. Saving is a
- * replace write — a cleared description is gone (BR-U3-1). */
+ * replace write — a cleared description is gone (BR-U3-1). Deleting the region is not here:
+ * it sits in the inspector's danger zone, apart from [save] (V8 UX-19, BR-V8-12). */
 export function RegionForm({
   region,
   regions,
   busy,
+  saved = false,
   onSave,
-  onDelete,
 }: {
   region: Region;
   regions: Region[];
   busy: boolean;
+  saved?: boolean; // the inspector says "saved" on the button for a second (BLM § 5)
   onSave: (r: Region) => void;
-  onDelete: () => void;
 }) {
   const [name, setName] = useState(region.name);
   const [level, setLevel] = useState(region.level);
   const [parent, setParent] = useState(region.parent_id ?? "");
   const [desc, setDesc] = useState(region.description ?? "");
+  // the button is turned off while the save is out and the form is drawn anew after it, so
+  // the focus would fall to the page: "saved" puts it back on [save] (code review 01 #6)
+  const saveWrap = useRef<HTMLSpanElement | null>(null); // Button forwards no ref (React 18)
+  useEffect(() => {
+    if (saved) saveWrap.current?.querySelector("button")?.focus();
+  }, [saved]);
   const blocked = descendantsOf(region.id, regions);
   const parents = regions.filter((r) => r.id !== region.id && !blocked.has(r.id));
   return (
     <div className="flex flex-col gap-1.5" data-testid="region-form">
       <Field label={t("editor.region.name")} data-testid="region-name" value={name}
         onChange={(e) => setName(e.target.value)} />
-      <label className="inline-flex flex-col gap-0.5 text-sm">
-        <span className="text-ink-soft">{t("editor.region.level")}</span>
-        <select data-testid="region-level" value={level} onChange={(e) => setLevel(e.target.value)}
-          className="sketch-border bg-paper-card px-2 py-1 text-sm">
-          {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
-        </select>
-      </label>
-      <label className="inline-flex flex-col gap-0.5 text-sm">
-        <span className="text-ink-soft">{t("editor.region.parent")}</span>
-        <select data-testid="region-parent" value={parent} onChange={(e) => setParent(e.target.value)}
-          className="sketch-border bg-paper-card px-2 py-1 text-sm">
-          <option value="">{t("editor.region.noParent")}</option>
-          {parents.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-        </select>
-      </label>
-      <label className="inline-flex flex-col gap-0.5 text-sm">
-        <span className="text-ink-soft">{t("editor.region.description")}</span>
-        <textarea data-testid="region-description" value={desc} rows={3}
-          onChange={(e) => setDesc(e.target.value)}
-          className="sketch-border bg-paper-card px-2 py-1 text-sm" />
-      </label>
+      <Select label={t("editor.region.level")} data-testid="region-level" value={level}
+        options={levelOptions()} onChange={setLevel} />
+      <Select label={t("editor.region.parent")} data-testid="region-parent" value={parent}
+        options={[{ value: "", label: t("editor.region.noParent") }, ...regionOptions(parents)]}
+        onChange={setParent} />
+      <Textarea label={t("editor.region.description")} data-testid="region-description" value={desc} rows={3}
+        onChange={(e) => setDesc(e.target.value)} />
       <div className="flex gap-2">
+        <span ref={saveWrap} className="inline-flex">
         <Button size="sm" variant="primary" data-testid="region-save" disabled={busy || !name.trim()}
           onClick={() => onSave({ ...region, name: name.trim(), level, parent_id: parent || null,
             description: desc.trim() || null })}>
-          {t("editor.region.save")}
+          {saved ? t("notice.saved") : t("editor.region.save")}
         </Button>
-        <Button size="sm" variant="danger" data-testid="region-delete" disabled={busy}
-          onClick={onDelete}>
-          {t("editor.region.delete")}
-        </Button>
+        </span>
       </div>
     </div>
   );

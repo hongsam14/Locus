@@ -8,14 +8,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "../api/http";
 import type { Mock } from "vitest";
 import { conflictKind } from "../api/http";
+import { mapLimit } from "../features/gm/bulk";
 import { resetCapabilities } from "../capabilities";
-import { MapOverlay } from "../MapOverlay";
 import { ActionBar, declaredLength } from "../features/play/ActionBar";
 import { DeedPanel } from "../features/gm/DeedPanel";
 import { EventPanel } from "../features/gm/EventPanel";
-import { GmHub } from "../features/gm/GmHub";
 import { PlayerStrip } from "../features/gm/PlayerStrip";
-import { WorldStateOverlay, overlayOf, useWorldState } from "../features/gm/WorldStateOverlay";
+import { distortionColor } from "../features/gm/WorldStateOverlay";
+import { enumLabel, numberWithMeaning, turnLabel } from "../format";
 import { t, timelineText } from "../i18n";
 import { GmPage } from "../routes/GmPage";
 import { PlayPage } from "../routes/PlayPage";
@@ -50,6 +50,18 @@ vi.mock("../api", () => ({
     listSessions: vi.fn(),
     dialogueHistory: vi.fn(),
     say: vi.fn(),
+    // V6: the GM screen's other reads and writes
+    worldNames: vi.fn(),
+    regenRumors: vi.fn(),
+    setSupport: vi.fn(),
+    createEvent: vi.fn(),
+    suggestEvents: vi.fn(),
+    approveEvent: vi.fn(),
+    discardEvent: vi.fn(),
+    resolveEvent: vi.fn(),
+    closeSession: vi.fn(),
+    startSession: vi.fn(),
+    sessionKnowledge: vi.fn(),
   },
 }));
 
@@ -59,7 +71,53 @@ const OPEN: GameSession = { id: "s1", world_id: "w", status: "open", turn: 3 };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // no test inherits another's "LLM off" answer (code review 01 #21)
+  resetCapabilities();
+  (api.capabilities as Mock).mockResolvedValue({ llm: true, vlm: true, embedding: true });
 });
+
+// V6: the GM tests drive the real screen (GmPage) over these reads; a test changes what it needs.
+const WORLD = { world_id: "w", regions: [{ id: "a", name: "Riverton", level: "town" }, { id: "b", name: "Hollow", level: "town" }],
+  connections: [], entities: [], knowledge: [], scopes: [] };
+const gmState = (over: Partial<WorldState> = {}): WorldState => ({
+  session_id: "s1", turn: 3, player_region_id: null,
+  regions: ["a", "b"].map((id) => ({ region_id: id, region_name: id, distortion: 0.3, feedback_share: 0, active_rumors: 1,
+    promoted_rumors: 0, deed_rumors: 0, active_events: 0 })),
+  ...over,
+});
+function gmReads() {
+  (api.getSession as Mock).mockImplementation(async (sid: string) => ({ ...OPEN, id: sid }));
+  (api.exportWorld as Mock).mockResolvedValue(WORLD);
+  (api.listSessions as Mock).mockResolvedValue([OPEN]);
+  (api.worldNames as Mock).mockRejectedValue(new Error("names are not needed here"));
+  (api.getTimeline as Mock).mockResolvedValue([]);
+  (api.listEvents as Mock).mockResolvedValue([]);
+  (api.getWorldState as Mock).mockResolvedValue(gmState());
+  (api.listRumors as Mock).mockResolvedValue([]);
+  (api.listSeeds as Mock).mockResolvedValue([]);
+  (api.listDeeds as Mock).mockResolvedValue([]);
+  (api.getPlayer as Mock).mockRejectedValue(new HttpError(404, "Not Found", "no player"));
+  (api.listTurnRuns as Mock).mockResolvedValue([]);
+}
+function renderGm(path = "/gm/s1") {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <Routes>
+        <Route path="/gm/:sessionId" element={<GmPage />} />
+        <Route path="/play/:sessionId" element={<div data-testid="play-route">play</div>} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+async function chooseRegion(id: string) {
+  fireEvent.click(await screen.findByTestId(`region-marker-${id}`));
+  await screen.findByTestId("gm-region");
+}
+async function openTab(name: "events" | "seeds" | "timeline" | "deeds" | "region") {
+  const tab = (await screen.findByTestId(`gm-tab-${name}`)).closest('[role="tab"]') as HTMLElement;
+  fireEvent.mouseDown(tab, { button: 0 });
+  fireEvent.click(tab);
+}
 
 // --- CommitRange (BR-U7-24, FR-D5) ------------------------------------------------ //
 describe("CommitRange", () => {
@@ -93,7 +151,9 @@ describe("CommitRange", () => {
 
 // --- play <-> GM (Q1=B, BR-U7-21/22) ------------------------------------------------ //
 describe("GM mode switch", () => {
-  it("the play screen's GM button goes to /gm/:sid", async () => {
+  // V4 intended change (BR-V4-20, R-11): the play screen has no GM button; the menu's GM
+  // item goes to this session's GM screen
+  it("the menu's GM item on the play screen goes to /gm/:sid", async () => {
     (api.getSession as Mock).mockResolvedValue(OPEN);
     (api.getRegion as Mock).mockRejectedValue(new Error("not needed"));
     (api.getLog as Mock).mockResolvedValue([]);
@@ -107,40 +167,31 @@ describe("GM mode switch", () => {
         </Routes>
       </MemoryRouter>,
     );
-    fireEvent.click(await screen.findByTestId("play-gm-btn"));
+    await screen.findByTestId("play-page");
+    expect(screen.queryByTestId("play-gm-btn")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("nav-gm"));
     expect(await screen.findByTestId("gm-route")).toBeInTheDocument();
   });
 
-  function strip() {
-    return render(
-      <MemoryRouter initialEntries={["/gm/s1"]}>
-        <Routes>
-          <Route
-            path="/gm/:sessionId"
-            element={<PlayerStrip sessionId="s1" turn={3} regionNames={{ a: "Riverton" }} rev={0} />}
-          />
-          <Route path="/play/:sessionId" element={<div data-testid="play-route">play</div>} />
-        </Routes>
-      </MemoryRouter>,
-    );
-  }
-
   it("the GM screen shows where the player is and leads back to play", async () => {
+    gmReads();
     (api.getPlayer as Mock).mockResolvedValue({ id: "p1", session_id: "s1", name: "Ari", region_id: "a", turns_spent: 0 });
     (api.listTurnRuns as Mock).mockResolvedValue([{ id: "run1" }]);
-    strip();
+    renderGm();
     const status = await screen.findByTestId("gm-player-status");
-    expect(status).toHaveTextContent(t("gm.playerStatus", { name: "Ari", region: "Riverton", turn: 3 }));
-    expect(status).toHaveTextContent(t("gm.running"));
+    // V6: in words — name · region · turn, and that a turn is running (with [check again])
+    expect(status).toHaveTextContent(`Ari · Riverton · ${turnLabel(3)}`);
+    expect(status).toHaveTextContent(t("label.turnRunning"));
+    expect(screen.getByTestId("gm-player-recheck")).toBeInTheDocument();
     expect(api.listTurnRuns).toHaveBeenCalledWith("s1", "running"); // FD review R-08
     fireEvent.click(screen.getByTestId("gm-back-to-play"));
     expect(await screen.findByTestId("play-route")).toBeInTheDocument();
   });
 
   it("a GM session without a player shows no strip and no way back", async () => {
-    (api.getPlayer as Mock).mockRejectedValue(new HttpError(404, "Not Found", ""));
-    (api.listTurnRuns as Mock).mockResolvedValue([]);
-    strip();
+    gmReads();
+    renderGm();
+    await screen.findByTestId("turn-tools");
     await waitFor(() => expect(api.getPlayer).toHaveBeenCalled());
     expect(screen.queryByTestId("gm-player-status")).not.toBeInTheDocument();
     expect(screen.queryByTestId("gm-back-to-play")).not.toBeInTheDocument();
@@ -158,48 +209,12 @@ const STATE: WorldState = {
   ],
 };
 
-function Harness({ regions }: { regions: Region[] }) {
-  const [on, setOn] = useState(false);
-  const world = useWorldState("s1", on, 0);
-  const o = overlayOf(world.state);
-  return (
-    <>
-      <WorldStateOverlay on={on} onToggle={() => setOn((v) => !v)} error={world.error} />
-      <MapOverlay
-        regions={regions}
-        connections={[]}
-        onSelect={() => {}}
-        onMove={() => {}}
-        markerId="a"
-        regionFill={on ? o.fill : undefined}
-        regionBadge={on ? o.badge : undefined}
-      />
-    </>
-  );
-}
-describe("WorldStateOverlay", () => {
-  const regions = ["a", "b"].map(
-    (id) => ({ id, world_id: "w", name: id === "a" ? "Riverton" : "Hollow", level: "town" }) as unknown as Region,
-  );
-
-  it("reads the state when turned on, badges active/promoted and clears when off", async () => {
-    (api.getWorldState as Mock).mockResolvedValue(STATE);
-    render(<Harness regions={regions} />);
-    expect(screen.getByTestId("player-marker-a")).toBeInTheDocument(); // BR-U7-22
-    expect(api.getWorldState).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByTestId("gm-state-toggle"));
-    expect(await screen.findByTestId("region-badge-a")).toHaveTextContent("3/1");
-    expect(screen.getByTestId("region-badge-b")).toHaveTextContent("2/0 ✦1");
-    expect(screen.getByTestId("gm-state-legend")).toBeInTheDocument();
-    expect(api.getWorldState).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByTestId("gm-state-toggle"));
-    await waitFor(() => expect(screen.queryByTestId("region-badge-a")).not.toBeInTheDocument());
-  });
-
+describe("world state colours", () => {
+  // V6: the switch, legend and badge moved to MapPane (gm.parts.test.tsx); the state is read
+  // with the session's other reads (gm.layout.test.tsx, BR-V6-32)
   it("colors by five distortion bands", () => {
-    const { fill } = overlayOf(STATE);
-    expect(fill.a).toContain("75%");
-    expect(fill.b).toContain(" 0%");
+    expect(distortionColor(STATE.regions[0].distortion)).toContain("75%");
+    expect(distortionColor(STATE.regions[1].distortion)).toContain(" 0%");
   });
 });
 
@@ -209,16 +224,16 @@ describe("EventPanel and the timeline", () => {
     ({ id, session_id: "s1", region_id: "a", category: "war", description: "", magnitude: 0.5, lifecycle: "persistent", status, created_turn: 0, contributions: {} }) as unknown as SessionEvent;
 
   it("a suggestion has approve and discard but never resolve; an active one only resolve", () => {
+    const done = () => Promise.resolve(true);
     render(
       <EventPanel
-        events={[ev("e1", "suggested"), ev("e2", "active")]}
-        regionId={null}
-        regionNames={{ a: "Riverton" }}
+        events={{ data: [ev("e1", "suggested"), ev("e2", "active")], state: "ready", reload: vi.fn() }}
+        regionName={(id) => (id === "a" ? "Riverton" : id)}
         closed={false}
-        onApprove={() => {}}
-        onDiscard={() => {}}
-        onResolve={() => {}}
-        onCreate={() => {}}
+        onApprove={done}
+        onDiscard={done}
+        onResolve={done}
+        onPickRegion={vi.fn()}
       />,
     );
     expect(screen.getByTestId("approve-e1")).toBeInTheDocument();
@@ -247,30 +262,27 @@ describe("EventPanel and the timeline", () => {
 // --- U6 review items carried into U7 ------------------------------------------------ //
 describe("U6 review carry-overs", () => {
   it("#5: generate-all counts canonical rumors only, so a deed-only region is filled", async () => {
-    (api.getTimeline as Mock).mockResolvedValue([]);
-    (api.listEvents as Mock).mockResolvedValue([]);
-    (api.listDistortions as Mock).mockResolvedValue([
-      { session_id: "s1", region_id: "a", distortion_degree: 0.3 },
-      { session_id: "s1", region_id: "b", distortion_degree: 0.3 },
-    ]);
+    gmReads();
     // U3 intended change (U7 review C1): one state read gives the counts
-    (api.getWorldState as Mock).mockResolvedValue({ session_id: "s1", turn: 0, player_region_id: null,
-      regions: [{ region_id: "a", region_name: "a", distortion: 0.3, feedback_share: 0, active_rumors: 1, promoted_rumors: 0, deed_rumors: 1, active_events: 0 }, { region_id: "b", region_name: "b", distortion: 0.3, feedback_share: 0, active_rumors: 1, promoted_rumors: 0, deed_rumors: 0, active_events: 0 }] });
+    (api.getWorldState as Mock).mockResolvedValue(gmState({ turn: 0, regions: [
+      { region_id: "a", region_name: "a", distortion: 0.3, feedback_share: 0, active_rumors: 1, promoted_rumors: 0, deed_rumors: 1, active_events: 0 },
+      { region_id: "b", region_name: "b", distortion: 0.3, feedback_share: 0, active_rumors: 1, promoted_rumors: 0, deed_rumors: 0, active_events: 0 },
+    ] }));
     (api.generateRumors as Mock).mockResolvedValue([]);
-    render(<GmHub session={OPEN} regionId={null} />);
-    await waitFor(() => expect(api.listDistortions).toHaveBeenCalled());
-    await act(async () => fireEvent.click(await screen.findByTestId("generate-all-btn")));
+    renderGm();
+    await waitFor(async () => expect(await screen.findByTestId("generate-all-btn")).toBeEnabled()); // the session is here
+    await act(async () => fireEvent.click(screen.getByTestId("generate-all-btn")));
     await waitFor(() => expect(api.generateRumors).toHaveBeenCalledTimes(1));
     expect(api.generateRumors).toHaveBeenCalledWith("s1", "a");
   });
 
   it("#11: a 409 is told apart — closed for good or a turn running", () => {
     expect(conflictKind(new Error("409 Conflict: session is closed: s1"))).toBe("closed");
-    expect(conflictKind(new Error("409 Conflict: turn in progress"))).toBe("busy");
+    expect(conflictKind(new Error("409 Conflict: turn in progress"))).toBe("turn_running");
     expect(conflictKind(new Error("400 Bad Request: nope"))).toBeNull();
     // U3 (C16): the typed error answers the same
     expect(conflictKind(new HttpError(409, "Conflict", "session is closed: s1"))).toBe("closed");
-    expect(conflictKind(new HttpError(409, "Conflict", "turn in progress"))).toBe("busy");
+    expect(conflictKind(new HttpError(409, "Conflict", "turn in progress"))).toBe("turn_running");
     expect(String(new HttpError(409, "Conflict", "x"))).toBe("Error: 409 Conflict: x");
   });
 
@@ -280,10 +292,15 @@ describe("U6 review carry-overs", () => {
     render(<ActionBar running={null} disabled={false} onWait={() => {}} onDeclare={onDeclare} />);
     fireEvent.change(screen.getByTestId("declare-input"), { target: { value: "I sing" } });
     fireEvent.click(screen.getByTestId("declare-btn"));
-    await waitFor(() => expect(screen.getByTestId("declare-input")).toBeDisabled());
-    expect(screen.getByTestId("declare-btn")).toBeDisabled();
+    // V4 intended change (code review 01 #7, BR-V4-24): read-only and busy, not disabled,
+    // so focus stays; a second press while it is out sends nothing
+    await waitFor(() => expect(screen.getByTestId("declare-input")).toHaveAttribute("readonly"));
+    expect(screen.getByTestId("declare-btn")).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByTestId("declare-btn")).not.toBeDisabled();
+    fireEvent.click(screen.getByTestId("declare-btn"));
+    expect(onDeclare).toHaveBeenCalledTimes(1);
     await act(async () => answer(false));
-    expect(screen.getByTestId("declare-input")).toBeEnabled();
+    expect(screen.getByTestId("declare-input")).not.toHaveAttribute("readonly");
     expect(screen.getByTestId("declare-input")).toHaveValue("I sing");
   });
 
@@ -297,6 +314,7 @@ describe("U6 review carry-overs", () => {
   });
 
   it("#13 and C1: one void per confirmation, one deed read per void", async () => {
+    gmReads();
     const view = {
       deed: { id: "d1", session_id: "s1", player_id: "p", region_id: "a", turn: 0, kind: "arrival", text: "Ari came.", witnessed_npc_ids: [], voided: false, region_name: "A", witness_names: [] },
       appraisals: [],
@@ -307,22 +325,25 @@ describe("U6 review carry-overs", () => {
     (api.listDeeds as Mock).mockResolvedValue([view]);
     let done: () => void = () => {};
     (api.voidDeed as Mock).mockImplementation(() => new Promise<void>((r) => (done = r)));
-    render(<DeedPanel sessionId="s1" closed={false} />);
+    renderGm();
+    await openTab("deeds");
     fireEvent.click(await screen.findByTestId("void-d1"));
     const dialog = within(screen.getByRole("dialog"));
     const confirm = dialog.getByRole("button", { name: t("deed.voidConfirmBtn") });
     fireEvent.click(confirm);
-    await waitFor(() => expect(confirm).toBeDisabled());
+    // V4 (BR-V4-24): a busy button is aria-disabled and ignores presses (not native disabled)
+    await waitFor(() => expect(confirm).toHaveAttribute("aria-disabled", "true"));
     fireEvent.click(confirm); // a double click sends nothing more
     const before = (api.listDeeds as Mock).mock.calls.length;
     await act(async () => done());
     expect(api.voidDeed).toHaveBeenCalledTimes(1);
-    expect((api.listDeeds as Mock).mock.calls.length - before).toBe(1);
+    expect(api.voidDeed).toHaveBeenCalledWith("s1", "d1"); // review #46
+    await waitFor(() => expect((api.listDeeds as Mock).mock.calls.length - before).toBe(1));
   });
 });
 
 
-// --- the play screen: a closed session (#10) and the talked-to count (U5 C1) --------- //
+// restored by V6 code review 01 #22 (dropped by mistake in the V6 switch-over)
 describe("PlayPage after U7", () => {
   const VIEW = {
     session_id: "s1",
@@ -420,29 +441,20 @@ describe("U7 review follow-ups", () => {
   });
 
   it("#11: a GM write refused because the session closed tells the page", async () => {
-    (api.getTimeline as Mock).mockResolvedValue([]);
-    (api.listEvents as Mock).mockResolvedValue([]);
-    (api.listDistortions as Mock).mockResolvedValue([{ session_id: "s1", region_id: "a", distortion_degree: 0.3 }]);
-    (api.listRumors as Mock).mockResolvedValue([]);
+    gmReads();
     (api.advanceTurn as Mock).mockRejectedValue(new HttpError(409, "Conflict", "session is closed: s1"));
-    const onChanged = vi.fn();
-    render(<GmHub session={OPEN} regionId={null} onChanged={onChanged} />);
-    await act(async () => fireEvent.click(await screen.findByTestId("advance-turn-btn")));
-    await waitFor(() => expect(onChanged).toHaveBeenCalled());
+    renderGm();
+    await waitFor(async () => expect(await screen.findByTestId("advance-turn-btn")).toBeEnabled()); // the session is here
+    await act(async () => fireEvent.click(screen.getByTestId("advance-turn-btn")));
+    await waitFor(() => expect(screen.getByTestId("gm-hub-error")).toBeInTheDocument());
+    // the page reads the session again (V6: the closed banner and the locked controls follow)
+    await waitFor(() => expect(api.getSession).toHaveBeenCalledTimes(2));
   });
 });
 
 
 it("#11 (page): a void refused because the session closed re-reads the session", async () => {
-  (api.getSession as Mock).mockResolvedValue(OPEN);
-  (api.exportWorld as Mock).mockResolvedValue({ world_id: "w", regions: [], connections: [], entities: [], knowledge: [] });
-  (api.listSessions as Mock).mockResolvedValue([OPEN]);
-  (api.getPlayer as Mock).mockRejectedValue(new HttpError(404, "Not Found", ""));
-  (api.listTurnRuns as Mock).mockResolvedValue([]);
-  (api.getTimeline as Mock).mockResolvedValue([]);
-  (api.listEvents as Mock).mockResolvedValue([]);
-  (api.listDistortions as Mock).mockResolvedValue([]);
-  (api.listRumors as Mock).mockResolvedValue([]);
+  gmReads();
   (api.listDeeds as Mock).mockResolvedValue([
     {
       deed: { id: "d1", session_id: "s1", player_id: "p", region_id: "a", turn: 0, kind: "arrival", text: "Ari came.", witnessed_npc_ids: [], voided: false, region_name: "A", witness_names: [] },
@@ -450,76 +462,55 @@ it("#11 (page): a void refused because the session closed re-reads the session",
     },
   ]);
   (api.voidDeed as Mock).mockRejectedValue(new HttpError(409, "Conflict", "session is closed: s1"));
-  render(
-    <MemoryRouter initialEntries={["/gm/s1"]}>
-      <Routes>
-        <Route path="/gm/:sessionId" element={<GmPage />} />
-      </Routes>
-    </MemoryRouter>,
-  );
+  renderGm();
+  await openTab("deeds");
   fireEvent.click(await screen.findByTestId("void-d1"));
   const before = (api.getSession as Mock).mock.calls.length;
   await act(async () =>
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: t("deed.voidConfirmBtn") })),
   );
   await waitFor(() => expect((api.getSession as Mock).mock.calls.length).toBeGreaterThan(before));
-  expect(screen.getByTestId("deed-notice")).toHaveTextContent(t("play.sessionClosed"));
+  // V6 (BLM § 6): a refused void is told in its dialog
+  expect(within(screen.getByRole("dialog")).getByRole("alert")).toBeInTheDocument();
 });
 
 // --- U3: the rest of U7 code review (#6 #8 #10 #12 #15, C15 C19, §3 PlayerStrip, A3-14) -- //
 describe("U7 review carry in U3", () => {
-  function gmReads() {
-    (api.getTimeline as Mock).mockResolvedValue([]);
-    (api.listEvents as Mock).mockResolvedValue([]);
-    (api.listDistortions as Mock).mockResolvedValue([
-      { session_id: "s1", region_id: "a", distortion_degree: 0.3, feedback_share: 0 },
-      { session_id: "s1", region_id: "b", distortion_degree: 0.3, feedback_share: 0 },
-    ]);
-  }
-
   it("#6: a write that ends after the region changed paints the new region's rumors", async () => {
     gmReads();
     (api.listRumors as Mock).mockImplementation(async (_s: string, rid: string) => [
       { id: `r-${rid}`, session_id: "s1", region_id: rid, distorted_from_id: "k", statement: `rumor of ${rid}`,
         distortion_degree: 0.3, support: 0.5, confidence: 0.5, promoted: false },
     ]);
-    let finish: () => void = () => {};
-    (api.setDistortion as Mock).mockReturnValue(new Promise<void>((r) => (finish = r)));
-    function Two() {
-      const [rid, setRid] = useState("a");
-      return (
-        <>
-          <button data-testid="pick-b" onClick={() => setRid("b")}>b</button>
-          <GmHub session={OPEN} regionId={rid} />
-        </>
-      );
-    }
-    render(<Two />);
+    let finish: (v: unknown) => void = () => {};
+    (api.setDistortion as Mock).mockReturnValue(new Promise((r) => (finish = r)));
+    renderGm();
+    await chooseRegion("a");
     await waitFor(() => expect(screen.getByText("rumor of a")).toBeInTheDocument());
     const slider = screen.getByTestId("distortion-slider");
     fireEvent.change(slider, { target: { value: "0.5" } });
     fireEvent.pointerUp(slider);
-    fireEvent.click(screen.getByTestId("pick-b"));
+    fireEvent.click(screen.getByTestId("region-marker-b"));
     await waitFor(() => expect(screen.getByText("rumor of b")).toBeInTheDocument());
-    await act(async () => finish());
-    await new Promise((r) => setTimeout(r, 20));
+    const timelineReads = (api.getTimeline as Mock).mock.calls.length;
+    await act(async () => finish({ session_id: "s1", region_id: "a", distortion_degree: 0.5, feedback_share: 0 }));
+    await waitFor(() => expect((api.getTimeline as Mock).mock.calls.length).toBeGreaterThan(timelineReads)); // the write's re-read
     expect(screen.queryByText("rumor of a")).not.toBeInTheDocument();
+    expect(screen.getByText("rumor of b")).toBeInTheDocument();
   });
 
   it("#8: the distortion label follows the thumb before the save", async () => {
     gmReads();
-    (api.listRumors as Mock).mockResolvedValue([]);
-    render(<GmHub session={OPEN} regionId="a" />);
-    await waitFor(() => screen.getByTestId("distortion-slider"));
-    fireEvent.change(screen.getByTestId("distortion-slider"), { target: { value: "0.7" } });
-    expect(screen.getByTestId("distortion-label")).toHaveTextContent("0.70");
+    renderGm();
+    await chooseRegion("a");
+    fireEvent.change(await screen.findByTestId("distortion-slider"), { target: { value: "0.7" } });
+    expect(screen.getByTestId("distortion-label")).toHaveTextContent(numberWithMeaning("distortion", 0.7));
   });
 
   it("#15: the suggestion count goes up to the server's cap", async () => {
     gmReads();
-    (api.getWorldState as Mock).mockResolvedValue({ session_id: "s1", turn: 3, player_region_id: null,
-      regions: [], max_event_suggestions: 8 });
-    render(<GmHub session={OPEN} regionId={null} />);
+    (api.getWorldState as Mock).mockResolvedValue(gmState({ max_event_suggestions: 8 }));
+    renderGm();
     await waitFor(() => expect(screen.getByRole("option", { name: "8" })).toBeInTheDocument());
   });
 
@@ -537,15 +528,14 @@ describe("U7 review carry in U3", () => {
   });
 
   it("§3: only a 404 means no player; another failure keeps the player and says so", async () => {
+    gmReads();
     (api.getPlayer as Mock)
       .mockResolvedValueOnce({ id: "p1", session_id: "s1", name: "Ari", region_id: "a", turns_spent: 0 })
       .mockRejectedValueOnce(new HttpError(500, "Internal Server Error", "boom"));
-    (api.listTurnRuns as Mock).mockResolvedValue([]);
-    const { rerender } = render(
-      <MemoryRouter><PlayerStrip sessionId="s1" turn={3} regionNames={{ a: "Riverton" }} rev={0} /></MemoryRouter>,
-    );
+    (api.listTurnRuns as Mock).mockResolvedValue([{ id: "run1" }]);
+    renderGm();
     await waitFor(() => expect(screen.getByTestId("gm-player-status")).toHaveTextContent("Ari"));
-    rerender(<MemoryRouter><PlayerStrip sessionId="s1" turn={3} regionNames={{ a: "Riverton" }} rev={1} /></MemoryRouter>);
+    fireEvent.click(screen.getByTestId("gm-player-recheck")); // V6: the strip reads again on [check again]
     await waitFor(() => expect(screen.getByTestId("gm-player-error")).toBeInTheDocument());
     expect(screen.getByTestId("gm-player-status")).toHaveTextContent("Ari");
   });
@@ -576,29 +566,23 @@ describe("U8 seeds and LLM-off buttons", () => {
     region_name: "Ambermeadow",
     running_event_id: running ?? null,
   });
-  function hubReads() {
-    (api.getTimeline as Mock).mockResolvedValue([]);
-    (api.listEvents as Mock).mockResolvedValue([]);
-    (api.listDistortions as Mock).mockResolvedValue([{ session_id: "s1", region_id: "a", distortion_degree: 0.3 }]);
-    (api.listRumors as Mock).mockResolvedValue([]);
-  }
   beforeEach(() => {
     resetCapabilities();
     (api.capabilities as Mock).mockResolvedValue({ llm: true, vlm: true, embedding: true });
-    (api.listSeeds as Mock).mockResolvedValue([]);
-    hubReads();
+    gmReads();
   });
   afterEach(() => resetCapabilities());
 
   it("lists the seeds; a running one says so, the other starts and the list is read again", async () => {
     (api.listSeeds as Mock).mockResolvedValue([seed("seed-a"), seed("seed-b", "ev-1")]);
     (api.startSeed as Mock).mockResolvedValue({ id: "ev-2" });
-    render(<GmHub session={OPEN} regionId="a" />);
+    renderGm();
+    await openTab("seeds");
     const row = await screen.findByTestId("seed-row-seed-a");
     expect(row).toHaveTextContent("Title seed-a");
     expect(row).toHaveTextContent("Ambermeadow");
-    expect(row).toHaveTextContent("plague");
-    expect(row).toHaveTextContent("0.50");
+    expect(row).toHaveTextContent(enumLabel("eventCategory", "plague")); // V6: in words (FR-D8)
+    expect(row).toHaveTextContent(numberWithMeaning("magnitude", 0.5));
     expect(screen.getByTestId("seed-running-seed-b")).toHaveTextContent(t("seed.running"));
     expect(screen.queryByTestId("seed-start-seed-b")).not.toBeInTheDocument();
     const reads = (api.listSeeds as Mock).mock.calls.length;
@@ -607,54 +591,66 @@ describe("U8 seeds and LLM-off buttons", () => {
     await waitFor(() => expect((api.listSeeds as Mock).mock.calls.length).toBeGreaterThan(reads));
   });
 
-  it("a refused start (409) is the hub's error line", async () => {
+  it("a refused start (409) is the screen's error line, in words with the detail folded", async () => {
     (api.listSeeds as Mock).mockResolvedValue([seed("seed-a")]);
-    (api.startSeed as Mock).mockRejectedValue(new HttpError(409, "Conflict", '{"detail":"seed seed-a is already running"}'));
-    render(<GmHub session={OPEN} regionId="a" />);
-    const start = await screen.findByTestId("seed-start-seed-a");
-    await act(async () => fireEvent.click(start));
-    await waitFor(() => expect(screen.getByTestId("gm-hub-error")).toHaveTextContent("already running"));
+    (api.startSeed as Mock).mockRejectedValue(new HttpError(409, "Conflict", '{"detail":"seed seed-a is already running","code":"seed_running"}'));
+    renderGm();
+    await openTab("seeds");
+    await act(async () => fireEvent.click(await screen.findByTestId("seed-start-seed-a")));
+    const line = await screen.findByTestId("gm-hub-error");
+    expect(line).toHaveTextContent(t("error.seed_running.title"));
+    expect(line.querySelector("details")).toHaveTextContent("already running");
   });
 
   it("a closed session cannot start a seed; no seeds is one line", async () => {
     (api.listSeeds as Mock).mockResolvedValue([seed("seed-a")]);
-    const { unmount } = render(<GmHub session={{ ...OPEN, status: "closed" }} regionId="a" />);
+    (api.getSession as Mock).mockResolvedValue({ ...OPEN, status: "closed" });
+    const { unmount } = renderGm();
+    await openTab("seeds");
     expect(await screen.findByTestId("seed-start-seed-a")).toBeDisabled();
     unmount();
-    (api.listSeeds as Mock).mockResolvedValue([]);
-    render(<GmHub session={OPEN} regionId="a" />);
-    expect(await screen.findByTestId("seed-panel")).toHaveTextContent(t("seed.none"));
+    gmReads();
+    renderGm();
+    await openTab("seeds");
+    expect(await screen.findByTestId("seed-panel")).toHaveTextContent(t("empty.seeds"));
   });
 
-  it("with no LLM the LLM buttons are off and say why; manual events stay on", async () => {
+  it("with no LLM the LLM buttons are off and say why; one notice on the screen; manual events stay on", async () => {
     (api.capabilities as Mock).mockResolvedValue({ llm: false, vlm: false, embedding: false });
-    render(<GmHub session={OPEN} regionId="a" />);
-    expect(await screen.findByTestId("llm-notice")).toHaveTextContent(t("llm.offNotice"));
+    renderGm();
+    await chooseRegion("a");
+    await waitFor(() => expect(screen.getByTestId("suggest-events-btn")).toBeDisabled());
     for (const id of ["suggest-events-btn", "generate-all-btn", "regen-all-btn", "generate-btn", "regen-btn"]) {
       expect(screen.getByTestId(id)).toBeDisabled();
       expect(screen.getByTestId(id)).toHaveAttribute("title", t("llm.required"));
     }
-    expect(screen.getByTestId("llm-required")).toHaveTextContent(t("llm.required"));
+    // V6 (BR-V6-23): the one notice is the app's band; no second line beside the buttons
+    expect(screen.getAllByTestId("llm-notice")).toHaveLength(1);
+    expect(screen.queryByTestId("llm-required")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: t("label.createEventHere") }));
+    fireEvent.change(screen.getByTestId("event-description"), { target: { value: "Fire at the docks" } });
     expect(screen.getByTestId("event-create-btn")).toBeEnabled();
     expect(screen.getByTestId("advance-turn-btn")).toBeEnabled();
   });
 
   it("with an LLM (or an unknown answer) nothing is switched off", async () => {
     (api.capabilities as Mock).mockRejectedValue(new Error("down"));
-    render(<GmHub session={OPEN} regionId="a" />);
+    renderGm();
+    await chooseRegion("a");
     await waitFor(() => expect(api.capabilities).toHaveBeenCalled());
     await waitFor(() => expect(screen.getByTestId("generate-btn")).toBeEnabled());
     expect(screen.getByTestId("suggest-events-btn")).toBeEnabled();
     expect(screen.queryByTestId("llm-notice")).not.toBeInTheDocument();
   });
 
-  it("a 503 for a missing provider reads 'LLM key required' (BR-U8-27)", async () => {
+  it("a 503 for a missing provider reads 'no AI key' (BR-U8-27, V6 describeError)", async () => {
     (api.generateRumors as Mock).mockRejectedValue(new HttpError(503, "Service Unavailable",
-      '{"detail":"rumor generation needs an LLM provider (set OPENAI_API_KEY)"}'));
-    render(<GmHub session={OPEN} regionId="a" />);
+      '{"detail":"rumor generation needs an LLM provider (set OPENAI_API_KEY)","code":"llm_unavailable"}'));
+    renderGm();
+    await chooseRegion("a");
     await waitFor(() => expect(screen.getByTestId("generate-btn")).toBeEnabled());
     await act(async () => fireEvent.click(screen.getByTestId("generate-btn")));
-    await waitFor(() => expect(screen.getByTestId("gm-hub-error")).toHaveTextContent(t("llm.required")));
+    await waitFor(() => expect(screen.getByTestId("gm-hub-error")).toHaveTextContent(t("error.llm_unavailable.title")));
   });
 });
 
@@ -666,11 +662,7 @@ describe("U3 review carry: the GM screen", () => {
   beforeEach(() => {
     resetCapabilities();
     (api.capabilities as Mock).mockResolvedValue({ llm: true, vlm: true, embedding: true });
-    (api.listSeeds as Mock).mockResolvedValue([]);
-    (api.getTimeline as Mock).mockResolvedValue([]);
-    (api.listEvents as Mock).mockResolvedValue([]);
-    (api.listDistortions as Mock).mockResolvedValue([{ session_id: "s1", region_id: "a", distortion_degree: 0.3 }]);
-    (api.listRumors as Mock).mockResolvedValue([]);
+    gmReads();
   });
   afterEach(() => resetCapabilities());
 
@@ -680,7 +672,7 @@ describe("U3 review carry: the GM screen", () => {
       .mockResolvedValue({ session_id: "s1", turn: 3, player_region_id: null, max_event_suggestions: 8,
         regions: [{ region_id: "a", region_name: "a", distortion: 0.3, feedback_share: 0, active_rumors: 1,
           promoted_rumors: 0, deed_rumors: 0, active_events: 0 }] });
-    render(<GmHub session={OPEN} regionId={null} />);
+    renderGm();
     await waitFor(() => expect(api.getWorldState).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("option", { name: "8" })).not.toBeInTheDocument();
     await act(async () => fireEvent.click(screen.getByTestId("generate-all-btn")));
@@ -715,5 +707,28 @@ describe("U3 review carry: the GM screen", () => {
     await waitFor(() => expect(api.getPlayer).toHaveBeenCalledWith("s2"));
     await waitFor(() => expect(screen.queryByTestId("gm-player-status")).not.toBeInTheDocument());
     expect(screen.queryByTestId("player-marker-a")).not.toBeInTheDocument();
+  });
+});
+
+describe("V6 shared base", () => {
+  it("a bulk run that is told to stop sends no more regions (code plan § 1.1 R-06)", async () => {
+    const sent: number[] = [];
+    let stop = false;
+    await mapLimit([1, 2, 3, 4, 5, 6, 7], 2, async (n) => {
+      sent.push(n);
+      if (n === 3) stop = true;
+      return n;
+    }, () => stop);
+    // two workers: 1 and 2 start, then 3 and 4; after 3 asks to stop nothing new is taken
+    expect(sent.length).toBeLessThanOrEqual(4);
+    expect(sent).not.toContain(5);
+    expect(await mapLimit([1, 2, 3], 5, async (n) => n * 2)).toEqual([2, 4, 6]);
+  });
+
+  it("an event whose region left the world reads so, with no region id (V5 → V6, BR-V6-29)", () => {
+    const line = timelineText("event_resolved", { event_id: "e1", region_id: "r-gone", reason: "region_removed", restored: {} }, 4, "x");
+    expect(line).toBe(t("timeline.event_resolved_removed"));
+    expect(line).not.toContain("r-gone");
+    expect(timelineText("event_resolved", { event_id: "e1", region_id: "r1", region_name: "Harbor" }, 4)).toContain("Harbor");
   });
 });

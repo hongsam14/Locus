@@ -66,7 +66,6 @@ def persist_graph(
         + [gm.wikiprior_to_node(p) for p in priors]
         + [gm.npc_to_node(n) for n in npcs]
         + [gm.seed_to_node(s) for s in seeds]
-        + ([gm.worldmeta_to_node(meta)] if meta is not None else [])
     )
     edges = (
         gm.contains_edges(regions)
@@ -116,17 +115,26 @@ def persist_graph(
             warnings.append(
                 BuildWarning(stage="persist-search", severity="error", message=str(exc))
             )
+    if meta is not None:
+        # Last (V7, BR-V7-06): the version mark a reader caches by goes in only once the
+        # graph is whole, so a reader in another process never caches a half-written
+        # world under the new mark (RE-W02). A failed index above still writes it.
+        try:
+            graph_repo.upsert_nodes([gm.worldmeta_to_node(meta)])
+        except Exception as exc:
+            warnings.append(BuildWarning(stage="persist-meta", severity="error", message=str(exc)))
     return warnings
 
 
 def touch_world_meta(graph_repo: GraphRepository, world_id: str, *, last_writer: str) -> bool:
     """Refresh ``WorldMeta.updated_at``/``last_writer`` after an edit (BR-U2-23). Returns
-    False when the world has no meta node yet (pre-U2 worlds) — nothing is created."""
+    False when the world has no meta node (pre-U2 worlds, or one being replaced) —
+    nothing is created: the write only updates a node still there, so a meta deleted
+    between the read and the write stays deleted (V7 code review #14)."""
     nodes = graph_repo.find_nodes(world_id, "WorldMeta")
     if not nodes:
         return False
     meta = gm.node_to_worldmeta(nodes[0]).model_copy(
         update={"updated_at": datetime.now(UTC), "last_writer": last_writer}
     )
-    graph_repo.upsert_nodes([gm.worldmeta_to_node(meta)])
-    return True
+    return graph_repo.update_node(gm.worldmeta_to_node(meta))

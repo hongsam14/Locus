@@ -1,62 +1,72 @@
 import { useEffect, useState } from "react";
-import { api } from "../../api";
+import { enumLabel, numberWithMeaning } from "../../format";
+import { useAction } from "../../hooks";
 import { t } from "../../i18n";
 import type { SeedView } from "../../types";
-import { Badge, Button, Card } from "../../ui";
+import { Badge, Button, Card, StatusView } from "../../ui";
+import { english, type NameOf } from "../play/names";
+import type { GmRes } from "./useGmData";
 
-/** The world's event seeds (U8, BLM §3, BR-U8-15..18): each with its region, category
- * and size; [start] makes it an ACTIVE event with no LLM call; a seed whose event is
- * still running shows "running" instead. Errors go to the hub's error line. */
+/** The world's event seeds (U8, BR-U8-15..18; V6 BR-V6-09/24/25): title and region by name,
+ * the category and size in words; [start] makes it an active event with no LLM call, one
+ * press per row at a time; a seed whose event is running says so. Errors go to the screen's
+ * error line. */
 export function SeedPanel({
-  sessionId,
+  seeds,
+  nameOf = english,
   closed,
   busy,
-  reloadKey = 0,
   onStart,
 }: {
-  sessionId: string;
+  seeds: GmRes<SeedView[]>;
+  nameOf?: NameOf;
   closed: boolean;
-  busy: boolean;
-  reloadKey?: number;
-  onStart: (seedId: string) => Promise<boolean>;
+  busy: boolean; // a bulk run goes
+  /** Resolves true when the seed started. */
+  onStart(seedId: string): Promise<boolean>;
 }) {
-  const [seeds, setSeeds] = useState<SeedView[] | null>(null);
-  useEffect(() => {
-    let alive = true;
-    api
-      .listSeeds(sessionId)
-      .then((s) => alive && setSeeds(s))
-      .catch(() => alive && setSeeds([]));
-    return () => {
-      alive = false;
-    };
-  }, [sessionId, reloadKey]);
-
-  if (seeds == null) return null;
+  if (!seeds.data) {
+    return <StatusView state={seeds.state === "error" ? "error" : "loading"} error={seeds.error} onRetry={seeds.reload} />;
+  }
   return (
-    <section data-testid="seed-panel" className="mt-2 flex flex-col gap-1">
-      <h3 className="font-display">{t("seed.title")}</h3>
-      {seeds.length === 0 && <div className="text-xs text-ink-soft">{t("seed.none")}</div>}
-      {seeds.map(({ seed, region_name, running_event_id }) => (
-        <Card key={seed.id} data-testid={`seed-row-${seed.id}`} className="flex flex-wrap items-center gap-2 text-sm">
-          <strong>{seed.title}</strong>
-          <span className="text-xs text-ink-soft">{region_name}</span>
-          <Badge>{t("seed.category", { category: seed.category })}</Badge>
-          <span className="text-xs">{t("seed.magnitude", { n: seed.magnitude.toFixed(2) })}</span>
-          <span className="ml-auto">
-            {running_event_id ? (
-              <span className="text-xs text-ink-soft" data-testid={`seed-running-${seed.id}`}>
-                {t("seed.running")}
-              </span>
-            ) : (
-              <Button size="sm" data-testid={`seed-start-${seed.id}`} disabled={closed || busy}
-                onClick={() => void onStart(seed.id)}>
-                {t("seed.start")}
-              </Button>
-            )}
-          </span>
-        </Card>
+    <section data-testid="seed-panel" className="flex flex-col gap-1.5">
+      <h2 className="sr-only">{t("tab.seeds")}</h2>
+      {seeds.data.length === 0 && <p className="text-sm text-muted">{t("empty.seeds")}</p>}
+      {seeds.data.map((view) => (
+        <SeedRow key={view.seed.id} view={view} nameOf={nameOf} off={closed || busy} onStart={onStart} />
       ))}
     </section>
+  );
+}
+
+function SeedRow({ view, nameOf, off, onStart }: { view: SeedView; nameOf: NameOf; off: boolean; onStart(id: string): Promise<boolean> }) {
+  // a started seed stays off until the seeds are read again (code review 01 #29)
+  const [held, setHeld] = useState(false);
+  useEffect(() => setHeld(false), [view]);
+  const start = useAction(async () => {
+    if (await onStart(view.seed.id)) setHeld(true);
+  });
+  const { seed, region_name, running_event_id } = view;
+  return (
+    <Card data-testid={`seed-row-${seed.id}`} tabIndex={-1} className="flex flex-wrap items-center gap-2 text-sm">
+      <strong>{nameOf("event_seeds", seed.id, "title", seed.title)}</strong>
+      <span className="text-xs text-muted">{nameOf("regions", seed.region_id, "name", region_name)}</span>
+      <Badge>{enumLabel("eventCategory", seed.category)}</Badge>
+      <span className="text-xs">
+        {t("label.magnitude")} {numberWithMeaning("magnitude", seed.magnitude)}
+      </span>
+      <span className="ml-auto">
+        {running_event_id ? (
+          <span className="text-xs text-muted" data-testid={`seed-running-${seed.id}`}>
+            {t("seed.running")}
+          </span>
+        ) : (
+          <Button size="sm" data-testid={`seed-start-${seed.id}`} busy={start.busy} disabled={off || held}
+            onClick={() => void start.run()}>
+            {t("seed.start")}
+          </Button>
+        )}
+      </span>
+    </Card>
   );
 }

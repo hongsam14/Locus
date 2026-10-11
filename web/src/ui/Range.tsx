@@ -7,7 +7,7 @@ export function Range({ className = "", ...rest }: InputHTMLAttributes<HTMLInput
   return (
     <input
       type="range"
-      className={`cursor-pointer accent-ink align-middle ${className}`.trim()}
+      className={`cursor-pointer accent-[var(--color-accent)] align-middle ${className}`.trim()}
       {...rest}
     />
   );

@@ -1,6 +1,6 @@
 """WorldLoader — read one world from the graph into a ``WorldSnapshot`` (U2 K3).
 
-Reads Region / Entity / Knowledge / WikiPrior / NPC / WorldMeta nodes and the
+Reads Region / Entity / Knowledge / WikiPrior / NPC / EventSeed / WorldMeta nodes and the
 CONNECTED_TO / SCOPED_TO / RELATED_TO / PRIOR_RELATED_TO / LIVES_IN edges. A node
 or edge that fails to map is skipped and reported in ``load_warnings`` instead of
 breaking the whole world (BR-U2-16). An empty world raises ``LookupError``.
@@ -27,13 +27,24 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
+# How a load warning names an NPC / event seed the load dropped: by the node label when
+# the node could not be read, by these phrases when its region is gone. A rebuild's
+# carry-over reports both from the old snapshot's ``load_warnings`` (V7, R-10, code
+# review #2): what the load drops is not in the backup either.
+NPC_LABEL = "NPC"
+SEED_LABEL = "EventSeed"
+NPC_HOME_DANGLING = f"{NPC_LABEL} home region"
+SEED_REGION_DANGLING = f"{SEED_LABEL} region"
+
+
 class WorldLoader:
     def __init__(self, graph_repo: GraphRepository) -> None:
         self._g = graph_repo
 
     def version(self, world_id: str) -> str | None:
         """Cheap change marker: the WorldMeta's ``updated_at``/``last_writer`` (one small
-        read). ``None`` for worlds without meta (pre-U2) — invalidation-only for those."""
+        read). ``None`` for worlds without meta (pre-U2, or mid-replace): the cache never
+        keeps those (V7, BR-V7-07)."""
         metas = self._g.find_nodes(world_id, "WorldMeta")
         if not metas:
             return None
@@ -53,8 +64,8 @@ class WorldLoader:
         entities = nodes("Entity", gm.node_to_entity)
         knowledge = nodes("Knowledge", gm.node_to_knowledge)
         priors = nodes("WikiPrior", gm.node_to_wikiprior)
-        npcs: list[NPC] = nodes("NPC", gm.node_to_npc)
-        seeds = nodes("EventSeed", gm.node_to_seed)
+        npcs: list[NPC] = nodes(NPC_LABEL, gm.node_to_npc)
+        seeds = nodes(SEED_LABEL, gm.node_to_seed)
         metas: list[WorldMeta] = nodes("WorldMeta", gm.node_to_worldmeta)
 
         edges = self._g.get_edges(world_id)
@@ -116,12 +127,12 @@ class WorldLoader:
         npcs = _keep(
             npcs,
             lambda n: n.home_region_id in region_ids,
-            lambda n: dangling("NPC home region", n.id),
+            lambda n: dangling(NPC_HOME_DANGLING, n.id),
         )
         seeds = _keep(  # U8: a seed whose region is gone never reaches a session
             seeds,
             lambda s: s.region_id in region_ids,
-            lambda s: dangling("EventSeed region", s.id),
+            lambda s: dangling(SEED_REGION_DANGLING, s.id),
         )
 
         scoped = {s.knowledge_id for s in scopes}

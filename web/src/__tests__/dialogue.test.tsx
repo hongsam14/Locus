@@ -119,14 +119,14 @@ describe("i18n dictionaries (FD-U5 frontend §2.2)", () => {
 
   it("t() falls back to Korean, then to the key", () => {
     setLang("en");
-    expect(t("play.npcs")).toBe("People here");
+    expect(t("nav.play")).toBe("Play");
     expect(t("no.such.key")).toBe("no.such.key");
-    const saved = dicts.en["play.facts"];
-    delete dicts.en["play.facts"];
+    const saved = dicts.en["lang.label"];
+    delete dicts.en["lang.label"];
     try {
-      expect(t("play.facts")).toBe(dicts.ko["play.facts"]);
+      expect(t("lang.label")).toBe(dicts.ko["lang.label"]);
     } finally {
-      dicts.en["play.facts"] = saved;
+      dicts.en["lang.label"] = saved;
     }
   });
 
@@ -331,9 +331,11 @@ describe("DialoguePanel (US-4.1 / 4.3)", () => {
     renderPanel();
     await waitFor(() => expect(screen.getByTestId("dialogue-input")).toBeEnabled());
     typeAndSend("Q1");
-    expect(screen.getByTestId("dialogue-input")).toBeDisabled();
+    // V4 intended change (code review 01 #7): read-only, not disabled, so it keeps focus
+    expect(screen.getByTestId("dialogue-input")).toHaveAttribute("readonly");
+    expect(screen.getByTestId("dialogue-send-btn")).toBeDisabled();
     await act(async () => fail(new HttpError(503, "Service Unavailable", "")));
-    expect(screen.getByTestId("dialogue-input")).toBeEnabled();
+    expect(screen.getByTestId("dialogue-input")).not.toHaveAttribute("readonly");
     expect(screen.getByTestId("dialogue-input")).toHaveValue("Q1");
   });
 
@@ -420,7 +422,8 @@ describe("PlayPage with dialogue and the language toggle", () => {
     await waitFor(() => expect(screen.getByTestId("dialogue-msg-npc")).toHaveTextContent("어서 오게"));
     fireEvent.click(screen.getByTestId("dialogue-end-btn"));
     await waitFor(() => expect(api.act).toHaveBeenCalledWith("s1", { type: "end_talk", npc_id: "n1" }));
-    expect(screen.queryByTestId("dialogue-panel")).not.toBeInTheDocument();
+    // V4 intended change (code review 01 #13): it closes once the server took the action
+    await waitFor(() => expect(screen.queryByTestId("dialogue-panel")).not.toBeInTheDocument());
   });
 
   it("moving away closes the panel and coming back does not reopen it (review U5 #8)", async () => {
@@ -467,6 +470,7 @@ describe("PlayPage with dialogue and the language toggle", () => {
     expect(lang()).toBe("en");
     expect(screen.getByTestId("nav-play")).toHaveTextContent("Play");
     expect(screen.getByTestId("lang-en")).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByTestId("region-scene")).toHaveTextContent("People here");
+    // V4 intended change: the people are their own section, beside the scene text
+    expect(screen.getByTestId("people-here")).toHaveTextContent("People here");
   });
 });

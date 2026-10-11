@@ -1,11 +1,14 @@
 // U4 player screen tests (Step 9.5): EX-13 load, EX-7 move -> 202 -> poll -> toast,
 // 409 toast, EX-16 banner, TP-U4-2 blocked option, NewSessionForm (US-3.1).
+// V4 intended changes (FD frontend-components § 7.1 and the notes beside each): the turn's
+// result is the result band, not notifications; a running turn turns the actions off with
+// aria-disabled (they keep focus, BR-V4-24), so "enabled" is read from that attribute.
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { HttpError } from "../api/http";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Mock } from "vitest";
-import { SessionBar } from "../SessionBar";
+import { degreeWord } from "../format";
 import { t } from "../i18n";
 import { PlayPage } from "../routes/PlayPage";
 import type { GameSession, RegionView, TurnRun } from "../types";
@@ -27,6 +30,13 @@ vi.mock("../api", () => ({
 import { api } from "../api";
 
 const SESSION: GameSession = { id: "s1", world_id: "w", status: "open", turn: 0 };
+/** Free to act: no native disabled and no aria-disabled (a running turn sets the latter). */
+const free = (id: string) => {
+  const el = screen.getByTestId(id);
+  expect(el).toBeEnabled();
+  expect(el).not.toHaveAttribute("aria-disabled");
+};
+const held = (id: string) => expect(screen.getByTestId(id)).toHaveAttribute("aria-disabled", "true");
 
 function view(over: Partial<RegionView> = {}): RegionView {
   return {
@@ -79,6 +89,8 @@ function renderPlay(path = "/play/s1") {
 describe("PlayPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // a test that fails before using its queued answers must not hand them to the next one
+    for (const m of Object.values(api)) (m as Mock).mockReset();
     (api.getSession as Mock).mockResolvedValue(SESSION);
     (api.getRegion as Mock).mockResolvedValue(view());
     (api.getLog as Mock).mockResolvedValue([
@@ -91,15 +103,22 @@ describe("PlayPage", () => {
     renderPlay();
     await waitFor(() => expect(screen.getByTestId("region-scene")).toBeInTheDocument());
     expect(screen.getByTestId("region-title")).toHaveTextContent("Riverton");
-    expect(screen.getByTestId("region-path")).toHaveTextContent("Aldermoor › Riverton");
+    // V4 intended change: the path above the title stops before the region itself
+    expect(screen.getByTestId("region-path")).toHaveTextContent("Aldermoor");
+    expect(screen.getByTestId("region-path")).not.toHaveTextContent("Riverton");
     expect(screen.getByTestId("npc-n1")).toHaveTextContent("Mara");
     expect(screen.getByTestId("knowledge-item-k1")).toHaveTextContent("The mill burned.");
     expect(screen.getByTestId("hearsay-item-k9")).toHaveTextContent("Wolves in the pass.");
-    expect(screen.getByTestId("rumor-ru1")).toHaveTextContent(t("gm.promoted"));
-    expect(screen.getByTestId("move-b")).toHaveTextContent(t("play.turns", { n: 2 }));
-    expect(screen.getByTestId("move-c-blocked")).toHaveTextContent(t("play.blocked"));
-    expect(screen.getByTestId("move-c-btn")).toBeDisabled(); // TP-U4-2 (UI)
-    expect(screen.getByTestId("move-b-btn")).toBeEnabled();
+    // V4 intended change (FR-D8, § 3.3): a rumor is words — how twisted, how believed — not a
+    // GM's promoted badge or a number
+    expect(screen.getByTestId("rumor-ru1")).toHaveTextContent(degreeWord(0.3));
+    expect(screen.getByTestId("rumor-ru1")).not.toHaveTextContent("0.30");
+    expect(screen.getByTestId("move-b")).toHaveTextContent(t("unit.turns", { n: 2 }));
+    // V4 intended change (BR-V4-13): a blocked way says why in the dictionary's words and
+    // has no button (was a disabled one)
+    expect(screen.getByTestId("move-c-blocked")).toHaveTextContent(t("notice.moveBlocked"));
+    expect(screen.queryByTestId("move-c-btn")).not.toBeInTheDocument(); // TP-U4-2 (UI)
+    free("move-b-btn");
     // U8 intended change: FC §2.2 — LlmBanner became the shared LlmNotice
     expect(screen.queryByTestId("llm-notice")).not.toBeInTheDocument();
     expect(screen.getByTestId("log-session_started")).toHaveTextContent(
@@ -107,7 +126,9 @@ describe("PlayPage", () => {
     );
   });
 
-  it("EX-7: a move answers 202, refreshes the region at once, polls to done and notifies", async () => {
+  // V4 intended change (§ 7.1, Q2=A): the region changes are in the result band; the
+  // notification area keeps only the warning (the budget)
+  it("EX-7: a move answers 202, refreshes the region at once, polls to done and shows the result", async () => {
     const running: TurnRun = {
       id: "run1", session_id: "s1", action: { type: "move", to_region_id: "b" }, cost_turns: 2,
       status: "running", started_turn: 0,
@@ -130,18 +151,21 @@ describe("PlayPage", () => {
       .mockResolvedValueOnce(view())
       .mockResolvedValue(view({ region_id: "b", region_name: "Hollow", turn: 2, level_path: ["Aldermoor", "Hollow"] }));
     renderPlay();
-    await waitFor(() => expect(screen.getByTestId("move-b-btn")).toBeEnabled());
+    await waitFor(() => free("move-b-btn"));
     fireEvent.click(screen.getByTestId("move-b-btn"));
     await waitFor(() => expect(api.act).toHaveBeenCalledWith("s1", { type: "move", to_region_id: "b" }));
     await waitFor(() => expect(screen.getByTestId("region-title")).toHaveTextContent("Hollow")); // arrived at once
     expect(screen.getByTestId("turn-progress")).toHaveTextContent(t("play.running", { n: 2 }));
-    await waitFor(() => expect(screen.getByTestId("notification-center")).toBeInTheDocument());
-    expect(screen.getByTestId("notification-center")).toHaveTextContent("Hollow");
-    expect(screen.getByTestId("notification-center")).toHaveTextContent(t("notif.rumors_added", { n: 2 }));
     // the turn summary is drawn with t(), not the server's English sentences (review U5 #12)
-    await waitFor(() => expect(screen.getByTestId("play-narration")).toHaveTextContent(t("notif.rumors_added", { n: 2 })));
-    expect(screen.getByTestId("play-narration")).not.toHaveTextContent("2 new rumors");
-    expect(screen.getByTestId("notification-center")).toHaveTextContent(t("play.budget"));
+    const band = await screen.findByTestId("result-band");
+    expect(band).toHaveTextContent(t("story.turnPassed", { n: 2 }));
+    expect(screen.getByTestId("result-change-b")).toHaveTextContent("Hollow");
+    expect(screen.getByTestId("result-change-b")).toHaveTextContent(t("notif.rumors_added", { n: 2 }));
+    expect(band).not.toHaveTextContent("2 new rumors");
+    expect(screen.queryByTestId("play-narration")).not.toBeInTheDocument();
+    // V2: the notification area is always there (a live region): only the warning is in it
+    await waitFor(() => expect(screen.getByTestId("notification-center")).toHaveTextContent(t("play.budget")));
+    expect(screen.getByTestId("notification-center")).not.toHaveTextContent(t("notif.rumors_added", { n: 2 }));
     await waitFor(() => expect(screen.queryByTestId("turn-progress")).not.toBeInTheDocument());
     expect((api.getLog as Mock).mock.calls.length).toBeGreaterThanOrEqual(3);
   });
@@ -149,7 +173,7 @@ describe("PlayPage", () => {
   it("409 while a turn is in progress shows the in-progress toast, not an error", async () => {
     (api.act as Mock).mockRejectedValue(new Error('409 Conflict: {"detail":"turn in progress"}'));
     renderPlay();
-    await waitFor(() => expect(screen.getByTestId("wait-btn")).toBeEnabled());
+    await waitFor(() => free("wait-btn"));
     fireEvent.click(screen.getByTestId("wait-btn"));
     await waitFor(() => expect(screen.getByTestId("notification-center")).toHaveTextContent(t("play.turnInProgress")));
     expect(screen.queryByTestId("play-error")).not.toBeInTheDocument();
@@ -159,7 +183,8 @@ describe("PlayPage", () => {
     (api.getRegion as Mock).mockResolvedValue(view({ llm_available: false }));
     renderPlay();
     // U8 intended change: FC §2.2 — LlmBanner became the shared LlmNotice, same words
-    await waitFor(() => expect(screen.getByTestId("llm-notice")).toHaveTextContent(t("play.noLlm")));
+    // V2 intended change: the AppShell band, one sentence for every screen (BR-V2-20)
+    await waitFor(() => expect(screen.getByTestId("llm-notice")).toHaveTextContent(t("notice.llmOff")));
     expect(screen.getByTestId("move-b-btn")).toBeEnabled();
   });
 
@@ -177,12 +202,16 @@ describe("PlayPage", () => {
       .mockResolvedValueOnce(view({ turn_running: true }))
       .mockResolvedValue(view({ turn_running: false }));
     renderPlay();
-    await waitFor(() => expect(screen.getByTestId("wait-btn")).toBeEnabled());
+    await waitFor(() => free("wait-btn"));
     fireEvent.click(screen.getByTestId("wait-btn"));
-    await waitFor(() => expect(screen.getByTestId("play-error")).toBeInTheDocument());
+    // V4 intended change (BR-V4-17): a failed check is said in the action's place with
+    // [check again] (turn-error), not as the page's read error (play-error)
+    await waitFor(() => expect(screen.getByTestId("turn-error")).toBeInTheDocument());
+    expect(screen.getByTestId("turn-recheck")).toBeInTheDocument();
+    expect(screen.queryByTestId("play-error")).not.toBeInTheDocument();
     // the poll's failure path refreshes, so turn_running clears and the button returns
-    await waitFor(() => expect(screen.getByTestId("wait-btn")).toBeEnabled());
-    expect(screen.getByTestId("move-b-btn")).toBeEnabled();
+    await waitFor(() => free("wait-btn"));
+    free("move-b-btn");
   });
 
   it("U3 (U7 review C6/C7): one read on mount with the newest 30 log lines", async () => {
@@ -204,8 +233,9 @@ describe("PlayPage", () => {
         <Routes><Route path="/play/:sessionId?" element={<PlayPage pollMs={5} heldRetryMs={5} />} /></Routes>
       </MemoryRouter>,
     );
-    await waitFor(() => expect(screen.getByTestId("wait-btn")).toBeEnabled());
-    expect(api.getRegion).toHaveBeenCalledTimes(4); // mount, the stale-flag read, two waits
+    await waitFor(() => free("wait-btn"));
+    // V4: the stale-flag read is the first held re-read (useHeldRereads), same count here
+    expect(api.getRegion).toHaveBeenCalledTimes(4); // mount, three held re-reads
   });
 
   it("U3 review S02: it stops after five more reads while the hold lasts", async () => {
@@ -216,10 +246,12 @@ describe("PlayPage", () => {
         <Routes><Route path="/play/:sessionId?" element={<PlayPage pollMs={5} heldRetryMs={5} />} /></Routes>
       </MemoryRouter>,
     );
-    await waitFor(() => expect(api.getRegion).toHaveBeenCalledTimes(7));
+    // V4 intended change: no separate stale-flag read on mount — the held re-reads start
+    // after one interval, so mount + 5 (was mount + stale-flag read + 5)
+    await waitFor(() => expect(api.getRegion).toHaveBeenCalledTimes(6));
     await new Promise((r) => setTimeout(r, 60));
-    expect(api.getRegion).toHaveBeenCalledTimes(7); // mount + stale-flag read + 5
-    expect(screen.getByTestId("wait-btn")).toBeDisabled();
+    expect(api.getRegion).toHaveBeenCalledTimes(6); // mount + 5, and the stale-flag read + 5
+    held("wait-btn");
   });
 
   it("U8 review #5(b): a failed held read still schedules the next one", async () => {
@@ -233,25 +265,25 @@ describe("PlayPage", () => {
         <Routes><Route path="/play/:sessionId?" element={<PlayPage pollMs={5} heldRetryMs={5} />} /></Routes>
       </MemoryRouter>,
     );
-    await waitFor(() => expect(screen.getByTestId("wait-btn")).toBeEnabled());
-    expect(api.getRegion).toHaveBeenCalledTimes(4); // mount, stale-flag read, the 502, then free
+    await waitFor(() => free("wait-btn"));
+    expect(api.getRegion).toHaveBeenCalledTimes(4); // mount, a held re-read, the 502, then free
   });
 
   it("U3 (U7 review #7): the declaration box takes text while a turn runs", async () => {
     (api.getRegion as Mock).mockResolvedValue(view({ turn_running: true }));
     renderPlay();
     await waitFor(() => expect(screen.getByTestId("region-scene")).toBeInTheDocument());
-    expect(screen.getByTestId("wait-btn")).toBeDisabled();
+    held("wait-btn");
     expect(screen.getByTestId("declare-input")).toBeEnabled();
     fireEvent.change(screen.getByTestId("declare-input"), { target: { value: "I sing" } });
-    expect(screen.getByTestId("declare-btn")).toBeDisabled(); // sent only when free
+    held("declare-btn"); // sent only when free
   });
 
   it("U3 (U7 review §3): leaving before the action answers starts no poller", async () => {
     let answer: (r: TurnRun) => void = () => {};
     (api.act as Mock).mockReturnValue(new Promise<TurnRun>((r) => (answer = r)));
     const { unmount } = renderPlay();
-    await waitFor(() => expect(screen.getByTestId("wait-btn")).toBeEnabled());
+    await waitFor(() => free("wait-btn"));
     fireEvent.click(screen.getByTestId("wait-btn"));
     unmount();
     answer({ id: "r1", session_id: "s1", action: { type: "wait" }, cost_turns: 1, status: "running", started_turn: 0 });
@@ -268,49 +300,9 @@ describe("PlayPage", () => {
   });
 });
 
-describe("SessionBar player start (US-3.1)", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    (api.listSessions as Mock).mockResolvedValue([]);
-  });
-
-  it("opens the form, requires a name and a region, and hands the session to onPlay", async () => {
-    (api.startSession as Mock).mockResolvedValue({
-      session: { ...SESSION, id: "s2" },
-      player: { id: "p2", session_id: "s2", name: "Ari", region_id: "a", turns_spent: 0 },
-    });
-    const onPlay = vi.fn();
-    const onSelect = vi.fn();
-    render(
-      <SessionBar
-        worldId="w"
-        sessionId={null}
-        onSelect={onSelect}
-        variant="picker"
-        regions={[{ id: "a", name: "Riverton", level: "town" }]}
-        onPlay={onPlay}
-      />,
-    );
-    expect(screen.getByTestId("session-new-btn")).toBeInTheDocument(); // GM button untouched
-    fireEvent.click(screen.getByTestId("session-play-btn"));
-    expect(screen.getByTestId("new-session-submit")).toBeDisabled();
-    fireEvent.change(screen.getByTestId("new-session-name"), { target: { value: "Ari" } });
-    expect(screen.getByTestId("new-session-submit")).toBeDisabled(); // region still missing
-    fireEvent.change(screen.getByTestId("new-session-region"), { target: { value: "a" } });
-    expect(screen.getByTestId("new-session-submit")).toBeEnabled();
-    fireEvent.click(screen.getByTestId("new-session-submit"));
-    await waitFor(() =>
-      expect(api.startSession).toHaveBeenCalledWith("w", { name: "Ari", start_region_id: "a" }),
-    );
-    await waitFor(() => expect(onPlay).toHaveBeenCalledWith(expect.objectContaining({ session: expect.objectContaining({ id: "s2" }) })));
-    expect(onSelect).not.toHaveBeenCalledWith(expect.objectContaining({ id: "s2" }));
-  });
-
-  it("hides the play button when no onPlay handler is given (GM screen)", () => {
-    render(<SessionBar worldId="w" sessionId={null} onSelect={vi.fn()} />);
-    expect(screen.queryByTestId("session-play-btn")).not.toBeInTheDocument();
-  });
-});
+// V8 intended change (Q2 = A, frontend-components § 7.1): the session bar is gone; the
+// player form is tested from the home (home.test) and the editor's [이 월드로 플레이]
+// (editor.parts.test, TP-V8-13)
 
 describe("declaredLength / edge spaces (U7 review §3 EDGE_SPACE)", () => {
   it("strips like the server and stays linear on long inner spaces", async () => {

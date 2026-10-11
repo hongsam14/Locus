@@ -41,8 +41,7 @@ class EditorWrites:
 
     def node(self, world_id: str, node_id: str, label: str) -> Node | None:
         """The stored node if it exists with that label (one read, no snapshot)."""
-        node = self.graph.get_node(world_id, node_id)
-        return node if node is not None and node.label == label else None
+        return self.graph.get_node(world_id, node_id, label=label)
 
     def require_world(self, world_id: str) -> WorldSnapshot:
         """An edit writes into an existing world only (U3 review S21): a mistyped world
@@ -52,11 +51,16 @@ class EditorWrites:
     def own_label(self, world_id: str, node_id: str, label: str) -> Node | None:
         """The stored node with this id when it is a ``label``; a node of another label
         under the same id is refused (400): Neo4j keeps ids unique per label only, so an
-        edit would add a second node (U3 review S26)."""
-        node = self.graph.get_node(world_id, node_id)
-        if node is not None and node.label != label:
-            raise ValueError(f"id {node_id!r} is already a {node.label}, not a {label}")
-        return node
+        edit would add a second node (U3 review S26). Its own kind is read first, so an
+        item that already shares its id with another kind (stored before V7) can still be
+        edited (V7 code review #4)."""
+        node = self.graph.get_node(world_id, node_id, label=label)
+        if node is not None:
+            return node
+        other = self.graph.get_node(world_id, node_id)  # is the id held by another kind?
+        if other is not None:
+            raise ValueError(f"id {node_id!r} is already a {other.label}, not a {label}")
+        return None
 
     # -- writes ----------------------------------------------------------- #
     @contextmanager
@@ -106,15 +110,16 @@ class EditorWrites:
         """Delete a node by its kind's rule (U3 review C3, S12): graph first, then its
         search document. A node already gone still has its document removed, so a retry
         after a cut cleans up (NFR R-01), and touches nothing else. A node of another
-        label is left alone, document included. Returns whether it was held."""
-        node = self.graph.get_node(world_id, node_id)
-        if node is None:
-            self.unindex(world_id, [node_id])
-            return False
-        if node.label != label:
-            return False
+        label is left alone, document included. Returns whether it was held.
+
+        V7 (BR-V7-19, FD review R-02): the read and the delete name ``label``, so a node
+        of another kind under the same id is never read in its place nor deleted."""
+        if self.graph.get_node(world_id, node_id, label=label) is None:
+            if self.graph.get_node(world_id, node_id) is None:
+                self.unindex(world_id, [node_id])  # gone entirely: finish a cut delete
+            return False  # another kind holds the id: its node and document stay
         with self.writing(world_id):
-            self.graph.delete_node(world_id, node_id)
+            self.graph.delete_node(world_id, node_id, label=label)
             self.unindex(world_id, [node_id])
         return True
 

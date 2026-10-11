@@ -1,32 +1,44 @@
-import { useEffect, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
-import { llmOff, useCapabilities } from "../capabilities";
+import { describeError, type DescribedError } from "../errors";
 import { BuildPanel } from "../features/editor/BuildPanel";
 import { DemoCards } from "../features/home/DemoCards";
+import { HomeHero } from "../features/home/HomeHero";
+import { MyWorlds } from "../features/home/MyWorlds";
 import { NewSessionForm } from "../features/play/NewSessionForm";
-import { t, useLang } from "../i18n";
-import type { Region, WorldInfo } from "../types";
-import { Button, Card, LlmNotice, Panel } from "../ui";
-import { AppNav } from "./AppNav";
+import { useMounted, useResource, useWorldNames } from "../hooks";
+import { useLang, useRequestLang } from "../i18n";
+import type { Region } from "../types";
+import { InlineError } from "../ui";
+import { AppShell } from "../layout";
 
-/** `/` — the demo cards (U8, BR-U8-19: from the server's manifest, shown always) and the
- * world list (US-6.4, BR-U3-34): name, regions, last edit and open sessions, with [edit]
- * and [start session]; building from sources. Without an LLM key a line says so first. */
+/** `/` (V4 FR-S1, BLM § 1): the opening lines, a card per manifest demo (the card owns its
+ * world, Q1=A) and "my worlds". Both lists follow the display language (BR-V4-12) and are
+ * read again after a demo load and after a build, whatever its end (UX-16). */
 export function HomePage() {
   useLang();
+  const lang = useRequestLang();
   const navigate = useNavigate();
-  const [worlds, setWorlds] = useState<WorldInfo[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const demos = useResource(["demos", lang], () => api.listDemos());
+  const worlds = useResource(["worlds", lang], () => api.listWorlds());
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<DescribedError | null>(null);
   const [start, setStart] = useState<{ worldId: string; regions: Region[] } | null>(null);
   const [building, setBuilding] = useState(false);
-  const caps = useCapabilities();
+  const [startError, setStartError] = useState<DescribedError | null>(null);
+  const mounted = useMounted();
+  const buildOpen = useRef(false); // the build panel is still open (its callbacks outlive renders)
+  const { nameOf: startNames } = useWorldNames(start?.worldId ?? null);
 
-  const loadWorlds = () => api.listWorlds().then(setWorlds).catch((e) => setError(String(e)));
-  useEffect(() => {
-    loadWorlds();
-  }, []);
+  const { reload: reloadDemos } = demos;
+  const { reload: reloadWorlds } = worlds;
+  const reloadLists = useCallback(() => {
+    reloadDemos();
+    reloadWorlds();
+  }, [reloadDemos, reloadWorlds]);
+  const demoNames = useMemo(() => new Set((demos.data ?? []).map((d) => d.name)), [demos.data]);
+  const demosSettled = demos.data !== undefined || demos.state === "error";
 
   async function run(fn: () => Promise<void>) {
     setBusy(true);
@@ -34,80 +46,63 @@ export function HomePage() {
     try {
       await fn();
     } catch (e) {
-      setError(String(e));
+      setError(describeError(e));
     } finally {
       setBusy(false);
     }
   }
 
-  const openStart = (worldId: string) =>
-    run(async () => setStart({ worldId, regions: (await api.exportWorld(worldId)).regions }));
-  // the panel forgets its files when closed idle and keeps a running build (U8 review #2)
-  const openBuild = () => setBuilding(true);
+  // the world's regions are read only when the form opens (BLM § 1.1)
+  const openStart = (worldId: string) => {
+    setStartError(null);
+    return run(async () => setStart({ worldId, regions: (await api.exportWorld(worldId)).regions }));
+  };
+  const openBuild = (open: boolean) => {
+    buildOpen.current = open;
+    setBuilding(open);
+  };
 
   return (
-    <div className="min-h-full">
-      <AppNav />
-      <LlmNotice visible={llmOff(caps)} />
-      <Panel title={t("home.title")} className="m-3" data-testid="home">
-        {error && <div className="text-danger text-sm">{error}</div>}
-        <DemoCards worlds={worlds} onLoaded={loadWorlds} />
-        {worlds?.length === 0 && (
-          <div className="flex flex-col gap-2" data-testid="home-empty">
-            <span className="text-ink-soft">{t("home.empty")}</span>
-            <div className="flex gap-2">
-              <Button data-testid="home-build" disabled={busy} onClick={openBuild}>
-                {t("home.buildFromSources")}
-              </Button>
-            </div>
-          </div>
-        )}
-        <div className="flex flex-col gap-1.5">
-          {worlds?.map((w) => (
-            <Card key={w.id} data-testid={`world-row-${w.id}`} className="flex flex-wrap items-center gap-2">
-              <strong className="font-display">{w.name}</strong>
-              <code className="text-xs text-ink-soft">{w.id}</code>
-              <span className="text-xs">{t("home.regions", { n: w.region_count })}</span>
-              {w.updated_at && (
-                <span className="text-xs text-ink-soft">
-                  {t("home.updated", { when: new Date(w.updated_at).toLocaleString() })}
-                </span>
-              )}
-              {(w.open_sessions ?? 0) > 0 && (
-                <span className="text-xs text-danger">{t("home.openSessions", { n: w.open_sessions ?? 0 })}</span>
-              )}
-              <span className="ml-auto flex gap-1">
-                <Button size="sm" data-testid={`world-edit-${w.id}`}
-                  onClick={() => navigate(`/editor/${encodeURIComponent(w.id)}`)}>
-                  {t("home.edit")}
-                </Button>
-                <Button size="sm" variant="primary" data-testid={`world-start-${w.id}`} disabled={busy}
-                  onClick={() => openStart(w.id)}>
-                  {t("home.startSession")}
-                </Button>
-              </span>
-            </Card>
-          ))}
-        </div>
-        {worlds && worlds.length > 0 && (
-          <Button size="sm" className="mt-2" data-testid="home-build" onClick={openBuild}>
-            {t("home.buildFromSources")}
-          </Button>
-        )}
-      </Panel>
-      <NewSessionForm open={start != null} regions={start?.regions ?? []} busy={busy}
-        onCancel={() => setStart(null)}
-        onSubmit={(name, startRegionId) =>
-          run(async () => {
+    <AppShell>
+      <div data-testid="home" className="mx-auto flex w-full max-w-[1240px] flex-col gap-8 break-keep px-4 pb-12 [overflow-wrap:break-word]">
+        <HomeHero />
+        {error && <InlineError error={error} />}
+        <DemoCards demos={demos} worlds={worlds.data} onLoaded={reloadLists} />
+        <MyWorlds worlds={worlds} demoNames={demoNames} settled={demosSettled} busy={busy}
+          onBuild={() => openBuild(true)} onStart={openStart} />
+      </div>
+      <NewSessionForm open={start != null} worldId={start?.worldId} regions={start?.regions ?? []} busy={busy}
+        nameOf={startNames} error={startError}
+        onCancel={() => {
+          setStart(null);
+          setStartError(null);
+        }}
+        onSubmit={async (name, startRegionId) => {
+          // a failed start is said in the form, not behind it (code review 01 #22)
+          setStartError(null);
+          setBusy(true);
+          try {
             const out = await api.startSession(start!.worldId, { name, start_region_id: startRegionId });
-            navigate(`/play/${encodeURIComponent(out.session.id)}`);
-          })
-        } />
-      <BuildPanel open={building} exists={false} onClose={() => setBuilding(false)}
-        onBuilt={(worldId, report) =>
-          // A replace stays on the report (what was replaced, the backup) — U3 review #6
-          report.ok && !report.replaced && navigate(`/editor/${encodeURIComponent(worldId)}`)
-        } />
-    </div>
+            if (mounted.current) navigate(`/play/${encodeURIComponent(out.session.id)}`);
+          } catch (e) {
+            if (mounted.current) setStartError(describeError(e));
+          } finally {
+            if (mounted.current) setBusy(false);
+          }
+        }} />
+      {/* the panel forgets its files when closed idle and keeps a running build (U8 review #2) */}
+      <BuildPanel open={building} exists={false}
+        onClose={() => {
+          openBuild(false);
+          reloadLists(); // a build that threw may still have written the world
+        }}
+        onBuilt={(worldId, report) => {
+          if (!mounted.current) return;
+          reloadLists();
+          // A replace stays on the report (what was replaced, the backup) — U3 review #6. A
+          // build whose panel was closed meanwhile opens nothing (code review 01 #9)
+          if (report.ok && !report.replaced && buildOpen.current) navigate(`/editor/${encodeURIComponent(worldId)}`);
+        }} />
+    </AppShell>
   );
 }

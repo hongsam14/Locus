@@ -6,7 +6,7 @@ export function InProgressBadge({ note }: { note: string }) {
     <span
       data-testid="wip-badge"
       title={note}
-      className="ml-1 inline-block sketch-border px-1 text-[10px] uppercase tracking-wide text-ink-soft"
+      className="ml-1 inline-block rounded-full border border-line px-2 text-xs text-muted"
     >
       {t("wip.badge")}
     </span>

@@ -11,34 +11,63 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 
-from locus.shared.models import BuildWarning
+from locus.shared.models import BuildWarning, ScopeLink
 from locus.world.worldfile.schema import NAMESPACE_LOCUS, WorldFile, WorldFileMeta
+
+# the sections whose items carry an id (connections, scopes and prior links do not)
+ID_SECTIONS = ("regions", "entities", "relations", "knowledge", "priors", "npcs", "event_seeds")
 
 
 def file_ids(file: WorldFile) -> set[str]:
     ids: set[str] = set()
-    for section in (
-        "regions",
-        "entities",
-        "relations",
-        "knowledge",
-        "priors",
-        "npcs",
-        "event_seeds",
-    ):
+    for section in ID_SECTIONS:
         ids.update(item.id for item in getattr(file, section))
     return ids
 
 
+def merge_scopes(file: WorldFile) -> WorldFile:
+    """One scope per (knowledge, region), at its highest confidence. The graph keeps one
+    SCOPED_TO edge per pair, so a file listing a pair twice would otherwise be stored by
+    whichever came last (V7 code review #19, BR-V7-02)."""
+    best: dict[tuple[str, str], ScopeLink] = {}
+    for s in file.scopes:
+        key = (s.knowledge_id, s.region_id)
+        held = best.get(key)
+        if held is None or s.confidence > held.confidence:
+            best[key] = s
+    if len(best) == len(file.scopes):
+        return file
+    return file.model_copy(update={"scopes": list(best.values())})
+
+
+def duplicate_ids(file: WorldFile) -> list[str]:
+    """Ids that come twice — inside one section or across two — sorted; empty when none
+    (V7, BR-V7-17/18). Two nodes of one id would make every read and delete by id
+    ambiguous (U8 #10), so an import refuses the file instead of storing both."""
+    seen: set[str] = set()
+    twice: set[str] = set()
+    for section in ID_SECTIONS:
+        for item in getattr(file, section):
+            (twice if item.id in seen else seen).add(item.id)
+    return sorted(twice)
+
+
+def remapped_id(target_world_id: str, old_id: str) -> str:
+    """The id ``old_id`` of a World File takes in ``target_world_id`` when the file is
+    remapped. The one formula: ``remap_ids`` uses it, and so does moving a demo's
+    translation entries along with their file (V3, BR-V3-18)."""
+    return str(uuid.uuid5(NAMESPACE_LOCUS, f"{target_world_id}:{old_id}"))
+
+
 def remap_ids(file: WorldFile, target_world_id: str) -> WorldFile:
-    """Rewrite every id and reference to ``uuid5(NAMESPACE_LOCUS, f"{target}:{old}")``
+    """Rewrite every id and reference to ``remapped_id(target, old)``
     and every ``world_id`` (and ``world.id``) to ``target_world_id``. Deterministic."""
     known = file_ids(file)
 
     def new(old: str | None) -> str | None:
         if old is None or old not in known:
             return old
-        return str(uuid.uuid5(NAMESPACE_LOCUS, f"{target_world_id}:{old}"))
+        return remapped_id(target_world_id, old)
 
     def new_list(ids: list[str]) -> list[str]:
         return [new(i) or i for i in ids]

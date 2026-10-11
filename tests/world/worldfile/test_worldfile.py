@@ -342,3 +342,163 @@ def test_ex6_a_seed_in_a_region_the_file_lacks_is_dropped_as_an_error() -> None:
     assert not report.ok
     assert any(w.item_id == "seed-lost" and w.severity == "error" for w in report.warnings)
     assert [s.id for s in exporter.export("w").event_seeds] == ["seed-ok"]
+
+
+# --------------------------------------------------------------------------- #
+# V7 — duplicate ids are refused before anything is written (BR-V7-17/18)
+# --------------------------------------------------------------------------- #
+def _stored(graph) -> list:
+    import json
+
+    return sorted(
+        (k, json.dumps(n.properties, sort_keys=True, default=str)) for k, n in graph._nodes.items()
+    )
+
+
+def test_tp_v7_10_a_file_with_duplicate_ids_changes_nothing() -> None:
+    from locus.shared.models import EventSeed
+    from locus.world.worldfile.remap import duplicate_ids
+
+    graph, _s, _c, _e, importer = _stack()
+    assert importer.import_("w", _demo_file("w")).ok
+    before, edges_before = _stored(graph), len(graph._edges)
+
+    file = _demo_file("w")
+    region = file.regions[0]
+    seed = EventSeed(  # across sections: a seed with a region's id
+        id=region.id,
+        world_id="w",
+        region_id=region.id,
+        title="Flood",
+        category="disaster",
+        magnitude=0.5,
+        provenance=Provenance(source=SourceKind.INPUT),
+    )
+    twin = file.knowledge[1].model_copy(update={"id": file.knowledge[0].id})  # in a section
+    bad = file.model_copy(update={"event_seeds": [seed], "knowledge": [*file.knowledge, twin]})
+    assert duplicate_ids(bad) == sorted({region.id, file.knowledge[0].id})
+
+    report = importer.import_("w", bad)
+
+    assert report.ok is False and report.replaced is False
+    assert [(w.stage, w.severity) for w in report.warnings] == [("duplicate-ids", "error")]
+    assert region.id in report.warnings[0].message
+    assert _stored(graph) == before and len(graph._edges) == edges_before
+
+
+def test_tp_v7_10_a_remapped_file_names_its_own_duplicate_ids() -> None:
+    """Code review #12: the message names the id in the file the designer will fix, not
+    the uuid5 it would have been remapped to."""
+    _g, _s, _c, _e, importer = _stack()
+    file = _demo_file("src")
+    twin = file.regions[1].model_copy(update={"id": file.regions[0].id})
+    report = importer.import_("other", file.model_copy(update={"regions": [*file.regions, twin]}))
+    assert report.ok is False and report.remapped is True
+    assert report.warnings[0].stage == "duplicate-ids"
+    assert report.warnings[0].message.endswith(file.regions[0].id)
+
+
+@settings(max_examples=40, deadline=None, suppress_health_check=[HealthCheck.too_slow])
+@given(file=world_files(), data=st.data())
+def test_pbt_v7_5_duplicate_ids_do_not_follow_order(file: WorldFile, data) -> None:
+    from collections import Counter
+
+    from locus.world.worldfile.remap import ID_SECTIONS, duplicate_ids
+
+    every = [item.id for s in ID_SECTIONS for item in getattr(file, s)]
+    updates = {}  # copy a few ids onto other items, in a section or across sections
+    for section in ID_SECTIONS:
+        items = list(getattr(file, section))
+        for i in range(len(items)):
+            if data.draw(st.booleans()) and data.draw(st.booleans()):
+                items[i] = items[i].model_copy(update={"id": data.draw(st.sampled_from(every))})
+        updates[section] = items
+    dup = file.model_copy(update=updates)
+    counts = Counter(item.id for s in ID_SECTIONS for item in getattr(dup, s))
+    found = duplicate_ids(dup)
+    assert found == sorted(i for i, n in counts.items() if n >= 2)
+    shuffled = dup.model_copy(
+        update={s: data.draw(st.permutations(getattr(dup, s))) for s in ID_SECTIONS}
+    )
+    assert duplicate_ids(shuffled) == found
+
+
+class _BrokenFileExporter:
+    def export(self, world_id):
+        raise OSError("disk full")
+
+
+def test_tp_v7_7_an_import_whose_backup_fails_leaves_the_old_world(tmp_path) -> None:
+    graph, search, cache, _exporter, importer = _stack()
+    assert importer.import_("w", _demo_file("w")).ok
+    before = _stored(graph)
+    broken = WorldFileImporter(
+        graph, search, None, cache, exporter=_BrokenFileExporter(), backup_dir=tmp_path
+    )
+    report = broken.import_("w", _demo_file("w"))
+    assert report.ok is False and report.replaced is False and report.backup_path is None
+    assert [(w.stage, w.severity) for w in report.warnings if w.severity == "error"] == [
+        ("backup", "error")
+    ]
+    assert _stored(graph) == before
+    # no backup set up: the import replaces as before (BR-V7-11)
+    again = importer.import_("w", _demo_file("w"))
+    assert again.ok and again.replaced is True
+
+
+# --------------------------------------------------------------------------- #
+# V7 code review 01 (#12, #19, #21)
+# --------------------------------------------------------------------------- #
+def test_an_existing_world_is_refused_before_its_file_is_checked() -> None:  # review #12
+    _g, _s, _c, _e, importer = _stack()
+    assert importer.import_("w", _demo_file("w")).ok
+    file = _demo_file("w")
+    twin = file.regions[1].model_copy(update={"id": file.regions[0].id})
+    with pytest.raises(WorldExistsError):
+        importer.import_(
+            "w", file.model_copy(update={"regions": [*file.regions, twin]}), replace=False
+        )
+
+
+def test_eleven_duplicates_name_ten_and_count_the_rest() -> None:  # review #21
+    _g, _s, _c, _e, importer = _stack()
+    file = _demo_file("w")
+    knowledge_twins = [k.model_copy() for k in file.knowledge[:10]]
+    region_twin = file.regions[0].model_copy()
+    assert len(knowledge_twins) == 10  # + one region: eleven ids twice
+    report = importer.import_(
+        "w",
+        file.model_copy(
+            update={
+                "knowledge": [*file.knowledge, *knowledge_twins],
+                "regions": [*file.regions, region_twin],
+            }
+        ),
+    )
+    assert report.warnings[0].message.endswith(" and 1 more")
+
+
+def test_a_duplicate_that_also_dangles_is_reported_as_a_duplicate_only() -> None:  # #21
+    _g, _s, _c, _e, importer = _stack()
+    file = _demo_file("w")
+    twin = file.entities[0].model_copy(update={"located_in": "region-nowhere"})
+    report = importer.import_("w", file.model_copy(update={"entities": [*file.entities, twin]}))
+    assert [w.stage for w in report.warnings] == ["duplicate-ids"]
+
+
+def test_code_review_19_a_scope_listed_twice_is_stored_at_its_highest_confidence() -> None:
+    graph, _s, cache, _e, importer = _stack()
+    file = _demo_file("w")
+    s0 = file.scopes[0]
+    for pair in ([0.9, 0.2], [0.2, 0.9]):
+        twins = [s0.model_copy(update={"confidence": c}) for c in pair]
+        report = importer.import_(
+            "w", file.model_copy(update={"scopes": [*twins, *file.scopes[1:]]})
+        )
+        assert report.ok
+        stored = [
+            s
+            for s in cache.get("w").kg.scopes
+            if (s.knowledge_id, s.region_id) == (s0.knowledge_id, s0.region_id)
+        ]
+        assert [s.confidence for s in stored] == [0.9]

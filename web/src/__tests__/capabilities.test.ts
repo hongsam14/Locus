@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../api";
 import { HttpError, detailOf, needsLlm, openSessionsOf, useReplaceConfirm } from "../api/http";
 import { llmOff, resetCapabilities, useCapabilities } from "../capabilities";
-import { dicts, setLang, t, timelineText } from "../i18n";
+import { configureLangs, dicts, setLang, t, timelineText } from "../i18n";
 
 beforeEach(() => {
   resetCapabilities();
@@ -38,6 +38,46 @@ describe("useCapabilities (BR-U8-23/26)", () => {
     expect(result.current).toBeNull();
     expect(llmOff(result.current)).toBe(false);
     expect(llmOff({ llm: true, vlm: false, embedding: false })).toBe(false);
+  });
+
+  it("a failed read is read again on a later mount, but not within 30 s (RE-F09)", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-10-07T12:00:00Z"));
+      const read = vi
+        .spyOn(api, "capabilities")
+        .mockRejectedValueOnce(new Error("down"))
+        .mockResolvedValue({ llm: true, vlm: false, embedding: false });
+      const first = renderHook(() => useCapabilities());
+      await act(async () => {});
+      expect(first.result.current).toBeNull();
+      vi.setSystemTime(new Date("2026-10-07T12:00:10Z")); // 10 s later: not again yet
+      renderHook(() => useCapabilities());
+      await act(async () => {});
+      expect(read).toHaveBeenCalledTimes(1);
+      vi.setSystemTime(new Date("2026-10-07T12:00:31Z")); // 31 s later: read again
+      const later = renderHook(() => useCapabilities());
+      await waitFor(() => expect(later.result.current?.llm).toBe(true));
+      expect(read).toHaveBeenCalledTimes(2);
+      renderHook(() => useCapabilities()); // a success is kept
+      await act(async () => {});
+      expect(read).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a reset drops a read still running: its answer is not cached (review § 2)", async () => {
+    let answer!: (c: { llm: boolean; vlm: boolean; embedding: boolean }) => void;
+    vi.spyOn(api, "capabilities")
+      .mockImplementationOnce(() => new Promise((res) => { answer = res; }))
+      .mockResolvedValue({ llm: true, vlm: true, embedding: true });
+    renderHook(() => useCapabilities());
+    await act(async () => {});
+    resetCapabilities(); // the next test starts here
+    await act(async () => answer({ llm: false, vlm: false, embedding: false })); // the old read lands late
+    const fresh = renderHook(() => useCapabilities());
+    await waitFor(() => expect(fresh.result.current?.llm).toBe(true)); // read again, not the late answer
   });
 
   it("a read that throws before it returns a promise is unknown too", async () => {
@@ -141,6 +181,23 @@ describe("api.loadDemo (worldId, name, options) — FD review 01 R-08", () => {
     expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: "POST" });
   });
 
+  it("V3: the name map and the two lists carry the display language", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+    configureLangs("ko", ["ko", "en"]);
+    setLang("en"); // not the server default: sent as ?lang=
+    await api.worldNames("my world");
+    await api.listWorlds();
+    await api.listDemos();
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls[0]).toContain("/api/world/worlds/my%20world/names?lang=en");
+    expect(urls[1]).toMatch(/\/api\/world\/worlds\?lang=en$/);
+    expect(urls[2]).toMatch(/\/api\/world\/demos\?lang=en$/);
+    setLang("ko"); // the server default: no ?lang=
+    await api.listDemos();
+    expect(String(fetchMock.mock.calls[3][0])).toMatch(/\/api\/world\/demos$/);
+  });
+
   it("listSeeds and startSeed call the GM seed routes", async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => [] });
     vi.stubGlobal("fetch", fetchMock);
@@ -163,7 +220,8 @@ describe("i18n after U8", () => {
   });
 
   it("the new keys exist in both dictionaries and the dead ones are gone (C14)", () => {
-    for (const key of ["demo.play", "demo.playerName", "llm.offNotice", "llm.required", "seed.none",
+    // llm.offNotice and seed.none went with V9 W-2: no screen showed them
+    for (const key of ["demo.play", "demo.playerName", "llm.required",
       "timeline.seedStarted", "build.conceptArtsWip", "wip.badge"]) {
       expect(dicts.ko[key]).toBeTruthy();
       expect(dicts.en[key]).toBeTruthy();
@@ -173,9 +231,9 @@ describe("i18n after U8", () => {
       expect(dicts.ko[key]).toBeUndefined();
       expect(dicts.en[key]).toBeUndefined();
     }
-    expect(t("llm.required")).toBe("LLM 키가 필요합니다");
+    expect(t("llm.required")).toBe("AI 키가 있어야 해요"); // V6 code review 01 #38: "AI 키" like the app's band
     setLang("en");
-    expect(t("llm.required")).toBe("An LLM key is required");
+    expect(t("llm.required")).toBe("Needs an AI key");
     expect(t("demo.playerName")).toBe("Traveler");
   });
 });

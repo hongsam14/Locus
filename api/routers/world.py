@@ -15,17 +15,37 @@ import re
 from typing import Any
 from urllib.parse import quote
 
-from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, Response, UploadFile
 
 from api import uploads
-from api.deps import get_localization, get_play_optional, get_shared, get_world
+from api.deps import (
+    display_lang,
+    get_localization,
+    get_play_optional,
+    get_shared,
+    get_world,
+    lang_settings,
+)
 from api.deps import need_service as _need
-from api.errors import http_error
+from api.errors import ApiError, http_error
 from api.routers import world_editor
-from api.schemas import DemoInfoOut, UnignoreIn, WorldInfo, purge_translations
+from api.schemas import (
+    DemoInfoOut,
+    DemoLoadOut,
+    UnignoreIn,
+    WorldInfo,
+    WorldNamesOut,
+    enrichment_for,
+    live_ids,
+    purge_translations,
+    purge_world_translations,
+    seed_demo_translations,
+    world_names,
+)
 from locus.localization.wiring import LocalizationContainer
-from locus.play.errors import TurnInProgressError
+from locus.play.errors import GmBusyError, TurnInProgressError
 from locus.play.wiring import PlayContainer
+from locus.shared.config import Settings
 from locus.shared.models import (
     BuildReport,
     GraphSummary,
@@ -60,27 +80,30 @@ def _open_sessions(world_id: str, confirm: bool, play: PlayContainer | None) -> 
     open_ids = [s.id for s in play.sessions.open_sessions(world_id)]
     # Pre-flight the turn guard: a session mid-turn cannot be closed, so admitting it
     # here let the destructive replace run and then fail on the close, after the world
-    # was already gone (code review U4-2 #3, re-framed root cause).
-    busy = [sid for sid in open_ids if play.guard.is_running(sid)]
+    # was already gone (code review U4-2 #3, re-framed root cause). Only a turn counts:
+    # a GM write's save finds the session closed (V5 BR-V5-17).
+    busy = [sid for sid in open_ids if play.guard.turn_running(sid)]
     if busy:
-        raise HTTPException(
-            status_code=409,
-            detail={
+        raise ApiError(
+            409,
+            {
                 "message": f"world {world_id!r} has {len(busy)} session(s) mid-turn; "
                 "retry once their turns finish",
                 "busy_sessions": len(busy),
                 "session_ids": busy,
             },
+            "sessions_busy",
         )
     if open_ids and not confirm:
-        raise HTTPException(
-            status_code=409,
-            detail={
+        raise ApiError(
+            409,
+            {
                 "message": f"world {world_id!r} has {len(open_ids)} open session(s); "
                 "pass confirm=true to close them and replace the world",
                 "open_sessions": len(open_ids),
                 "session_ids": open_ids,
             },
+            "sessions_open",
         )
     return open_ids
 
@@ -91,15 +114,28 @@ def _after_replace(
     play: PlayContainer | None,
     loc: LocalizationContainer | None,
     world_id: str,
+    w: WorldContainer | None = None,
 ) -> None:
     """What follows a replace: close the confirmed sessions, and drop the old world's
-    canonical translations (U5 Q4=A). The two are independent — the purge must not sit
-    behind the session step's early return, or the common replace with no open
-    session would skip it (plan review FD R-13). Six routes share five call sites
-    (``file`` and ``file/upload`` go through ``_import``)."""
+    translations (U5 Q4=A; V3 BR-V3-13: every kind of the world, not only knowledge). The
+    two are independent — the purge must not sit behind the session step's early
+    return, or the common replace with no open session would skip it (plan review FD
+    R-13). Six routes share five call sites (``file`` and ``file/upload`` go through
+    ``_import``)."""
     _close_if_replaced(report, open_ids, play)
     if getattr(report, "replaced", False):
-        purge_translations(loc, kind="knowledge", world_id=world_id)
+        purge_world_translations(loc, world_id, _held_ids(w, world_id))
+
+
+def _held_ids(w: WorldContainer | None, world_id: str) -> set[str] | None:
+    """The replaced world's ids now, or None when it cannot be read (gone or no cache):
+    then every translation row of the world goes."""
+    if w is None or w.cache is None:
+        return None
+    try:
+        return live_ids(w.cache.get(world_id))
+    except Exception:  # an empty world raises LookupError; anything else: purge all
+        return None
 
 
 def _close_if_replaced(report, open_ids: list[str], play: PlayContainer | None) -> None:
@@ -114,29 +150,31 @@ def _close_if_replaced(report, open_ids: list[str], play: PlayContainer | None) 
         report.closed_session_ids = []
         return
     closed: list[str] = []
-    busy: list[str] = []
+    stuck: list[tuple[str, str]] = []  # (session id, why it stays open)
     for sid in open_ids:
         try:
             play.sessions.close_session(sid)
             closed.append(sid)
+        except GmBusyError:  # a GM save section outlasted the wait (V5 § 1.1 R-05b)
+            stuck.append((sid, "busy"))
         except TurnInProgressError:
-            busy.append(sid)
+            stuck.append((sid, "mid-turn"))
         except LookupError:  # already gone
             closed.append(sid)
     report.closed_session_ids = closed
-    if busy:
+    if stuck:
         logger.warning(
-            "world replaced but %d session(s) were mid-turn and stay open: %s",
-            len(busy),
-            ", ".join(busy),
+            "world replaced but %d session(s) stay open: %s",
+            len(stuck),
+            ", ".join(f"{sid} ({why})" for sid, why in stuck),
         )
         report.warnings = list(getattr(report, "warnings", [])) + [
             BuildWarning(
                 stage="sessions",
-                message=f"session {sid} was mid-turn and could not be closed",
+                message=f"session {sid} was {why} and could not be closed",
                 severity="warning",
             )
-            for sid in busy
+            for sid, why in stuck
         ]
 
 
@@ -152,13 +190,13 @@ def build_world(
     loc: LocalizationContainer | None = Depends(get_localization),
 ) -> BuildReport:
     """Build from JSON inputs (images base64-encoded, RE A7)."""
-    builder = _need(w.builder, "world build (LLM provider)")
+    builder = _need(w.builder, "world build (LLM provider)", "llm_unavailable")
     open_ids = _open_sessions(world_id, confirm, play) if replace else []
     try:
         report = builder.build(world_id, inputs, replace=replace)
     except (WorldExistsError, BuildInProgressError) as exc:
         raise http_error(exc) from exc
-    _after_replace(report, open_ids, play, loc, world_id)
+    _after_replace(report, open_ids, play, loc, world_id, w)
     return report
 
 
@@ -183,7 +221,7 @@ def build_world_upload(
 
     A sync route: FastAPI runs it in the threadpool, so a minutes-long build never
     blocks the single worker's event loop (review #10)."""
-    builder = _need(w.builder, "world build (LLM provider)")
+    builder = _need(w.builder, "world build (LLM provider)", "llm_unavailable")
     for field, files, cap in (
         ("memos", memos, uploads.MEMO),
         ("maps", maps, uploads.MAP),
@@ -198,11 +236,9 @@ def build_world_upload(
         try:
             parsed = json.loads(uploads.read_capped("maps", f, uploads.MAP))
         except (UnicodeDecodeError, ValueError, RecursionError) as exc:  # fixed text (S07)
-            raise HTTPException(
-                status_code=422, detail=f"map {f.filename!r} is not valid JSON"
-            ) from exc
+            raise ApiError(422, f"map {f.filename!r} is not valid JSON", "bad_map_json") from exc
         if not isinstance(parsed, dict):  # a list, string or number is no map (U3 S07)
-            raise HTTPException(status_code=422, detail=f"map {f.filename!r} is not valid JSON")
+            raise ApiError(422, f"map {f.filename!r} is not valid JSON", "bad_map_json")
         structured.append(parsed)
 
     def b64(data: bytes) -> str:
@@ -222,7 +258,7 @@ def build_world_upload(
         report = builder.build(world_id, inputs, replace=replace)
     except (WorldExistsError, BuildInProgressError) as exc:
         raise http_error(exc) from exc
-    _after_replace(report, open_ids, play, loc, world_id)
+    _after_replace(report, open_ids, play, loc, world_id, w)
     return report
 
 
@@ -230,7 +266,7 @@ def build_world_upload(
 def graph_summary(world_id: str, shared: SharedContainer = Depends(get_shared)) -> GraphSummary:
     graph = shared.graph
     if graph is None:
-        raise HTTPException(status_code=503, detail="graph repository unavailable")
+        raise ApiError(503, "graph repository unavailable", "service_unavailable")
     regions = graph.find_nodes(world_id, "Region")
     return GraphSummary(
         world_id=world_id,
@@ -245,19 +281,51 @@ def graph_summary(world_id: str, shared: SharedContainer = Depends(get_shared)) 
 # --- world list -------------------------------------------------------------- #
 @router.get("/worlds", response_model=list[WorldInfo])
 def list_worlds(
+    lang: str = Depends(display_lang),
     w: WorldContainer = Depends(get_world),
     play: PlayContainer | None = Depends(get_play_optional),
+    loc: LocalizationContainer | None = Depends(get_localization),
 ) -> list[WorldInfo]:
     """Every stored world with its meta (BR-U2-24); pre-U2 worlds show ``name=id``. The
-    rows come from ``WorldCatalog`` (U3, unchanged response); play adds open sessions."""
+    rows come from ``WorldCatalog`` (U3, unchanged response); play adds open sessions,
+    the translation cache the names in the display language (V3, BR-V3-23)."""
     catalog = _need(w.catalog, "world catalog")
+    rows = catalog.list_worlds()
+    # a world without meta shows its id as its name: an id is not translated (review § 2)
+    named = [row for row in rows if row.name != row.id]
+    names = enrichment_for(loc, named, kind="world", fields=["name", "description"], lang=lang)
     out: list[WorldInfo] = []
-    for row in catalog.list_worlds():
+    for row in rows:
         open_sessions = None
         if play is not None:
             open_sessions = len(play.sessions.open_sessions(row.id))
-        out.append(WorldInfo(**row.model_dump(), open_sessions=open_sessions))
+        ko = names.get(row.id, {})
+        out.append(
+            WorldInfo(
+                **row.model_dump(),
+                open_sessions=open_sessions,
+                name_ko=ko.get("name"),
+                description_ko=ko.get("description"),
+            )
+        )
     return out
+
+
+@router.get("/worlds/{world_id}/names", response_model=WorldNamesOut)
+def get_world_names(
+    world_id: str,
+    lang: str = Depends(display_lang),
+    w: WorldContainer = Depends(get_world),
+    loc: LocalizationContainer | None = Depends(get_localization),
+) -> WorldNamesOut:
+    """The world's name map in the display language (V3, Q5=A, BLM § 8): region, NPC,
+    event-seed and world text by id, cache only. 404 for a world that is not there."""
+    cache = _need(w.cache, "world cache")  # 503 without one (code plan memo R-03)
+    try:
+        snapshot = cache.get(world_id)
+    except LookupError as exc:
+        raise http_error(exc) from exc
+    return world_names(loc, snapshot, lang=lang)
 
 
 @router.get("/worlds/{world_id}/export")
@@ -309,7 +377,7 @@ def _import(
         report = importer.import_(world_id, file, replace=replace, force_remap=remap)
     except WorldExistsError as exc:
         raise http_error(exc) from exc
-    _after_replace(report, open_ids, play, loc, world_id)
+    _after_replace(report, open_ids, play, loc, world_id, w)
     return report
 
 
@@ -347,8 +415,8 @@ def import_world_file_upload(
     try:
         raw = json.loads(data)
     except (UnicodeDecodeError, ValueError, RecursionError) as exc:  # fixed text (NFR-6, S07)
-        raise HTTPException(
-            status_code=422, detail=f"{file.filename!r} is not a JSON World File"
+        raise ApiError(
+            422, f"{file.filename!r} is not a JSON World File", "bad_world_file"
         ) from exc
     return _import(
         world_id, raw, replace=replace, confirm=confirm, remap=remap, w=w, play=play, loc=loc
@@ -357,12 +425,15 @@ def import_world_file_upload(
 
 # --- demo worlds ------------------------------------------------------------- #
 @router.get("/demos", response_model=list[DemoInfoOut])
-def list_demos(w: WorldContainer = Depends(get_world)) -> list[DemoInfoOut]:
-    """The manifest's demos (U8, BR-U8-19): the home screen draws a card for each."""
-    return [DemoInfoOut.of(info) for info in _need(w.demo, "demo worlds").list()]
+def list_demos(
+    lang: str = Depends(display_lang), w: WorldContainer = Depends(get_world)
+) -> list[DemoInfoOut]:
+    """The manifest's demos (U8, BR-U8-19): the home screen draws a card for each, in the
+    display language when the manifest has its text (V3, BR-V3-23)."""
+    return [DemoInfoOut.of(info, lang) for info in _need(w.demo, "demo worlds").list()]
 
 
-@router.post("/worlds/{world_id}/demo/{name}", response_model=ImportReport)
+@router.post("/worlds/{world_id}/demo/{name}", response_model=DemoLoadOut)
 def load_demo_world(
     world_id: str,
     name: str,
@@ -371,8 +442,10 @@ def load_demo_world(
     w: WorldContainer = Depends(get_world),
     play: PlayContainer | None = Depends(get_play_optional),
     loc: LocalizationContainer | None = Depends(get_localization),
-) -> ImportReport:
-    """Load a packaged demo World File — no LLM call (FR-B3, BR-U2-28)."""
+    settings: Settings = Depends(lang_settings),
+) -> DemoLoadOut:
+    """Load a packaged demo World File — no LLM call (FR-B3, BR-U2-28) — then seed its
+    translations: import → (replace) purge → (ok) seed (V3, BLM § 3, BR-V3-14)."""
     demo = _need(w.demo, "demo worlds")
     try:
         demo.info(name)  # validate the name before the session gate (review #6)
@@ -383,8 +456,16 @@ def load_demo_world(
         report = demo.load(name, world_id, replace=replace)
     except (LookupError, WorldExistsError) as exc:
         raise http_error(exc) from exc
-    _after_replace(report, open_ids, play, loc, world_id)
-    return report
+    _after_replace(report, open_ids, play, loc, world_id, w)
+    seeded = seed_demo_translations(
+        loc, demo, name, world_id=world_id, report=report, langs=settings.supported_langs
+    )
+    return DemoLoadOut(
+        # computed fields (``ok``) are output only, never an input (review § 2)
+        **report.model_dump(exclude=set(ImportReport.model_computed_fields)),
+        translations_seeded=seeded.seeded,
+        translations_stale=seeded.stale,
+    )
 
 
 @router.post("/worlds/{world_id}/demo/{name}/build", response_model=BuildReport)
@@ -401,7 +482,7 @@ def build_demo_world_from_sources(
     """Development path: build the demo from its raw sources through the LLM pipeline
     (``with_map=false`` skips the map image / VLM)."""
     demo = _need(w.demo, "demo worlds")
-    _need(w.builder, "world build (LLM provider)")
+    _need(w.builder, "world build (LLM provider)", "llm_unavailable")
     try:
         demo.info(name)
     except LookupError as exc:
@@ -411,7 +492,7 @@ def build_demo_world_from_sources(
         report = demo.build_from_sources(name, world_id, replace=replace, include_map=with_map)
     except (LookupError, WorldExistsError, BuildInProgressError) as exc:
         raise http_error(exc) from exc
-    _after_replace(report, open_ids, play, loc, world_id)
+    _after_replace(report, open_ids, play, loc, world_id, w)
     return report
 
 
@@ -421,7 +502,7 @@ def upsert_prior(
     world_id: str, prior: WikiPrior, w: WorldContainer = Depends(get_world)
 ) -> WikiPrior:
     if prior.world_id != world_id:
-        raise HTTPException(status_code=400, detail="prior.world_id must match path world_id")
+        raise ApiError(400, "prior.world_id must match path world_id", "invalid_request")
     return _need(w.wiki_admin, "wiki admin (LLM provider)").upsert_prior(prior)
 
 
@@ -456,7 +537,7 @@ def get_augmentation(run_id: str, w: WorldContainer = Depends(get_world)) -> Aug
     """Read a kept run again; 404 after a restart (runs live in memory, BR-U3-42)."""
     run = _need(w.augmentation, "augmentation").get_run(run_id)
     if run is None:
-        raise HTTPException(status_code=404, detail=f"augmentation run not found: {run_id}")
+        raise ApiError(404, f"augmentation run not found: {run_id}", "not_found")
     return run
 
 

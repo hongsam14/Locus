@@ -4065,3 +4065,1965 @@ Docs: `construction/build-and-test/purpose-restructure/` (build, unit, integrati
 **Context**: OPERATIONS (placeholder) — Purpose Restructure cycle close.
 
 ---
+
+## Workspace Detection — Next Cycle (after Purpose Restructure)
+**Timestamp**: 2026-10-07T03:10:27Z
+**User Input**: "aidlc로 @aidlc-docs/operations/next-cycle.md 작업 시작"
+**AI Response**: Started a new AI-DLC cycle over `operations/next-cycle.md`. Workspace detection:
+- `aidlc-state.md` exists; the Purpose Restructure cycle is complete (2026-10-02). This is a new cycle on a brownfield codebase.
+- Branch `feat/purpose-restructure` (clean, HEAD 240e82d). PR #4 to `main` is **open, not merged**.
+- Code now: `locus/` ~19.8k lines, `api/` ~2.5k, `web/src` ~11.6k, `tests/` ~20.5k (362 .py/.ts/.tsx files). Python 3.11+ (setuptools) + React/Vite/TS (npm), Docker Compose, CI workflow.
+- Reverse engineering artifacts exist but are **stale**: snapshot `ee61277` (2026-08-19, analysed 2026-09-29); since then 427 files changed, +49,850 / −9,146 lines (the whole U1~U8 restructure). By `inception/workspace-detection.md` Step 3 the next stage would be a Reverse Engineering rerun.
+- Extensions: security-baseline and property-based-testing opt-in files loaded (rules files not loaded).
+- Decision raised to the human before any rerun: how to refresh the system picture (full RE rerun vs. a light refresh from the U1~U8 code summaries vs. skip with a recorded deviation).
+**Context**: INCEPTION / Workspace Detection — new cycle.
+
+---
+
+## Workspace Detection — Reverse engineering decision
+**Timestamp**: 2026-10-07T03:16:40Z
+**User Input**: "전체 다시 하기" (AskUserQuestion: 역공학 산출물 처리 — 가볍게 갱신(권장) / 전체 다시 하기 / 건너뛰기)
+**AI Response**: Full Reverse Engineering rerun. All nine artifacts in `inception/reverse-engineering/` will be rewritten for the current code (HEAD 240e82d), including a new code quality assessment. The old versions stay in git history (last at 240e82d).
+**Context**: INCEPTION / Workspace Detection → Reverse Engineering (rerun).
+
+---
+
+## Reverse Engineering — Follow-up cycle rerun complete
+**Timestamp**: 2026-10-07T03:49:59Z
+**User Input**: (none since "전체 다시 하기")
+**AI Response**: Rewrote the reverse engineering artifacts for HEAD 240e82d.
+- Four parallel readers: canonical world / play+API / frontend+screens / quality+tooling+deps. Gates were run offline, and defects were reproduced on in-memory fakes, the SQL adapter over SQLite, and a scratch web build against a fake API.
+- Files: the nine standard artifacts, plus `screen-inventory.md` (added for this cycle's screen-polish item) and `screens/*.png` (8 screenshots, 1.4 MB).
+- Gates: pytest 948 (coverage 94%), vitest 202, ruff/black/tsc clean, mypy 11, npm audit runtime 0 / dev 5.
+- Carried items: all still present, except U3 #10, which is closed in code but cannot be tested offline (U8 #9 #10 #11 #12 #13 #14 #15, #5(a), U3 memos 1/2/5, S16, the four in-progress features, tech debt).
+- New findings: RE-W01..W24, RE-P01..P16, RE-F01..F15, RE-T01..T13, UX-01..UX-42. Most purpose-critical: RE-W01, consensus propagation picks the first-found origin, not the best path.
+- Approval prompt shown (Request Changes / Approve & Continue → Requirements Analysis).
+**Context**: INCEPTION / Reverse Engineering — Follow-up cycle.
+
+---
+
+## Reverse Engineering — Approval
+**Timestamp**: 2026-10-07T04:34:04Z
+**User Input**: "Approve & Continue"
+**AI Response**: Reverse Engineering approved. Moving to Requirements Analysis (standard depth). Next: verification questions on scope, screen-polish depth, screen order, Korean display range, defect range, tech-debt range, screen verification, and the two extension opt-ins.
+**Context**: INCEPTION / Reverse Engineering → Requirements Analysis — Follow-up cycle.
+
+---
+
+## Requirements Analysis — Verification answers
+**Timestamp**: 2026-10-07T05:09:10Z
+**User Input** (AskUserQuestion, chat; questions in `inception/requirements/follow-up-verification-questions.md`):
+- Q1 범위: "화면+결함+부채 (Recommended)"
+- Q2 화면 깊이: "디자인 시스템부터 다시"
+- Q3 화면 순서: "홈·플레이 먼저 (Recommended)"
+- Q4 한국어 범위: "화면 문구 + 데모 한국어판 (Recommended)"
+- Q5 결함 범위: "이월 + 결과가 틀리는 것 (Recommended)"
+- Q6 부채 범위: "시한·저비용 묶음 (Recommended)"
+- Q7 화면 검증: "사람이 직접 확인"
+- Q8 Security extension: "No (Recommended)"
+- Q9 PBT extension: "Partial (Recommended)"
+**AI Response**: Recorded Q1=A, Q2=C, Q3=A, Q4=A, Q5=A, Q6=A, Q7=B, Q8=A (No), Q9=A (Partial). No contradictions found.
+- Noted risk: the design system is rebuilt (Q2=C) while the screens are checked only by a person (Q7=B). There is no automated layout gate; this goes into the requirements as an accepted risk.
+- Ambiguity: Q2=C does not yet say what the new design looks like. Clarification file created: `follow-up-clarification-questions.md` (tone, number of themes, how drafts are shown, narrow-screen target).
+- Extensions: Security Baseline = No; Property-Based Testing = Partial (PBT-02/03/07/08/09 enforced, as last cycle). The PBT rules file will be loaded.
+**Context**: INCEPTION / Requirements Analysis — Follow-up cycle.
+
+---
+
+## Requirements Analysis — Clarification answers
+**Timestamp**: 2026-10-07T05:18:16Z
+**User Input** (AskUserQuestion, chat; questions in `inception/requirements/follow-up-clarification-questions.md`):
+- CQ1 톤: "TRPG·판타지 톤"
+- CQ3 시안: "HTML 시안 2~3안 (Recommended)"
+- CQ2 테마 수: "톤 하나만 (Recommended)"
+- CQ4 좁은 화면: "홈·플레이만 휴대폰 (Recommended)"
+**AI Response**: Recorded CQ1=A, CQ2=A, CQ3=A, CQ4=A. No contradictions remain. The Extension Configuration for this cycle is written to the state file (Security No, PBT Partial). Next step: the requirements document.
+**Context**: INCEPTION / Requirements Analysis — Follow-up cycle.
+
+---
+
+## Requirements Analysis — Requirements document
+**Timestamp**: 2026-10-07T05:22:07Z
+**User Input**: (none)
+**AI Response**: Wrote `inception/requirements/follow-up-requirements.md` (Standard depth). It holds 10 FR-D, 6 FR-S, 4 FR-L, 14 FR-C, 7 FR-T and 10 NFRs, plus constraints C-1..C-5, assumptions A-1..A-5, risks R-1..R-3, the out-of-scope list, the traceability table, and a unit draft for Workflow Planning. The document proposes skipping User Stories.
+**Context**: INCEPTION / Requirements Analysis — Step 7.
+
+---
+
+## Plan Review Requested — Requirements Analysis
+**Timestamp**: 2026-10-07T05:22:07Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching product-lead-reviewer (class advisory, iteration 1) on `aidlc-docs/inception/requirements/follow-up-requirements.md`. Review record: `aidlc-docs/inception/requirements/reviews/follow-up-requirements-review-01.md`.
+**Context**: Requirements Analysis — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Requirements Analysis
+**Timestamp**: 2026-10-07T05:23:58Z
+**User Input**: (none)
+**AI Response**: product-lead-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 4 Minor; open 6. Record: `aidlc-docs/inception/requirements/reviews/follow-up-requirements-review-01.md`.
+**Context**: Requirements Analysis — next: approval gate. Approval prompt shown: Request Changes / Add User Stories / Approve & Continue → Workflow Planning.
+
+---
+
+## Requirements Analysis — Approval
+**Timestamp**: 2026-10-07T05:26:56Z
+**User Input**: "Approve & Continue"
+**AI Response**: Requirements approved. User Stories is skipped, as proposed. Next: Workflow Planning. The branch question (R-06 / C-3) is asked first.
+**Context**: INCEPTION / Requirements Analysis → Workflow Planning — Follow-up cycle.
+
+---
+
+## Plan Review Dispositions — Requirements Analysis
+**Timestamp**: 2026-10-07T05:26:56Z
+- R-01 → Accepted risk
+- R-02 → Accepted risk
+- R-03 → Accepted risk
+- R-04 → Accepted risk
+- R-05 → Accepted risk
+- R-06 → Accepted risk
+
+---
+
+## Workflow Planning — Branch decision (R-06 / C-3)
+**Timestamp**: 2026-10-07T05:33:18Z
+**User Input**: "PR #4 병합 후 새 브랜치 (Recommended)" (AskUserQuestion: PR #4 병합 후 새 브랜치 / PR #4 위에 쌓기 / 지금 브랜치에 이어서)
+**AI Response**: Branch plan: PR #4 is merged into main, then `feat/follow-up` is created from main, carrying the uncommitted cycle docs. Merging is outward-facing, so Claude did not merge. It gave the human the command `! gh pr merge 4 --merge` (same merge-commit style as PRs #1–#3) and will create the branch after the human confirms. Meanwhile the execution plan is being written.
+**Context**: INCEPTION / Workflow Planning — Follow-up cycle.
+
+---
+
+## Workflow Planning — Plan presented
+**Timestamp**: 2026-10-07T05:34:49Z
+**User Input**: (none)
+**AI Response**: Wrote `inception/plans/follow-up-execution-plan.md`.
+- Risk High, rollback Moderate, testing Complex.
+- EXECUTE: Application Design (Standard), Units Generation, FD for 7 of 9 units, NFR light for V2 and V5, Code Generation, Build and Test.
+- SKIP: User Stories, Units Planning, Infrastructure Design.
+- Unit draft V1..V9 (CI deadline first). Accepted risks R-01..R-06 are carried with where they will be handled.
+- Approval prompt shown: "Ready to proceed with this plan?" (Request Changes / Add Skipped Stages / Approve & Continue → Application Design).
+**Context**: INCEPTION / Workflow Planning — Follow-up cycle.
+
+---
+
+## Workflow Planning - Approval
+**Timestamp**: 2026-10-07T06:12:32Z
+**AI Prompt**: "Ready to proceed with this plan?"
+**User Response**: "Approve & Continue"
+**Status**: Approved
+**Context**: Workflow plan approved. Application Design (Standard) and Units Generation run next, then units V1..V9 and Build and Test.
+
+---
+
+## Application Design — Answers
+**Timestamp**: 2026-10-07T06:52:20Z
+**User Input** (AskUserQuestion, chat; plan `inception/plans/follow-up-application-design-plan.md`):
+- Q1 GM 줄세우기: "세션별 짧은 쓰기 잠금 (Recommended)"
+- Q2 플레이어 표시: "턴과 GM 작업을 따로 표시 (Recommended)"
+- Q3 다시 빌드: "옛 NPC·씨앗 이어 붙이기 (Recommended)"
+- Q4 데모 카드: "넣는다 (Recommended)"
+- Q5 프리미티브: "headless 라이브러리 + 우리 스타일 (Recommended)"
+- Q6 오류 코드: "서버가 code 칸을 더함 (Recommended)"
+**AI Response**: All six answers are A, with no contradictions or ambiguity. R-02 is closed into scope (demo card text and world name are translated) and R-04 is decided (carry over the old NPCs and seeds). Generating the artifacts in `inception/application-design/follow-up/`.
+**Context**: INCEPTION / Application Design — Follow-up cycle.
+
+---
+
+## Application Design — Artifacts generated
+**Timestamp**: 2026-10-07T06:57:20Z
+**User Input**: (none)
+**AI Response**: Wrote `inception/application-design/follow-up/{components,component-methods,services,component-dependency,application-design}.md`.
+- New pieces: the web design-system layers (tokens, primitives on a headless library, layout, map, format, errors, hooks), TranslationEntry in shared, translation seeding and new kinds, demo i18n and translation files with stronger checks, TurnGuard.short_write and gm_busy, recover_interrupted, the carry_over and backup gate, best_origins, WorldMeta saved last, labeled get/delete, and the API error `code`.
+- Unit adjustment: FR-C11 moves from V7 to V3 (both touch the demo manifest).
+- Plan checkboxes 1–7 ticked.
+**Context**: INCEPTION / Application Design — Step 10.
+
+---
+
+## Plan Review Requested — Application Design
+**Timestamp**: 2026-10-07T06:57:20Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class advisory, iteration 1) on `aidlc-docs/inception/application-design/follow-up/application-design.md`. Review record: `aidlc-docs/inception/application-design/follow-up/reviews/application-design-review-01.md`.
+**Context**: Application Design — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Application Design
+**Timestamp**: 2026-10-07T07:00:01Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 7 Minor; open 9. Record: `aidlc-docs/inception/application-design/follow-up/reviews/application-design-review-01.md`.
+**Context**: Application Design — next: approval gate. Approval prompt shown: Request Changes / Approve & Continue → Units Generation.
+
+---
+
+## Application Design — Approval
+**Timestamp**: 2026-10-07T07:16:36Z
+**User Input**: "Approve & Continue"
+**AI Response**: Application Design approved. The open findings carry forward to where they close: R-01/R-03/R-04 → V5 FD; R-02/R-05/R-06/R-08 → V7 FD; R-07 → V3 FD; R-09 → Units Generation (the proposal is V9). Next: Units Generation.
+**Context**: INCEPTION / Application Design → Units Generation — Follow-up cycle.
+
+---
+
+## Plan Review Dispositions — Application Design
+**Timestamp**: 2026-10-07T07:16:36Z
+- R-01 → Accepted risk (close in V5 FD)
+- R-02 → Accepted risk (close in V7 FD)
+- R-03 → Accepted risk (close in V5 FD)
+- R-04 → Accepted risk (close in V5 FD)
+- R-05 → Accepted risk (close in V7 FD)
+- R-06 → Accepted risk (close in V7 FD)
+- R-07 → Accepted risk (close in V3 FD)
+- R-08 → Accepted risk (close in V7 FD)
+- R-09 → Accepted risk (decide in Units Generation)
+
+---
+
+## Units Generation — Part 1 answers
+**Timestamp**: 2026-10-07T08:42:27Z
+**User Input** (AskUserQuestion, chat; plan `inception/plans/follow-up-unit-of-work-plan.md`):
+- UOW-Q1 유닛 수: "아홉 개 그대로 (Recommended)"
+- UOW-Q2 mypy 게이트: "V9에서 (Recommended)"
+- UOW-Q3 V1 내보내기: "따로 작은 PR로 먼저 (Recommended)"
+- UOW-Q4 중간 확인: "제가 캡처해 보여 드림 (Recommended)"
+**AI Response**: All four answers are A, with no ambiguity. R-09 is closed: the mypy gate goes in V9. Next: the plan approval prompt ("Ready to proceed to generation?").
+**Context**: INCEPTION / Units Generation — Part 1.
+
+---
+
+## Units Generation — Part 1 approval
+**Timestamp**: 2026-10-07T09:02:03Z
+**AI Prompt**: "Unit of work plan complete. Review the plan in aidlc-docs/inception/plans/follow-up-unit-of-work-plan.md. Ready to proceed to generation?"
+**User Response**: "생성 진행 (Recommended)"
+**Status**: Approved
+**Context**: INCEPTION / Units Generation — Part 2 (generation) starts.
+
+---
+
+## Units Generation — Part 2 artifacts
+**Timestamp**: 2026-10-07T09:03:20Z
+**User Input**: (none)
+**AI Response**: Wrote `inception/application-design/follow-up/{unit-of-work,unit-of-work-dependency,unit-of-work-story-map}.md`.
+- Nine units V1..V9, each with scope, code areas, stages (FD for V2–V8; NFR light for V2 and V5), completion criteria and human wait points.
+- Dependency matrix (acyclic), critical path V2→V4→V6→V8, contracts, shared-file coordination.
+- Requirements→units map: 41 FRs, 10 NFRs and all UX items mapped; UX-26 is out of scope. RE-F06..F13 are marked as fixed under the FR-C14 same-code rule, not as new scope.
+- Plan steps 2–5 ticked.
+**Context**: INCEPTION / Units Generation — Part 2.
+
+---
+
+## Plan Review Requested — Units Generation
+**Timestamp**: 2026-10-07T09:03:20Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class advisory, iteration 1) on `aidlc-docs/inception/application-design/follow-up/unit-of-work.md`. Review record: `aidlc-docs/inception/application-design/follow-up/reviews/unit-of-work-review-01.md`.
+**Context**: Units Generation — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Units Generation
+**Timestamp**: 2026-10-07T09:05:09Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 3 Minor; open 5. Record: `aidlc-docs/inception/application-design/follow-up/reviews/unit-of-work-review-01.md`.
+**Context**: Units Generation — next: approval gate. Approval prompt shown: Request Changes / Approve & Continue → CONSTRUCTION PHASE.
+
+---
+
+## Units Generation — Approval
+**Timestamp**: 2026-10-07T09:06:13Z
+**User Input**: "Approve & Continue"
+**AI Response**: Units approved. **INCEPTION COMPLETE** for the Follow-up cycle. The open findings carry forward to where they close: R-02 → V5 code plan; R-01 and R-05(c) → V2 FD; R-05(a)(b) → V6/V8 code plans; R-03 → each unit's code plan; R-04 → V9. Next: CONSTRUCTION, unit V1 (CI deadline). V1 needs PR #4 merged first (human).
+**Context**: INCEPTION → CONSTRUCTION — Follow-up cycle.
+
+---
+
+## Plan Review Dispositions — Units Generation
+**Timestamp**: 2026-10-07T09:06:13Z
+- R-01 → Accepted risk (close in V2 FD)
+- R-02 → Accepted risk (close in V5 code plan)
+- R-03 → Accepted risk (close in each unit's code plan)
+- R-04 → Accepted risk (close in V9)
+- R-05 → Accepted risk (close in V2 FD / V6 / V8 code plans)
+
+---
+
+## Code Generation Part 1 — V1 CI 시한 정리
+**Timestamp**: 2026-10-07T09:07:57Z
+**User Input**: (none)
+**AI Response**: Wrote `construction/plans/V1-ci-actions-code-generation-plan.md` (Steps 0–6).
+- Sources checked with `gh api`: checkout/setup-node/setup-python are at v7 (node24). Label `ubuntu-26.04` exists, with Python 3.11, Node 22 and Docker 29.
+- The plan moves the actions to v7 and pins `ubuntu-26.04`.
+- Branches: PR #4 merge (human) → `feat/follow-up` with the inception docs commit → a separate `chore/ci-actions` PR.
+**Context**: CONSTRUCTION / V1 — Code Generation Part 1.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — V1
+**Timestamp**: 2026-10-07T09:07:57Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1, max 2) on `aidlc-docs/construction/plans/V1-ci-actions-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V1-ci-actions-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — V1
+**Timestamp**: 2026-10-07T09:09:30Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 0 Major / 4 Minor; open 4. Record: `aidlc-docs/construction/plans/reviews/V1-ci-actions-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — V1 — next: approval gate (terminal verdict, adversarial). Approval prompt shown.
+
+---
+
+## Code Generation Part 1 — V1 — Approval
+**Timestamp**: 2026-10-07T10:26:05Z
+**User Input**: "Approve & Continue"
+**AI Response**: V1 code generation plan approved. The approval also authorizes two commits: the inception docs commit on `feat/follow-up` (Step 1.3) and the ci.yml commit on `chore/ci-actions` (Step 4.1). Push, PR and merge stay with the human. R-01..R-04 are applied as execution notes during Part 2 and recorded in the code-summary:
+- R-01: the comment wording is "the switch starts 2026-10-19 and completes 2026-11-19 (runner-images #14748)".
+- R-02: check the annotations through the check-runs API, and the runner through the Image line of "Set up job" in `gh run view --log`.
+- R-03: audit and state writes go only on `feat/follow-up`. Run `git diff --stat origin/main` before commit 4.1.
+- R-04: before switching, check `git diff --stat HEAD origin/main -- aidlc-docs`. If it is not empty, stash, switch, pop.
+Step 0 precondition: PR #4 is still OPEN (mergedAt null), so the human merges it first.
+**Context**: CONSTRUCTION / V1 — Code Generation Part 1 approved → Part 2 (waiting on Step 0).
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — V1
+**Timestamp**: 2026-10-07T10:26:05Z
+- R-01 → Accepted risk (applied as execution note in Step 2.5)
+- R-02 → Accepted risk (applied as execution note in Step 4.3)
+- R-03 → Accepted risk (applied as execution note in Steps 1.4–5.2)
+- R-04 → Accepted risk (applied as execution note in Step 1.2)
+
+---
+
+## Code Generation Part 2 — V1 — Steps 0–1.3
+**Timestamp**: 2026-10-07T10:44:06Z
+**User Input**: "! gh pr merge 4 --merge" (run by the human in the prompt; no output)
+**AI Response**: PR #4 is MERGED (merge commit `dc8a947`, 2026-10-07T10:43:37Z). Ran `git fetch origin`. R-04 check: `git diff --stat HEAD origin/main -- aidlc-docs` was empty, and so was the whole tree, so no stash was needed. Created `feat/follow-up` from `origin/main` and dropped its upstream so the first push names the branch. All 23 uncommitted inception paths moved with the working tree. Committing the inception docs (Step 1.3, authorized by the plan approval). No secret patterns found in the committed paths.
+**Context**: CONSTRUCTION / V1 — Code Generation Part 2.
+
+---
+
+## Code Generation Part 2 — V1 — Steps 1.3–4.1
+**Timestamp**: 2026-10-07T10:44:47Z
+**User Input**: (none)
+**AI Response**:
+- Step 1.3: inception docs committed on `feat/follow-up` as `f34b52f` (39 files).
+- Steps 1.4–4.1:
+  - `chore/ci-actions` was created from `origin/main` (`dc8a947`), clean.
+  - ci.yml: checkout@v4→v7 (4), setup-python@v5→v7 (1), setup-node@v4→v7 (2), runs-on ubuntu-latest→ubuntu-26.04 (4).
+  - Header comment, per R-01: "the ubuntu-latest switch to 26.04 starts 2026-10-19 and completes 2026-11-19 (actions/runner-images #14748)".
+- Checks:
+  - The YAML parses; all four jobs are on ubuntu-26.04 with v7 actions.
+  - The grep for old versions finds only the comment line.
+  - `git diff --stat origin/main` → ci.yml only, 14+/11− (R-03).
+- Committed `c2a1077` on `chore/ci-actions`; not pushed.
+- This audit/state write is on `feat/follow-up` only (R-03).
+- Next: the human pushes and opens the PR; CI is watched read-only.
+**Context**: CONSTRUCTION / V1 — Code Generation Part 2.
+
+---
+
+## Code Generation Part 2 — V1 — Steps 4.2–4.3 (push, PR, CI)
+**Timestamp**: 2026-10-07T11:15:49Z
+**User Input**:
+- "! git push -u origin chore/ci-action" failed: no such ref. It was a typo.
+- "! git push -u origin chore/ci-actions" — pushed.
+- "! gh pr create --base main --head chore/ci-actions --title \"ci: move actions to v7 (node24) and pin ubuntu-26.04\" --body-file …/scratchpad/ci-pr-body.md" opened PR #5. The first attempt was split by a line break and failed; no PR was created.
+
+**AI Response**: CI was watched read-only. Both runs on `c2a1077` are **success**: 37612503032 (push) and 37612594534 (pull_request).
+- In each run, all four jobs (audit, frontend, images, backend) pass.
+- Check-runs annotations are 0 on all 8 jobs, so the Node 20 warning is gone (R-02).
+- "Set up job" shows "Image: ubuntu-26.04" on all 8 jobs (image version 20260927.149.1) (R-02).
+- pytest 948 passed. vitest 202 passed (9 files).
+- GitGuardian passes.
+- PR #5 is MERGEABLE / CLEAN.
+
+Next: the human merges PR #5 (Step 5.1).
+**Context**: CONSTRUCTION / V1 — Code Generation Part 2.
+
+---
+
+## Code Generation Part 2 — V1 — Steps 5–6 complete
+**Timestamp**: 2026-10-07T11:28:27Z
+**User Input**: "! gh pr merge 5 --merge" (run by the human in the prompt; no output)
+**AI Response**:
+- PR #5 is MERGED (`d570f00`, 2026-10-07T11:27:22Z).
+- Step 5.2: `feat/follow-up` merged `origin/main` with no conflicts. The merge commit was amended locally to add the co-author line, before any push: `3a13155`.
+- Step 6.1: wrote `construction/V1-ci-actions/code/code-summary.md`. It covers the change, the branches and commits, local and CI checks, R-01..R-04 as execution notes, deviations, and what remains (mypy gate in V9).
+- All plan steps are ticked.
+- No `/code-review` was run: the diff is one YAML file, and both CI runs verified it.
+- Next: code approval gate (Request Changes / Continue to Next Stage → V2).
+**Context**: CONSTRUCTION / V1 — Code Generation Part 2 complete; awaiting approval.
+
+---
+
+## Code Generation — V1 — Approval
+**Timestamp**: 2026-10-07T11:29:48Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V1 code approved. **V1 COMPLETE**: CI is on v7 actions and ubuntu-26.04 on main (`d570f00`); the 10-19 deadline is met. Next: V2 디자인 시스템, starting with Functional Design. The bookkeeping files on `feat/follow-up` stay uncommitted until the human says to commit.
+**Context**: CONSTRUCTION — V1 → V2.
+
+---
+
+## Functional Design — V2 디자인 시스템 — Plan
+**Timestamp**: 2026-10-07T11:34:24Z
+**User Input**: (none)
+**AI Response**: Wrote `construction/plans/V2-design-system-functional-design-plan.md`.
+- 8 steps.
+- Questions:
+  - Q1: which draft.
+  - Q2: copy register.
+- Decided without asking:
+  - Units R-01: `i18n.ts` moves to `i18n/index.ts`, `layout.ts` to `map/autoLayout.ts`.
+  - Units R-05(c): RE-F09 `capabilities.ts` comes into V2.
+  - Draft place names are transliterated; V3 decides the real ones.
+- Started the private Design canvas "Locus 디자인 시안" (https://claude.ai/artifact/MVUpR3nDzrrez29HHg1UmK). It holds three drafts: A parchment, B lamplit tavern, C illuminated codex.
+- Palette contrast was computed for the token pairs: body text ≥ 4.5:1 on every ground; disabled text ≥ 4.5:1 on its ground; strong lines ≥ 3:1.
+**Context**: CONSTRUCTION / V2 — Functional Design Step 1 (drafts).
+
+---
+
+## Functional Design — V2 — Drafts published
+**Timestamp**: 2026-10-07T11:50:48Z
+**User Input**: (none)
+**AI Response**: Published 13 artboards on the private canvas https://claude.ai/artifact/MVUpR3nDzrrez29HHg1UmK (version 15).
+- One side-by-side sheet compares the three drafts.
+- Each of drafts A, B and C has four artboards:
+  - home (1280, fluid)
+  - play (1280, fluid; the side panel stacks when narrow)
+  - phone play (390)
+  - token and primitive kit
+- The demo content is Emberleaf, with illustrative Korean.
+- Copy follows the register in Q2 option A.
+- Next: ask Q1 (draft) and Q2 (register).
+**Context**: CONSTRUCTION / V2 — Functional Design Step 1 done → Step 2 questions.
+
+---
+
+## Functional Design — V2 — Answers
+**Timestamp**: 2026-10-07T11:52:20Z
+**User Input**: Q1 = "B 선술집"; Q2 = "종류마다 나눔 (Recommended)"
+**AI Response**: Recorded in the FD plan.
+- Q1 = B, the lamplit tavern draft, taken as drawn with no changes. Its dark ground is now the single theme (CQ2=A). §9's "dark theme out of scope" meant a second theme, so a light variant is now the deferred one.
+- Q2 = A:
+  - buttons use short verb forms
+  - notices and errors use 해요체
+  - narration and the journey log use 해라체
+- No ambiguity, so no follow-up questions.
+- Next: write the FD artifacts.
+**Context**: CONSTRUCTION / V2 — Functional Design Step 2 done.
+
+---
+
+## Functional Design — V2 — Artifacts
+**Timestamp**: 2026-10-07T12:01:53Z
+**User Input**: (none)
+**AI Response**: Wrote `construction/V2-design-system/functional-design/{business-logic-model,business-rules,domain-entities,frontend-components}.md`.
+- Tokens: draft B values, one dark theme with `color-scheme: dark`. Contrast was computed for every text/ground pair; `faint` was raised to #9C8F7B to clear 4.5:1 on map land.
+- Fonts: IM Fell English SC, 나눔명조 and Noto Sans KR via `@fontsource`; Gaegu is dropped.
+- Register rule: set by the dictionary key prefix.
+- Band tables:
+  - eight measures
+  - the promoted rumor badge is renamed "사실로 굳어짐", away from the draft's "널리 믿음"
+- Enum label tables: 14 kinds. `slant` is removed; it is free text (design correction).
+- ERROR_CODES:
+  - an ordered list of 20 exception rows, plus 11 router raise sites and the per-status defaults
+  - a list replaces the design's dict because subclasses must match first
+- Hooks state machines and the capabilities retry (RE-F09).
+- Map:
+  - viewBox 1000×625, inverse-CTM normalization
+  - greedy label placement, level shapes, edge tokens, a play focus crop
+- Layout values:
+  - side panel 320–420 px; content max 1240 px; gutters 24/16 px; one column below 1024 px
+  - this closes requirements review R-05's width cap
+- File move table (Units R-01):
+  - `i18n.ts` → `i18n/`, `layout.ts` → `map/autoLayout.ts`
+  - `MapOverlay` becomes an adapter until V8
+  - old primitives stay as aliases until V9
+- Shared dialog replacement covers nine sites (requirements review R-01).
+- Test plan TP-V2-1..16. fast-check is adopted as a dev dependency for four property targets (PBT-02/03/09).
+**Context**: CONSTRUCTION / V2 — Functional Design Steps 3–7 done → Step 8 plan review.
+
+---
+
+## Plan Review Requested — Functional Design — V2
+**Timestamp**: 2026-10-07T12:02:03Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1, max 2) on `aidlc-docs/construction/V2-design-system/functional-design/business-logic-model.md` plus the other FD artifacts. Review record: `aidlc-docs/construction/V2-design-system/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — V2 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — V2
+**Timestamp**: 2026-10-07T12:07:18Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 3 Major / 6 Minor; open 9. Record: `aidlc-docs/construction/V2-design-system/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — V2 — next: builder fix + re-review (iteration 2 of 2). The findings are substantive and protect real outcomes: existing vitest breakage, a contradiction in the alias plan, and gaps in the error-code contract. So the in-place fix is the purpose-side path; it is not a backward jump.
+
+---
+
+## Functional Design — V2 — Builder fix (after review iteration 1)
+**Timestamp**: 2026-10-07T12:11:47Z
+**User Input**: (none)
+**AI Response**: Fixed the FD artifacts for R-01..R-09.
+- R-01: existing-assertion table (frontend-components § 8.1) and a `renderWithShell` test helper. Select is the native `<select>` (correction), and FileInput puts its testid on the hidden input.
+- R-02: Modal, Toast and NotificationCenter are deleted in V2 and their call sites replaced directly. Toast key merge is a marked behaviour change with key rules (`turn:<region>`, `play:run|budget|llm|busy`).
+- R-03: the error body is written in four places:
+  - a Starlette HTTPException handler (route 404/405)
+  - the validation handler
+  - a 500 Exception handler
+  - the BodyLimitMiddleware direct 413
+  `region_in_use` leaves ERROR_CODES and keeps its object detail; health 503 is out of scope.
+- R-04: AppNav is deleted in V2, with a shared-file coordination table (§ 1.3).
+- R-05: allowed contrast pairs are the canonical table, recomputed; faint is never on tints, controls never on sunken.
+- R-06: wikiDomain (13) added; npc removed from augmentationTarget; connectionKind vs travelBy usage stated.
+- R-07: `useAction` ref guard; capabilities retries on the next mount after 30 s, with no timer.
+- R-08: conversion table adds border-ink, bg-ink/…, accent-ink and .ink-underline; the font-display check is file-scoped; counts recomputed.
+- R-09: formatDate uses the viewer's time zone, with UTC in tests; placeLabels uses a fixed order and an "at placement time" property; the Emberleaf overlap count moves to a code-stage measurement.
+- Also: ConfirmDialog uses Radix Dialog, not alert-dialog, to keep `role="dialog"`; jsdom CTM fallback for the map.
+**Context**: Functional Design — V2 — next: re-review iteration 2.
+
+---
+
+## Plan Review Requested — Functional Design — V2
+**Timestamp**: 2026-10-07T12:11:47Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 2, max 2) with prior findings R-01..R-09. Review record: `aidlc-docs/construction/V2-design-system/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — V2 — re-review after builder fix.
+
+---
+
+## Plan Review Completed — Functional Design — V2
+**Timestamp**: 2026-10-07T12:13:46Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: 0 Critical / 0 Major / 2 Minor; open 2 (R-10, R-11). R-01..R-09 are Resolved. Record: `aidlc-docs/construction/V2-design-system/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — V2 — next: approval gate (terminal verdict, adversarial). Approval prompt shown.
+
+---
+
+## Functional Design — V2 — Approval
+**Timestamp**: 2026-10-07T12:22:02Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V2 Functional Design approved. R-10 (`clearToasts()` in `setupTests.ts` afterEach) and R-11 (`timeZone?` on formatDate/formatDateTime) are carried into the V2 code plan as execution notes. Next: NFR Requirements + NFR Design (light) for V2.
+**Context**: CONSTRUCTION / V2 — Functional Design → NFR light.
+
+---
+
+## Plan Review Dispositions — Functional Design — V2
+**Timestamp**: 2026-10-07T12:22:02Z
+- R-10 → Accepted risk (close in V2 code plan)
+- R-11 → Accepted risk (close in V2 code plan)
+
+---
+
+## NFR Requirements + NFR Design (light) — V2
+**Timestamp**: 2026-10-07T12:26:34Z
+**User Input**: (none)
+**AI Response**: Wrote `construction/V2-design-system/nfr/nfr-light.md`. Measured in the scratchpad: packages installed with `--ignore-scripts`, nothing installed in the repo.
+- JS:
+  - baseline gzip 96.6 kB (rebuilt to scratch)
+  - Radix Dialog +12.9 kB, Tabs +4.3 kB, Toast+Collapsible +3.8 kB; the last two are not adopted (own Toaster and Section)
+  - expected total ≈ 119–122 kB against a 125.6 kB budget; the fallback is lazy GM/editor routes
+- Fonts:
+  - one Nanum Myeongjo weight (700) and Noto Sans KR 400/700
+  - home ≈ 462 kB (budget < 760; today 762 kB of Gaegu); phone play 590 kB; desktop play 820 kB (not the first screen; noted)
+- Other decisions:
+  - fast-check 4.10.2 as a dev dependency with seed logging
+  - browsers: Tailwind v4 baseline
+  - scratch `npm audit`: 0
+- Intended changes: C-1..C-4.
+**Context**: CONSTRUCTION / V2 — NFR light written → plan review (advisory).
+
+---
+
+## Plan Review Requested — NFR Requirements + NFR Design (light) — V2
+**Timestamp**: 2026-10-07T12:26:34Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class advisory: light note, iteration 1) on `aidlc-docs/construction/V2-design-system/nfr/nfr-light.md`. Review record: `aidlc-docs/construction/V2-design-system/nfr/reviews/nfr-light-review-01.md`.
+**Context**: NFR light — V2 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — NFR Requirements + NFR Design (light) — V2
+**Timestamp**: 2026-10-07T12:28:18Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY** (advisory). Findings: 0 Critical / 1 Major / 4 Minor; open 5. Record: `aidlc-docs/construction/V2-design-system/nfr/reviews/nfr-light-review-01.md`. R-01 asks to amend the approved FD (font weights). Per the global rule this is not changed silently; it is offered at the gate with purpose-side alternatives. Current code uses font-medium 0 times and font-bold 2 times.
+**Context**: NFR light — V2 — next: approval gate. Approval prompt shown.
+
+---
+
+## NFR Requirements + NFR Design (light) — V2 — Approval
+**Timestamp**: 2026-10-07T12:31:06Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V2 NFR light approved with the recommended path. R-01 is closed as a Step 1 correction in the V2 code plan (FD § 2 and BLM font rows → 나눔명조 700, Noto 400/700, marked 〔Step 1 정정〕). R-02..R-05 become code-plan notes:
+- R-02: record the worst case plus a home measurement on a new world
+- R-03: on overrun, record the reason and judge by first-screen JS
+- R-04: composite alpha colours; off-table pairs are an accepted risk
+- R-05: immutable cache header on nginx `/assets/`
+Next: V2 Code Generation Part 1 (plan).
+**Context**: CONSTRUCTION / V2 — NFR light → Code Generation.
+
+---
+
+## Plan Review Dispositions — NFR Requirements + NFR Design (light) — V2
+**Timestamp**: 2026-10-07T12:31:06Z
+- R-01 → Accepted risk (close in V2 code plan Step 1 correction)
+- R-02 → Accepted risk (close in V2 code plan / code-summary)
+- R-03 → Accepted risk (close in V2 code plan)
+- R-04 → Accepted risk (close in V2 code plan)
+- R-05 → Accepted risk (close in V2 code plan)
+
+---
+
+## Code Generation Part 1 — V2 디자인 시스템
+**Timestamp**: 2026-10-07T12:33:25Z
+**User Input**: (none)
+**AI Response**: Wrote `construction/plans/V2-design-system-code-generation-plan.md`.
+- 16 steps: baseline → server codes → deps → tokens → i18n/format → errors → hooks → map → primitives → layout → screen swaps (two mechanical steps) → checks/nginx → gates/size → captures/fonts → summary.
+- Execution notes close FD R-10/R-11, NFR R-01..R-05 and the V2 share of Units R-03.
+- One commit per step on `feat/follow-up`, authorized by plan approval; push stays with the human.
+**Context**: CONSTRUCTION / V2 — Code Generation Part 1.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — V2
+**Timestamp**: 2026-10-07T12:33:25Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1, max 2) on `aidlc-docs/construction/plans/V2-design-system-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V2-design-system-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — V2 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — V2
+**Timestamp**: 2026-10-07T12:35:36Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 4 Minor; open 6. Record: `aidlc-docs/construction/plans/reviews/V2-design-system-code-generation-plan-review-01.md`.
+- R-02 rests on a path the reviewer could not see: the capture tool exists at the session scratchpad `re-scratch/mock/{server.mjs,shoot.mjs}`.
+- R-04: the "nine dialogs" count included the Modal component itself; there are eight sites.
+**Context**: Code Generation Part 1 — V2 — next: approval gate (terminal verdict, adversarial). Approval prompt shown.
+
+---
+
+## Code Generation Part 1 — V2 — Approval
+**Timestamp**: 2026-10-07T12:36:47Z
+**User Input**: "Approve & Continue"
+**AI Response**: V2 code plan approved. The approval also authorizes one commit per step on `feat/follow-up`; push stays with the human. R-01..R-06 are written into the plan as 〔실행 메모〕 notes and followed. Starting Part 2 at Step 1.
+**Context**: CONSTRUCTION / V2 — Code Generation Part 1 approved → Part 2.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — V2
+**Timestamp**: 2026-10-07T12:36:47Z
+- R-01 → Accepted risk (execution note: clearToasts wiring in Step 9.2, renderWithShell first in Step 10)
+- R-02 → Accepted risk (execution note: tool path in the session scratchpad; rebuild recipe if missing)
+- R-03 → Accepted risk (execution note: Gaegu removal moves to Step 4.1)
+- R-04 → Accepted risk (execution note: eight dialog sites; SessionBar owned by V6, V2 select only)
+- R-05 → Accepted risk (execution note: `nginx -t` in the image; no unhashed files under /assets/)
+- R-06 → Accepted risk (execution note: kept testids and the jsdom fallback)
+
+---
+
+## Code Generation Part 2 — V2 디자인 시스템 — Steps 1–16 complete
+**Timestamp**: 2026-10-07T13:27:12Z
+**User Input**: (none since plan approval)
+**AI Response**: V2 code generated in 14 commits on `feat/follow-up` (`64a8fa1`..`dcef428`, plus this summary).
+- Gates:
+  - pytest 974 (+26), vitest 381 (2 seeds), ruff/black/tsc clean, mypy 11, boundaries pass
+  - runtime npm audit 0; dev audit 5 (unchanged)
+- Sizes:
+  - JS gzip 118.2 kB (budget 125.6)
+  - home fonts 121 kB (370 kB with long Korean world names; budget 760)
+  - CSS gzip 84.7 kB (was 4.2; from the @font-face pieces), reported as a follow-up
+- 390 px: no horizontal scroll except play NPC dialogue (418 px), which is V4.
+- Captures: private Artifact https://claude.ai/artifact/5kbtr4mDxcWmG3DA8xtBsu. A map-size defect found there was fixed (`dcef428`).
+- Deviations, in code-summary § 5:
+  - nine dialogs, not eight
+  - map width in the adapter
+  - Dialog focus return
+  - Dialog testId
+  - AppShell llmOff prop
+  - status→code reuse
+  - test location
+  - WorldFileBar kept
+  - `/health` wording
+  - en capture dropped
+- Test edits, in code-summary § 4. One was outside the FD list: waiting for the toast text because the live region is always present.
+- Summary: `construction/V2-design-system/code/code-summary.md`.
+**Context**: CONSTRUCTION / V2 — Code Generation Part 2 complete; awaiting code approval (code review follows approval, as in U8).
+
+---
+
+## Code Generation — V2 — Approval
+**Timestamp**: 2026-10-07T13:31:04Z
+**User Input**:
+- "그런데 시안과 다르게 지도는 아직 보여지지 않는데 이건 예정된 다음 task가 있어?" — answered: V4 places the small play map (unit-of-work V4 completion, FR-S2). V2 built the WorldMap play mode but no screen uses it yet.
+- "Continue to Next Stage"
+
+**AI Response**: V2 code approved. Next: V2 code review (as in U8), then V3 한국어 표시 백엔드.
+**Context**: CONSTRUCTION / V2 — code approved → code review.
+
+---
+## Code Review — V2 디자인 시스템 — Review 01 written
+**Timestamp**: 2026-10-07T13:45:29Z
+**User Input**: (none since code approval)
+**AI Response**: Ran a code review of V2 (`371554d..0f14710`), review only, in the U8 format.
+- Five angles in parallel:
+  - server error codes
+  - primitives and request helpers
+  - map
+  - mechanical screen swaps
+  - dictionary, format, tests and build
+- Repros were throwaway vitest files and scripts. Nothing was left in the repo.
+- This session re-read each top candidate's code.
+- Record: `construction/V2-design-system/code/reviews/code-review-01.md`.
+  - § 1 lists 15 findings: 1 high, 6 medium, 6 low-medium, 2 low. Verdicts are C, except #4, #9 and #11, which are P.
+  - § 2 lists 22 cleanup and low items.
+  - § 3 lists 3 rejected.
+- Top findings:
+  - #1 high: the blocked delete dialog cannot be closed (`busy || blocked` disables Cancel and Esc).
+  - #2 medium: a no-LLM world build now answers `service_unavailable`, so `needsLlm` is false and the raw error shows (BR-U8-27 regression).
+  - #3 medium: pressing a toast closes an open modal dialog.
+  - #4 medium: map labels do not take clicks.
+  - #5 medium: selected/reachable labels always fall below.
+  - #6 medium: the FileInput hidden input sits in the tab order, and its buttons share one name.
+- No code changed.
+**Context**: CONSTRUCTION / V2 — code review done; awaiting the human's choice of which findings to fix before V3.
+
+---
+
+## Code Review — V2 — Fix choice
+**Timestamp**: 2026-10-07T13:47:12Z
+**User Input**: AskUserQuestion "V2 수정 범위" → "바탕 결함 15건과 정리 일부 (Recommended)"
+**AI Response**: Fixing now: all of § 1 (1–15) and the § 2 items in V2's own code.
+- § 2 items fixed now:
+  - band rounding, turn label lang, network regex, Dialog focus fallback
+  - capabilities reset, Button type in FileInput/StatusView, useAction onDone, StatusView error
+  - contrast-table slips (button hover, toast event text), connection hit stroke, badge room
+  - design grep widening + palette reset, BR-V2-09 check, backend enum cross-check
+  - weak tests, test_error_codes bad-lang
+- nginx: config fixed now; live headers at Build and Test.
+- Deferred to owning units:
+  - delete summary placement (V8), BuildPanel Esc (V8)
+  - ActionBar focus ring (V4), select/map-picker layout (V4/V6/V8)
+  - play close-up image (V4), String(e) screens (screen units)
+  - CLAUDE.md drift (V9)
+- Each fix comes with a repro test, in several commits on `feat/follow-up`.
+**Context**: CONSTRUCTION / V2 — code review fixes in progress.
+
+---
+
+## Code Review — V2 — Fixes done
+**Timestamp**: 2026-10-07T14:10:00Z
+**User Input**: (none since the fix choice)
+**AI Response**: Fixed all 15 findings in § 1 and the § 2 items in V2's own code, in 9 commits (`fbdba50`..`719cbf9`).
+- Each fix has a repro test. The new tests were run against the pre-fix code and failed there:
+  - dialogs 3
+  - map 6
+  - toasts 2
+  - helpers 7
+- Browser checks on a mock API: a real `elementFromPoint` hit test lands on a name plate (#4), and an area name's edges pass through to the map (#11).
+- nginx: checked in a `locus-web` container with no network and no published port. JS gzip 118.8 kB, CSS 85.8 kB, `index.html` no-cache. Compose headers to be checked at Build and Test.
+- Gates:
+  - pytest 974, ruff/black clean, mypy 11
+  - tsc clean, vitest 423 + 1 visible skip (two seeds)
+  - runtime audit 0
+  - JS 118.4 kB / CSS 84.5 kB (gzip -9)
+- Deferred, with owners, in the review record § 6:
+  - V8: delete summary placement, BuildPanel Esc
+  - V4: ActionBar focus ring, play close-up image
+  - V4/V6/V8: select/map-picker layout
+  - screen units: `String(e)`
+  - V9: CLAUDE.md drift
+  - V4: Button busy focus, which was not named in the fix-choice entry and is deferred here
+- Housekeeping: two headless Chrome processes left by the earlier capture runs (scratch profile; the script's `process.exit` skipped its `finally`) were stopped, and the script was fixed.
+**Context**: CONSTRUCTION / V2 — code review COMPLETE. Next: V3 한국어 표시 백엔드 (Functional Design).
+
+---
+
+## Functional Design — V3 한국어 표시 백엔드 — Plan started
+**Timestamp**: 2026-10-07T14:14:27Z
+**User Input**: (continues the earlier "Continue to Next Stage", V2 → V3)
+**AI Response**: Wrote the FD plan `construction/plans/V3-korean-backend-functional-design-plan.md`.
+- Self-decided:
+  - A no-LLM translation service that reads the cache and seeds but never warms. A design gap: `assemble_localization` returns None without an LLM, so seeded rows would never be read.
+  - `source_hash` moves to shared.
+  - Order: import → world purge → seed.
+  - New rows carry `world_id`, and a world replace purges all world-scoped kinds.
+  - Editor purge on region and NPC delete.
+  - CLI seeding.
+  - Card text from the manifest.
+  - Entities and NPC traits are out of scope (editor only).
+- Questions:
+  - Q1: proper-name style
+  - Q2: English source in the file vs hash only
+  - Q3: check strictness
+  - Q4: FR-C11 refuse vs remap
+  - A fifth question, on how GM/editor screens get translated names, waits on an inventory search.
+**Context**: CONSTRUCTION / V3 — FD Part 1 (questions).
+
+---
+
+## Functional Design — V3 — Answers
+**Timestamp**: 2026-10-07T14:29:20Z
+**User Input**: AskUserQuestion answers:
+- Q1 → "음역 + 지형 낱말만 옮김 (Recommended)"
+- Q2 → "영어 원문을 함께 적음 (Recommended)"
+- Q3 → "CI는 엄격, 실행은 너그러움 (Recommended)"
+- Q4 → "검사가 문제로 보고 (Recommended)"
+- Q5 → "월드 이름표 하나 (Recommended)"
+
+**AI Response**: Q1..Q5 = A. No ambiguous answers. Wrote the FD artifacts under `construction/V3-korean-backend/functional-design/`:
+- `domain-entities.md`
+- `business-logic-model.md`
+- `business-rules.md` (BR-V3-01..28, TP-V3-1..12)
+
+Q5 came from an API inventory (a search sub-agent). Ten-plus responses copy names, and timeline payloads freeze English names next to ids.
+**Context**: CONSTRUCTION / V3 — FD Part 2 artifacts written; plan review next.
+
+---
+
+## Plan Review Requested — Functional Design — V3 한국어 표시 백엔드
+**Timestamp**: 2026-10-07T14:29:20Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/V3-korean-backend/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/V3-korean-backend/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — V3 한국어 표시 백엔드
+**Timestamp**: 2026-10-07T14:34:01Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 6 Minor; open 8. Record: `aidlc-docs/construction/V3-korean-backend/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — next: approval gate (artifacts frozen).
+
+---
+
+## Functional Design — V3 — Approval
+**Timestamp**: 2026-10-07T14:36:21Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V3 FD approved. The open findings become Accepted risk and are carried into the V3 code-generation plan as explicit steps:
+- R-01: the CLI catches the DB error as "skipped".
+- R-02: a table of deviations from the approved design, plus notes for V4/V6/V8.
+- R-03..R-08: rules and tests.
+
+Next: V3 Code Generation Part 1 (NFR SKIP per the unit table).
+**Context**: CONSTRUCTION / V3 — FD approved.
+
+---
+
+## Plan Review Dispositions — Functional Design — V3
+**Timestamp**: 2026-10-07T14:36:21Z
+- R-01 → Accepted risk
+- R-02 → Accepted risk
+- R-03 → Accepted risk
+- R-04 → Accepted risk
+- R-05 → Accepted risk
+- R-06 → Accepted risk
+- R-07 → Accepted risk
+- R-08 → Accepted risk
+
+---
+
+## Code Generation Part 1 — V3 — Plan written
+**Timestamp**: 2026-10-07T14:39:28Z
+**User Input**: (none since FD approval)
+**AI Response**: Wrote `construction/plans/V3-korean-backend-code-generation-plan.md`: 12 steps, about 13 commits. The FD review's R-01..R-08 (Accepted risk) are mapped to steps as 실행 메모 R-01..R-08.
+**Context**: CONSTRUCTION / V3 — Code Generation Part 1.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — V3 한국어 표시 백엔드
+**Timestamp**: 2026-10-07T14:39:28Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/V3-korean-backend-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V3-korean-backend-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — V3 한국어 표시 백엔드
+**Timestamp**: 2026-10-07T14:43:40Z
+**User Input**: (the human interrupted a state-file edit while the review ran; no message)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 4 Minor; open 6. Record: `aidlc-docs/construction/plans/reviews/V3-korean-backend-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — next: approval gate (plan frozen).
+
+---
+
+## Code Generation Part 1 — V3 — Approval prompt
+**Timestamp**: 2026-10-07T14:43:40Z
+**AI Response**: Asked for approval of `construction/plans/V3-korean-backend-code-generation-plan.md` with the review brief.
+**Context**: CONSTRUCTION / V3 — Code Generation Part 1 gate.
+
+---
+
+## Code Generation Part 1 — V3 — Approval
+**Timestamp**: 2026-10-07T14:55:14Z
+**User Input**: "Approve & Continue"
+**AI Response**: V3 code plan approved; it authorizes the 14 commits the plan lists on `feat/follow-up`, with no push. The open findings become 실행 메모 R-01..R-06 in plan § 1.2. Starting Code Generation Part 2 at Step 1.
+**Context**: CONSTRUCTION / V3 — Code Generation Part 1 approved.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — V3
+**Timestamp**: 2026-10-07T14:55:14Z
+- R-01 → Accepted risk
+- R-02 → Accepted risk
+- R-03 → Accepted risk
+- R-04 → Accepted risk
+- R-05 → Accepted risk
+- R-06 → Accepted risk
+
+---
+
+## Code Generation Part 2 — V3 한국어 표시 백엔드 — Steps 1–12 complete
+**Timestamp**: 2026-10-07T15:34:40Z
+**User Input**: (none since plan approval)
+**AI Response**: V3 code generated in 14 commits on `feat/follow-up` (`580beb4`..`8d9a76c`, plus the summary).
+- Gates:
+  - pytest 1034 (+60), vitest 424 + 1 skip (two seeds)
+  - ruff/black/tsc clean, mypy 11, boundaries pass, runtime audit 0
+- Keyless Emberleaf is Korean through the API. Seeding the load gives 123/123:
+  - knowledge fields
+  - world name map
+  - world list
+  - demo cards
+- Step 3's first commit was made while a test was RED: a docstring named a demo region, against the demo-as-data rule. The pipeline hid the exit code. The commit was amended at once, before any push, and later steps used a gate script with pipefail.
+- Deviations, in code-summary § 5: the R-02 table; the upstream table cells got strikethrough, slightly more than "body not edited".
+- Known limits, in § 6: dialogue names (now on next-cycle.md), in-flight warm, cross-world ids, name-map warm cost, keyless schema creation.
+**Context**: CONSTRUCTION / V3 — Code Generation Part 2 complete; awaiting code approval (code review follows approval, as in V2).
+
+---
+
+## Code Generation — V3 — Approval
+**Timestamp**: 2026-10-07T15:35:14Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V3 code approved. Next: V3 code review (as in V2), then V4 홈·플레이 화면.
+**Context**: CONSTRUCTION / V3 — code approved → code review.
+
+---
+
+## Code Review — V3 한국어 표시 백엔드 — Review 01 written
+**Timestamp**: 2026-10-07T15:50:34Z
+**User Input**: (none since code approval)
+**AI Response**: Code review of V3 (`580beb4..c1fc4c9`), review only. Four angles in parallel:
+- localization/CLI
+- world/demo
+- api/web
+- Korean data + test quality (mutation probes in memory)
+
+This session re-read the top candidates. Record: `construction/V3-korean-backend/code/reviews/code-review-01.md`.
+- § 1 has 15 findings: 5 medium, 1 medium-low, 9 low. Verdicts are C, with #6's impact P.
+- § 2 has 10 cleanup items, including a wrong line in code-summary § 6.
+- § 3 has 3 rejected.
+- The medium findings:
+  - #1 a replace wipes a world's hand-made translations (design rule BR-V3-13)
+  - #2 "sealing wards" → 결계 mistranslated
+  - #3 Great Forge glossary split
+  - #4 the keyless no-warm test cannot fail
+  - #5 the world-row-by-id purge is untested
+
+No code changed. Reviewers' pytest runs refreshed gitignored .coverage/.hypothesis only.
+**Context**: CONSTRUCTION / V3 — code review done; awaiting the human's choice of fixes before V4.
+
+---
+
+## Code Review — V3 — Fix choice
+**Timestamp**: 2026-10-07T15:54:51Z
+**User Input**: AskUserQuestion answers:
+- "코드 수정" → "코드·테스트 전부 (Recommended)"
+- "번역문" → "제안 전부 반영 (Recommended)"
+
+**AI Response**: Fixing now:
+- #1: a replace prunes only rows whose id the new world lacks. BR-V3-13 is corrected, and the store gains `purge_world_except`.
+- Tests: #4, #5, #14.
+- Code: #8, #9, #10, #12, #13.
+- § 2 cleanup.
+- The code-summary § 6 correction.
+- Data: #2, #3, #7, #15, plus the card text.
+- Handed on: #6 to V4 as a design condition; #11 as a known limit, with engine timeouts decided at B&T/V9.
+**Context**: CONSTRUCTION / V3 — code review fixes in progress.
+
+---
+
+## Code Review — V3 — Fixes done
+**Timestamp**: 2026-10-07T16:06:08Z
+**User Input**: (none since the fix choice)
+**AI Response**: Fixed V3 review findings in three commits:
+- `eab0901`: world fixes
+- `132a4e8`: replace prune, CLI order, api cleanups, tests
+- `b4682cb`: Korean text
+
+Verification:
+- Each commit was gated alone, with the other changes stashed (`git stash --keep-index`).
+- 12 new tests were run against the pre-fix source and failed there.
+- pytest 1048, mypy 11, check_packaged [].
+
+Handed on:
+- #6 → V4 (home lists follow the display language)
+- #11 → known limit; engine timeouts at V9, live check at B&T
+
+FD BR-V3-13 / BLM § 7 corrected (〔코드 리뷰 01 #1 정정〕). code-summary § 6 wrong line corrected.
+**Context**: CONSTRUCTION / V3 — code review COMPLETE. Next: V4 홈·플레이 화면 (Functional Design).
+
+---
+
+## Functional Design — V4 홈·플레이 화면 — Plan started
+**Timestamp**: 2026-10-07T16:08:50Z
+**User Input**: (continues "Continue to Next Stage", V3 → V4)
+**AI Response**: Wrote the FD plan `construction/plans/V4-home-play-functional-design-plan.md`.
+
+Self-decided:
+- V2 mockup row B as the layout base.
+- GM entry only in the top menu.
+- Names through the V3 name map with English fallback; home lists follow the display language.
+- No internal numbers.
+- Closed-session and empty /play notices; blocked moves listed with their reason.
+- A polling cap (RE-F08); gm_busy false until V5.
+- useResource/useAction.
+- V2 carry-overs closed here.
+
+Questions:
+- Q1: demo shown once
+- Q2: the one place for turn results
+- Q3: phone action bar
+- Q4: map role
+- Q5: dialogue placement
+**Context**: CONSTRUCTION / V4 — FD Part 1 (questions).
+
+---
+
+## Functional Design — V4 — Answers
+**Timestamp**: 2026-10-08T00:23:20Z
+**User Input**: AskUserQuestion answers:
+- Q1 → "데모 카드가 맡음 (Recommended)"
+- Q2 → "지역명 아래 결과 띠 (Recommended)"
+- Q3 → "아래 고정 띠 + 시트 (Recommended)"
+- Q4 → "보기 전용 + 목록에서 이동 (Recommended)"
+- Q5 → "1280 왼쪽 열 안, 390 전체 시트 (Recommended)"
+
+**AI Response**: Q1..Q5 = A; no ambiguity. Writing the V4 FD artifacts next.
+**Context**: CONSTRUCTION / V4 — FD Part 2.
+
+---
+
+## Plan Review Requested — Functional Design — V4 홈·플레이 화면
+**Timestamp**: 2026-10-08T00:27:45Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Wrote the V4 FD artifacts:
+- `frontend-components.md`: layouts 1280/390, elements, tree, props, API, testids
+- `business-logic-model.md`
+- `business-rules.md`: BR-V4-01..24, TP-V4-1..13, capture plan
+
+Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/V4-home-play/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/V4-home-play/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — V4 홈·플레이 화면
+**Timestamp**: 2026-10-08T00:33:18Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 4 Major / 6 Minor; open 10. Record: `aidlc-docs/construction/V4-home-play/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — next: builder fix + re-review (iteration 2).
+
+---
+
+## Plan Review Requested — Functional Design — V4 홈·플레이 화면 (iteration 2)
+**Timestamp**: 2026-10-08T00:36:23Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Builder fixed R-01..R-10 in the three FD artifacts:
+- R-01: session-id/world-id data guard; reload() after actions; poll alongside reload.
+- R-02: a per-width presence table with PlayLayout; BR-V4-25, one testid per DOM.
+- R-03: card from region_count + name map; client filters and sorts sessions; read-failure state; no full export on home.
+- R-04: visible ghost reload button; 409-only ask flow; the list of changed tests.
+- R-05: Dialog variants, Button busy contract (BR-V4-26).
+- R-06: router location state for the talk sheet.
+- R-07: AppShell Link fix; AppNav note.
+- R-08: notification allowlist, poll-error path, gm_busy re-read cap.
+- R-09: TP-V4-14 enum iteration; exact grep patterns; capture-only 390 check stated.
+- R-10: 768 captures and the medium branch in TP-V4-8.
+
+Dispatching architecture-reviewer (class adversarial, iteration 2) on `aidlc-docs/construction/V4-home-play/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/V4-home-play/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — re-review after builder fix.
+
+---
+
+## Plan Review Completed — Functional Design — V4 홈·플레이 화면 (iteration 2)
+**Timestamp**: 2026-10-08T00:38:02Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: R-01..R-10 Resolved; R-11 Major New (talk-sheet cleanup on unmount can navigate back to /play). Open 1. Record: `aidlc-docs/construction/V4-home-play/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — next: approval gate (artifacts frozen).
+
+---
+
+## Functional Design — V4 — Approval prompt
+**Timestamp**: 2026-10-08T00:38:02Z
+**AI Response**: Asked for V4 FD approval with the review brief (R-11 open).
+**Context**: CONSTRUCTION / V4 — FD gate.
+
+---
+
+## Functional Design — V4 — Approval
+**Timestamp**: 2026-10-08T00:41:51Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V4 FD approved. R-11 → Accepted risk. It is carried into the V4 code plan as 실행 메모: no navigate on unmount or route exit; a stale state.talk that does not match the session and region is ignored; the replace clean-up stays only for in-page region and width changes; TP-V4-8 asserts the destination survives. Next: V4 Code Generation Part 1 (NFR SKIP).
+**Context**: CONSTRUCTION / V4 — FD approved.
+
+---
+
+## Plan Review Dispositions — Functional Design — V4
+**Timestamp**: 2026-10-08T00:41:51Z
+- R-11 → Accepted risk
+
+---
+
+## Code Generation Part 1 — V4 — Plan written
+**Timestamp**: 2026-10-08T00:43:20Z
+**User Input**: (none since FD approval)
+**AI Response**: Wrote `construction/plans/V4-home-play-code-generation-plan.md`: 10 steps, web only. R-11 is 실행 메모 § 1.1.
+**Context**: CONSTRUCTION / V4 — Code Generation Part 1.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — V4 홈·플레이 화면
+**Timestamp**: 2026-10-08T00:43:20Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/V4-home-play-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — V4 홈·플레이 화면
+**Timestamp**: 2026-10-08T00:46:11Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 3 Major / 7 Minor; open 10. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — next: builder fix + re-review (iteration 2).
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — V4 (iteration 2)
+**Timestamp**: 2026-10-08T00:47:48Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Builder fixed R-01..R-10 in the plan:
+- R-01: Step 6 adds only new parts and optional props, and Step 7 switches the visible changes.
+- R-02: hint.gmLocked in 해요체 (ko/en); call sites.
+- R-03: busy click guard also stops implicit submit. A trial run (reverted) found two broken tests, ui.primitives Button and gm #13/C1.
+- R-04: keys per step.
+- R-05: NewSessionForm optional worldId with an effect; SessionBar untouched.
+- R-06: override line, transitions restated, new tests.
+- R-07: play-only svg background.
+- R-08: data-over-error rule; types gm_busy?.
+- R-09: named tests for BR-V4-06/20/22.
+- R-10: capture tooling and separate fix commits.
+
+Dispatching architecture-reviewer (class adversarial, iteration 2). Review record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generation-plan-review-02.md`.
+**Context**: Code Generation Part 1 — re-review after builder fix.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — V4 (iteration 2)
+**Timestamp**: 2026-10-08T00:52:59Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**.
+- R-01..R-10: Resolved.
+- R-11, Minor New: gm.test renders PlayPage, including a play-gm-btn click, a file the plan does not list.
+- R-12, Minor New: ActionBar label/focus listed in both Step 6.7 and 7.1a; a busy button needs aria-disabled styling.
+
+Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generation-plan-review-02.md`.
+**Context**: Code Generation Part 1 — approval gate (plan frozen).
+
+---
+
+## Code Generation Part 1 — V4 — Approval prompt
+**Timestamp**: 2026-10-08T00:52:59Z
+**AI Response**: Asked for approval of the V4 code plan with the review brief (R-11, R-12 open, Minor).
+**Context**: CONSTRUCTION / V4 — code plan gate.
+
+---
+
+## Code Generation Part 1 — V4 — Approval
+**Timestamp**: 2026-10-08T01:08:34Z
+**User Input**: "Approve & Continue"
+**AI Response**: V4 code plan approved. It authorizes the plan's commits on `feat/follow-up`, with no push. R-11 and R-12 become 실행 메모 § 1.3. Starting Code Generation Part 2.
+**Context**: CONSTRUCTION / V4 — Code Generation Part 1 approved.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — V4
+**Timestamp**: 2026-10-08T01:08:34Z
+- R-11 → Accepted risk
+- R-12 → Accepted risk
+
+---
+
+
+## Code Generation Part 2 — V4 — Done
+**Timestamp**: 2026-10-08T05:07:07Z
+**AI Response**: V4 code generation finished (Steps 1–10) on `feat/follow-up`, not pushed. Commits `d7e8318`, `6565326`, `7fed45f`, `bf77030`, `4be9a24`, `231b136`, `1a565b3`, `9cbc9c8` (capture fixes), `2086092` (editor and GM lazy-loaded, NFR-4), and the summary. Gates: tsc clean, vitest 518 (two seeds), pytest 1048, ruff/black clean, mypy 11, audit 0; first-screen JS 113.33 kB gzip (budget 125.6). Captures: 18 shots, no sideways scroll at 1280/768/390, private Artifact https://claude.ai/artifact/2J77c8EciUacCd1Cv4FHGP. User paused before Step 6 and said "다시 시작"; the session's scratchpad had been cleared in between, so the capture tools were rebuilt. Summary `construction/V4-home-play/code/code-summary.md`.
+**Context**: CONSTRUCTION / V4 — Code Generation Part 2 complete; next the code approval gate.
+
+---
+
+## Code Generation Part 2 — V4 — Approval
+**Timestamp**: 2026-10-08T05:09:38Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V4 code approved as it stands (the talk off without a key, aria-disabled during a turn, editor/GM lazy-loaded, the small map and old-register lines left as noted). Next: V4 code review, four angles in parallel as in V2/V3, review only.
+**Context**: CONSTRUCTION / V4 — Code Generation Part 2 approved.
+
+---
+
+## Code Review — V4 — Findings and choice
+**Timestamp**: 2026-10-08T05:29:47Z
+**AI Response**: Four review angles (hooks, play, home, display/tests) ran in parallel, review only; this session re-read the top candidates. Record `construction/V4-home-play/code/reviews/code-review-01.md`: 10 medium, 17 low, 1 design conflict (#28: talk off without a key vs BR-V4-18 history readable).
+**User Input**: fix scope "A. 전부 고침 (권장)"; #28 "(a) 기록은 열림 (권장)"
+**Context**: CONSTRUCTION / V4 — code review 01; fixing all findings next.
+
+---
+
+## Code Review — V4 — Fixed
+**Timestamp**: 2026-10-08T05:57:25Z
+**AI Response**: All 27 findings and #28 (a) fixed in `cb8a22a` (turn loop), `63429ff` (play screen, FD § 2.5/§ 3.3 amended), `8937f2b` (home), `3f497c2` + `56953ec` (tests). vitest 550 (two seeds), tsc clean, audit 0, no Python changed (pytest 1048). First-screen JS 114.83 kB. Captures re-shot, Artifact v2 at the same URL. Record `code/reviews/code-review-01.md` § 6; code-summary updated.
+**Context**: CONSTRUCTION / V4 — code review 01 fixed; V4 COMPLETE. Next: V5 (GM write correctness) Functional Design.
+
+---
+
+## Functional Design — V5 — Plan and questions
+**Timestamp**: 2026-10-08T06:07:21Z
+**User Input**: "작업 시작"
+**AI Response**: Started V5 (GM write correctness) Functional Design. Read the unit, FR-C1~C5, NFR-10, application design S1/S2/S5/S6 and the code (guard, GM router lease, event/seed/rumor/deed/distortion services, session close, advancer _fail and _compute_events, lifespan, error table). Plan `construction/plans/V5-gm-write-correctness-functional-design-plan.md` with self-decided items (from AD Q1=A/Q2=A and code facts) and three questions: Q1 deleted-region events (FR-C4), Q2 support adjust on an inactive rumor (RE-P01), Q3 also close RE-P05/RE-P07.
+**Context**: CONSTRUCTION / V5 — Functional Design, questions.
+
+---
+
+## Functional Design — V5 — Answers
+**Timestamp**: 2026-10-08T06:12:38Z
+**User Input**: Q1 "A. 다음 턴에 저절로 해소 (권장)"; Q2 "A. 409로 알림 (권장)"; Q3 "A. 함께 닫음 (권장)"
+**AI Response**: No ambiguity. Writing the V5 FD artifacts (domain-entities, business-logic-model, business-rules with TP-V5-*). Also found while reading: session close checks turns only at one point, so a turn starting right after the check could write to the closing session — the design lets close hold off new turns while it closes.
+**Context**: CONSTRUCTION / V5 — Functional Design, artifacts.
+
+---
+
+## Plan Review Requested — Functional Design — V5
+**Timestamp**: 2026-10-08T06:16:16Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/V5-gm-write-correctness/functional-design/business-logic-model.md`. Review record: `aidlc-docs/construction/V5-gm-write-correctness/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — V5
+**Timestamp**: 2026-10-08T06:21:01Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 4 Minor; open 6. Record: `aidlc-docs/construction/V5-gm-write-correctness/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — next: approval gate (artifacts frozen).
+
+---
+
+## Functional Design — V5 — Approval
+**Timestamp**: 2026-10-08T06:22:06Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V5 functional design approved as it stands. Open review findings accepted; they go to the code plan as execution notes (R-01: what to do when compensating an interrupted run fails; R-02: r1 regression on the SQL adapter over a SQLite file, interleave gate also on the unit of work's stores, per-scenario store table). Next: NFR light (V5).
+**Context**: CONSTRUCTION / V5 — Functional Design approved.
+
+---
+
+## Plan Review Dispositions — Functional Design — V5
+**Timestamp**: 2026-10-08T06:22:06Z
+- R-01 → Accepted risk
+- R-02 → Accepted risk
+- R-03 → Accepted risk
+- R-04 → Accepted risk
+- R-05 → Accepted risk
+- R-06 → Accepted risk
+
+---
+
+## NFR Requirements + NFR Design (light) — V5 — Draft
+**Timestamp**: 2026-10-08T06:24:09Z
+**AI Response**: Wrote `construction/V5-gm-write-correctness/nfr/nfr-light.md`: NFR-1..10 applied to V5; the offline interleave method (two stores, SQLite file not `sqlite://`, the gate also wraps the unit of work's stores, per-scenario store table — closes the accepted FD finding R-02 here); the PostgreSQL operator checks P1..P6 for B&T; a hypothesis state-machine test for TurnGuard (NFR-6); operations/env additions.
+**Context**: CONSTRUCTION / V5 — NFR light.
+
+---
+
+## Plan Review Requested — NFR Requirements + NFR Design (light) — V5
+**Timestamp**: 2026-10-08T06:24:09Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class advisory, iteration 1, as for V2's light NFR) on `aidlc-docs/construction/V5-gm-write-correctness/nfr/nfr-light.md`. Review record: `aidlc-docs/construction/V5-gm-write-correctness/nfr/reviews/nfr-light-review-01.md`.
+**Context**: NFR light — review requested before approval gate.
+
+---
+
+## Plan Review Completed — NFR Requirements + NFR Design (light) — V5
+**Timestamp**: 2026-10-08T06:26:43Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 1 Major / 5 Minor; open 6. Record: `aidlc-docs/construction/V5-gm-write-correctness/nfr/reviews/nfr-light-review-01.md`.
+**Context**: NFR light — next: approval gate (advisory verdict is terminal; artifact frozen).
+
+---
+
+## NFR Requirements + NFR Design (light) — V5 — Approval
+**Timestamp**: 2026-10-08T06:33:35Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V5 NFR light approved. Open findings accepted: R-01 goes to the B&T checklist (P1..P3 are a real-stack smoke, plus a psql row-hold check if the lock itself is to be seen); R-02..R-06 go to the code plan as execution notes. Next: Code Generation Part 1 (V5 code plan).
+**Context**: CONSTRUCTION / V5 — NFR light approved.
+
+---
+
+## Plan Review Dispositions — NFR Requirements + NFR Design (light) — V5
+**Timestamp**: 2026-10-08T06:33:35Z
+- R-01 → Accepted risk
+- R-02 → Accepted risk
+- R-03 → Accepted risk
+- R-04 → Accepted risk
+- R-05 → Accepted risk
+- R-06 → Accepted risk
+
+---
+
+## Code Generation Part 1 — V5 — Plan
+**Timestamp**: 2026-10-08T06:36:25Z
+**AI Response**: Wrote `construction/plans/V5-gm-write-correctness-code-generation-plan.md`: 9 steps / 9 commits (record + baseline; guard, errors, tuning and callers; test harness; event and seed sections; rumor sections; deed and distortion sections; turn recovery and removed-region events; operations docs; gates and summary). Execution notes carry the accepted FD R-01..R-06 (R-01: a run whose compensation fails is marked `interrupted_uncompensated` and logged, `fail_stale_runs` removed) and NFR R-01..R-06 (counts of changed tests by grep).
+**Context**: CONSTRUCTION / V5 — Code Generation Part 1.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — V5
+**Timestamp**: 2026-10-08T06:36:25Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/V5-gm-write-correctness-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V5-gm-write-correctness-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — V5
+**Timestamp**: 2026-10-08T06:38:43Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 4 Minor; open 6. Record: `aidlc-docs/construction/plans/reviews/V5-gm-write-correctness-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — next: approval gate (plan frozen).
+
+---
+
+## Code Generation Part 1 — V5 — Approval prompt
+**Timestamp**: 2026-10-08T06:38:43Z
+**AI Response**: Asked for approval of the V5 code plan with the review brief (R-01, R-02 Major; R-03..R-06 Minor open).
+**Context**: CONSTRUCTION / V5 — code plan gate.
+
+---
+
+## Code Generation Part 1 — V5 — Approval
+**Timestamp**: 2026-10-08T07:09:26Z
+**User Input**: "Approve & Continue"
+**AI Response**: V5 code plan approved. It authorizes the plan's commits on `feat/follow-up`, with no push. R-01..R-06 become 실행 메모 § 1.4. Starting Code Generation Part 2.
+**Context**: CONSTRUCTION / V5 — Code Generation Part 1 approved.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — V5
+**Timestamp**: 2026-10-08T07:09:26Z
+- R-01 → Accepted risk
+- R-02 → Accepted risk
+- R-03 → Accepted risk
+- R-04 → Accepted risk
+- R-05 → Accepted risk
+- R-06 → Accepted risk
+
+---
+
+## Code Generation Part 2 — V5 — Done
+**Timestamp**: 2026-10-08T07:50:06Z
+**AI Response**: V5 code generation finished (Steps 1–9) on `feat/follow-up`, not pushed. Commits `9ac7f28` (guard: turn slot, closing, leases, short write; 409 `gm_busy`/`rumor_inactive`; session close; replace pre-check), `a17ec29` (overlap harness), `60ef076` (event/seed sections, `WriteSection`), `de45bc4` (rumor sections), `101cb63` (deed void, distortion set), `a507d6a` (restart compensation, removed-region events; `fail_stale_runs` removed per § 1.1 R-01), `03cdb83` (operations.md, env.example), and the summary. Gates: pytest 1048 → 1119 (hypothesis seeds 1 and 20261008), ruff/black clean, mypy 11, no web change. Each step's tests were checked against the code before the fix or with mutants. Deviations in summary § 5 (`fail_stale_runs` removed; `WriteSection`; SeedService shares the event service's section; the closing sentence). Summary `construction/V5-gm-write-correctness/code/code-summary.md`.
+**Context**: CONSTRUCTION / V5 — Code Generation Part 2 complete; next the code approval gate.
+
+---
+
+## Code Generation Part 2 — V5 — Approval prompt
+**Timestamp**: 2026-10-08T07:50:06Z
+**AI Response**: Asked for approval of the V5 code (completion message with the summary's deviations and hand-offs).
+**Context**: CONSTRUCTION / V5 — code approval gate.
+
+---
+
+## Code Generation Part 2 — V5 — Approval
+**Timestamp**: 2026-10-08T08:13:12Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V5 code approved as it stands (deviations in summary § 5 accepted with it). Next: V5 code review, four angles in parallel as in V2–V4, review only.
+**Context**: CONSTRUCTION / V5 — Code Generation Part 2 approved.
+
+---
+
+## Code Review — V5 — Findings
+**Timestamp**: 2026-10-08T08:43:03Z
+**AI Response**: Four review angles (guard/locking, GM write services, turn engine, tests/contract with 40 mutants) ran in parallel, review only; this session re-checked the top candidates (wait overflow, restored neighbours reinforced, closed sentence with the session id). Record `construction/V5-gm-write-correctness/code/reviews/code-review-01.md`: 4 medium, 21 low, V6 hand-offs (web on gm_busy / rumor_inactive), 2 accepted limits. Asked for the fix scope.
+**Context**: CONSTRUCTION / V5 — code review 01; awaiting the fix-scope choice.
+
+---
+
+## Code Review — V5 — Choice
+**Timestamp**: 2026-10-08T08:45:01Z
+**User Input**: fix scope "A. 전부 고침 (권장)"
+**AI Response**: Fixing all 4 medium and 21 low findings; V6 hand-offs recorded; the two accepted limits go to code-summary § 6.
+**Context**: CONSTRUCTION / V5 — code review 01; fixing next.
+
+---
+
+## Code Review — V5 — Fixed
+**Timestamp**: 2026-10-08T08:56:07Z
+**AI Response**: All 4 medium and 21 low findings fixed in `3995e86` (code and tests); 17 mutants of the fixes caught. pytest 1138 (gate GREEN, ruff/black clean, mypy 11), no web change. FD amended (BR-V5-04, BR-V5-07, domain-entities § 2); operations.md and env.example updated; record `code/reviews/code-review-01.md` § 6; code-summary updated (V6 hand-offs, accepted limits).
+**Context**: CONSTRUCTION / V5 — code review 01 fixed; V5 COMPLETE. Next: V6 (GM screen) Functional Design.
+
+---
+
+## Functional Design — V6 — Plan and questions
+**Timestamp**: 2026-10-08T10:22:31Z
+**User Input**: "준비를 하고 있는거니?"
+**AI Response**: Said the V6 work had not started yet, then started it. Plan `construction/plans/V6-gm-screen-functional-design-plan.md`: inputs (FR-S3, FR-C13 GM side, UX-34~42, A-5, V5 hand-offs), self-decided items (GmLayout, WorldMap gm mode, state overlay on with word legend, session header with confirm and "no-player new session", numbers with meanings, useAction/useResource, targeted re-reads, conflictKind split, LLM notice once, event form, void label, timeline newest-first 20 + more). Questions: Q1 GM layout (A-5), Q2 where a turn's result shows.
+**Context**: CONSTRUCTION / V6 — Functional Design; awaiting Q1, Q2.
+
+---
+
+## Functional Design — V6 — Answers
+**Timestamp**: 2026-10-08T10:33:02Z
+**User Input**: Q1 "A. 지도 + 턴 도구 + 탭 5개 (권장)"; Q2 "A. 턴 도구 아래 결과 띠 (권장)"
+**AI Response**: No ambiguity. Writing the V6 FD artifacts (frontend-components, business-logic-model, business-rules) on these answers and the plan's self-decided items.
+**Context**: CONSTRUCTION / V6 — Functional Design; artifacts next, then the design review.
+
+---
+
+## Plan Review Requested — Functional Design — V6
+**Timestamp**: 2026-10-08T10:39:37Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/V6-gm-screen/functional-design/business-logic-model.md` (+ frontend-components.md, business-rules.md, FD plan). Review record: `aidlc-docs/construction/V6-gm-screen/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — V6 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — V6
+**Timestamp**: 2026-10-08T10:46:21Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 8 Minor; open 10. Record: `aidlc-docs/construction/V6-gm-screen/functional-design/reviews/functional-design-review-01.md`. Session re-check: R-01 (`format.enums.test.ts` asserts slant is not an enum), R-02 (`useResource` keeps the old key's data), R-05 (`conflictKind` returns "busy" for every coded 409 but session_closed) confirmed in code.
+**Context**: Functional Design — V6 — next: approval gate (artifacts frozen).
+
+---
+
+## Functional Design — V6 — Approval
+**Timestamp**: 2026-10-08T10:54:26Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V6 FD approved with the review's open findings accepted. Next: V6 Code Generation Part 1 (NFR SKIP for this unit); the code plan settles R-01..R-10 in its execution notes.
+**Context**: CONSTRUCTION / V6 — Functional Design approved.
+
+---
+
+## Plan Review Dispositions — Functional Design — V6
+**Timestamp**: 2026-10-08T10:54:26Z
+- R-01 → Accepted risk (→ code plan: slant shown as the NPC's own words, not an enum)
+- R-02 → Accepted risk (→ code plan: key boundary and state ownership, own-key data only)
+- R-03 → Accepted risk (→ code plan)
+- R-04 → Accepted risk (→ code plan)
+- R-05 → Accepted risk (→ code plan)
+- R-06 → Accepted risk (→ code plan)
+- R-07 → Accepted risk (→ code plan)
+- R-08 → Accepted risk (→ code plan)
+- R-09 → Accepted risk (→ code plan: hand the world-replace sentence to V8/V4 or settle it here)
+- R-10 → Accepted risk (→ code plan)
+
+---
+
+## Code Generation Part 1 — V6 — Plan
+**Timestamp**: 2026-10-08T10:58:35Z
+**AI Response**: Plan `construction/plans/V6-gm-screen-code-generation-plan.md` (8 steps): shared base (conflictKind split, Select groups, controlled Section, stoppable mapLimit, gm_busy play toast), GM hooks (useGmSession, useGmData own-key answers + re-read table, bulk stop), parts, screen assembly with the key boundary, FR-D8 checks, captures, summary. § 1.1 settles FD review R-01..R-10.
+**Context**: CONSTRUCTION / V6 — Code Generation Part 1; plan review next.
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — V6
+**Timestamp**: 2026-10-08T10:58:35Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/V6-gm-screen-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V6-gm-screen-code-generation-plan-review-01.md`.
+**Context**: Code Generation Part 1 — V6 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — V6
+**Timestamp**: 2026-10-08T11:01:03Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 1 Critical / 1 Major / 3 Minor; open 5. Record: `aidlc-docs/construction/plans/reviews/V6-gm-screen-code-generation-plan-review-01.md`. Session re-check: R-01 confirmed (`features/editor/WorldFileBar.tsx:5,106` uses SessionBar; `play.test.tsx:304-343` tests it), R-05 confirmed (`useWorldState` in GmPage and gm.test).
+**Context**: Code Generation Part 1 — V6 — builder fix, then re-review (iteration 2).
+
+---
+
+## Plan Review Requested — Code Generation Part 1 — V6
+**Timestamp**: 2026-10-08T11:02:27Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Builder fixed R-01..R-05 (SessionBar kept for the editor picker, FD premise recorded as a deviation; Steps 3–4 new files and compatible changes only, Step 5 one switch-over commit; DialoguePanel unchanged; 14 write kinds listed and a vitest floor; useWorldState removed in Step 5 with its call sites). Dispatching architecture-reviewer (class adversarial, iteration 2) on `aidlc-docs/construction/plans/V6-gm-screen-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V6-gm-screen-code-generation-plan-review-02.md`.
+**Context**: Code Generation Part 1 — V6 — re-review.
+
+---
+
+## Plan Review Completed — Code Generation Part 1 — V6
+**Timestamp**: 2026-10-08T11:03:50Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. Findings: 0 Critical / 0 Major / 1 Minor open (R-06 new; R-01..R-05 Resolved). Record: `aidlc-docs/construction/plans/reviews/V6-gm-screen-code-generation-plan-review-02.md`. Plan frozen until the gate answer.
+**Context**: Code Generation Part 1 — V6 — next: approval gate.
+
+---
+
+## Code Generation Part 1 — V6 — Approval prompt
+**Timestamp**: 2026-10-08T11:03:50Z
+**AI Response**: Asked for approval of `construction/plans/V6-gm-screen-code-generation-plan.md` (8 steps, 8–9 commits on feat/follow-up) with the Review brief (R-06 open).
+**Context**: CONSTRUCTION / V6 — code plan approval gate.
+
+---
+
+## Code Generation Part 1 — V6 — Approval
+**Timestamp**: 2026-10-08T11:38:20Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V6 code plan approved; the approval covers the commits the plan lists on feat/follow-up. Starting Code Generation Part 2 at Step 1.
+**Context**: CONSTRUCTION / V6 — Code Generation Part 1 approved.
+
+---
+
+## Plan Review Dispositions — Code Generation Part 1 — V6
+**Timestamp**: 2026-10-08T11:38:20Z
+- R-06 → Accepted risk (execution follows § 1.3 / Step 4.9: `session.close` kept, new key `session.end`)
+
+---
+
+## Code Generation Part 2 — V6 — Done
+**Timestamp**: 2026-10-08T12:21:10Z
+**AI Response**: Steps 1–8 done (`a6d82d7`, `91de3fc`, `17818cb`, `9ae93e6`, `a4614f6`, `0bf647c`, `abe9135`, `4723c5a`, `a59d5c4`). vitest 613 (baseline 550; 13 GmHub tests moved to gm.layout / gm.parts), tsc clean, pytest 1138 (backend unchanged), npm audit 0, first-screen JS 117.01 kB gzip (V4 end 114.83). Captures (12, 1280/768/390, no sideways scroll; 1280 page 2,130 → 1,109 px): https://claude.ai/artifact/BSMSgKWcYavigSp9jvtH1B. Found and fixed on the way: raw event category in the GM record (FR-D8 check), Radix tabs in the first-screen bundle and English witness names (captures), English fallback in the player strip (tests). 28 mutants, all caught in the end. Deviations, limits and hand-offs (V8: world-replace sentence, SessionBar full variant; V9: timeline paging, record register) in `construction/V6-gm-screen/code/code-summary.md`.
+**Context**: CONSTRUCTION / V6 — Code Generation Part 2 complete; next the code approval gate.
+
+---
+
+## Code Generation Part 2 — V6 — Approval prompt
+**Timestamp**: 2026-10-08T12:21:10Z
+**AI Response**: Asked for approval of the V6 code (summary's deviations and hand-offs, captures to check).
+**Context**: CONSTRUCTION / V6 — code approval gate.
+
+---
+
+## Code Generation Part 2 — V6 — Approval
+**Timestamp**: 2026-10-08T12:24:22Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V6 code approved as it stands (deviations in summary § 5 accepted with it). Next: V6 code review, four angles in parallel as in V2–V5, review only.
+**Context**: CONSTRUCTION / V6 — Code Generation Part 2 approved.
+
+---
+
+## Code Review — V6 — Findings
+**Timestamp**: 2026-10-08T12:50:46Z
+**AI Response**: Four review angles (late answers and state ownership, writes and errors, layout/accessibility/wording/FR-D8, tests with 65 mutants and shuffled order) ran in parallel, review only, each in its own git worktree under the scratchpad. This session re-checked the top candidates in code (support answer without statement_ko, seeds running from unresolved events, Dialog focus restore at close time only, raw {degree} in the timeline line, names empty in the source language). Record `construction/V6-gm-screen/code/reviews/code-review-01.md`: 1 high, 21 medium (13 code, 8 test gaps), 28 low. Asked for the fix scope.
+**Context**: CONSTRUCTION / V6 — code review 01; awaiting the fix-scope choice.
+
+---
+
+## Code Review — V6 — Choice
+**Timestamp**: 2026-10-08T12:54:26Z
+**User Input**: fix scope "A. 전부 고침 (권장)"; session move "A. 고르기 + [열기] 버튼 (권장)"
+**AI Response**: Fixing all 50 findings in four groups (data and writes; focus, accessibility and layout; wording; tests), then gates and new captures. The session picker moves with an [open] button (#9).
+**Context**: CONSTRUCTION / V6 — code review 01; fixing next.
+
+---
+
+## Code Review — V6 — Fixed
+**Timestamp**: 2026-10-08T13:36:16Z
+**AI Response**: All 50 findings fixed in `7b9b616` (reads and writes), `8f3212f` (focus, keyboard, layout; session [open] as chosen), `75b9913` (wording), `cb9a0ef` (test gaps, restored PlayPage tests), plus `c80dff9` (band wording found while recapturing). 26 mutants of the fixes, 24 caught (the two Dialog focus guards cannot be modelled in jsdom; recorded). vitest 664 (also shuffled seeds 3 and 21), tsc clean, npm audit 0, pytest 1138, first-screen JS 117.19 kB. Captures v2 (12, no sideways scroll) at the same artifact URL. FD amended (BLM § 3/§ 6, frontend-components § 4, BR-V6-26/34); review record § 6; code-summary updated.
+**Context**: CONSTRUCTION / V6 — code review 01 fixed; V6 COMPLETE. Next: V7 (world and knowledge correctness) Functional Design.
+
+---
+
+## Code Review — V6 — Correction
+**Timestamp**: 2026-10-08T13:36:28Z
+**AI Response**: Correction to the "Fixed" entry above: 24 mutants of the fixes (not 26); 22 caught in the end (two of the four first missed were caught after adding tests: the world-name fallback and the started seed row); the two Dialog focus guards remain uncatchable in jsdom. code-summary § 3 and the review record § 6 corrected.
+**Context**: CONSTRUCTION / V6 — bookkeeping correction only.
+
+---
+
+## Functional Design — V7 — Plan and question
+**Timestamp**: 2026-10-08T13:40:23Z
+**AI Response**: Plan `construction/plans/V7-world-knowledge-functional-design-plan.md`. Self-decided from the approved Application Design and code facts: best_origins (max path weight, tie by region id; unknown_count once per knowledge), persist order with WorldMeta last (skipped when nodes/edges fail; written after a failed index), no caching of meta-less snapshots, hit-path version failure as a miss, _backup unset/ok/failed with BackupFailedError before any delete, old snapshot via the loader, carry_over by normalized (name, level) with a parent tie-break, carried NPCs/seeds in the same persist call before WorldMeta, duplicate ids refused after remap and before writes, label on 8 of the 11 call sites (3 stay any-label), NEEDS by (issue, target kind) and no-change answers refused. Question: Q1 knowledge list order.
+**Context**: CONSTRUCTION / V7 — Functional Design; awaiting Q1.
+
+---
+
+## Functional Design — V7 — Answer
+**Timestamp**: 2026-10-08T13:43:33Z
+**User Input**: Q1 "A. 확실한 것부터 (권장)"
+**AI Response**: No ambiguity. Writing the V7 FD artifacts.
+**Context**: CONSTRUCTION / V7 — Functional Design; artifacts next, then the design review.
+
+---
+
+## Plan Review Requested — Functional Design — V7
+**Timestamp**: 2026-10-08T13:46:42Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/V7-world-knowledge/functional-design/business-logic-model.md` (+ domain-entities.md, business-rules.md, FD plan). Review record: `aidlc-docs/construction/V7-world-knowledge/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — V7 — review requested before approval gate.
+
+---
+
+## Plan Review Completed — Functional Design — V7
+**Timestamp**: 2026-10-08T13:51:03Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 3 Major / 5 Minor; open 8. Record: `aidlc-docs/construction/V7-world-knowledge/functional-design/reviews/functional-design-review-01.md`. Session re-check: R-04 (`_close_if_replaced` runs after a successful replace only) and R-06 (`pick_facts` re-sorts; rumor seeds take direct + propagated in consensus order) confirmed.
+**Context**: Functional Design — V7 — builder fix, then re-review (iteration 2).
+
+---
+## Functional Design — V7 — Review findings fixed
+**Timestamp**: 2026-10-08T13:53:13Z
+**User Input**: (none)
+**AI Response**: Fixed R-01..R-08 in the V7 FD (business-logic-model.md, business-rules.md, domain-entities.md) and the FD plan. R-01: no-cache rule only for a cache that can read versions; a loader without `version()` or `check_version=False` caches as before (EX-18/EX-19 unchanged), `UNVERSIONED` marker. R-02: `delete_held` reads with the label, falls back to an unlabeled read, and touches neither the node nor the search doc when another label holds the id. R-03: CONFIRM is never refused (WIKI_CONFLICT keep path); the no-change check runs before any write or change record. R-04: sessions close after the replace only when `replaced=true`; the known-limit line is removed. R-05: 12 production call sites, 9 labeled, 3 unlabeled, plus the snapshot-less branch. R-06: `pick_facts` re-sorts with an equivalent key; rumor seeds now go confident-first. R-07: duplicate direct scopes of one (region, knowledge) keep the max confidence; the PBT generator emits them. R-08: the builder reads the old world by invalidating its cache and calling `get` (no new constructor parameter).
+**Context**: Functional Design — V7 — re-review next (iteration 2).
+
+---
+
+## Plan Review Requested — Functional Design — V7 (iteration 2)
+**Timestamp**: 2026-10-08T13:53:13Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 2 of 2) with prior findings R-01..R-08 carried forward. Review record: `aidlc-docs/construction/V7-world-knowledge/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — V7 — re-review before approval gate.
+
+---
+## Plan Review Completed — Functional Design — V7 (iteration 2)
+**Timestamp**: 2026-10-08T13:57:04Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. R-01..R-08 Resolved; new Minor R-09 (a confirm that changes nothing leaves an empty ChangeSet in the run's history) and R-10 (the loader drops NPCs/seeds with a missing region, so carry_over's "region not in the old world" branch is unreachable and they vanish unreported). Record: `aidlc-docs/construction/V7-world-knowledge/functional-design/reviews/functional-design-review-02.md`. Session re-check: R-09 confirmed (`apply_answer` returns a ChangeSet with no nodes/edges; `service.answer` appends it to `run.history`). R-10 confirmed (`loader._keep` → `load_warnings`). Session finding S-1: a WIKI_CONFLICT confirm does not close the question — the cached verdict (key: id, statement, terrain) re-raises the same issue on the next detection, and only IGNORE adds to `ignored_keys`; the FD's "확인은 그 질문을 닫는다" does not hold for WIKI_CONFLICT.
+**Context**: Functional Design — V7 — approval gate next.
+
+---
+## Functional Design — V7 — Approval
+**Timestamp**: 2026-10-10T15:15:59Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V7 Functional Design approved. Open findings R-09, R-10 and session finding S-1 recorded as Accepted risk and carried into the V7 code plan with the decisions shown at the gate: R-09 — a confirm that changes no value writes nothing, records no change and closes the question (TP-V7-13 asserts it); S-1 — a WIKI_CONFLICT confirm closes the question for the run (same list as ignore, so it can be restored); R-10 — NPCs/seeds the loader dropped surface as carry-over warnings in the build report, and PBT-V7-4 counts snapshot items plus dropped ones. NFR stages SKIP for V7; next: V7 Code Generation (Part 1, plan).
+**Context**: CONSTRUCTION / V7 — Functional Design complete.
+
+---
+## Code Generation — V7 — Part 1 plan
+**Timestamp**: 2026-10-10T15:21:10Z
+**User Input**: (none)
+**AI Response**: Plan `construction/plans/V7-world-knowledge-code-generation-plan.md`: 10 steps (docs+baseline, consensus, persist order+cache, labeled reads/deletes, duplicate ids, backup gate, carry-over, augmentation inputs, operations doc, gate+summary). Code facts recorded in § 1.2: three graph test doubles (not two), the in-memory graph keyed by (world, id) re-keyed to (world, label, id), the cache hit path's unguarded version read, builder test cache stubs that raise on get. FD review 02 R-09/R-10 and session S-1 carried in § 1.1 (`kept_keys` on AugmentationRun; loader drop-message constants). Web unchanged; V8 gets the report display.
+**Context**: CONSTRUCTION / V7 — Code Generation Part 1; plan review next.
+
+---
+
+## Plan Review Requested — Code Generation Plan — V7
+**Timestamp**: 2026-10-10T15:21:10Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/V7-world-knowledge-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V7-world-knowledge-code-generation-plan-review-01.md`.
+**Context**: Code Generation — V7 — review requested before approval gate.
+
+---
+## Plan Review Completed — Code Generation Part 1 — V7
+**Timestamp**: 2026-10-10T15:26:32Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 1 Major / 7 Minor; open 8 (R-01 an existing cache test turns RED under Step 3; R-02 check_version=False must store UNVERSIONED; R-03 how a no-change confirm reaches apply_answer and the kept_keys condition needs action == CONFIRM; R-04 the gate script is gone; R-05 which double records label args, no Neo4j query-shape test; R-06 test_world_api uses stub builders; R-07 BackupFailedError and the old-read error are caught by the commit block's generic except; R-08 no end-state test counts). Record: `aidlc-docs/construction/plans/reviews/V7-world-knowledge-code-generation-plan-review-01.md`. Session re-check: R-01 confirmed (test_cache.py:96-99), R-04 confirmed (the session scratchpad was emptied — v4/v5 gate scripts and the V6 capture tools are gone), R-06 confirmed (`_Builder`, `_Importer` stubs), R-07 confirmed (`_backup` inside the commit try). Plan frozen until the gate answer.
+**Context**: Code Generation Part 1 — V7 — next: approval gate.
+
+---
+
+## Code Generation Part 1 — V7 — Approval prompt
+**Timestamp**: 2026-10-10T15:26:32Z
+**AI Response**: Asked for approval of `construction/plans/V7-world-knowledge-code-generation-plan.md` (10 steps, 10 commits on feat/follow-up) with the Review brief (R-01..R-08 open).
+**Context**: CONSTRUCTION / V7 — code plan approval gate.
+
+---
+## Code Generation Part 1 — V7 — Approval
+**Timestamp**: 2026-10-10T15:28:25Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V7 code plan approved; the approval covers the commits the plan lists on feat/follow-up. Review 01 R-01..R-08 recorded as Accepted risk and written into the plan's § 1.4 execution notes with the decisions shown at the gate. Starting Code Generation Part 2 at Step 1.
+**Context**: CONSTRUCTION / V7 — Code Generation Part 2.
+
+---
+## Code Generation Part 2 — V7 — Complete
+**Timestamp**: 2026-10-10T16:00:36Z
+**User Input**: (none)
+**AI Response**: Steps 1–10 done on feat/follow-up: `c5601fc` (docs), `bc13544` (consensus), `7e2c588` (persist order + cache), `ed79465` (labels), `8ceefcc` (duplicate ids), `2dfb923` (backup gate), `c63d109` (carry-over), `4ae47d6` (augmentation), `aa64b3b` (operations), then the code summary. Gate GREEN: ruff/black clean, mypy 11, pytest 1194 (baseline 1138 + 56 new, none lost) under hypothesis seeds 3 and 21; web unchanged (vitest 664). One existing test changed (test_cache.py, plan § 1.4 R-01). Mutation check: 36 mutants, all caught (two survived the first run; tests tightened). Deviations recorded in code-summary § 5 (three doubles, in-memory key, tie digits, kept_keys, carry computed before the backup, shared stopped report). Next: code approval gate, then the code review (four angles) as for V5/V6.
+**Context**: CONSTRUCTION / V7 — Code Generation complete; awaiting approval.
+
+---
+## Code Generation — V7 — Approval
+**Timestamp**: 2026-10-10T16:03:03Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V7 code approved. Starting the V7 code review (four angles, review-only agents in separate worktrees), as for V5/V6; the record goes to `construction/V7-world-knowledge/code/reviews/code-review-01.md`.
+**Context**: CONSTRUCTION / V7 — code review.
+
+---
+## Code Review 01 — V7 — Findings
+**Timestamp**: 2026-10-10T17:22:59Z
+**User Input**: (none)
+**AI Response**: Four review-only angles (consensus; replace/cache/carry-over; labels/editor/augmentation; test strength) in separate worktrees, 142 mutants. Record: `aidlc-docs/construction/V7-world-knowledge/code/reviews/code-review-01.md` — 0 high, 9 medium (#1–4 code: tie rounding picks a weaker origin, unmappable NPCs/seeds vanish on rebuild unreported and not in the backup, undo of a kept wiki conflict keeps it hidden, two unlabeled sites know the kind; #5–9 tests: NEEDS pairs, per-list sort, settled-unknowns, carry by level, carried in the same write), 12 low (#10–21). Session re-check: #1 reproduced (propagate_min 0.49 → hearsay from a-far), #2–#4 confirmed in code. Worktrees removed; repo unchanged. Next: the human picks the fix scope.
+**Context**: CONSTRUCTION / V7 — code review 01.
+
+---
+## Code Review 01 — V7 — Fix scope
+**Timestamp**: 2026-10-11T01:00:24Z
+**User Input**: "A. 모두 고침 (권장)"
+**AI Response**: Fixing all 21 findings in three code commits (consensus; replace/carry-over/import; labels/editor/augmentation) and one docs commit (FD amendments for #4, #11, #12, #13 and the wording in #20; code summary; review dispositions; operations). Mutants of the fixes after.
+**Context**: CONSTRUCTION / V7 — code review 01 fixes.
+
+---
+## Code Review 01 — V7 — Fixed
+**Timestamp**: 2026-10-11T01:20:18Z
+**User Input**: (none)
+**AI Response**: All 21 findings fixed in `3b8b15f` (consensus: exact compare, every list's order, settled unknowns, property generator), `abae803` (replace/carry/import: dropped NPCs/seeds named, level kept, carried before the mark, failed body carries 0, shared names need their parent, world gone mid-build is fresh, file's own duplicate ids, update-only meta touch, merged scopes), `fc70ecc` (labels/editor/augmentation: undo releases kept, delete/snapshot by kind, NEEDS table, trimmed compare, stale answers refused, prior id guard, purge by kind), plus the docs commit (FD amendments, code summary § 9, review § 7, operations). Gate GREEN: pytest 1228 (+34), mypy 11, web unchanged. Mutants of the fixes: 30, all caught (r6e, a4, b8 after tightening). **V7 COMPLETE.**
+**Context**: CONSTRUCTION / V7 — complete; next V8 (editor).
+
+---
+## Functional Design — V8 — Plan and questions
+**Timestamp**: 2026-10-11T01:35:39Z
+**User Input**: (none)
+**AI Response**: Branch pushed by the human to `93d6358`. V8 (editor, P1) Functional Design plan `construction/plans/V8-editor-functional-design-plan.md`. Current-code inventory: UX-17/19/20/21/22/23/27 and FR-S5/S6/D8 still open; UX-18/24 partly fixed; UX-25 attempted but the selection is cleared before the re-read. Self-decided: WorldMap directly (MapOverlay adapter removed), legend, keyboard region picker, collapsible inspector with a danger zone, one CommitRange weight control, labels for enums and change descriptions, kept/ignored questions by name, build report carried counts and stage labels (incl. V6's "sessions" busy line), describeError everywhere, ui/Tabs, 390px one column, test scans widened, captures rebuilt. Questions: Q1 layout (A GM-like / B wide work area under the map / C three columns), Q2 sessions in the editor (A play only / B none / C GM-like head).
+**Context**: CONSTRUCTION / V8 — Functional Design; awaiting Q1, Q2.
+
+---
+## Functional Design — V8 — Answers
+**Timestamp**: 2026-10-11T01:39:14Z
+**User Input**: Q1 "A. GM과 같은 틀 (권장)"; Q2 "A. 플레이만 (권장)"
+**AI Response**: No ambiguity. Writing the V8 FD artifacts (frontend-components, business-logic-model, business-rules).
+**Context**: CONSTRUCTION / V8 — Functional Design; artifacts next, then the design review.
+
+---
+## Plan Review Requested — Functional Design — V8
+**Timestamp**: 2026-10-11T01:43:21Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: V8 FD artifacts written (frontend-components: layout 1280/390, elements, tree, API, testids; business-logic-model §§ 1–10; business-rules BR-V8-01..34, TP-V8-1..17, capture plan). Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/V8-editor/functional-design/business-logic-model.md` (+ frontend-components.md, business-rules.md, FD plan). Review record: `aidlc-docs/construction/V8-editor/functional-design/reviews/functional-design-review-01.md`.
+**Context**: Functional Design — V8 — review requested before approval gate.
+
+---
+## Plan Review Completed — Functional Design — V8
+**Timestamp**: 2026-10-11T01:48:26Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **NOT-READY**. Findings: 0 Critical / 5 Major / 9 Minor; open 14. Record: `aidlc-docs/construction/V8-editor/functional-design/reviews/functional-design-review-01.md`. Major: R-01 drafts keyed by question id (code keys by issue_key, S28), R-02 drag optimism vs useResource/useAction, R-03 pendingSelect never released, R-04 cleanup after a replace differs per flow, R-05 tests-to-change table incomplete.
+**Context**: Functional Design — V8 — builder fix, then re-review (iteration 2).
+
+---
+## Functional Design — V8 — Review findings fixed
+**Timestamp**: 2026-10-11T01:51:14Z
+**User Input**: (none)
+**AI Response**: Fixed R-01..R-14 in the V8 FD. R-01 drafts keyed by issue_key, cleared by the page on success; R-02 drag overlay `moved` on the page, drags not routed through useAction, cleared when the world shows the same spot or on failure; R-03 `pendingSelect {id, gen}` with `worldGen` and five release cases; R-04 one cleanup table for world id change / import / build, 404 on a run the world replaced; R-05 tests-to-change table rebuilt by grep (gm.test import, S23, S24, RegionInspector renders, file menu helper, components 239-240, 51 = 49 it + it.each×2); R-06 generic augmentation 400 sentence; R-07 key reading table incl. connections and field labels; R-08 one section-open rule + known limit on unmounted forms; R-09 file input outside the disclosure, close rules, error placement; R-10 MapPanelLayout props (testId, panelLabel, panelTop, narrowOrder) with GmLayout as a wrapper; R-11 NewSessionForm unchanged (flat list), props listed, no re-read after play; R-12 form vs list CommitRange; R-13 reload() instead of key changes, loading only without data; R-14 grep guard for min-w-80 and fixed px widths, scrollIntoView guard.
+**Context**: Functional Design — V8 — re-review next (iteration 2).
+
+---
+
+## Plan Review Requested — Functional Design — V8 (iteration 2)
+**Timestamp**: 2026-10-11T01:51:14Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 2 of 2) with prior findings R-01..R-14 carried forward. Review record: `aidlc-docs/construction/V8-editor/functional-design/reviews/functional-design-review-02.md`.
+**Context**: Functional Design — V8 — re-review before approval gate.
+
+---
+## Plan Review Completed — Functional Design — V8 (iteration 2)
+**Timestamp**: 2026-10-11T01:53:46Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 2 → **READY**. R-01..R-14 Resolved; new R-15 Major (who owns the augmentation calls once drafts move to the page — props, busy after a tab return), R-16 Minor (overlapping drags of one region), R-17 Minor (worldGen counts answers, not read starts; the protection is useResource's abort on reload). Record: `aidlc-docs/construction/V8-editor/functional-design/reviews/functional-design-review-02.md`. Session re-check: R-15 confirmed (AugmentPanel holds run/busy/error/changed/answer; useAction skips onDone after unmount). Artifacts frozen until the gate answer.
+**Context**: Functional Design — V8 — approval gate next.
+
+---
+## Functional Design — V8 — Approval
+**Timestamp**: 2026-10-11T02:44:22Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V8 Functional Design approved. Open findings R-15 (Major), R-16, R-17 (Minor) recorded as Accepted risk and carried into the V8 code plan § 1.1 with the gate's decisions: R-15 a page-held `useAugmentation(worldId)` hook owns start/answer/revert/unignore, run, busy, error, change names and draft clearing; AugmentPanel only shows; R-16 same-region drags wait for the previous save and send only the latest spot, the overlay compares with the last spot sent; R-17 the dependency on useResource aborting earlier reads at reload() is stated, TP-V8-3 adds an earlier read arriving late. NFR SKIP; next: V8 Code Generation Part 1.
+**Context**: CONSTRUCTION / V8 — Functional Design complete.
+
+---
+## Code Generation — V8 — Part 1 plan
+**Timestamp**: 2026-10-11T02:46:14Z
+**User Input**: (none)
+**AI Response**: Plan `construction/plans/V8-editor-code-generation-plan.md`: 8 steps (docs+baseline, shared layout and labels, data hooks and pure helpers, new parts, one switch-over commit with old parts removed and old tests fixed, FR-D8/grep scans, captures, wrap-up). § 1.1 carries FD review 02 R-15 (page-held useAugmentation), R-16 (per-region drag queue), R-17 (reload abort dependency). § 1.2 code facts: build stages are not a closed enum (labels in buildStages.ts, not ENUM_VALUES, because format.enums.backend.test pins every EnumKind to a server enum), the editor is already a lazy chunk, gm.test.tsx:13's MapOverlay import is unused.
+**Context**: CONSTRUCTION / V8 — Code Generation Part 1; plan review next.
+
+---
+
+## Plan Review Requested — Code Generation Plan — V8
+**Timestamp**: 2026-10-11T02:46:14Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/V8-editor-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V8-editor-code-generation-plan-review-01.md`.
+**Context**: Code Generation — V8 — review requested before approval gate.
+
+---
+## Plan Review Completed — Code Generation Part 1 — V8
+**Timestamp**: 2026-10-11T02:52:13Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 6 Minor; open 8 (R-01 Step 5.4 misses ~12 AugmentPanel/UnscopedPanel/NpcDraftCards/BuildPanel/KnowledgeList tests; R-02 no re-read of the inspector / unscoped / wiki panels after a load or build that keeps the selection; R-03 TP-V8-10 screen side and BR-V8-17/19/26/28/33 have no named test step; R-04 worldGen observation and the reload/abort window; R-05 useAugmentation contract, shared guard, U3 #12 404 rule, priors; R-06 new home for MapCanvas exports; R-07 min-w-80 in five places, String(e) is 17; R-08 gate path, done-criterion, PBT generator condition, TP-V8-3 inspector assertion). Record: `aidlc-docs/construction/plans/reviews/V8-editor-code-generation-plan-review-01.md`. Session re-check: R-02 confirmed (`EditorPage.tsx:174,180,186` pass `reloadKey={rev}`). Plan frozen until the gate answer.
+**Context**: Code Generation Part 1 — V8 — approval gate next.
+
+---
+
+## Code Generation Part 1 — V8 — Approval prompt
+**Timestamp**: 2026-10-11T02:52:13Z
+**AI Response**: Asked for approval of `construction/plans/V8-editor-code-generation-plan.md` (8 steps) with the Review brief (R-01..R-08 open).
+**Context**: CONSTRUCTION / V8 — code plan approval gate.
+
+---
+## Code Generation Part 1 — V8 — Approval
+**Timestamp**: 2026-10-11T03:04:56Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V8 code plan approved; the approval covers the commits the plan lists on feat/follow-up. Review 01 R-01..R-08 recorded as Accepted risk and written into the plan's § 1.4 execution notes with the gate's decisions. Starting Code Generation Part 2 at Step 1.
+**Context**: CONSTRUCTION / V8 — Code Generation Part 2.
+
+---
+## Code Generation Part 2 — V8 — Steps 1–7
+**Timestamp**: 2026-10-11T04:55:12Z
+**User Input**: (none)
+**AI Response**: Steps 2–7 committed on feat/follow-up: `07e2a34` shared MapPanelLayout + labels; `abe74ae` useEditorWorld / dragSaves / useAugmentation + pure helpers (mutants 7/7); `62d4109` new parts (head, file menu, play start, map pane, tools, legend, picker, danger zone); `c0abf6b` switch-over (EditorPage rewritten, old parts MapOverlay/SessionBar/WorldFileBar/MapCanvas removed with 15 orphan keys, old tests moved per FC § 7.1 + R-01, editor.layout.test 24; mutants page 19/19, parts 18/18); `caed0f3` fr-d8 TP-V8-9 + design.grep editor rules (mutants 11/11); captures: 17 shots at 1280/390, all scrollWidth ≤ innerWidth, published privately https://claude.ai/artifact/RGWSFsM26cNiZHeoUttVuN; capture fixes `0b76594` (file row under the head line, "상위 지역", one name for the weight) and `23a63de` (MapPanelLayout out of the first-screen chunk). Found during TP-V8-3: a closed map dialog returned focus to a tab trigger and Radix re-opened that tab; the pane now returns focus to the opening tool (BR-V8-33).
+**Context**: CONSTRUCTION / V8 — Code Generation Part 2.
+
+---
+## Code Generation Part 2 — V8 — first-screen size question
+**Timestamp**: 2026-10-11T04:55:12Z
+**User Input**: "A. 이탈로 기록 (권장)"
+**AI Response**: Plan Step 8.1 requires the first-screen JS gzip not to grow (baseline 117.19 kB). After the bundling fix it is 119.21 kB (+2.02); the rest is the ko/en dictionary words V8 added, which load with every screen (the home's build dialog uses some). Asked with options A record as deviation / B split editor words into a lazy dictionary / C offset elsewhere; the human chose A. Recorded in code-summary § 5 item 1; per-screen dictionaries go to V9.
+**Context**: CONSTRUCTION / V8 — Code Generation Part 2, Step 8.
+
+---
+## Code Generation Part 2 — V8 — complete
+**Timestamp**: 2026-10-11T04:55:12Z
+**User Input**: (none)
+**AI Response**: Final gates GREEN: tsc clean, vitest 741 (baseline 664 − 4 removed + 81 new), npm audit 0, pytest 1228, ruff/black clean, mypy 11; server code unchanged. Bundle gzip: first screen 119.21 kB (deviation A), editor chunk 13.59 kB, GM 11.93 kB + shared 5.57 kB. Summary `construction/V8-editor/code/code-summary.md` (deviations: first-screen words, build stages outside ENUM_VALUES, page-held augmentation, create mark instead of worldGen, key prefixes, head title from the list, focus return; known limits incl. remount at the 1024 px breakpoint and older 합니다체 strings, carried to V9). Mutants 58/58. Code approval gate next.
+**Context**: CONSTRUCTION / V8 — Code Generation complete; approval gate next.
+
+---
+## Code Generation Part 2 — V8 — Approval prompt
+**Timestamp**: 2026-10-11T04:55:24Z
+**AI Response**: Asked for approval of the V8 code (`07e2a34`..`91ff3e7`) with the summary `construction/V8-editor/code/code-summary.md` and the captures Artifact; next after approval: the V8 code review, then V9.
+**Context**: CONSTRUCTION / V8 — code approval gate.
+
+---
+## Code Generation — V8 — Approval
+**Timestamp**: 2026-10-11T04:58:59Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V8 code approved. Starting the V8 code review (four angles, review-only agents in separate worktrees), as for V5–V7; the record goes to `construction/V8-editor/code/reviews/code-review-01.md`.
+**Context**: CONSTRUCTION / V8 — code review.
+
+---
+## Code Review 01 — V8 — Findings
+**Timestamp**: 2026-10-11T06:13:59Z
+**User Input**: (none)
+**AI Response**: Four review-only angles (data flow; screen/layout/a11y; words/errors/dictionary; test strength) in separate worktrees (based on main, each checked out a64a05d), 142 mutants. Record: `aidlc-docs/construction/V8-editor/code/reviews/code-review-01.md` — 1 high (#1 a World File load the server committed but answered ok=false is treated as a refusal: old world stays, nothing cleared, no notice; regression), 8 medium code (#2 drag body from a stale read, #3 question card shows server text/raw kind/English template and no issue label, #4 head counts both directions, #5 focus to body after build/load from the file row, #6 weight slider loses focus on every step, #7 long unbroken text side-scrolls, #8 drag overlay can stick, #9 priors read once per opening), 9 medium tests/tools (#10 the 390 capture check was blind under mobile emulation — re-measured without it: 17/17 no side scroll on the demo; #11–#18 test gaps and load timeouts), 19 low code (#19–#37), 1 low test bundle (#38). Session re-check: #1, #2, #3, #6 confirmed in code; #10 re-measured. Two worktrees remain locked by the harness, clean. Next: the human picks the fix scope.
+**Context**: CONSTRUCTION / V8 — code review 01.
+
+---
+## Code Review 01 — V8 — Fix scope
+**Timestamp**: 2026-10-11T06:56:05Z
+**User Input**: "A. 모두 고침 (권장)"; #3 card sentence: "A. 화면이 문장을 만듦 (권장)"
+**AI Response**: Fixing all 38 findings in code commits by area (data flow; load handling, screen and a11y; words and the question card; tests and timeouts) and one docs commit (FD amendments for the card sentence, the load outcome and BR-V8-34's outside press; code summary § 9; review § 8; capture record corrected for #10). Mutants of the fixes after.
+**Context**: CONSTRUCTION / V8 — code review 01 fixes.
+
+---
+## Code Review 01 — V8 — Fixed
+**Timestamp**: 2026-10-11T07:35:51Z
+**User Input**: (none)
+**AI Response**: All 38 findings fixed in `1bbfe92` (data flow: drags wait for the world a write left, map off until a replaced world answers, overlay yields to a later read, priors from the world, one-sentence augmentation errors with [보강 새로 시작], late answers inert, create-mark failures, functional picks, form key without the spot, NPC writes re-read the inspector only, another world's read not settled), `5bec7d6` (a load the server wrote is a load; refusals said with the reason; focus back on [파일 ▾]; weight slider and kind select stay on; [저장] keeps focus; long words wrap; head counts each connection once; play hint on the page; non-JSON pick sentence; per-connection control names; ▾ hidden), `8207e0c` (question card in the screen's words — the human's choice A — names from the world, key parsing by field name, issue labels on ignored/kept lines, display-language titles, English plurals, aligned words, nine unused keys gone, home unscoped count, room for long scenarios, testTimeout 15 s), `ab88823` and `4e29839` (tests), plus the docs commit (FD amendments BR-V8-34, FC § 4.5, BLM § 4 and § 7.1; code summary § 1/§ 3/§ 4/§ 5 corrected and § 9; review § 8; capture Artifact version 2 measured without mobile emulation: demo 18/18 and long text 10/10 with no sideways scroll). Gate GREEN: vitest 813 (+72), tsc clean, npm audit 0, pytest 1228, mypy 11. First-screen JS 119.74 kB (+0.53 dictionary sentences on top of deviation A). Mutants of the fixes: 47, all caught (8 after adding tests). **V8 COMPLETE.**
+**Context**: CONSTRUCTION / V8 — complete; next V9 (debt and docs).
+
+---
+## Code Generation — V9 — Scope question
+**Timestamp**: 2026-10-11T14:58:11Z
+**User Input**: "A. 정해진 범위 + 작은 것 (권장)"
+**AI Response**: Asked which V1–V8 hand-offs V9 takes. A: the unit's scope (FR-T2..T7, FR-C14, FR-D10) plus the small items that end in files V9 opens anyway (editor/map 합니다체 lines, unused old dictionary keys, CI lint of scripts, two test-fake defects U8 #20/#21); the large ones (per-screen dictionaries, 1024 px remount, waiting for in-flight drag saves, SQL engine options, …) go to next-cycle.md with their sources.
+**Context**: CONSTRUCTION / V9 — Code Generation Part 1 (FD and NFR SKIP).
+
+---
+## Code Generation — V9 — Part 1 plan
+**Timestamp**: 2026-10-11T14:58:11Z
+**User Input**: (none)
+**AI Response**: Plan `construction/plans/V9-debt-docs-code-generation-plan.md`: 10 steps (records+baseline, dev audit, mypy 0 + CI step, test hygiene, env.example + index.html, live scenario, dictionary register + old keys, docs, next-cycle list, wrap-up). § 1.2 code facts (the 11 mypy errors and fixes, the timeout-reliant contract test, real retry sleeps, undisposed sqlite engines, live scenario 10a, index.html), § 1.1 the human's scope A and the demo-translation item judged not a product gap.
+**Context**: CONSTRUCTION / V9 — Code Generation Part 1; plan review next.
+
+---
+## Plan Review Requested — Code Generation Plan — V9
+**Timestamp**: 2026-10-11T14:58:11Z
+**User Input**: (none — automatic per plan-review.md)
+**AI Response**: Dispatching architecture-reviewer (class adversarial, iteration 1) on `aidlc-docs/construction/plans/V9-debt-docs-code-generation-plan.md`. Review record: `aidlc-docs/construction/plans/reviews/V9-debt-docs-code-generation-plan-review-01.md`.
+**Context**: Code Generation — V9 — review requested before approval gate.
+
+---
+## Plan Review Completed — Code Generation Part 1 — V9
+**Timestamp**: 2026-10-11T15:00:30Z
+**User Input**: (none)
+**AI Response**: architecture-reviewer iteration 1 → **READY**. Findings: 0 Critical / 2 Major / 4 Minor; open 6 (R-01 the fake's replace_edges relies on upsert_edges replacing whole; R-02 FR-T4/§ G items missing from Step 8 and an unrequested operations note; R-03 setLang already sets documentElement.lang; R-04 contributions are keyed by region id, poll lower bound unspecified; R-05 the negative timing assertion, the player-mode literal and the /health test need concrete form; R-06 full audit in CI or one-off, lock consistency check). Record: `aidlc-docs/construction/plans/reviews/V9-debt-docs-code-generation-plan-review-01.md`. Session re-check: R-01 confirmed (fakes.py replace_edges calls upsert_edges); R-02: README NPC sentence, operations 409 and interrupted-run lines, cache.py docstring and api/errors.py were already fixed in V2/V5/V7 per the survey, but operations.md's "World editor" section (400-406) still describes the pre-V8 editor; R-03 confirmed. Plan frozen until the gate answer.
+**Context**: Code Generation Part 1 — V9 — approval gate next.
+
+---
+## Code Generation Part 1 — V9 — Approval prompt
+**Timestamp**: 2026-10-11T15:00:44Z
+**AI Response**: Asked for approval of `construction/plans/V9-debt-docs-code-generation-plan.md` (10 steps) with the Review brief (R-01..R-06 open) and the session re-check notes for R-02.
+**Context**: CONSTRUCTION / V9 — code plan approval gate.
+
+---
+## Code Generation Part 1 — V9 — Approval
+**Timestamp**: 2026-10-11T15:11:10Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V9 code plan approved; the approval covers the commits the plan lists on feat/follow-up. Review 01 R-01..R-06 recorded as Accepted risk and written into the plan's § 1.4 execution notes with the gate's stated handling. Starting Code Generation Part 2 at Step 1.
+**Context**: CONSTRUCTION / V9 — Code Generation Part 2.
+
+---
+## Plan Review Dispositions — Code Generation Part 1 — V9
+**Timestamp**: 2026-10-11T15:11:10Z
+- R-01 → Accepted risk
+- R-02 → Accepted risk
+- R-03 → Accepted risk
+- R-04 → Accepted risk
+- R-05 → Accepted risk
+- R-06 → Accepted risk
+
+---
+
+---
+## Code Generation Part 2 — V9 — Done
+**Timestamp**: 2026-10-11T15:57:44Z
+**User Input**: (none)
+**AI Response**: Steps 1–10 done on feat/follow-up: `d386805` (dev audit 0, npm 11 for `audit fix`), `d34c0a8` (mypy 0, CI mypy step, scripts linted), `49ca342` (test hygiene: lock-order events, `or True` → real values, recorded retry waits, engine dispose, fake upsert merges / replace replaces, `/health` degraded test), `239f82d` (index.html ko/title/description/favicon, env.example), `5db8ae9` (live scenario 10a direction, non-JSON answers FAIL, poll ≥ 1 s), `7eb0b61` (editor/map ko 24 lines 해요체, 11 unused keys removed, register and key-use tests), `86e225b` (CLAUDE.md, README, web/README, operations.md, 7 docstrings), `fa0927d` (GM manual-turn docstring), `e8e2fe0` (next-cycle list with sources and file:line). Gate GREEN: pytest 1244, vitest 821, mypy 0, npm audit 0/0, ResourceWarning 0, first-screen JS 119.41 kB. Mutants 36/36 caught. Deviations recorded in the summary § 5 (npm 11 for the fix; 5 unused keys outside the named prefixes; register test covers augment./wiki./build.; 10a ids from /state; one more docstring). Summary `construction/V9-debt-docs/code/code-summary.md`.
+**Context**: CONSTRUCTION / V9 — code approval gate next.
+
+---
+## Code Generation — V9 — Approval prompt
+**Timestamp**: 2026-10-11T16:06:55Z
+**AI Response**: Presented the V9 code generation completion (`d386805`..`bc4ac75`, summary `construction/V9-debt-docs/code/code-summary.md`) with the standard REVIEW REQUIRED / WHAT'S NEXT blocks; said that, as in V5–V8, a code review runs after approval before Build and Test.
+**Context**: CONSTRUCTION / V9 — code approval gate.
+
+---
+## Code Generation — V9 — Approval
+**Timestamp**: 2026-10-11T16:06:55Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V9 code generation approved. Starting code review 01 (four review-only angles in separate worktrees, as V5–V8), then Build and Test.
+**Context**: CONSTRUCTION / V9 — code review 01.
+
+---
+## Code Review 01 — V9 — Findings
+**Timestamp**: 2026-10-11T16:42:24Z
+**User Input**: (none)
+**AI Response**: Four review-only angles in separate worktrees at `bc4ac75` (backend & test hygiene, live scenario, web dictionary & head, docs). 40 findings: 0 high, 3 medium (#1 register rule misses 합니다체 before …/(/" and 십시오; #2 README and carry_over docstring say seeds are added in the editor — they come only through World File; #3 next-cycle § 0 uses U8 § 1 numbers under a § 3 abbreviation), 37 low (4 code/script, 19 test, 14 docs). Mutants 72 (40 caught). Record `construction/V9-debt-docs/code/reviews/code-review-01.md`. Asking the human for the fix scope.
+**Context**: CONSTRUCTION / V9 — code review 01.
+
+---
+## Code Review 01 — V9 — Fix scope
+**Timestamp**: 2026-10-11T17:15:02Z
+**User Input**: AskUserQuestion answer "A. 거의 모두 고침 (권장)"
+**AI Response**: Fixed 39 of 40 findings; #26 (pin mypy/langchain) attached to the next-cycle lock-file line (requirements § 9). Commits `10bdc20` (live scenario #4 #5 #8–#12), `011f7e7` (web #1 #13–#20), `c53e527` (backend/tests #6 #7 #21–#25), then docs (#2 #3 #26–#40, README sentence test). pytest 1262, vitest 825, mypy 0, npm audit 0/0, ResourceWarning now an error, first-screen JS 119.39 kB; 34 fix mutants caught. Record § 7 and code-summary § 9 updated. V9 COMPLETE; next Build and Test.
+**Context**: CONSTRUCTION / V9 — code review 01 fixed.
+
+---
+## Build and Test — Follow-up cycle — Start
+**Timestamp**: 2026-10-11T17:19:51Z
+**User Input**: AskUserQuestion answer "A. 키로 띄워 확인 (권장)"
+**AI Response**: Bringing the stack up with the key (`WEB_PORT=13000 docker compose --profile service up -d --build`), then the live scenario, V5 PG smoke P1–P6, nginx head, Neo4j label delete, backup failure and a GM/editor pass; `down` afterwards, volumes kept.
+**Context**: CONSTRUCTION / Build and Test (Follow-up cycle).
+
+---
+## Build and Test — Follow-up cycle — Done
+**Timestamp**: 2026-10-11T17:32:45Z
+**User Input**: (none)
+**AI Response**: Stack up with the key (`WEB_PORT=13000 docker compose --profile service up -d --build`), five services healthy, /health ok, capabilities all true. Live scenario 15/15 (log `construction/build-and-test/follow-up/live-scenario-2026-10-12.log`). V5 PG smoke P1–P6 and the row-lock check PASS (P5: a graceful restart finished the run as documented, so the app was killed to cut it; then failed/interrupted, turn and region restored, turn_run_failed line). V7 labelled delete and backup failure PASS on the real Neo4j and volume. nginx heads PASS. Headless walk of the editor (new region selected, drag saved, World File load notice) and GM (turn band, seed running, session end) PASS. Server warning stages all on the screen list. Not run: V7 CLI-rebuild cache check and V8 build replace (each needs a full LLM build). emberleaf restored to the demo; stack down, volumes kept. Records: build-instructions, unit-test-instructions, integration-test-instructions, build-and-test-summary under `construction/build-and-test/follow-up/`.
+**Context**: CONSTRUCTION / Build and Test — approval gate next.
+
+---
+## Build and Test — Follow-up cycle — Approval
+**Timestamp**: 2026-10-11T17:34:10Z
+**User Input**: "Approve & Continue"
+**AI Response**: Build and Test approved. Operations (placeholder, as in prior cycles): an operator section for the Follow-up cycle in `operations/operations.md`, CLAUDE.md Status to COMPLETE, next-cycle.md § 0/§ 1 from the B&T results, state to cycle COMPLETE.
+**Context**: OPERATIONS (placeholder) — Follow-up cycle.
+
+---
+## Operations — Follow-up cycle — Done
+**Timestamp**: 2026-10-11T17:34:57Z
+**User Input**: (none)
+**AI Response**: Operations placeholder done as in prior cycles: `operations/operations.md` gained a Follow-up cycle section (one API worker for V5's serialization, the demo's Korean file and warm workers, CI runner/mypy/ResourceWarning, langchain-openai floor, where the real-stack checks are, graceful restart vs kill, host clean-up of old test backups); `operations/next-cycle.md` § 0 records the B&T checks that passed, § 1 the two checks not run and the host clean-up, § 2 the add-region tool question; CLAUDE.md Status marks the cycle COMPLETE. FOLLOW-UP CYCLE COMPLETE.
+**Context**: OPERATIONS — Follow-up cycle complete.

@@ -29,6 +29,7 @@ from locus.play.models import (
 )
 from locus.play.ports import PlayRepository
 from locus.play.turn.guard import TurnGuard
+from locus.shared.config.tuning import PlayTuning
 from locus.shared.models import WorldSnapshot
 
 if TYPE_CHECKING:  # wired by assemble_play
@@ -47,10 +48,12 @@ class SessionService:
         guard: TurnGuard | None = None,
         *,
         deeds: DeedService | None = None,
+        tuning: PlayTuning | None = None,
     ) -> None:
         self._repo = repo
         self._snapshots = snapshots
         self._guard = guard if guard is not None else TurnGuard()
+        self._tuning = tuning or PlayTuning()  # V5: the short-write wait (BR-V5-03)
         self._deeds = deeds  # U6: the start region's arrival is the first deed (BR-U6-1)
 
     def start_session(self, world_id: str) -> GameSession:
@@ -111,20 +114,27 @@ class SessionService:
         return session, created
 
     def close_session(self, session_id: str) -> GameSession:
-        current = self._require(session_id)
-        self._guard.assert_idle(session_id)  # BR-U4-5: not while a turn run is in progress
-        with self._repo.uow() as u:
-            closed = u.sessions.close_session(session_id)
-            if current.status != SessionStatus.CLOSED.value:  # write the entry once
-                u.timeline.append_timeline(
-                    TimelineEntry(
-                        session_id=session_id,
-                        turn=closed.turn,
-                        kind=TimelineKind.SESSION_CLOSED,
-                        summary="session closed",
-                        payload={},
-                    )
-                )
+        """Close a session (BR-S1-4, idempotent). V5 (RE-P02, BR-V5-14..16): refused while
+        a turn runs (BR-U4-5); otherwise new turns are kept out (``closing``) and the close
+        waits only for a GM save section in progress (``short_write``) — not for a GM
+        write's LLM call, whose save then finds the session closed."""
+        self._require(session_id)  # 404 only: the state is read again inside the section
+        with self._guard.closing(session_id):
+            with self._guard.short_write(session_id, timeout_s=self._tuning.gm_write_wait_s):
+                with self._repo.uow() as u:
+                    current = u.sessions.get_session(session_id)
+                    closed = u.sessions.close_session(session_id)
+                    if current is not None and current.status != SessionStatus.CLOSED.value:
+                        u.timeline.append_timeline(  # written once (code plan R-01)
+                            TimelineEntry(
+                                session_id=session_id,
+                                turn=closed.turn,
+                                kind=TimelineKind.SESSION_CLOSED,
+                                summary="session closed",
+                                payload={},
+                            )
+                        )
+        self._guard.forget(session_id)  # its sections are over (code review 01 #10)
         return closed
 
     def get_session(self, session_id: str) -> GameSession:

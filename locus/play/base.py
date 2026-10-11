@@ -29,6 +29,10 @@ class SessionClosedError(RuntimeError):
     """Raised when a write action targets a CLOSED session (BR-S2-9)."""
 
 
+# The sentence of a closed session's 409: no session id (V5 BR-V5-23, code review 01 #6)
+SESSION_CLOSED = "the session is closed"
+
+
 def require_region(snapshots: SnapshotSource, world_id: str, region_id: str) -> Region:
     """The region, which must exist in the canonical topology (read-only; BR-P1-2)."""
     region = snapshots.get(world_id).regions_by_id.get(region_id)
@@ -81,7 +85,7 @@ class SessionAppService:
         """Return the session, raising if it is missing or CLOSED (writes)."""
         session = self._require_session(session_id)
         if session.status == SessionStatus.CLOSED.value:
-            raise SessionClosedError(f"session is closed: {session_id}")
+            raise SessionClosedError(SESSION_CLOSED)
         return session
 
     def _require_player(self, session_id: str) -> Player:

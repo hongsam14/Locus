@@ -1,0 +1,70 @@
+import { useId, useRef, type ReactNode } from "react";
+import { t } from "../i18n";
+import { Button } from "./Button";
+
+// V2 (UX-09): no browser "Choose File / No file chosen" text. The real input stays (hidden)
+// and carries the test id, so a test can still hand it files; it is emptied after each pick
+// so the same file can be picked again. It is out of the tab order and hidden from assistive
+// tech: the visible button is the one control, named by the field's label and its own word
+// ("Map image Choose file"), and described by what is chosen (BR-V2-07/23, V2 review #6).
+export function FileInput({
+  label,
+  accept,
+  multiple,
+  onFiles,
+  hint,
+  chosen,
+  disabled,
+  "data-testid": testId,
+}: {
+  label: ReactNode;
+  accept?: string;
+  multiple?: boolean;
+  onFiles(files: File[]): void;
+  hint?: ReactNode;
+  chosen?: string[];
+  disabled?: boolean;
+  "data-testid"?: string;
+}) {
+  const id = useId();
+  const input = useRef<HTMLInputElement | null>(null);
+  return (
+    <div className="flex flex-col gap-1 text-sm">
+      <span id={`${id}-label`} className="font-bold text-fg">{label}</span>
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed border-line-strong bg-bg p-2">
+        <input
+          ref={input}
+          id={id}
+          type="file"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
+          accept={accept}
+          multiple={multiple}
+          disabled={disabled}
+          data-testid={testId}
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            e.target.value = "";
+            if (files.length) onFiles(files);
+          }}
+        />
+        <Button
+          type="button"
+          size="sm"
+          id={`${id}-button`}
+          disabled={disabled}
+          aria-labelledby={`${id}-label ${id}-button`}
+          aria-describedby={`${id}-chosen`}
+          onClick={() => input.current?.click()}
+        >
+          {t("action.chooseFile")}
+        </Button>
+        <span id={`${id}-chosen`} className="min-w-0 text-muted [overflow-wrap:anywhere]">
+          {chosen && chosen.length ? chosen.join(", ") : t("empty.noFile")}
+        </span>
+      </div>
+      {hint != null && <span className="text-muted">{hint}</span>}
+    </div>
+  );
+}

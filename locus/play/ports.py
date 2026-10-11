@@ -109,7 +109,9 @@ class TurnRunStore(Protocol):
     def get_run(self, session_id: str, run_id: str) -> TurnRun | None: ...  # None if other session
     def update_run(self, run: TurnRun) -> TurnRun: ...
     def list_runs(self, session_id: str, status: str | None = None) -> list[TurnRun]: ...
-    def fail_stale_runs(self, *, reason: str) -> int: ...  # running -> failed (API startup)
+
+    # every session's `running` runs: the ones a restart cut (V5 FR-C3, recover at start)
+    def list_running_runs(self) -> list[TurnRun]: ...
 
 
 @runtime_checkable

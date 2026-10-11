@@ -7,8 +7,13 @@ package is imported lazily so the module is importable/testable without it.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from locus.shared.models import SearchDoc
 from locus.shared.storage.base import SearchHit, SearchRepository
+
+if TYPE_CHECKING:
+    from opensearchpy import OpenSearch
 
 
 def index_mapping(vector_dimension: int) -> dict:
@@ -89,14 +94,14 @@ class OpenSearchRepository(SearchRepository):
         self._url = url
         self._index = index
         self._dim = vector_dimension
-        self._client = None
+        self._client: OpenSearch | None = None
 
     # -- lifecycle -------------------------------------------------------- #
     def connect(self) -> None:
         from opensearchpy import OpenSearch
 
-        self._client = OpenSearch(hosts=[self._url])
-        self._client.info()
+        self._client = client = OpenSearch(hosts=[self._url])
+        client.info()
 
     def disconnect(self) -> None:
         self._client = None

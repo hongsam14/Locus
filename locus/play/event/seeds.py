@@ -31,7 +31,7 @@ class SeedService(SessionAppService):
         session = self._require_session(session_id)
         snapshot = self._snapshots.get(session.world_id)
         names = names_of(snapshot)
-        running = self._running(session_id)
+        running = _running(self._repo.list_events(session_id, None))
         return sorted(
             (
                 SeedView(
@@ -50,32 +50,39 @@ class SeedService(SessionAppService):
         session = self._require_open(session_id)
         snapshot = self._snapshots.get(session.world_id)
         seed = _seed(snapshot.event_seeds, seed_id)
-        require_region(self._snapshots, session.world_id, seed.region_id)
-        running = self._running(session_id).get(seed.id)
-        if running is not None:
-            raise SeedAlreadyRunningError(f"seed already running: {seed.id} (event {running})")
-        return self._events.create_event(
-            session_id,
-            seed.region_id,
-            category=seed.category,
-            magnitude=seed.magnitude,
-            description=seed.description or seed.title,
-            lifecycle=seed.lifecycle,
-            provenance=Provenance(
-                source=SourceKind.INPUT, generated_by=SEED_SOURCE, refs=[seed.id]
-            ),
-            timeline_extra={"seed_id": seed.id, "seed_title": seed.title},
-        )
+        # the world is read before the section (BLM § 1, code review 01 #7)
+        name = require_region(self._snapshots, session.world_id, seed.region_id).name
+        # V5 (#12, BR-V5-06): "is it running?" and the create are one section — the event
+        # service's — so of two starts of one seed the second sees the first's event.
+        with self._events.section.open(session_id) as (u, session):
+            running = _running(u.events.list_events(session_id, None)).get(seed.id)
+            if running is not None:
+                raise SeedAlreadyRunningError(f"seed already running: {seed.id} (event {running})")
+            return self._events.create_in(
+                u,
+                session,
+                seed.region_id,
+                name,
+                category=seed.category,
+                magnitude=seed.magnitude,
+                description=seed.description or seed.title,
+                lifecycle=seed.lifecycle,
+                provenance=Provenance(
+                    source=SourceKind.INPUT, generated_by=SEED_SOURCE, refs=[seed.id]
+                ),
+                timeline_extra={"seed_id": seed.id, "seed_title": seed.title},
+            )
 
-    def _running(self, session_id: str) -> dict[str, str]:
-        """seed id -> its unresolved event id in this session."""
-        out: dict[str, str] = {}
-        for event in self._repo.list_events(session_id, None):
-            prov = event.provenance
-            if prov.generated_by == SEED_SOURCE and not event.is_resolved():
-                for ref in prov.refs:
-                    out.setdefault(ref, event.id)
-        return out
+
+def _running(events: list[SessionEvent]) -> dict[str, str]:
+    """seed id -> its unresolved event id among a session's events."""
+    out: dict[str, str] = {}
+    for event in events:
+        prov = event.provenance
+        if prov.generated_by == SEED_SOURCE and not event.is_resolved():
+            for ref in prov.refs:
+                out.setdefault(ref, event.id)
+    return out
 
 
 def _seed(seeds: list[EventSeed], seed_id: str) -> EventSeed:

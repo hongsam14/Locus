@@ -13,6 +13,7 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel, Field
 
+from locus.localization.models import SeedReport
 from locus.localization.service import Enrichment
 from locus.localization.wiring import LocalizationContainer
 from locus.play.models import (
@@ -30,7 +31,8 @@ from locus.play.models import (
     SessionRumor,
     WorldState,
 )
-from locus.shared.models import NPC, KnowledgeView, QueryResult
+from locus.shared.models import NPC, ImportReport, KnowledgeView, QueryResult, WorldSnapshot
+from locus.shared.models.i18n import SOURCE_LANG
 from locus.world.editor.models import WorldSummary
 
 # --- requests ---------------------------------------------------------------- #
@@ -57,9 +59,25 @@ class EventCreate(BaseModel):
 
 class WorldInfo(WorldSummary):
     """One row of the world list (US-6.4 backend, BR-U2-24): the catalog row plus the
-    open sessions (U3 review C13 — inherits instead of repeating the fields)."""
+    open sessions (U3 review C13 — inherits instead of repeating the fields). V3: the
+    name and description in the display language, from the translation cache."""
 
     open_sessions: int | None = None  # None when the play boundary is not assembled
+    name_ko: str | None = None
+    description_ko: str | None = None
+
+
+class WorldNamesOut(BaseModel):
+    """``GET /api/world/worlds/{w}/names`` (V3, Q5=A, BR-V3-21): the world's region, NPC,
+    event-seed and world text in the display language, ``{id: {field: text}}``. Only
+    translated fields are present; a screen falls back to the English it holds."""
+
+    world_id: str
+    lang: str
+    world: dict[str, str] = Field(default_factory=dict)
+    regions: dict[str, dict[str, str]] = Field(default_factory=dict)
+    npcs: dict[str, dict[str, str]] = Field(default_factory=dict)
+    event_seeds: dict[str, dict[str, str]] = Field(default_factory=dict)
 
 
 class UnignoreIn(BaseModel):
@@ -129,8 +147,7 @@ class RegionViewOut(RegionView):
 
 T = TypeVar("T", bound=BaseModel)
 
-# The language every stored, embedded and searched text is written in (C-1, FR-G2).
-SOURCE_LANG = "en"
+# SOURCE_LANG (the language every stored text is written in, C-1) now lives in shared.
 
 
 def localize(
@@ -279,6 +296,29 @@ def localize_region_view(
     data: dict[str, Any] = view.model_dump()
     data.update(facts=facts, hearsay=hearsay, rumors=rumors)
     return RegionViewOut(**data)
+
+
+def world_names(
+    loc: LocalizationContainer | None, snapshot: WorldSnapshot, *, lang: str
+) -> WorldNamesOut:
+    """The world's name map from the cache only; misses warm when an LLM is there
+    (V3 BLM § 8, BR-V3-22). Empty in the source language or without localization."""
+    w = snapshot.world_id
+
+    def of(items: Sequence[BaseModel], kind: str, fields: list[str]) -> Enrichment:
+        return enrichment_for(loc, items, kind=kind, fields=fields, world_id=w, lang=lang)
+
+    world = of(
+        [snapshot.meta] if snapshot.meta is not None else [], "world", ["name", "description"]
+    )
+    return WorldNamesOut(
+        world_id=w,
+        lang=lang,
+        world=world.get(w, {}),
+        regions=of(snapshot.topo.regions, "region", ["name", "description"]),
+        npcs=of(snapshot.npcs, "npc", ["name", "role", "description"]),
+        event_seeds=of(snapshot.event_seeds, "event_seed", ["title", "description"]),
+    )
 
 
 _log = logging.getLogger(__name__)
@@ -480,9 +520,14 @@ class DemoInfoOut(BaseModel):
     credits: str | None = None
     start_region_id: str
     has_sources: bool = False
+    # V3 (Q4=A, BR-V3-23): the card in the display language, from the manifest
+    title_ko: str | None = None
+    description_ko: str | None = None
+    credits_ko: str | None = None
 
     @classmethod
-    def of(cls, info: DemoInfo) -> DemoInfoOut:
+    def of(cls, info: DemoInfo, lang: str | None = None) -> DemoInfoOut:
+        card = info.i18n.get(lang) if lang else None
         return cls(
             name=info.name,
             title=info.title,
@@ -490,4 +535,110 @@ class DemoInfoOut(BaseModel):
             credits=info.credits,
             start_region_id=info.start_region_id,
             has_sources=info.has_sources,
+            title_ko=card.title if card else None,
+            description_ko=card.description if card else None,
+            credits_ko=card.credits if card else None,
         )
+
+
+class DemoLoadOut(ImportReport):
+    """``POST /api/world/worlds/{w}/demo/{name}``: the import report plus what the
+    seeding of the demo's translations did (V3, additive, BR-V3-25)."""
+
+    translations_seeded: int = 0
+    translations_stale: int = 0
+
+
+def seed_demo_translations(
+    loc: LocalizationContainer | None,
+    demo: Any,
+    name: str,
+    *,
+    world_id: str,
+    report: Any,
+    langs: Sequence[str],
+) -> SeedReport:
+    """Seed the demo's translation files after a load (V3 BLM § 3, BR-V3-14/15).
+
+    Only after a clean import, only with a translation service (without one the demo's
+    new methods are not even called — code plan memo R-04), and only for the manifest's
+    languages the server takes, never the source language. A side job: a failure is
+    logged and never breaks the load's response."""
+    total = SeedReport()
+    if loc is None or loc.translations is None or not getattr(report, "ok", False):
+        return total
+    try:
+        for lang in demo.translation_langs(name):
+            if lang == SOURCE_LANG or lang not in langs:
+                continue
+            remapped = bool(getattr(report, "remapped", False))
+            entries = demo.translations(name, lang, target_world_id=world_id, remapped=remapped)
+            if not entries:
+                continue
+            texts = demo.texts(name, target_world_id=world_id, remapped=remapped)
+            got = loc.translations.seed(entries, lang=lang, current_text=texts, world_id=world_id)
+            total = SeedReport(
+                seeded=total.seeded + got.seeded,
+                stale=total.stale + got.stale,
+                unknown=total.unknown + got.unknown,
+            )
+    except Exception:
+        _log.exception("seeding the translations of demo %s failed (world %s)", name, world_id)
+    return total
+
+
+def live_ids(snapshot: WorldSnapshot) -> set[str]:
+    """The ids a world holds now that a translation can be about (V3)."""
+    ids = {r.id for r in snapshot.topo.regions}
+    ids |= {n.id for n in snapshot.npcs}
+    ids |= {s.id for s in snapshot.event_seeds}
+    ids |= {k.id for k in snapshot.kg.knowledge}
+    if snapshot.meta is not None:
+        ids.add(snapshot.meta.id)
+    return ids
+
+
+def purge_world_translations(
+    loc: LocalizationContainer | None, world_id: str, keep_ids: set[str] | None = None
+) -> None:
+    """After a replace (V3, BR-V3-13 as corrected by code review 01 #1). With the new
+    world's ids (``keep_ids``) only the rows of ids it lacks go: a re-import of the same
+    file keeps its hand-made translations, and the source hash still hides any whose
+    text changed. Without them (the world is gone or unreadable) every row of the world
+    goes, with the world's own name rows, which the world list warms unmarked. A side
+    job: a failure is logged and never breaks the response."""
+    if loc is None or loc.translations is None:
+        return
+    if keep_ids is None:
+        purge_translations(loc, world_id=world_id)
+        purge_translations(loc, kind="world", ids=[world_id])
+        return
+    try:
+        loc.translations.prune_world(world_id, keep_ids)
+    except Exception:
+        _log.exception("translation prune failed (world=%s)", world_id)
+
+
+def carry_seed_translation(
+    loc: LocalizationContainer | None,
+    event: SessionEvent,
+    seed_id: str,
+    *,
+    langs: Sequence[str],
+    session_id: str,
+) -> int:
+    """An event started from a seed takes the seed's translation as its description's
+    (V3, BR-V3-17) — no LLM. A side job: a failure is logged and the start stands."""
+    if loc is None or loc.translations is None:
+        return 0
+    try:
+        return loc.translations.carry(
+            [("event_seed", seed_id, "description"), ("event_seed", seed_id, "title")],
+            ("event", event.id, "description"),
+            text=event.description,
+            langs=[lang for lang in langs if lang != SOURCE_LANG],
+            session_id=session_id,
+        )
+    except Exception:
+        _log.exception("carrying seed %s's translation to event %s failed", seed_id, event.id)
+        return 0

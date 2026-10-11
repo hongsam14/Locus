@@ -90,7 +90,14 @@ def test_sources_are_read_from_the_manifest_and_build_through_the_builder() -> N
 
 
 def _workdir(tmp_path: Path, entries: list[dict]) -> Path:
-    shutil.copy(WORLDS_DIR / "emberleaf.world.json", tmp_path / "emberleaf.world.json")
+    """A manifest folder. Each entry gets its own copy of the packaged World File whose
+    ``world.id`` is the entry's name (V3 FR-C11: the two must match; code plan R-01)."""
+    world = json.loads((WORLDS_DIR / "emberleaf.world.json").read_text(encoding="utf-8"))
+    for entry in entries:
+        file = entry.get("file", "")
+        if file.endswith(".world.json") and "/" not in file:
+            copy = {**world, "world": {**world["world"], "id": entry["name"]}}
+            (tmp_path / file).write_text(json.dumps(copy), encoding="utf-8")
     (tmp_path / "src").mkdir()
     shutil.copy(FIXTURE / "memo.txt", tmp_path / "src" / "memo.txt")
     shutil.copy(FIXTURE / "map.png", tmp_path / "src" / "map.png")
@@ -99,10 +106,11 @@ def _workdir(tmp_path: Path, entries: list[dict]) -> Path:
 
 
 def _entry(**kw) -> dict:
+    name = kw.get("name", "isle")
     base = {
-        "name": "isle",
+        "name": name,
         "title": "Isle",
-        "file": "emberleaf.world.json",
+        "file": f"{name}.world.json",
         "start_region_id": "region-saltwake",
     }
     return {**base, **kw}

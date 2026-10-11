@@ -42,7 +42,7 @@ class _GraphRepo:
     def upsert_edges(self, edges):
         self.edges.extend(edges)
 
-    def delete_node(self, world_id, node_id):
+    def delete_node(self, world_id, node_id, *, label=None):
         self.deleted.append(node_id)
 
     def find_nodes(self, world_id, label, filters=None):
@@ -53,8 +53,17 @@ class _GraphRepo:
             and all(n.properties.get(k) == v for k, v in (filters or {}).items())
         ]
 
-    def get_node(self, world_id, node_id):
-        return next((n for n in self.nodes if n.id == node_id and n.world_id == world_id), None)
+    def get_node(self, world_id, node_id, *, label=None):
+        return next(
+            (
+                n
+                for n in self.nodes
+                if n.id == node_id
+                and n.world_id == world_id
+                and (label is None or n.label == label)
+            ),
+            None,
+        )
 
     def list_world_ids(self):
         return sorted({n.world_id for n in self.nodes})
@@ -74,12 +83,24 @@ class _SearchRepo:
         self.docs = [d for d in self.docs if d.world_id != world_id]
 
 
+def _empty_snapshot(world_id):
+    from locus.shared.models import KnowledgeGraph, RegionTopology, WorldSnapshot
+
+    return WorldSnapshot(
+        world_id=world_id,
+        kg=KnowledgeGraph(world_id=world_id),
+        topo=RegionTopology(world_id=world_id),
+    )
+
+
 class _NoCache:
     def __init__(self) -> None:
         self.invalidated: list[str] = []
 
-    def get(self, world_id):  # pragma: no cover - builder never reads
-        raise AssertionError("builder must not read the cache")
+    def get(self, world_id):  # pragma: no cover - only a replace reads (V7)
+        # An empty old world. Raising here proved nothing: the builder catches what the
+        # read raises and reports a carry-over error (V7 code review #21).
+        return _empty_snapshot(world_id)
 
     def invalidate(self, world_id):
         self.invalidated.append(world_id)

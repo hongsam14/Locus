@@ -31,9 +31,11 @@ jobs:
       - name: Install
         run: pip install -e ".[dev]"
       - name: Ruff
-        run: ruff check locus api tests
+        run: ruff check locus api tests scripts
       - name: Black
-        run: black --check locus api tests
+        run: black --check locus api tests scripts
+      - name: Mypy (no errors; config in pyproject, Python 3.11 rules)
+        run: mypy locus api
       - name: Pytest (the hypothesis seed is printed so a failure can be re-run)
         run: |
           SEED=$(python -c "import secrets; print(secrets.randbelow(2**32))")

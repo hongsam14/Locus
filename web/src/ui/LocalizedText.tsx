@@ -17,14 +17,14 @@ export function LocalizedText({
   const hasKo = ko != null && ko !== "" && ko !== original;
   const text = hasKo && !showOriginal ? (ko as string) : original;
   return (
-    <span data-testid={testId}>
+    <span data-testid={testId} className="[overflow-wrap:anywhere]">
       {text}
       {hasKo && (
         <button
           type="button"
           data-testid={testId ? `${testId}-toggle` : undefined}
           onClick={() => setShowOriginal((v) => !v)}
-          className="ml-1 text-xs text-ink-soft underline hover:opacity-70"
+          className="ml-1 text-xs text-muted underline hover:text-fg"
         >
           {showOriginal ? t("action.translated") : t("action.original")}
         </button>

@@ -5880,3 +5880,9 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V8 — Code Generation complete; approval gate next.
 
 ---
+## Code Generation Part 2 — V8 — Approval prompt
+**Timestamp**: 2026-10-11T04:55:24Z
+**AI Response**: Asked for approval of the V8 code (`07e2a34`..`91ff3e7`) with the summary `construction/V8-editor/code/code-summary.md` and the captures Artifact; next after approval: the V8 code review, then V9.
+**Context**: CONSTRUCTION / V8 — code approval gate.
+
+---

@@ -6,7 +6,8 @@ import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { api } from "../api";
 import { resetCapabilities } from "../capabilities";
 import { t } from "../i18n";
-import { AppShell, MapPanelLayout, Section, SplitView } from "../layout";
+import { AppShell, Section, SplitView } from "../layout";
+import { MapPanelLayout } from "../layout/MapPanelLayout";
 import { toast } from "../ui";
 
 afterEach(() => {

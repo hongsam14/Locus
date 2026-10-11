@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import http.client
 import json
+import math
 import sys
 import time
 import urllib.error
@@ -39,6 +40,7 @@ HARBOR, MEADOW, GROVE, CRAG, LANES = (
 )
 SEED_REGION = MEADOW  # the mushroom-blight seed
 SEED_MIN_SALIENCE = 0.5  # DEED_SEED_MIN_SALIENCE's default: a noteworthy judgement seeds
+START = 0.3  # every region's distortion when a session starts (play DEFAULT_DISTORTION_DEGREE)
 DECLARATION = (
     "In the middle of the market I set the old mushroom granary on fire and shout that the "
     "blight is a curse sent from Sylvarch."
@@ -126,7 +128,7 @@ class Scenario:
         waited = 0.0
         while run.get("status") == "running":
             if waited >= self.run_timeout_s:
-                raise StepFailed(f"run {run['id']} still running after {self.run_timeout_s:.0f}s")
+                raise StepFailed(f"run {run['id']} still running after {waited:.0f}s")
             self.sleep(self.poll_s)
             waited += self.poll_s
             run = self._ok("GET", f"/api/play/sessions/{self.sid}/turn-runs/{run['id']}")
@@ -290,8 +292,10 @@ class Scenario:
     def s10a_heard_differently(self) -> str:
         """The blight is heard more strongly near it (V9, FR-T7): the event's own reach is
         larger in the harbor than in Ironcrag (path weight 1.0 against 0.204 from the meadow,
-        U8 domain-entities § 5.2), and so is the harbor's distortion — above the 0.3 start.
-        The event's ``contributions`` are by region id; each id is the state row's own."""
+        U8 domain-entities § 5.2), and so is the harbor's distortion. The harbor's distortion
+        without its rumor-feedback share holds at least the start plus that reach, so the
+        event's build-up is really written to the region (code review 01 #8). The event's
+        ``contributions`` are by region id; each id is the state row's own."""
         state = self._state()
         near, far = state[HARBOR], state[CRAG]
         events = self._ok("GET", f"/api/gm/sessions/{self.sid}/events?status=active")
@@ -302,9 +306,12 @@ class Scenario:
         near_c, far_c = reach.get(near["region_id"], 0.0), reach.get(far["region_id"], 0.0)
         if not near_c > far_c:
             raise StepFailed(f"the event reaches {HARBOR} {near_c:.2f}, {CRAG} {far_c:.2f}")
-        if not (near["distortion"] > far["distortion"] and near["distortion"] > 0.3):
+        own = near["distortion"] - near.get("feedback_share", 0.0)
+        if not (near["distortion"] > far["distortion"] and own >= START + near_c - 1e-6):
             raise StepFailed(
-                f"distortion {HARBOR} {near['distortion']:.2f}, {CRAG} {far['distortion']:.2f}"
+                f"distortion {HARBOR} {near['distortion']:.2f} (feedback "
+                f"{near.get('feedback_share', 0.0):.2f}, event {near_c:.2f}), "
+                f"{CRAG} {far['distortion']:.2f}"
             )
         return (
             f"{HARBOR}: distortion {near['distortion']:.2f} (event {near_c:.2f}), rumors "
@@ -397,6 +404,22 @@ def _short(value: Any, limit: int = 160) -> str:
 POLL_MIN_S = 1.0
 
 
+def _finite(text: str) -> float:
+    """A finite number of seconds: ``nan`` never compares and ``inf`` cannot be slept
+    (code review 01 #4)."""
+    value = float(text)
+    if not math.isfinite(value):
+        raise argparse.ArgumentTypeError(f"{text!r} is not a finite number of seconds")
+    return value
+
+
+def _positive(text: str) -> float:
+    value = _finite(text)
+    if value <= 0:
+        raise argparse.ArgumentTypeError(f"{text!r} is not above 0 seconds")
+    return value
+
+
 def poll_seconds(value: float, out: Callable[[str], None]) -> float:
     """At least ``POLL_MIN_S`` between run polls (V9, FR-T7): with 0 a running run was polled
     without ever counting towards ``--timeout``, so the script never ended."""
@@ -410,8 +433,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--base", default="http://localhost:8000", help="the API's base URL")
     parser.add_argument("--world", default=DEMO, help="world id to load the demo into (replaced)")
-    parser.add_argument("--poll", type=float, default=1.0, help="seconds between run polls")
-    parser.add_argument("--timeout", type=float, default=300.0, help="seconds one run may take")
+    parser.add_argument("--poll", type=_finite, default=1.0, help="seconds between run polls")
+    parser.add_argument("--timeout", type=_positive, default=300.0, help="seconds one run may take")
     args = parser.parse_args(argv)
     print(f"Locus live scenario: {args.base}, world {args.world!r} (it is replaced)\n")
     poll = poll_seconds(args.poll, print)

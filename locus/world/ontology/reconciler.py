@@ -122,6 +122,8 @@ class EntityReconciler:
             "mis-spelling/variant)?\n\n"
             f"A (from image): {_entity_text(v)}\nB (from text/map): {_entity_text(c)}"
         )
+        if self._llm is None:  # the caller checks too; this says it to the type checker
+            return None
         try:
             return self._llm.structured(prompt, EntityMatchVerdict)
         except Exception:

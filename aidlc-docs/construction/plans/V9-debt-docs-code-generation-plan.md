@@ -98,10 +98,10 @@ V9에서 고치지 않고 `next-cycle.md`에 적는다(큰 넘김):
 - [x] 2.3 커밋: `chore(web): dev dependencies without known advisories (V9, FR-T2)`
 
 ### Step 3 — mypy 0과 CI 단계 (FR-T3, W-3)
-- [ ] 3.1 § 1.2 표의 일곱 곳을 고친다. 동작은 바뀌지 않는다(가드는 지금도 그 길에서 `None`을 돌려주는 것과 같은 결과).
-- [ ] 3.2 `.github/workflows/ci.yml` backend 잡: `mypy locus api` 단계, ruff·black에 `scripts`. `scripts`의 린트 오류가 있으면 함께 고친다.
-- [ ] 3.3 확인: mypy 0, ruff·black clean, pytest 1228.
-- [ ] 3.4 커밋: `fix(types): mypy is clean and CI checks it; scripts are linted too (V9, FR-T3)`
+- [x] 3.1 § 1.2 표의 일곱 곳을 고친다. 동작은 바뀌지 않는다(가드는 지금도 그 길에서 `None`을 돌려주는 것과 같은 결과).
+- [x] 3.2 `.github/workflows/ci.yml` backend 잡: `mypy locus api` 단계, ruff·black에 `scripts`. `scripts`의 린트 오류가 있으면 함께 고친다.
+- [x] 3.3 확인: mypy 0, ruff·black clean, pytest 1228.
+- [x] 3.4 커밋: `fix(types): mypy is clean and CI checks it; scripts are linted too (V9, FR-T3)`
 
 ### Step 4 — 시험 위생 (FR-T6, W-4)
 - [ ] 4.1 `test_repository_contract.py` U4 롤백 시험: 사건 둘로 B의 막힘을 실제로 단언, `or True` 없앰, 고정 대기 없음(§ 1.2).

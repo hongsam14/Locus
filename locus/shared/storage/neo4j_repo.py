@@ -8,6 +8,7 @@ construction unit-tested) without the package or a live database.
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
 from locus.shared.storage.base import (
     ConstraintViolation,
@@ -17,6 +18,9 @@ from locus.shared.storage.base import (
     Node,
     edge_identity_field,
 )
+
+if TYPE_CHECKING:
+    from neo4j import Driver
 
 _IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
@@ -37,14 +41,14 @@ class Neo4jGraphRepository(GraphRepository):
     def __init__(self, *, uri: str, user: str, password: str) -> None:
         self._uri = uri
         self._auth = (user, password)
-        self._driver = None
+        self._driver: Driver | None = None
 
     # -- lifecycle -------------------------------------------------------- #
     def connect(self) -> None:
         from neo4j import GraphDatabase
 
-        self._driver = GraphDatabase.driver(self._uri, auth=self._auth)
-        self._driver.verify_connectivity()
+        self._driver = driver = GraphDatabase.driver(self._uri, auth=self._auth)
+        driver.verify_connectivity()
 
     def disconnect(self) -> None:
         if self._driver is not None:

@@ -51,9 +51,9 @@ def assign_hierarchy(regions: list[Region]) -> tuple[list[Region], list[BuildWar
 def _break_cycles(regions: list[Region], warnings: list[BuildWarning]) -> None:
     by_id = {r.id: r for r in regions}
     for r in regions:
-        seen = set()
-        cur = r
-        while cur.parent_id is not None:
+        seen: set[str] = set()
+        cur: Region | None = r
+        while cur is not None and cur.parent_id is not None:
             if cur.parent_id in seen or cur.parent_id == r.id:
                 warnings.append(
                     BuildWarning(
@@ -65,6 +65,4 @@ def _break_cycles(regions: list[Region], warnings: list[BuildWarning]) -> None:
                 r.parent_id = None
                 break
             seen.add(cur.parent_id)
-            cur = by_id.get(cur.parent_id)
-            if cur is None:
-                break
+            cur = by_id.get(cur.parent_id)  # None: the parent is not in the list, the walk ends

@@ -45,7 +45,8 @@ class WikiPriorLinker:
         links: list[WikiPriorLink] = []
         seen: set[tuple[str, str]] = set()
         for i, j in candidates:
-            key = tuple(sorted((priors[i].id, priors[j].id)))
+            a, b = sorted((priors[i].id, priors[j].id))
+            key = (a, b)
             if key in seen:
                 continue
             seen.add(key)

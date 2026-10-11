@@ -1,8 +1,9 @@
-"""V7 — what a region knows is shown and seeded confident first (TP-V7-3, BR-V7-05).
+"""V7 — what a region knows is shown and seeded in the consensus order (TP-V7-3, BR-V7-05).
 
 The consensus sorts each list once (Q1 = A); the play screen's facts and the rumor
-seeds read that order as it is, so the player's first three lines and the first rumors
-a capped region gets are the most certain knowledge.
+seeds read that order as it is. The player's first three lines are the most certain
+facts; rumor seeds take the region's own knowledge most certain first, then what
+travels in — a 0.3 direct fact seeds before a 0.9 propagated one (code review #20).
 """
 
 from __future__ import annotations
@@ -79,9 +80,10 @@ def test_tp_v7_3_the_play_screens_facts_come_confident_first() -> None:
     assert [k.knowledge_id for k in src.facts][:3] == ["k-top", "k-high", "k-mid"]
 
 
-def test_br_v7_05_rumor_seeds_go_confident_first() -> None:
+def test_br_v7_05_rumor_seeds_follow_the_consensus_order() -> None:
     """``_collect_sources`` reads direct + propagated in the consensus order: the direct
-    knowledge most certain first, then what travels in from the road."""
+    knowledge most certain first, then what travels in from the road (k-far, 0.9 after
+    the path, comes after k-low, 0.3 direct)."""
     repo = InMemoryPlayRepository()
     s = repo.create_session("w")
     gen = CountingGenerator()

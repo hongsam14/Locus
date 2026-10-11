@@ -286,3 +286,104 @@ def test_tp_v7_3_each_list_is_confident_first_then_by_id() -> None:
         knowledge_by_id={x.id: x for x in (low, high, mid, tie)},
     )
     assert _ids(view.direct) == [high.id, *sorted([mid.id, tie.id]), low.id]
+
+
+def test_code_review_1_a_last_bit_tie_never_hands_the_band_to_the_weaker_origin() -> None:
+    """0.7 × 0.7 is 0.48999999999999994 in floats; a rounded compare took it as a tie
+    with 0.49, let the smaller id win and then judged the band on its weight: hearsay
+    instead of propagated at ``propagate_min=0.49``."""
+    from locus.knowledge.consensus import ConsensusParams
+
+    k = _k("both hold it")
+    view = compute_consensus(
+        "here",
+        regions=[_r(x) for x in ("here", "mid", "a-far", "b-near")],
+        connections=_conn("here", "mid", 0.7)
+        + _conn("mid", "a-far", 0.7)
+        + _conn("here", "b-near", 0.49),
+        scopes=[_direct(k.id, "a-far"), _direct(k.id, "b-near")],
+        knowledge_by_id={k.id: k},
+        params=ConsensusParams(propagate_min=0.49, hearsay_min=0.15),
+    )
+    assert [(v.knowledge_id, v.region_id) for v in view.propagated] == [(k.id, "b-near")]
+    assert not view.hearsay
+
+
+def test_tp_v7_3_every_list_is_confident_first_with_ids_breaking_ties() -> None:
+    """Ids run opposite to confidence in each list, and two globals tie (code review #6)."""
+    parent = Region(id="p", world_id="w", name="P", level=RegionLevel.PROVINCE, provenance=_prov())
+    here = Region(
+        id="here",
+        world_id="w",
+        name="Here",
+        level=RegionLevel.TOWN,
+        parent_id="p",
+        provenance=_prov(),
+    )
+    near, far = _r("near"), _r("far")
+    ks = {
+        kid: Knowledge(
+            id=kid,
+            world_id="w",
+            statement=kid,
+            title=kid,
+            confidence=conf,
+            is_global=glob,
+            provenance=_prov(),
+        )
+        for kid, conf, glob in [
+            ("i-a", 0.3, False),
+            ("i-b", 0.9, False),  # inherited from p
+            ("p-a", 0.5, False),
+            ("p-b", 1.0, False),  # propagated from near
+            ("h-a", 0.4, False),
+            ("h-b", 0.8, False),  # hearsay from far
+            ("g-b", 0.7, True),
+            ("g-a", 0.7, True),  # globals tied: by id
+        ]
+    }
+    view = compute_consensus(
+        "here",
+        regions=[parent, here, near, far],
+        connections=_conn("here", "near", 0.9) + _conn("here", "far", 0.3),
+        scopes=[
+            _direct("i-a", "p", 0.3),  # inherited items carry their scope's confidence
+            _direct("i-b", "p", 0.9),
+            _direct("p-a", "near"),
+            _direct("p-b", "near"),
+            _direct("h-a", "far"),
+            _direct("h-b", "far"),
+        ],
+        knowledge_by_id=ks,
+    )
+    assert _ids(view.inherited) == ["i-b", "i-a"]
+    assert _ids(view.propagated) == ["p-b", "p-a"]
+    assert _ids(view.hearsay) == ["h-b", "h-a"]
+    assert _ids(view.global_knowledge) == ["g-a", "g-b"]
+
+
+def test_br_v7_03_a_settled_knowledge_is_never_unknown() -> None:
+    """Known here directly, also held by a region too far to hear from: not unknown."""
+    k = _k("known here")
+    view = compute_consensus(
+        "here",
+        regions=[_r("here"), _r("far")],
+        connections=_conn("here", "far", 0.1),
+        scopes=[_direct(k.id, "here"), _direct(k.id, "far")],
+        knowledge_by_id={k.id: k},
+    )
+    assert _ids(view.direct) == [k.id] and view.unknown_count == 0
+
+
+def test_tp_v7_3_close_confidences_are_ordered_by_value_not_by_id() -> None:
+    here = _r("here")
+    a, b = _k("a"), _k("b")
+    a = a.model_copy(update={"id": "k-a"})
+    b = b.model_copy(update={"id": "k-b"})
+    view = compute_consensus(
+        "here",
+        regions=[here],
+        scopes=[_direct("k-a", "here", 0.91), _direct("k-b", "here", 0.93)],
+        knowledge_by_id={"k-a": a, "k-b": b},
+    )
+    assert _ids(view.direct) == ["k-b", "k-a"]

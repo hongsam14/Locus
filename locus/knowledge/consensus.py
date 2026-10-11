@@ -33,11 +33,6 @@ class ConsensusParams:
 
 DEFAULT_PARAMS = ConsensusParams()
 
-# Path weights and confidences are float products: two loads of one world may visit
-# the same paths in another order and differ in the last bit. Ties are judged on this
-# many decimals so the pick and the order do not follow that noise (V7, FR-C6).
-_TIE_DIGITS = 9
-
 
 def _ancestors(region_id: str, by_id: dict[str, Region]) -> list[str]:
     out: list[str] = []
@@ -93,13 +88,16 @@ def best_origins(
 
 
 def _stronger(rid: str, weight: float, cur: tuple[str, float]) -> bool:
-    w, cw = round(weight, _TIE_DIGITS), round(cur[1], _TIE_DIGITS)
-    return w > cw or (w == cw and rid < cur[0])
+    # Exact: ``best_path_weights`` gives the same bits whatever the connection order
+    # (each path is multiplied from the start), and the band is judged on this same
+    # weight. A rounded compare let a weaker origin win a "tie" (V7 code review #1).
+    return weight > cur[1] or (weight == cur[1] and rid < cur[0])
 
 
 def _confident_first(views: list[KnowledgeView]) -> list[KnowledgeView]:
-    """Q1 = A: the most certain first, then by knowledge id (BR-V7-04)."""
-    return sorted(views, key=lambda v: (-round(v.confidence, _TIE_DIGITS), v.knowledge_id))
+    """Q1 = A: the most certain first, then by knowledge id (BR-V7-04). The NPC scope's
+    ``pick_facts`` orders by the same exact confidence."""
+    return sorted(views, key=lambda v: (-v.confidence, v.knowledge_id))
 
 
 def compute_consensus(

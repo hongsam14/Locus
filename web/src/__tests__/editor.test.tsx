@@ -185,19 +185,33 @@ describe("RegionInspector (US-2.2·2.3·2.4·2.5)", () => {
     // registered reload() instead of bumping a reloadKey
     (api.updateRegion as Mock).mockResolvedValue({});
     let reload = () => {};
-    render(<RegionInspector worldId="w" regionId="r1" regions={regions} open={ALL_OPEN} onOpenChange={() => {}}
-      onChanged={() => {}} onDeleted={() => {}}
-      registerReload={(_panel, fn) => { reload = fn; return () => {}; }} />);
+    const props = { worldId: "w", regionId: "r1", open: ALL_OPEN, onOpenChange: () => {}, onChanged: () => {},
+      onDeleted: () => {}, registerReload: (_panel: string, fn: () => void) => { reload = fn; return () => {}; } };
+    const { rerender } = render(<RegionInspector {...props} regions={regions} />);
     await waitFor(() => screen.getByTestId("region-form"));
     (api.getEditorRegion as Mock).mockResolvedValue({
       ...VIEW, region: { ...VIEW.region, position: { x: 0.5, y: 0.5 } },
     });
-    act(() => reload()); // the page saved a drag of this region
+    // the page saved a drag of this region: its map spot moved and it asks for a re-read
+    rerender(<RegionInspector {...props} regions={regions.map((r) => (r.id === "r1" ? { ...r, position: { x: 0.5, y: 0.5 } } : r))} />);
+    act(() => reload());
     await waitFor(() => expect(api.getEditorRegion).toHaveBeenCalledTimes(2));
     fireEvent.change(screen.getByTestId("region-description"), { target: { value: "by the river" } });
     fireEvent.click(screen.getByTestId("region-save"));
     await waitFor(() => expect(api.updateRegion).toHaveBeenCalledWith("w",
       expect.objectContaining({ position: { x: 0.5, y: 0.5 }, description: "by the river" })));
+  });
+
+  it("a save while a drag's save is still out keeps the dragged spot (code review 01 #8)", async () => {
+    // the region read is the old spot; the map already shows the drag
+    (api.updateRegion as Mock).mockResolvedValue({});
+    const moved = regions.map((r) => (r.id === "r1" ? { ...r, position: { x: 0.7, y: 0.7 } } : r));
+    render(<RegionInspector worldId="w" regionId="r1" regions={moved} open={ALL_OPEN} onOpenChange={() => {}}
+      onChanged={() => {}} onDeleted={() => {}} />);
+    await waitFor(() => screen.getByTestId("region-form"));
+    fireEvent.click(screen.getByTestId("region-save"));
+    await waitFor(() => expect(api.updateRegion).toHaveBeenCalledWith("w",
+      expect.objectContaining({ position: { x: 0.7, y: 0.7 } })));
   });
 
   it("the weight slider saves nothing while it moves and once when let go", async () => {

@@ -3,7 +3,7 @@ import { api } from "../../api";
 import { statusOf } from "../../api/http";
 import { describeError, type DescribedError } from "../../errors";
 import { t } from "../../i18n";
-import type { AugAction, AugQuestion, AugRun, QuestionTarget, WikiPrior } from "../../types";
+import type { AugAction, AugQuestion, AugRun, QuestionTarget } from "../../types";
 import { confidenceOf, type Inputs } from "./AugmentQuestion";
 
 export interface Augmentation {
@@ -14,7 +14,8 @@ export interface Augmentation {
   changed: Record<string, QuestionTarget[]>; // change id -> the targets it changed
   drafts: Record<string, Inputs>; // by issue key (U3 review S28)
   setDraft(issueKey: string, patch: Partial<Inputs>): void;
-  priors: WikiPrior[] | null;
+  /** The last write met a target the world no longer has: offer to start again (BLM § 1.4). */
+  stale: boolean;
   start(): void;
   answer(q: AugQuestion, action: AugAction): void;
   revert(changeId: string): void;
@@ -34,7 +35,7 @@ export function useAugmentation(worldId: string, opts: { onChanged(): void }): A
   const [error, setError] = useState<DescribedError>();
   const [changed, setChanged] = useState<Record<string, QuestionTarget[]>>({});
   const [drafts, setDrafts] = useState<Record<string, Inputs>>({});
-  const [priors, setPriors] = useState<WikiPrior[] | null>(null);
+  const [stale, setStale] = useState(false);
   const running = useRef(false);
   const epoch = useRef(0); // a reset or another world: answers of older calls are dropped
   const optsRef = useRef(opts);
@@ -51,20 +52,12 @@ export function useAugmentation(worldId: string, opts: { onChanged(): void }): A
     setError(undefined);
     setChanged({});
     setDrafts({});
-    setPriors(null);
+    setStale(false);
   }, []);
   useEffect(() => reset, [worldId, reset]); // another world starts clean
 
-  // the reference choices of a broken prior link (ref_kind "prior"), read once per run
-  const needsPriors = run?.open_questions.some((q) => q.ref_kind === "prior") ?? false;
-  useEffect(() => {
-    if (!needsPriors || priors != null) return;
-    const mine = epoch.current;
-    api.listPriors(worldId).then(
-      (ps) => mine === epoch.current && setPriors(ps),
-      () => mine === epoch.current && setPriors([]),
-    );
-  }, [needsPriors, priors, worldId]);
+  // the reference choices of a broken prior link come from the world the page reads, which is
+  // read again after a prior is deleted — not from a list read once (code review 01 #9)
 
   /** One write at a time. A 404 is a lost run only when the run itself is gone: a target
    * removed meanwhile (an edit, another tab's replace) also answers 404, and then the run
@@ -75,6 +68,7 @@ export function useAugmentation(worldId: string, opts: { onChanged(): void }): A
     const mine = epoch.current;
     setBusy(true);
     setError(undefined);
+    setStale(false);
     try {
       const next = await fn();
       if (mine === epoch.current && next) setRun(next);
@@ -87,7 +81,10 @@ export function useAugmentation(worldId: string, opts: { onChanged(): void }): A
           const again = await api.getRun(held.id);
           if (mine !== epoch.current) return;
           setRun(again);
-          setError({ ...describeError(err), title: t("notice.augmentWorldChanged") });
+          // the sentence is the whole advice: describeError's own line ("reload the list")
+          // would contradict it (code review 01 #19); [start again] sits beside it
+          setError({ ...describeError(err), title: t("notice.augmentWorldChanged"), action: undefined });
+          setStale(true);
         } catch (gone) {
           if (mine !== epoch.current) return;
           if (statusOf(gone) === 404) setLost(true);
@@ -96,7 +93,7 @@ export function useAugmentation(worldId: string, opts: { onChanged(): void }): A
       } else if (status === 400) {
         // several causes share the code (no change, empty statement, a missing reference …):
         // one sentence, the server's reason folded (FD review 01 R-06)
-        setError({ ...describeError(err), title: t("notice.augmentCantSave") });
+        setError({ ...describeError(err), title: t("notice.augmentCantSave"), action: undefined });
       } else {
         setError(describeError(err));
       }
@@ -123,6 +120,7 @@ export function useAugmentation(worldId: string, opts: { onChanged(): void }): A
       void write(async () => {
         const held = runRef.current;
         if (!held) return null;
+        const mine = epoch.current;
         const i = drafts[q.issue_key] ?? {};
         const takes = new Set(q.needs?.[action] ?? []); // only what this action takes
         const res = await api.answer(held.id, {
@@ -134,6 +132,8 @@ export function useAugmentation(worldId: string, opts: { onChanged(): void }): A
           region_id: takes.has("region") ? i.region || undefined : undefined,
           ref_id: takes.has("ref") ? i.ref || undefined : undefined,
         });
+        // a reset or another world meanwhile: the answer belongs to a run that is gone (#27)
+        if (mine !== epoch.current) return null;
         // this card's draft goes; the others stay (S28) — here, not in the panel, so it
         // goes even when the panel left meanwhile
         setDrafts((d) => {
@@ -152,7 +152,9 @@ export function useAugmentation(worldId: string, opts: { onChanged(): void }): A
       void write(async () => {
         const held = runRef.current;
         if (!held) return null;
+        const mine = epoch.current;
         const next = await api.revert(held.id, changeId);
+        if (mine !== epoch.current) return null; // #27
         optsRef.current.onChanged();
         return next;
       }),
@@ -173,5 +175,5 @@ export function useAugmentation(worldId: string, opts: { onChanged(): void }): A
     [],
   );
 
-  return { run, busy, error, lost, changed, drafts, setDraft, priors, start, answer, revert, unignore, reset };
+  return { run, busy, error, lost, stale, changed, drafts, setDraft, start, answer, revert, unignore, reset };
 }

@@ -636,6 +636,7 @@ export const ko = {
   "tab.unscoped": "범위 없는 지식 {n}",
   "tab.augment": "보강",
   "tab.wiki": "상식 근거",
+  "action.restartAugment": "보강 새로 시작",
   "action.fileMenu": "파일",
   "action.playThisWorld": "이 월드로 플레이",
   "action.deleteRegion": "이 지역 지우기",

@@ -620,6 +620,7 @@ export const en: Record<Key, string> = {
   "tab.unscoped": "Known nowhere {n}",
   "tab.augment": "Augment",
   "tab.wiki": "Common sense",
+  "action.restartAugment": "Start the augmentation again",
   "action.fileMenu": "File",
   "action.playThisWorld": "Play this world",
   "action.deleteRegion": "Delete this region",

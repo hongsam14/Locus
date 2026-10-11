@@ -1,6 +1,6 @@
 import { enumLabel } from "../../format";
 import { t } from "../../i18n";
-import type { AugQuestion, ConnectionEdge, Knowledge, NameRef, Region } from "../../types";
+import type { AugQuestion, ConnectionEdge, Knowledge, NameRef, Region, WikiPrior } from "../../types";
 import { Button, InlineError, Panel } from "../../ui";
 import { AugmentQuestion } from "./AugmentQuestion";
 import { changeLabel, issueKeyName, type NameSource } from "./augmentNames";
@@ -18,12 +18,14 @@ export function AugmentPanel({
   entities,
   knowledge,
   connections,
+  priors,
 }: {
   aug: Augmentation;
   regions: Region[];
   entities: NameRef[];
   knowledge: Knowledge[];
   connections: ConnectionEdge[];
+  priors: WikiPrior[]; // the world's, read again after a prior is deleted (code review 01 #9)
 }) {
   const { run, busy, lost, error } = aug;
   const names: NameSource = { regions, knowledge, entities, connections };
@@ -31,7 +33,7 @@ export function AugmentPanel({
   const refOptions = (q: AugQuestion): NameRef[] => {
     if (q.ref_kind === "region") return regions;
     if (q.ref_kind === "entity") return entities;
-    return (aug.priors ?? []).map((p) => ({ id: p.id, name: p.effect }));
+    return priors.map((p) => ({ id: p.id, name: p.effect }));
   };
   const kept = run?.kept_keys ?? [];
   return (
@@ -40,7 +42,14 @@ export function AugmentPanel({
         {t("augment.find")}
       </Button>
       {error && (
-        <div data-testid="augment-error"><InlineError error={error} /></div>
+        <div data-testid="augment-error" className="flex flex-col items-start gap-2">
+          <InlineError error={error} />
+          {aug.stale && (
+            <Button size="sm" data-testid="augment-restart" disabled={busy} onClick={aug.start}>
+              {t("action.restartAugment")}
+            </Button>
+          )}
+        </div>
       )}
       {lost && (
         <div className="text-sm text-danger" data-testid="augment-lost">{t("augment.lost")}</div>

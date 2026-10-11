@@ -3,7 +3,7 @@ import { fireEvent, screen } from "@testing-library/react";
 import { AugmentPanel } from "../features/editor/AugmentPanel";
 import type { InspectorOpen } from "../features/editor/RegionInspector";
 import { useAugmentation } from "../features/editor/useAugmentation";
-import type { ConnectionEdge, Knowledge, NameRef, Region } from "../types";
+import type { ConnectionEdge, Knowledge, NameRef, Region, WikiPrior } from "../types";
 
 /** Every inspector section unfolded, for tests that reach into all four. */
 export const ALL_OPEN: InspectorOpen = { basic: true, connections: true, knowledge: true, npcs: true };
@@ -21,6 +21,7 @@ export function AugHost({
   entities = [],
   knowledge = [],
   connections = [],
+  priors = [],
   onChanged = () => {},
   show = true,
 }: {
@@ -29,10 +30,11 @@ export function AugHost({
   entities?: NameRef[];
   knowledge?: Knowledge[];
   connections?: ConnectionEdge[];
+  priors?: WikiPrior[];
   onChanged?(): void;
   show?: boolean;
 }) {
   const aug = useAugmentation(worldId, { onChanged });
   if (!show) return null;
-  return <AugmentPanel aug={aug} regions={regions} entities={entities} knowledge={knowledge} connections={connections} />;
+  return <AugmentPanel aug={aug} regions={regions} entities={entities} knowledge={knowledge} connections={connections} priors={priors} />;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
 import { api } from "../../api";
 import { describeError, type DescribedError } from "../../errors";
 import { useResource } from "../../hooks";
@@ -24,7 +24,7 @@ export function UnscopedPanel({
   worldId: string;
   regions: Region[];
   picks: Record<string, string>;
-  onPicks(next: Record<string, string>): void;
+  onPicks: Dispatch<SetStateAction<Record<string, string>>>;
   onChanged(): void;
   registerReload?(panel: PanelName, fn: () => void): () => void;
 }) {
@@ -41,10 +41,9 @@ export function UnscopedPanel({
     setError(null);
     try {
       await fn();
-      if (done) {
-        const { [done]: _gone, ...rest } = picks;
-        onPicks(rest);
-      }
+      // from the picks as they are now, not as they were at the press: a region picked for
+      // another item meanwhile, or a replace's clearing, stays (code review 01 #26)
+      if (done) onPicks(({ [done]: _gone, ...rest }) => rest);
       read.reload();
       onChanged();
     } catch (e) {

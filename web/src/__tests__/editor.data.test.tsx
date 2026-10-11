@@ -293,14 +293,15 @@ describe("useAugmentation (R-15, § 1.4 R-05, TP-V8-4)", () => {
     expect(result.current.error?.raw).toContain("the answer changes nothing");
   });
 
-  it("reads the prior choices when a question needs them, and a reset forgets everything", async () => {
-    (api.listPriors as Mock).mockResolvedValue([{ id: "p1", effect: "rivers flow downhill" }]);
+  it("a reset forgets the run, the drafts and the offer to start again", async () => {
+    // code review 01 #9: the prior choices are the world's (the page passes them); the hook
+    // no longer reads a list once per opening
     const { result } = await started([question("k1", { ref_kind: "prior" })]);
-    await waitFor(() => expect(result.current.priors).toHaveLength(1));
+    expect(api.listPriors).not.toHaveBeenCalled();
     act(() => result.current.setDraft("k1", { ref: "p1" }));
     act(() => result.current.reset());
     expect(result.current.run).toBeNull();
     expect(result.current.drafts).toEqual({});
-    expect(result.current.priors).toBeNull();
+    expect(result.current.stale).toBe(false);
   });
 });

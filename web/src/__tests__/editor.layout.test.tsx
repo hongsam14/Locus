@@ -608,3 +608,85 @@ describe("BR-V8-33: every control has a label; a dialog closes on Esc", () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByTestId("map-tool-add-region"))); // its opener
   });
 });
+
+describe("code review 01 #12: each write re-reads what it changed (BLM § 5)", () => {
+  it("the connect tool re-reads the world and the open inspector", async () => {
+    (api.saveConnection as Mock).mockResolvedValue([]);
+    renderEditor();
+    await ready();
+    await pickOnMap("r1");
+    const regionReads = (api.getEditorRegion as Mock).mock.calls.length;
+    const exports = (api.exportWorld as Mock).mock.calls.length;
+    fireEvent.click(screen.getByTestId("map-tool-connect"));
+    fireEvent.click(screen.getByTestId("region-marker-r1"));
+    fireEvent.click(screen.getByTestId("region-marker-r2"));
+    fireEvent.change(await screen.findByTestId("connection-kind"), { target: { value: "river" } });
+    fireEvent.click(screen.getByTestId("connection-save"));
+    await waitFor(() => expect(api.saveConnection).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect((api.getEditorRegion as Mock).mock.calls.length).toBe(regionReads + 1));
+    expect((api.exportWorld as Mock).mock.calls.length).toBe(exports + 1);
+  });
+
+  it("assigning a region to knowledge known nowhere re-reads the world (its count)", async () => {
+    (api.setScopes as Mock).mockResolvedValue({ region_ids: ["r2"] });
+    renderEditor();
+    await ready();
+    openTab("unscoped");
+    fireEvent.change(await screen.findByTestId("unscoped-region-k7"), { target: { value: "r2" } });
+    const exports = (api.exportWorld as Mock).mock.calls.length;
+    fireEvent.click(screen.getByTestId("unscoped-assign-k7"));
+    await waitFor(() => expect((api.exportWorld as Mock).mock.calls.length).toBe(exports + 1));
+  });
+
+  it("deleting a prior re-reads the world; a replace re-reads the grounds tab", async () => {
+    (api.priorRefs as Mock).mockResolvedValue({ usages: [{ prior: { id: "p1", world_id: "w", prior_type: "fact",
+      condition: "river", effect: "trade", domains: ["geography"], confidence: 0.8 }, connections: [], knowledge: [] }], broken: [] });
+    (api.deletePrior as Mock).mockResolvedValue({});
+    (api.importWorldFile as Mock).mockResolvedValue({ world_id: "w", format_version: 1, source_world_id: "w",
+      remapped: false, forced: false, replaced: true, closed_session_ids: [], counts: {}, warnings: [], ok: true });
+    renderEditor();
+    await ready();
+    openTab("wiki");
+    const card = await screen.findByTestId("prior-p1");
+    const exports = (api.exportWorld as Mock).mock.calls.length;
+    fireEvent.click(within(card).getByRole("button", { name: t("wiki.delete") }));
+    await screen.findByTestId("confirm-delete");
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: t("delete.confirm") }));
+    await waitFor(() => expect((api.exportWorld as Mock).mock.calls.length).toBe(exports + 1));
+    const refs = (api.priorRefs as Mock).mock.calls.length;
+    const file = new File(['{"format_version": 1}'], "w.world.json", { type: "application/json" });
+    fireEvent.change(screen.getByTestId("file-input"), { target: { files: [file] } });
+    await waitFor(() => screen.getByTestId("file-confirm"));
+    fireEvent.click(screen.getByText(t("action.confirm")));
+    await waitFor(() => expect((api.priorRefs as Mock).mock.calls.length).toBeGreaterThan(refs));
+  });
+});
+
+describe("code review 01 #14: on a narrow screen a press on the map scrolls to the panel", () => {
+  const proto = Element.prototype as unknown as { scrollIntoView?: (arg?: unknown) => void };
+  let had: typeof proto.scrollIntoView;
+  beforeEach(() => {
+    had = proto.scrollIntoView;
+  });
+  afterEach(() => {
+    proto.scrollIntoView = had;
+  });
+
+  it("narrow: the panel is scrolled to once; wide: not at all", async () => {
+    const calls: Element[] = [];
+    proto.scrollIntoView = function (this: Element) {
+      calls.push(this);
+    };
+    const { unmount } = renderEditor();
+    await ready();
+    fireEvent.click(screen.getByTestId("region-marker-r1"));
+    expect(calls).toEqual([screen.getByTestId("editor-panel")]);
+    unmount();
+    calls.length = 0;
+    wide = true;
+    renderEditor();
+    await ready();
+    fireEvent.click(screen.getByTestId("region-marker-r1"));
+    expect(calls).toEqual([]);
+  });
+});

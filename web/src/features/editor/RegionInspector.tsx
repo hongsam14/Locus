@@ -78,21 +78,26 @@ export function RegionInspector({
   useEffect(() => () => clearTimeout(savedTimer.current), []);
 
   async function saveRegion(r: Region) {
-    if (!(await write(() => api.updateRegion(worldId, r)))) return;
+    // the spot on the map, which a drag may have moved before its save came back: the form's
+    // copy is the last read and would write the old spot back (code review 01 #8)
+    const spot = regions.find((x) => x.id === r.id)?.position;
+    if (!(await write(() => api.updateRegion(worldId, spot ? { ...r, position: spot } : r)))) return;
     setSaved(true);
     clearTimeout(savedTimer.current);
     savedTimer.current = setTimeout(() => setSaved(false), 1000);
   }
 
-  /** Run a write, then re-read; false when it failed (the error is shown). */
-  async function write(fn: () => Promise<unknown>): Promise<boolean> {
+  /** Run a write, then re-read this region — and the world, unless only the region's people
+   * changed (BLM § 5: NPC writes re-read the inspector only, code review 01 #29); false when
+   * it failed (the error is shown). */
+  async function write(fn: () => Promise<unknown>, { world = true }: { world?: boolean } = {}): Promise<boolean> {
     if (busy) return false;
     setBusy(true);
     setError(null);
     try {
       await fn();
       read.reload();
-      onChanged();
+      if (world) onChanged();
       return true;
     } catch (e) {
       setError(describeError(e));
@@ -132,7 +137,7 @@ export function RegionInspector({
       }
       setPending(null);
       read.reload();
-      onChanged();
+      if (p.kind !== "npc") onChanged();
     } catch (e) {
       // a player walked in while the dialog was open: the plan's blocked line and a confirm
       // that stays off — not the raw 409 (U3 review S05)
@@ -190,7 +195,9 @@ export function RegionInspector({
         <div data-testid="inspector-error"><InlineError error={error} /></div>
       )}
       {section("basic", t("label.sectionBasic"),
-        <RegionForm key={JSON.stringify(view.region)} region={view.region} regions={regions}
+        // keyed by what the form shows, not the spot: a drag of this region does not wipe what
+        // was typed (code review 01 #28)
+        <RegionForm key={JSON.stringify({ ...view.region, position: undefined })} region={view.region} regions={regions}
           busy={busy} saved={saved} onSave={saveRegion} />)}
       {section("connections", t("label.sectionConnections", { n: view.connections.length }),
         <ConnectionList connections={view.connections} busy={busy}
@@ -207,8 +214,8 @@ export function RegionInspector({
       {section("npcs", t("label.sectionNpcs", { n: view.npcs.length }),
         <NpcEditorList worldId={worldId} regionId={regionId} npcs={view.npcs} busy={busy}
           onCreate={(f: NpcFields) => write(() => api.createNpc(worldId,
-            { ...f, world_id: worldId, home_region_id: regionId, provenance: PROV }))}
-          onUpdate={(n) => write(() => api.updateNpc(worldId, n))}
+            { ...f, world_id: worldId, home_region_id: regionId, provenance: PROV }), { world: false })}
+          onUpdate={(n) => write(() => api.updateNpc(worldId, n), { world: false })}
           onDelete={(n) => setPending({ kind: "npc", item: n })} />)}
       <DangerZone disabled={busy} onDelete={askDeleteRegion} />
       <ConfirmDelete open={pending != null} plan={pending?.kind === "region" ? pending.plan : null}

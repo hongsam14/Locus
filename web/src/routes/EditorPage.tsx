@@ -144,7 +144,7 @@ export function EditorPage() {
     ),
     augment: () => (
       <AugmentPanel aug={aug} regions={w.regions} entities={entities} knowledge={world?.knowledge ?? []}
-        connections={world?.connections ?? []} />
+        connections={world?.connections ?? []} priors={world?.priors ?? []} />
     ),
     wiki: () => (
       <WikiPanel worldId={worldId} regions={w.regions} onChanged={w.reloadWorld} registerReload={w.registerReload} />
@@ -164,7 +164,7 @@ export function EditorPage() {
     <div className="flex flex-col gap-2">
       <EditorMapPane loading={!world && w.state === "loading"} regions={w.regions}
         connections={world?.connections ?? []} selectedId={w.selected} selectedConnection={w.connection}
-        busy={mapWrite.busy} disabled={!world} mapUrl={picture?.url ?? null} mapName={picture?.name ?? null}
+        busy={mapWrite.busy} disabled={!world || w.settling} mapUrl={picture?.url ?? null} mapName={picture?.name ?? null}
         error={mapWrite.error ?? w.dragError} onSelect={pickOnMap} onSelectConnection={pickConnection}
         onMove={w.move} onCreateRegion={createRegion} onCreateConnection={createConnection}
         onMapFile={(file) => setPicture({ url: URL.createObjectURL(file), name: file.name })} /* this browser only */ />

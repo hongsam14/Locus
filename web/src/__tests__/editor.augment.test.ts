@@ -2,11 +2,11 @@
 // TP-V8-10, § 1.4 R-08(c)): the issue key and the change description become names and labels;
 // nothing internal reaches the screen.
 import fc from "fast-check";
-import { changeLabel, fieldLabel, issueKeyName, type NameSource } from "../features/editor/augmentNames";
-import { groupByStage, sessionsNotClosed, stageLabel } from "../features/editor/buildStages";
+import { changeLabel, fieldLabel, issueKeyLine, issueKeyName, type NameSource, targetLabel } from "../features/editor/augmentNames";
+import { BUILD_STAGES, groupByStage, sessionsNotClosed, stageLabel } from "../features/editor/buildStages";
 import { ENUM_VALUES, enumLabel } from "../format";
 import { t } from "../i18n";
-import type { BuildWarning, ConnectionEdge, Knowledge, Region } from "../types";
+import type { BuildWarning, ConnectionEdge, Knowledge, QuestionTarget, Region } from "../types";
 
 const reg = (id: string, name: string): Region => ({ id, name, level: "town" });
 const src: NameSource = {
@@ -110,5 +110,57 @@ describe("build stages (BR-V8-15/30)", () => {
 
   it("counts the sessions a replace could not close", () => {
     expect(sessionsNotClosed([w("sessions"), w("sessions"), w("backup")])).toBe(2);
+  });
+});
+
+
+// V8 code review 01 #16, #21, #23, #3: keys and names the friendly fixtures above did not try
+describe("issue keys and target names, as the server really sends them", () => {
+  it("a broken id that holds ':' does not hide the field (#21)", () => {
+    expect(issueKeyName("dangling:knowledge:k1:about_entity_ids:e:gone", src)).toBe(`Fish · ${fieldLabel("about_entity_ids")}`);
+  });
+
+  it("a connection stored the other way round is still named (#16)", () => {
+    const reversed: NameSource = { ...src, connections: [{ source_region_id: "r:3", target_region_id: "r1", kind: "route", weight: 0.6 } as ConnectionEdge] };
+    const key = `orphan:connection:${["r1", "r:3"].sort().join("|")}|route::`;
+    expect(issueKeyName(key, reversed)).toBe(`Harbor – Ford · ${enumLabel("connectionKind", "route")}`);
+  });
+
+  it("a key over several targets is named by the first the world holds (#16)", () => {
+    expect(issueKeyName("low_confidence:knowledge:k0|k1::", src)).toBe("Fish");
+  });
+
+  it("a target the world does not hold is an unnamed item, never its id (#16)", () => {
+    fc.assert(
+      fc.property(fc.stringMatching(/^[A-Za-z가-힣 ]{1,12}$/), (id) => {
+        fc.pre(!["r1", "k1", "e1"].includes(id));
+        for (const kind of ["region", "knowledge", "entity"]) {
+          expect(issueKeyName(`gap:${kind}:${id}::`, src)).toBe(t("label.unnamed"));
+        }
+      }),
+    );
+  });
+
+  it("an ignored or kept line says which issue (#23)", () => {
+    expect(issueKeyLine("gap:region:r1::", src)).toBe(`${enumLabel("augmentationIssue", "gap")} · Harbor`);
+    expect(issueKeyLine("low_confidence:knowledge:k1::", src)).toBe(`${enumLabel("augmentationIssue", "low_confidence")} · Fish`);
+    expect(issueKeyLine("strange:region:r1::", src)).toBe("Harbor");
+  });
+
+  it("a question's target is named from the world: a connection by its regions and kind in words (#3)", () => {
+    const conn: QuestionTarget = { kind: "connection", id: "r1|r:3|route", name: "Harbor – Ford (route)",
+      connection: { world_id: "w", a_region_id: "r1", b_region_id: "r:3", kind: "route" } };
+    expect(targetLabel(conn, src)).toBe(`Harbor – Ford · ${enumLabel("connectionKind", "route")}`);
+    expect(targetLabel({ ...conn, connection: null }, src)).toBe(`Harbor – Ford · ${enumLabel("connectionKind", "route")}`);
+    expect(targetLabel({ ...conn, id: "x|y|route", connection: null }, src)).toBe(t("label.unnamed"));
+    expect(targetLabel({ kind: "knowledge", id: "k1", name: "Fische" }, src)).toBe("Fish");
+    expect(targetLabel({ kind: "knowledge", id: "k-gone", name: "Old mill" }, src)).toBe("Old mill");
+  });
+
+  it("the build stages are the 15 of BR-V8-15 (T12: the list does not check itself)", () => {
+    expect([...BUILD_STAGES].sort()).toEqual([
+      "backup", "carry-over", "commit", "duplicate-ids", "embed", "import", "ingestion", "load", "ontology",
+      "persist-graph", "persist-meta", "persist-search", "sessions", "topology", "wiki",
+    ]);
   });
 });

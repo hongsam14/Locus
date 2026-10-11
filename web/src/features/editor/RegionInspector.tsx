@@ -167,7 +167,8 @@ export function RegionInspector({
   }
 
   const message =
-    pending?.kind === "knowledge" ? t("delete.knowledge", { name: pending.item.title })
+    // the title the card and its ✕ show (code review 01 #24)
+    pending?.kind === "knowledge" ? t("delete.knowledge", { name: pending.item.title_ko || pending.item.title })
     : pending?.kind === "npc" ? t("delete.npc", { name: pending.item.name })
     : pending?.kind === "connection"
       ? t("delete.connection", { a: view?.region.name ?? "", b: pending.item.other_region_name,

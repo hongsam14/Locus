@@ -59,3 +59,15 @@ describe("register by key", () => {
     }
   });
 });
+
+
+// V8 code review 01 #38: a placeholder dropped or renamed in one language shows "{n}" raw
+describe("placeholders", () => {
+  it("every key has the same {placeholders} in ko and en", () => {
+    const names = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(",");
+    const off = Object.entries(dicts.ko)
+      .filter(([k, v]) => names(v) !== names((dicts.en as Record<string, string>)[k] ?? ""))
+      .map(([k]) => k);
+    expect(off).toEqual([]);
+  });
+});

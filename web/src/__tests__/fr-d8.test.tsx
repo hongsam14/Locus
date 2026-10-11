@@ -269,7 +269,7 @@ describe("TP-V6-12: the GM screen in words", () => {
     expect(bare && all.slice(Math.max(0, (bare.index ?? 0) - 60), (bare.index ?? 0) + 20)).toBeNull();
     expect(all.match(ABBREV)).toBeNull();
     expect(all).toContain(numberWithMeaning("distortion", 0.42)); // numbers are there, with meanings
-  });
+  }, 30_000); // one long scenario: under a loaded test run it outlasts 5 s (V8 code review 01 #15)
 });
 
 // V8 (BR-V8-15/16/18, TP-V8-9): the editor in words. Every region level, connection kind,
@@ -316,11 +316,15 @@ describe("TP-V8-9: the editor in words", () => {
     kind === "region" ? { kind, id: "v1", name: "곳1" }
     : kind === "knowledge" ? { kind, id: "k1", name: "물레방아" }
     : kind === "entity" ? { kind, id: "e1", name: "옛 종" }
-    : { kind, id: "v0|v1|adjacent", name: "곳0 – 곳1" };
+    // as the server names a connection: the raw kind in brackets (code review 01 #3)
+    : { kind, id: "v0|v1|adjacent", name: "곳0 – 곳1 (adjacent)",
+        connection: { world_id: "w", a_region_id: "v0", b_region_id: "v1", kind: "adjacent" } };
   const keyOf = (issue: string, kind: string) => `${issue}:${kind}:${targetOf(kind).id}::`;
   const questions: AugQuestion[] = ENUM_VALUES.augmentationIssue.map((issue, i) => {
     const kind = ENUM_VALUES.augmentationTarget[i % 4];
-    return { id: `q${i}`, issue_id: `i${i}`, issue_key: keyOf(issue, kind), type: issue, text: `질문 ${i}`,
+    // the server's no-LLM template, raw property and all: the screen must not show it
+    return { id: `q${i}`, issue_id: `i${i}`, issue_key: keyOf(issue, kind), type: issue,
+      text: `item ${i} points at something that is gone (about_entity_ids). Re-point or clear?`,
       actions: [...ENUM_VALUES.augmentationAction], needs: {},
       target: { ...targetOf(kind), ...(issue === "dangling" ? { field: "about_entity_ids" } : {}) } } as AugQuestion;
   });
@@ -444,5 +448,5 @@ describe("TP-V8-9: the editor in words", () => {
     expect(all).toContain(numberWithMeaning("weight", 0.37));
     expect(all).toContain(t("label.stage.other"));
     expect(all).toContain(t("label.field.about_entity_ids"));
-  });
+  }, 30_000); // one long scenario: under a loaded test run it outlasts 5 s (V8 code review 01 #15)
 });

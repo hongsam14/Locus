@@ -6,8 +6,8 @@ import { groupByStage, sessionsNotClosed } from "./buildStages";
 /** What a build did (US-2.1, BR-U3-35; V8 frontend-components § 4.6, BR-V8-29/30): the counts,
  * the NPCs and seeds a rebuild carried to the new regions (V7), the open sessions a replace
  * could not close (V6), and the warnings by stage in words — each stage folds the server's own
- * lines. "Known nowhere N" opens that tab (UX-22); with none, or where there is no tab to
- * open (the home), it is not shown. */
+ * lines. "Known nowhere N" opens that tab (UX-22); where there is no tab to open (the home)
+ * the count is said; with none, neither shows. */
 export function BuildReportPanel({
   report,
   onShowUnscoped,
@@ -38,13 +38,16 @@ export function BuildReportPanel({
       {(npcs > 0 || seeds > 0) && (
         <div data-testid="build-report-carried">{t("notice.buildCarried", { npcs, seeds })}</div>
       )}
-      {unscoped > 0 && onShowUnscoped && (
+      {unscoped > 0 && (onShowUnscoped ? (
         <div>
           <Button size="sm" data-testid="build-report-unscoped" onClick={onShowUnscoped}>
             {t("action.showUnscoped", { n: unscoped })}
           </Button>
         </div>
-      )}
+      ) : (
+        // the home has no tab to open: the count is said (code review 01 #35)
+        <div data-testid="build-report-unscoped-count">{t("build.report.unscoped", { n: unscoped })}</div>
+      ))}
       <div className="text-xs text-muted">
         {t("build.report.calls", { llm: report.llm_calls, embedding: report.embedding_calls })}
       </div>

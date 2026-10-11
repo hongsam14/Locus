@@ -3,12 +3,15 @@
 import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { HttpError } from "../api/http";
+import { fieldLabel } from "../features/editor/augmentNames";
+import { BuildReportPanel } from "../features/editor/BuildReportPanel";
 import { UnscopedPanel } from "../features/editor/UnscopedPanel";
 import { useAugmentation } from "../features/editor/useAugmentation";
 import { useEditorWorld } from "../features/editor/useEditorWorld";
+import { enumLabel } from "../format";
 import { t } from "../i18n";
 import { AugHost } from "../test/editor";
-import type { AugQuestion, AugRun, ConnectionEdge, Region, WorldExport } from "../types";
+import type { AugQuestion, AugRun, BuildReport, ConnectionEdge, Region, WorldExport } from "../types";
 
 vi.mock("../api", () => ({
   api: {
@@ -369,5 +372,92 @@ describe("#26: the regions picked for knowledge known nowhere", () => {
     await act(async () => out.resolve({ region_ids: ["r1"] }));
     await waitFor(() => expect(api.listUnscoped).toHaveBeenCalledTimes(2));
     expect(latest).toEqual({ k2: "r2" });
+  });
+});
+
+describe("#3: the question card in the screen's words, from what the server really sends", () => {
+  const regions = [region("r1", 0.1, 0.1, "Saltwake"), region("r2", 0.5, 0.5, "Ironcrag")];
+  const connections: ConnectionEdge[] = [{ world_id: "w", source_region_id: "r2", target_region_id: "r1", kind: "route", weight: 0.5 }];
+  // as questions.py builds them with no LLM: the English template, the raw kind in the name
+  const conn: AugQuestion = {
+    id: "q1", issue_id: "i1", issue_key: "orphan:connection:r1|r2|route::", type: "orphan",
+    text: "Saltwake – Ironcrag (route) is tied to no place. Where does it belong?", actions: ["edit", "ignore"], needs: {},
+    target: { kind: "connection", id: "r1|r2|route", name: "Saltwake – Ironcrag (route)",
+      connection: { world_id: "w", a_region_id: "r1", b_region_id: "r2", kind: "route" } },
+  };
+  const dangling: AugQuestion = {
+    id: "q2", issue_id: "i2", issue_key: "dangling:connection:r1|r2|route:wiki_prior_ref:p-gone", type: "dangling",
+    text: "Saltwake – Ironcrag (route) points at something that is gone (wiki_prior_ref). Re-point or clear?",
+    actions: ["edit", "remove", "ignore"], needs: { edit: ["ref"] }, ref_kind: "prior",
+    target: { kind: "connection", id: "r1|r2|route", name: "Saltwake – Ironcrag (route)", field: "wiki_prior_ref",
+      connection: { world_id: "w", a_region_id: "r1", b_region_id: "r2", kind: "route" } },
+  };
+
+  it("the head is the issue, the kind and the world's name; the question is this screen's; no server text", async () => {
+    (api.startRun as Mock).mockResolvedValueOnce(run({ open_questions: [conn, dangling] }));
+    render(<AugHost regions={regions} connections={connections} />);
+    fireEvent.click(screen.getByTestId("augment-find"));
+    const cards = await screen.findAllByTestId("augment-question");
+    const route = enumLabel("connectionKind", "route");
+    expect(cards[0]).toHaveTextContent(enumLabel("augmentationIssue", "orphan"));
+    expect(cards[0]).toHaveTextContent(t("augment.target.connection"));
+    expect(cards[0]).toHaveTextContent(`Saltwake – Ironcrag · ${route}`);
+    expect(cards[0]).toHaveTextContent(t("augment.ask.orphan"));
+    expect(cards[1]).toHaveTextContent(t("augment.ask.dangling", { kind: t("augment.refKind.prior") }));
+    expect(cards[1]).toHaveTextContent(fieldLabel("wiki_prior_ref"));
+    const text = screen.getByTestId("augment-panel").textContent ?? "";
+    for (const raw of ["(route)", "wiki_prior_ref", "Re-point", "tied to no place"]) expect(text).not.toContain(raw);
+  });
+
+  it("a change names what it changed from the world too", async () => {
+    (api.startRun as Mock).mockResolvedValueOnce(run({ open_questions: [conn] }));
+    const change = { id: "c1", description: "orphan:edit", added_ids: [], reverted: false };
+    (api.answer as Mock).mockResolvedValueOnce({ change, changed: [conn.target], run: run({ answers: 1, history: [change] }) });
+    render(<AugHost regions={regions} connections={connections} />);
+    fireEvent.click(screen.getByTestId("augment-find"));
+    const edit = await screen.findByTestId("augment-action-edit");
+    await act(async () => fireEvent.click(edit));
+    const line = await screen.findByTestId("augment-change");
+    expect(line).toHaveTextContent(`Saltwake – Ironcrag · ${enumLabel("connectionKind", "route")}`);
+    expect(line).not.toHaveTextContent("(route)");
+  });
+
+  it("ignored and kept lines say which issue; the kept count is the kept, not the ignored", async () => {
+    (api.startRun as Mock).mockResolvedValueOnce(run({
+      ignored_keys: ["low_confidence:region:r1::", "unscoped:region:r1::"],
+      kept_keys: ["gap:region:r2::"],
+    }));
+    render(<AugHost regions={regions} connections={connections} />);
+    fireEvent.click(screen.getByTestId("augment-find"));
+    const ignored = await screen.findAllByTestId("augment-ignored");
+    expect(ignored.map((x) => x.querySelector("span")?.textContent)).toEqual([
+      `${enumLabel("augmentationIssue", "low_confidence")} · Saltwake`,
+      `${enumLabel("augmentationIssue", "unscoped")} · Saltwake`,
+    ]);
+    expect(screen.getByTestId("augment-kept").querySelector("summary")).toHaveTextContent(t("label.augmentKept", { n: 1 }));
+  });
+});
+
+describe("#17, #35: the build report's counts", () => {
+  const report = (over: Partial<BuildReport>): BuildReport => ({ world_id: "w", regions_created: 1, connections_created: 0,
+    entities_created: 0, knowledge_created: 0, corroborations_created: 0, warnings: [], unscoped_knowledge_ids: [],
+    llm_calls: 0, embedding_calls: 0, replaced: false, closed_session_ids: [], ok: true, ...over });
+
+  it("nothing carried — the server's zeros — shows no carried line; seeds alone do", () => {
+    const { unmount } = render(<BuildReportPanel report={report({ carried_npcs: 0, carried_seeds: 0 })} />);
+    expect(screen.queryByTestId("build-report-carried")).not.toBeInTheDocument();
+    unmount();
+    render(<BuildReportPanel report={report({ carried_npcs: 0, carried_seeds: 2 })} />);
+    expect(screen.getByTestId("build-report-carried")).toHaveTextContent(t("notice.buildCarried", { npcs: 0, seeds: 2 }));
+  });
+
+  it("where there is no tab to open (the home) the unscoped count is said", () => {
+    const { unmount } = render(<BuildReportPanel report={report({ unscoped_knowledge_ids: ["k1", "k2"] })} />);
+    expect(screen.getByTestId("build-report-unscoped-count")).toHaveTextContent(t("build.report.unscoped", { n: 2 }));
+    expect(screen.queryByTestId("build-report-unscoped")).not.toBeInTheDocument();
+    unmount();
+    render(<BuildReportPanel report={report({ unscoped_knowledge_ids: ["k1"] })} onShowUnscoped={() => {}} />);
+    expect(screen.getByTestId("build-report-unscoped")).toBeInTheDocument();
+    expect(screen.queryByTestId("build-report-unscoped-count")).not.toBeInTheDocument();
   });
 });

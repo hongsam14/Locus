@@ -154,7 +154,11 @@ describe("AugmentPanel", () => {
     });
     render(<AugHost regions={regions} />); // V8: the page's hook around the panel
     fireEvent.click(screen.getByTestId("augment-find"));
-    await waitFor(() => expect(screen.getByText(/What is known here/)).toBeInTheDocument());
+    // V8 code review 01 #3 (choice A): the screen's own sentence and the world's name, not the
+    // server's text
+    await waitFor(() => expect(screen.getByTestId("augment-ask")).toHaveTextContent(t("augment.ask.gap")));
+    expect(screen.queryByText(/What is known here/)).not.toBeInTheDocument();
+    expect(screen.getByTestId("augment-target")).toHaveTextContent("Riverton");
     expect(screen.getByTestId("augment-action-add")).toBeInTheDocument();
     expect(screen.getByTestId("augment-action-ignore")).toBeInTheDocument();
   });
@@ -253,7 +257,9 @@ describe("App routing (F1 / AD-R8)", () => {
         <App />
       </MemoryRouter>,
     );
-    await waitFor(() => expect(screen.getByTestId("turn-tools")).toBeInTheDocument()); // V6: was the hub panel
+    // the GM screen is a lazy chunk: under a loaded test run it takes more than the default
+    // second to arrive (V8 code review 01 #15)
+    await waitFor(() => expect(screen.getByTestId("turn-tools")).toBeInTheDocument(), { timeout: 10000 }); // V6: was the hub panel
     expect(screen.getByTestId("gm-tabs")).toBeInTheDocument();
     expect(api.getSession).toHaveBeenCalledWith("s1");
     expect(api.exportWorld).toHaveBeenCalledWith("w");
@@ -273,7 +279,9 @@ describe("App routing (F1 / AD-R8)", () => {
     );
     await waitFor(() => expect(screen.getByTestId("gm-error")).toBeInTheDocument());
     fireEvent.click(screen.getByTestId("gm-retry-btn"));
-    await waitFor(() => expect(screen.getByTestId("turn-tools")).toBeInTheDocument()); // V6: was the hub panel
+    // the GM screen is a lazy chunk: under a loaded test run it takes more than the default
+    // second to arrive (V8 code review 01 #15)
+    await waitFor(() => expect(screen.getByTestId("turn-tools")).toBeInTheDocument(), { timeout: 10000 }); // V6: was the hub panel
     expect(screen.queryByText(t("session.none"))).not.toBeInTheDocument(); // no dead entry on GM
   });
 

@@ -86,7 +86,7 @@ export function UnscopedPanel({
         </div>
       )}
       <ConfirmDelete open={doomed != null} busy={busy}
-        message={doomed ? t("delete.knowledge", { name: doomed.title }) : undefined}
+        message={doomed ? t("delete.knowledge", { name: doomed.title_ko || doomed.title }) : undefined}
         onCancel={() => setDoomed(null)}
         onConfirm={() => {
           const k = doomed;

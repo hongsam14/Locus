@@ -3,7 +3,7 @@ import { t } from "../../i18n";
 import type { AugQuestion, ConnectionEdge, Knowledge, NameRef, Region, WikiPrior } from "../../types";
 import { Button, InlineError, Panel } from "../../ui";
 import { AugmentQuestion } from "./AugmentQuestion";
-import { changeLabel, issueKeyName, type NameSource } from "./augmentNames";
+import { changeLabel, issueKeyLine, type NameSource, targetLabel } from "./augmentNames";
 import type { Augmentation } from "./useAugmentation";
 
 /** The augmentation Q&A (US-2.6, BR-U3-24..28), shown only: the run, its writes and the typed
@@ -63,7 +63,7 @@ export function AugmentPanel({
           {run.status === "converged" && <div className="text-sm">{t("notice.augmentConverged")}</div>}
           {run.status === "stopped" && <div className="text-sm">{t("notice.augmentStopped")}</div>}
           {run.open_questions.map((q) => (
-            <AugmentQuestion key={q.id} question={q} inputs={aug.drafts[q.issue_key] ?? {}} regions={regions}
+            <AugmentQuestion key={q.id} question={q} inputs={aug.drafts[q.issue_key] ?? {}} regions={regions} names={names}
               refOptions={refOptions(q)} busy={busy} onInput={(patch) => aug.setDraft(q.issue_key, patch)}
               onAnswer={(a) => aug.answer(q, a)} />
           ))}
@@ -71,7 +71,7 @@ export function AugmentPanel({
           {[...run.history].reverse().map((c) => (
             <div key={c.id} className="flex flex-wrap items-center gap-2 text-xs" data-testid="augment-change">
               <span className="min-w-0 flex-1 break-words">
-                {changeLabel(c.description)} {(aug.changed[c.id] ?? []).map((x) => x.name).join(", ")}
+                {changeLabel(c.description)} {(aug.changed[c.id] ?? []).map((x) => targetLabel(x, names)).join(", ")}
               </span>
               {c.reverted ? (
                 <span className="text-muted">{t("augment.reverted")}</span>
@@ -86,7 +86,7 @@ export function AugmentPanel({
           {run.ignored_keys.length > 0 && <h3 className="font-heading">{t("augment.ignored")}</h3>}
           {run.ignored_keys.map((key) => (
             <div key={key} className="flex flex-wrap items-center gap-2 text-xs" data-testid="augment-ignored">
-              <span className="min-w-0 flex-1 break-words">{issueKeyName(key, names)}</span>
+              <span className="min-w-0 flex-1 break-words">{issueKeyLine(key, names)}</span>
               <Button size="sm" data-testid="augment-unignore" disabled={busy || run.status === "stopped"}
                 onClick={() => aug.unignore(key)}>
                 {t("augment.unignore")}
@@ -97,7 +97,7 @@ export function AugmentPanel({
             <details data-testid="augment-kept" className="text-xs">
               <summary className="cursor-pointer">{t("label.augmentKept", { n: kept.length })}</summary>
               <ul className="list-disc pl-4">
-                {kept.map((key) => <li key={key} className="break-words">{issueKeyName(key, names)}</li>)}
+                {kept.map((key) => <li key={key} className="break-words">{issueKeyLine(key, names)}</li>)}
               </ul>
             </details>
           )}

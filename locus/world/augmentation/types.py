@@ -138,6 +138,9 @@ class ChangeSet(_Aug):
     edges_removed: list[EdgeSnapshot] = Field(default_factory=list)
     reverted: bool = False
     revert_started: bool = False  # set once a revert passed its checks (U3 review S03)
+    # the question this answer kept (``AugmentationRun.kept_keys``): undoing the answer
+    # asks it again (V7 code review #3)
+    kept_key: str | None = None
 
 
 class AugmentationRun(_Aug):

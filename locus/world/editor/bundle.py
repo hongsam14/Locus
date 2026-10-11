@@ -1,8 +1,9 @@
 """Editors — the editor classes as one injectable bundle (U3, domain-entities §8 item 8).
 
 The augmentation Q&A writes through the same classes as the editor screen. Its REMOVE
-answer names a node of any label, so ``delete_any`` dispatches by label (FD 이탈 1:
-the generic delete is gone from the API and lives on only here).
+answer names knowledge or an entity, so ``delete_any`` dispatches by the question's
+target kind (FD 이탈 1: the generic delete is gone from the API and lives on only here;
+V7 code review #4: by kind, not by whatever node the id reads first).
 """
 
 from __future__ import annotations
@@ -48,16 +49,19 @@ class Editors:
             entities=EntityEditor(w),
         )
 
-    def delete_any(self, world_id: str, node_id: str) -> bool:
+    def delete_any(self, world_id: str, node_id: str, kind: str) -> bool:
         """Delete what an augmentation REMOVE answer names — knowledge or an entity, the
-        only kinds a question removes (U3 review C4). False when it is not there."""
-        node = self.writes.graph.get_node(world_id, node_id)  # any kind: it picks the editor
-        if node is None:
+        only kinds a question removes (U3 review C4). ``kind`` is the question's target
+        kind: the delete takes that kind's node only, never another kind's node under the
+        same id (V7 code review #4). False when it is not there."""
+        delete = {
+            "knowledge": self.knowledge.delete_knowledge,
+            "entity": self.entities.delete_entity,
+        }.get(kind)
+        if delete is None:
+            raise ValueError(f"cannot delete a {kind} here: {node_id}")
+        try:
+            delete(world_id, node_id)
+        except LookupError:
             return False
-        if node.label == "Knowledge":
-            self.knowledge.delete_knowledge(world_id, node_id)
-        elif node.label == "Entity":
-            self.entities.delete_entity(world_id, node_id)
-        else:
-            raise ValueError(f"cannot delete a {node.label} here: {node_id}")
         return True

@@ -236,3 +236,17 @@ def test_without_a_matching_seed_row_or_with_a_failing_cache_the_start_still_sta
     sid = _session(client)
     failing.fail = True
     assert client.post(f"/api/gm/sessions/{sid}/seeds/seed-sealed-relic/start").status_code == 201
+
+
+def test_code_review_18_a_region_delete_drops_each_row_by_its_kind() -> None:
+    """V7: a seed id may be a kept region's id too (stored before V7). The delete takes
+    the seed's rows, not the rows a region of that id has."""
+    client, store = _app()
+    _load(client)
+    w = _demo(client)["name"]
+    plan = client.get(f"/api/world/worlds/{w}/regions/region-ambermeadow/delete-plan").json()
+    seed_id, *_ = plan["seed_ids"]
+    store.upsert_many([_row("region", seed_id, world_id=w)])  # a region sharing the seed's id
+    assert client.delete(f"/api/world/worlds/{w}/regions/region-ambermeadow").status_code == 200
+    left = {(t.source_kind, t.source_id) for t in _rows(store)}
+    assert ("region", seed_id) in left and ("event_seed", seed_id) not in left

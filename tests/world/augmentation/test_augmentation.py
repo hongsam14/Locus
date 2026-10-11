@@ -951,3 +951,172 @@ def test_an_ignored_question_is_listed_as_ignored_only() -> None:  # § 1.4 R-03
     q = _question(run, "low_confidence", w["fish"].id)
     res = svc.answer(run.id, AugmentationAnswer(question_id=q.id, action="ignore"))
     assert res.run.ignored_keys == [q.issue_key] and res.run.kept_keys == []
+
+
+# --------------------------------------------------------------------------- #
+# V7 code review 01 (#3, #4, #5, #15, #16, #21)
+# --------------------------------------------------------------------------- #
+def test_code_review_3_undoing_a_kept_confirm_asks_the_question_again() -> None:
+    stack, w = _seeded()
+    svc = _llm_service(stack, _LLM(), _Wiki())
+    run = svc.start_run("w")
+    q = _question(run, "wiki_conflict", w["fish"].id)
+    res = svc.answer(run.id, AugmentationAnswer(question_id=q.id, action="confirm"))
+    assert q.issue_key in res.run.kept_keys and res.change is not None
+    run = svc.revert(run.id, res.change.id)
+    assert q.issue_key not in run.kept_keys
+    assert q.issue_key in {x.issue_key for x in run.open_questions}
+
+
+def test_code_review_5_the_input_table_is_the_designs() -> None:
+    """domain-entities § 8, every (issue, target kind) pair the detectors emit."""
+    from locus.world.augmentation.questions import NEEDS
+
+    knowledge_edit = {"edit": ["statement", "title", "confidence"]}
+    expected = {
+        ("gap", "region"): {"add": ["statement", "title"]},
+        ("low_confidence", "knowledge"): knowledge_edit,
+        ("low_confidence", "entity"): {"edit": ["statement", "confidence"]},
+        ("wiki_conflict", "knowledge"): knowledge_edit,
+        ("orphan", "entity"): {"edit": ["region"]},
+        ("dangling", "region"): {"edit": ["ref"]},
+        ("dangling", "entity"): {"edit": ["ref"]},
+        ("dangling", "connection"): {"edit": ["ref"]},
+        ("dangling", "knowledge"): {"edit": ["ref"]},
+        ("unscoped", "knowledge"): {"edit": ["region"]},
+    }
+    got = {
+        (str(t), str(k)): {str(a): list(i) for a, i in needs.items()}
+        for (t, k), needs in NEEDS.items()
+    }
+    assert got == expected
+
+
+def test_code_review_15_a_padded_or_blank_edit_changes_nothing() -> None:
+    stack, w = _seeded()
+    svc = _service(stack)
+    run = svc.start_run("w")
+    q = _question(run, "low_confidence", w["fish"].id)
+    before = _writes(stack)
+    for answer in ({"title": f"  {w['fish'].title}  "}, {"statement": "   "}):
+        with pytest.raises(ValueError, match="changes nothing"):
+            svc.answer(run.id, AugmentationAnswer(question_id=q.id, action="edit", **answer))
+    assert _writes(stack) == before and svc.get_run(run.id).history == []  # type: ignore[union-attr]
+
+
+def test_code_review_16_a_stale_scope_or_place_answer_changes_nothing() -> None:
+    stack, w = _seeded()
+    svc = _service(stack)
+    run = svc.start_run("w")
+    unscoped = _question(run, "unscoped", w["lore"].id)
+    stack.editors.knowledge.set_scopes("w", w["lore"].id, [w["hollow"].id])  # the inspector
+    before = _writes(stack)
+    with pytest.raises(ValueError, match="changes nothing"):
+        svc.answer(
+            run.id,
+            AugmentationAnswer(question_id=unscoped.id, action="edit", region_id=w["hollow"].id),
+        )
+    q = _question(run, "dangling", w["tomas"].id, "located_in")
+    tomas = gm.node_to_entity(stack.graph.get_node("w", w["tomas"].id, label="Entity"))  # type: ignore[arg-type]
+    stack.editors.entities.update_entity(tomas.model_copy(update={"located_in": w["hollow"].id}))
+    before = _writes(stack)
+    with pytest.raises(ValueError, match="changes nothing"):
+        svc.answer(
+            run.id, AugmentationAnswer(question_id=q.id, action="edit", ref_id=w["hollow"].id)
+        )
+    assert _writes(stack) == before
+
+
+def test_code_review_4_a_remove_takes_the_questions_kind_only() -> None:
+    """Knowledge and an entity stored under one id before V7: removing the knowledge
+    leaves the entity and its document."""
+    from locus.shared.storage.base import Node
+
+    stack, w = _seeded()
+    fish = w["fish"]
+    entity = Node(
+        id=fish.id,
+        label="Entity",
+        world_id="w",
+        properties={"id": fish.id, "world_id": "w", "name": "Fish", "entity_type": "person"},
+    )
+    nodes = dict(stack.graph._nodes)
+    stack.graph._nodes.clear()
+    stack.graph._nodes[("w", "Entity", fish.id)] = entity  # read first by an unlabeled get
+    stack.graph._nodes.update(nodes)
+    stack.cache.invalidate("w")
+    svc = _service(stack)
+    run = svc.start_run("w")
+    q = _question(run, "low_confidence", fish.id)
+    svc.answer(run.id, AugmentationAnswer(question_id=q.id, action="remove"))
+    assert stack.graph.get_node("w", fish.id, label="Knowledge") is None
+    assert stack.graph.get_node("w", fish.id, label="Entity") is not None
+
+
+def test_code_review_4_an_item_sharing_its_id_with_another_kind_can_still_be_edited() -> None:
+    from locus.shared.storage.base import Node
+
+    stack, w = _seeded()
+    fish = w["fish"]
+    nodes = dict(stack.graph._nodes)
+    stack.graph._nodes.clear()
+    stack.graph._nodes[("w", "Entity", fish.id)] = Node(
+        id=fish.id, label="Entity", world_id="w", properties={"id": fish.id, "world_id": "w"}
+    )
+    stack.graph._nodes.update(nodes)
+    stack.cache.invalidate("w")
+    stack.editors.knowledge.upsert_knowledge(fish.model_copy(update={"statement": "eels"}))
+    node = stack.graph.get_node("w", fish.id, label="Knowledge")
+    assert node is not None and node.properties["statement"] == "eels"
+
+
+def test_s3_a_wiki_conflict_edit_is_asked_again_if_it_still_conflicts() -> None:  # #21
+    stack, w = _seeded()
+    svc = _llm_service(stack, _LLM(), _Wiki())
+    run = svc.start_run("w")
+    q = _question(run, "wiki_conflict", w["fish"].id)
+    res = svc.answer(run.id, AugmentationAnswer(question_id=q.id, action="edit", statement="eels"))
+    assert res.run.kept_keys == []
+
+
+def test_m19_a_confirm_that_writes_a_value_still_low_is_asked_again() -> None:  # #21
+    stack, w = _seeded()
+    svc = _service(stack)
+    run = svc.start_run("w")
+    q = _question(run, "low_confidence", w["fish"].id)  # fish is at 0.3
+    res = svc.answer(run.id, AugmentationAnswer(question_id=q.id, action="confirm", confidence=0.4))
+    assert res.change is not None and res.run.kept_keys == []
+    assert q.issue_key in {x.issue_key for x in res.run.open_questions}
+
+
+def test_code_review_4_an_answer_snapshots_its_own_kind_so_undo_is_whole() -> None:
+    """A knowledge item shares its id with an entity read first (stored before V7). Its
+    re-point must record the knowledge node, or the undo restores the edge only."""
+    from locus.shared.storage.base import Node
+
+    stack, w = _seeded()
+    item = Knowledge(
+        world_id="w",
+        statement="about someone gone",
+        title="gone",
+        about_entity_ids=["gone"],
+        provenance=_prov(),
+    )
+    persist_graph(stack.graph, stack.search, None, "w", knowledge=[item])
+    nodes = dict(stack.graph._nodes)
+    stack.graph._nodes.clear()
+    stack.graph._nodes[("w", "Entity", item.id)] = Node(
+        id=item.id, label="Entity", world_id="w", properties={"id": item.id, "world_id": "w"}
+    )
+    stack.graph._nodes.update(nodes)
+    stack.cache.invalidate("w")
+    svc = _service(stack)
+    run = svc.start_run("w")
+    q = _question(run, "dangling", item.id, "about_entity_ids")
+    res = svc.answer(
+        run.id, AugmentationAnswer(question_id=q.id, action="edit", ref_id=w["ghost"].id)
+    )
+    assert [n.label for n in res.change.nodes_before] == ["Knowledge"]  # type: ignore[union-attr]
+    svc.revert(run.id, res.change.id)  # type: ignore[union-attr]
+    back = stack.graph.get_node("w", item.id, label="Knowledge")
+    assert back is not None and gm.node_to_knowledge(back).about_entity_ids == ["gone"]

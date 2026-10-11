@@ -143,8 +143,12 @@ def delete_region(
             ) from exc
         except _ERRORS as exc:
             raise http_error(exc) from exc
-    # the region's, its NPCs' and its seeds' translations go with them (V3, BR-V3-16)
-    purge_translations(loc, ids=report.deleted_ids, world_id=world_id)
+    # the region's, its NPCs' and its seeds' translations go with them (V3, BR-V3-16),
+    # each by its kind: a seed sharing a kept region's id leaves that region's rows (V7
+    # code review #18)
+    purge_translations(loc, kind="region", ids=[report.region_id], world_id=world_id)
+    purge_translations(loc, kind="npc", ids=[n.id for n in report.npcs], world_id=world_id)
+    purge_translations(loc, kind="event_seed", ids=report.seed_ids, world_id=world_id)
     return report
 
 

@@ -42,7 +42,9 @@ class WikiAdmin:
         self._writes = EditorWrites(graph_repo, search_repo, embedding, cache=cache)
 
     def upsert_prior(self, prior: WikiPrior) -> WikiPrior:
-        """Create or update a prior (idempotent by id), keeping provenance."""
+        """Create or update a prior (idempotent by id), keeping provenance. An id another
+        kind holds is refused (400): it would make a second node (V7 code review #17)."""
+        self._writes.own_label(prior.world_id, prior.id, "WikiPrior")
         try:
             self._graph.upsert_nodes([gm.wikiprior_to_node(prior)])
             doc = gm.wikiprior_doc(prior)

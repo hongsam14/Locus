@@ -51,11 +51,16 @@ class EditorWrites:
     def own_label(self, world_id: str, node_id: str, label: str) -> Node | None:
         """The stored node with this id when it is a ``label``; a node of another label
         under the same id is refused (400): Neo4j keeps ids unique per label only, so an
-        edit would add a second node (U3 review S26)."""
-        node = self.graph.get_node(world_id, node_id)  # any node of this id, by design
-        if node is not None and node.label != label:
-            raise ValueError(f"id {node_id!r} is already a {node.label}, not a {label}")
-        return node
+        edit would add a second node (U3 review S26). Its own kind is read first, so an
+        item that already shares its id with another kind (stored before V7) can still be
+        edited (V7 code review #4)."""
+        node = self.graph.get_node(world_id, node_id, label=label)
+        if node is not None:
+            return node
+        other = self.graph.get_node(world_id, node_id)  # is the id held by another kind?
+        if other is not None:
+            raise ValueError(f"id {node_id!r} is already a {other.label}, not a {label}")
+        return None
 
     # -- writes ----------------------------------------------------------- #
     @contextmanager

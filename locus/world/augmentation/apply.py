@@ -26,6 +26,7 @@ from locus.world.augmentation.types import (
     RevertConflictError,
 )
 from locus.world.editor import Editors
+from locus.world.refs import ConnectionKey
 
 _REF_KIND = {  # dangling field -> the label its new reference must have
     "parent_id": "Region",
@@ -64,14 +65,16 @@ def apply_answer(
     nodes, watch = _watched(issue, target.id)
     cs = ChangeSet(description=f"{issue.type}:{action}")
     graph = editors.writes.graph
-    nodes_before = _nodes(editors, world_id, nodes)
+    labels = {target.id: _LABEL_OF.get(issue.target_kind)}  # by kind (V7 code review #4)
+    nodes_before = _nodes(editors, world_id, nodes, labels)
     before = _edges(graph, world_id, watch)
 
     added = _write(issue, target.id, action, answer, world_id=world_id, editors=editors, cs=cs)
     if isinstance(added, _Unchanged):
         return None
     cs.added_ids = added
-    nodes_after = _nodes(editors, world_id, [*nodes, *added])
+    labels.update(dict.fromkeys(added, "Knowledge"))  # an answer only adds knowledge
+    nodes_after = _nodes(editors, world_id, [*nodes, *added], labels)
     # only what changed is recorded: a revert checks those for edits made after it
     changed = {
         i
@@ -117,9 +120,11 @@ def _write(
         editors.knowledge.create_knowledge(k, target_id)
         return [k.id]
     if action == AnswerAction.REMOVE and kind != IssueType.DANGLING:
-        if not editors.delete_any(world_id, target_id):
+        if not editors.delete_any(world_id, target_id, issue.target_kind):
             raise LookupError(f"node not found: {target_id}")
         return []
+    if _changes_nothing(issue, target_id, action, answer, world_id, editors):
+        raise ValueError("the answer changes nothing")  # before any write (review #16)
     if kind in (IssueType.LOW_CONFIDENCE, IssueType.WIKI_CONFLICT):
         if not _confirm_or_edit(issue, target_id, action, answer, world_id, editors):
             return UNCHANGED
@@ -150,10 +155,14 @@ def _confirm_or_edit(issue, target_id, action, answer, world_id, editors: Editor
         conf = answer.confidence if answer.confidence is not None else max(item.confidence, 0.9)
         update["confidence"] = conf
     else:
-        if answer.statement:  # an entity's description comes in the statement field
-            update["description" if entity else "statement"] = answer.statement
-        if answer.title and not entity:  # an entity has no title (U8 #13)
-            update["title"] = answer.title
+        # compared as they would be stored: trimmed, and a blank field is no field
+        # (V7 code review #15; the editor keeps titles trimmed)
+        statement = (answer.statement or "").strip()
+        title = (answer.title or "").strip()
+        if statement:  # an entity's description comes in the statement field
+            update["description" if entity else "statement"] = statement
+        if title and not entity:  # an entity has no title (U8 #13)
+            update["title"] = title
         if answer.confidence is not None:
             update["confidence"] = answer.confidence
     changed = {f: v for f, v in update.items() if getattr(item, f) != v}
@@ -166,6 +175,51 @@ def _confirm_or_edit(issue, target_id, action, answer, world_id, editors: Editor
     else:
         editors.entities.update_entity(item.model_copy(update=changed))
     return True
+
+
+_LABEL_OF = {"knowledge": "Knowledge", "entity": "Entity", "region": "Region"}
+
+
+def _changes_nothing(issue: Issue, target_id, action, answer, world_id, editors) -> bool:
+    """A place, scope or re-point answer that would leave the value as it already is —
+    a question gone stale after an edit in the inspector (V7 code review #16)."""
+    kind = IssueType(issue.type)
+    if kind in (IssueType.ORPHAN, IssueType.UNSCOPED) and not answer.region_id:
+        return False  # the missing region is refused on its own ("needs a region")
+    if kind == IssueType.ORPHAN:
+        return _entity(editors, world_id, target_id).located_in == answer.region_id
+    if kind not in (IssueType.UNSCOPED, IssueType.DANGLING):
+        return False
+    snapshot = editors.writes.snapshot(world_id)
+    if kind == IssueType.UNSCOPED:
+        held = {s.region_id for s in snapshot.kg.scopes if s.knowledge_id == target_id}
+        return held == {answer.region_id}
+    field = issue.field or ""
+    ref = answer.ref_id if action == AnswerAction.EDIT else None
+    if field == "parent_id":
+        region = snapshot.regions_by_id.get(target_id)
+        return region is not None and region.parent_id == ref
+    if field == "located_in":
+        entity = next((e for e in snapshot.kg.entities if e.id == target_id), None)
+        return entity is not None and entity.located_in == ref
+    if field == "wiki_prior_ref":
+        if issue.connection is None:
+            return False
+        key = issue.connection.normalized()
+        edge = next(
+            (
+                c
+                for c in snapshot.topo.connections
+                if (k := ConnectionKey.of(c)).a_region_id == key.a_region_id
+                and k.b_region_id == key.b_region_id
+                and k.kind == key.kind
+            ),
+            None,
+        )
+        return edge is not None and edge.wiki_prior_ref == ref
+    item = next((k for k in snapshot.kg.knowledge if k.id == target_id), None)
+    ids = list(getattr(item, field, None) or []) if item is not None else []
+    return issue.broken_id not in ids and (ref is None or ref in ids)
 
 
 def _repoint(issue: Issue, target_id, action, answer, world_id, editors: Editors) -> None:
@@ -270,10 +324,12 @@ def _knowledge(editors: Editors, world_id: str, knowledge_id: str) -> Knowledge:
     return gm.node_to_knowledge(node)
 
 
-def _nodes(editors: Editors, world_id: str, ids: list[str]) -> dict[str, NodeSnapshot]:
+def _nodes(
+    editors: Editors, world_id: str, ids: list[str], labels: dict[str, str | None]
+) -> dict[str, NodeSnapshot]:
     out: dict[str, NodeSnapshot] = {}
     for nid in dict.fromkeys(ids):
-        node = editors.writes.graph.get_node(world_id, nid)  # whatever node holds the id
+        node = editors.writes.graph.get_node(world_id, nid, label=labels.get(nid))
         if node is not None:
             out[nid] = NodeSnapshot(id=node.id, label=node.label, properties=dict(node.properties))
     return out

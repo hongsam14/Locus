@@ -461,3 +461,34 @@ describe("#17, #35: the build report's counts", () => {
     expect(screen.queryByTestId("build-report-unscoped-count")).not.toBeInTheDocument();
   });
 });
+
+describe("#38: smaller behaviours of the augmentation tab", () => {
+  it("a stopped run and a converged run say so in a sentence (I3, BR-V8-17)", async () => {
+    (api.startRun as Mock).mockResolvedValueOnce(run({ status: "stopped" })).mockResolvedValueOnce(run({ status: "converged" }));
+    render(<AugHost regions={[region("a")]} />);
+    fireEvent.click(screen.getByTestId("augment-find"));
+    expect(await screen.findByText(t("notice.augmentStopped"))).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("augment-find"));
+    expect(await screen.findByText(t("notice.augmentConverged"))).toBeInTheDocument();
+    expect(screen.queryByText(t("notice.augmentStopped"))).not.toBeInTheDocument();
+  });
+
+  it("[다시 묻기] waits for a write that is out (A4: one shared guard)", async () => {
+    const { result } = await augmentation([question("k1")]);
+    const out = deferred<unknown>();
+    (api.answer as Mock).mockReturnValueOnce(out.promise);
+    act(() => result.current.answer(question("k1"), "edit"));
+    act(() => result.current.unignore("gap:region:a::"));
+    expect(api.unignore).not.toHaveBeenCalled();
+    await act(async () => out.resolve({ change: null, changed: [], run: run() }));
+  });
+
+  it("a 404 with the run alive shows the run as the server has it now (A6)", async () => {
+    const { result } = await augmentation([question("k1")]);
+    (api.answer as Mock).mockRejectedValueOnce(new HttpError(404, "Not Found", "gone"));
+    (api.getRun as Mock).mockResolvedValueOnce(run({ answers: 3, open_questions: [question("k2")] }));
+    act(() => result.current.answer(question("k1"), "edit"));
+    await waitFor(() => expect(result.current.run?.open_questions.map((q) => q.issue_key)).toEqual(["k2"]));
+    expect(result.current.run?.answers).toBe(3);
+  });
+});

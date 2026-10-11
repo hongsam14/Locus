@@ -97,7 +97,9 @@ describe("useEditorWorld — a made region (TP-V8-3, UX-25, R-04)", () => {
     expect(result.current.selected).toBe("a");
   });
 
-  it("an older read landing after the create never decides; a read without the region says so", async () => {
+  it("an older read landing after the create is dropped; a read without the region says so", async () => {
+    // code review 01 T16: here useResource drops the older read (the create's reload aborts
+    // it); the create mark (R-04) is the guard tested by the first test of this block
     const first = deferred<WorldExport>();
     (api.exportWorld as Mock).mockReturnValueOnce(first.promise);
     const { result } = renderHook(() => useEditorWorld("w"));

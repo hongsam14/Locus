@@ -382,6 +382,7 @@ describe("TP-V8-11 (BR-V8-21): loading, missing and failed reads", () => {
     expect(empty).not.toHaveTextContent(t("empty.noWorlds"));
     expect(screen.getByTestId("map-tool-add-region")).toBeDisabled();
     expect(screen.getByTestId("play-this-world")).toBeDisabled();
+    expect(within(screen.getByTestId("map-canvas")).queryByRole("status")).not.toBeInTheDocument(); // not "loading" forever
     fireEvent.click(within(empty).getByRole("button", { name: t("file.build") }));
     expect(await screen.findByTestId("build-panel")).toBeInTheDocument();
   });
@@ -517,7 +518,6 @@ describe("TP-V8-18 (BLM § 1.4, R-02): a world replaced clears what belonged to 
     fireEvent.change(await screen.findByTestId("augment-statement"), { target: { value: "draft" } });
     openTab("unscoped");
     fireEvent.change(await screen.findByTestId("unscoped-region-k7"), { target: { value: "r2" } });
-    const regionReads = (api.getEditorRegion as Mock).mock.calls.length;
     const unscopedReads = (api.listUnscoped as Mock).mock.calls.length;
     openFileMenu();
     fireEvent.click(screen.getByTestId("file-build"));
@@ -531,12 +531,30 @@ describe("TP-V8-18 (BLM § 1.4, R-02): a world replaced clears what belonged to 
     fireEvent.click(screen.getByText(t("action.close")));
     expect(await screen.findByTestId("unscoped-region-k7")).toHaveValue("");
     openTab("augment");
+    expect(await screen.findByTestId("augment-find")).toBeInTheDocument(); // the tab is showing
     expect(screen.queryByTestId("augment-status")).not.toBeInTheDocument();
     expect(screen.queryByTestId("augment-statement")).not.toBeInTheDocument();
     openTab("region");
-    // r1 is still in the world: it stays chosen and reads its new content
-    await waitFor(() => expect((api.getEditorRegion as Mock).mock.calls.length).toBeGreaterThan(regionReads));
-    expect(screen.getByTestId("region-picker")).toHaveValue("r1");
+    expect(screen.getByTestId("region-picker")).toHaveValue("r1"); // r1 is still in the world
+  });
+
+  it("a replace re-reads the region open in the inspector, while it stays open (R-02)", async () => {
+    // code review 01 T16: the test above reopened the tab, so its re-read was the remount's
+    (api.uploadBuild as Mock).mockResolvedValue(report());
+    renderEditor();
+    await ready();
+    await pickOnMap("r1");
+    const regionReads = (api.getEditorRegion as Mock).mock.calls.length;
+    openFileMenu();
+    fireEvent.click(screen.getByTestId("file-build"));
+    fireEvent.change(await screen.findByTestId("build-memo"), { target: { value: "again" } });
+    await waitFor(() => expect(screen.getByTestId("build-submit")).toBeEnabled());
+    fireEvent.click(screen.getByTestId("build-submit"));
+    await screen.findByTestId("build-confirm");
+    fireEvent.click(screen.getByText(t("action.confirm")));
+    await screen.findByTestId("build-report");
+    await waitFor(() => expect((api.getEditorRegion as Mock).mock.calls.length).toBe(regionReads + 1));
+    expect(screen.getByTestId("region-inspector")).toBeInTheDocument(); // never unmounted
   });
 
   it("a World File load says so and clears the same way (BR-V8-26)", async () => {
@@ -562,15 +580,17 @@ describe("BR-V8-26/28: notices and the open-session line", () => {
     (api.getDeletePlan as Mock).mockResolvedValue({ region_id: "r1", region_name: "Riverton", children: [],
       connections: [], npcs: [], knowledge_to_unscope: [], knowledge_scope_removed: [], entities_unlocated: [],
       blocked_by_sessions: [] });
-    (api.deleteRegion as Mock).mockResolvedValue({ region_id: "r1", region_name: "Riverton", children: [],
-      connections: [], npcs: [], knowledge_to_unscope: [], knowledge_scope_removed: [], entities_unlocated: [],
-      blocked_by_sessions: [], deleted_ids: ["r1"] });
+    (api.deleteRegion as Mock).mockResolvedValue({ region_id: "r1", region_name: "Riverton", children: [{ id: "c1", name: "Mill" }],
+      connections: [{ world_id: "w", a_region_id: "r1", b_region_id: "r2", kind: "route" }], npcs: [{ id: "n1", name: "Ada" }, { id: "n2", name: "Bo" }],
+      knowledge_to_unscope: [], knowledge_scope_removed: [], entities_unlocated: [], blocked_by_sessions: [], deleted_ids: ["r1"] });
     renderEditor();
     await ready();
     await pickOnMap("r1");
     fireEvent.click(screen.getByTestId("region-delete"));
     fireEvent.click(await screen.findByText(t("delete.confirm")));
     await waitFor(() => expect(notices()).toHaveTextContent(t("notice.regionDeleted", { name: "Riverton" })));
+    // what went, counted (code review 01 #38, W12 m6)
+    expect(notices()).toHaveTextContent(t("delete.region.done", { children: 1, npcs: 2, connections: 1, unscoped: 0 }));
     expect(screen.queryByTestId("region-inspector")).not.toBeInTheDocument();
     expect(screen.getByTestId("region-tab")).toHaveTextContent(t("hint.pickRegionEditor"));
   });
@@ -780,5 +800,63 @@ describe("code review 01 #7, #31: long words wrap; the narrow panel is a screen 
     renderEditor();
     await ready();
     expect(screen.getByTestId("editor-panel")).not.toHaveClass("min-h-screen");
+  });
+});
+
+
+describe("code review 01 #38: smaller behaviours of the screen", () => {
+  it("a region made but missing from the read after it says so (P13)", async () => {
+    (api.createRegion as Mock).mockResolvedValue({ id: "r9", name: "Mill", level: "town", world_id: "w" });
+    renderEditor();
+    await ready();
+    fireEvent.click(screen.getByTestId("map-tool-add-region"));
+    fireEvent.click(screen.getByTestId("region-marker-r1").closest("svg") as SVGSVGElement);
+    fireEvent.change(screen.getByTestId("new-region-name"), { target: { value: "Mill" } });
+    fireEvent.click(screen.getByTestId("new-region-save"));
+    expect(await screen.findByTestId("region-not-found")).toHaveTextContent(t("notice.regionNotFound"));
+  });
+
+  it("the connect tool pressed twice on one region lets it go, with no form (T3)", async () => {
+    renderEditor();
+    await ready();
+    fireEvent.click(screen.getByTestId("map-tool-connect"));
+    fireEvent.click(screen.getByTestId("region-marker-r1"));
+    expect(screen.getByTestId("map-hint")).toHaveTextContent("Riverton");
+    fireEvent.click(screen.getByTestId("region-marker-r1"));
+    expect(screen.getByTestId("map-hint")).toHaveTextContent(t("map.hint.connect"));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("a failed build gives no 'build done' notice on close (P10)", async () => {
+    (api.uploadBuild as Mock).mockResolvedValue(report({ ok: false, warnings: [{ stage: "ontology", severity: "error", message: "boom" }] }));
+    renderEditor();
+    await ready();
+    openFileMenu();
+    fireEvent.click(screen.getByTestId("file-build"));
+    fireEvent.change(await screen.findByTestId("build-memo"), { target: { value: "a" } });
+    await waitFor(() => expect(screen.getByTestId("build-submit")).toBeEnabled());
+    fireEvent.click(screen.getByTestId("build-submit"));
+    await screen.findByTestId("build-confirm");
+    fireEvent.click(screen.getByText(t("action.confirm")));
+    await screen.findByTestId("build-report");
+    fireEvent.click(screen.getByText(t("action.close")));
+    await waitFor(() => expect(screen.queryByTestId("build-panel")).not.toBeInTheDocument());
+    expect(notices()).not.toHaveTextContent(t("notice.buildDone"));
+  });
+
+  it("a build of a world that was not there reads the world and its sessions again (P9)", async () => {
+    (api.exportWorld as Mock).mockRejectedValueOnce(new HttpError(404, "Not Found", "world not found"));
+    (api.uploadBuild as Mock).mockResolvedValue(report({ replaced: false }));
+    renderEditor();
+    const empty = await screen.findByTestId("empty-hint");
+    const lists = (api.listWorlds as Mock).mock.calls.length;
+    fireEvent.click(within(empty).getByRole("button", { name: t("file.build") }));
+    fireEvent.change(await screen.findByTestId("build-memo"), { target: { value: "a" } });
+    await waitFor(() => expect(screen.getByTestId("build-submit")).toBeEnabled());
+    fireEvent.click(screen.getByTestId("build-submit"));
+    await screen.findByTestId("build-report");
+    await waitFor(() => expect((api.listWorlds as Mock).mock.calls.length).toBe(lists + 1));
+    fireEvent.click(screen.getByText(t("action.close")));
+    await ready();
   });
 });

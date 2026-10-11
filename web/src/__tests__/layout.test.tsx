@@ -7,6 +7,7 @@ import { api } from "../api";
 import { resetCapabilities } from "../capabilities";
 import { t } from "../i18n";
 import { AppShell, Section, SplitView } from "../layout";
+import { GmLayout } from "../features/gm/GmLayout";
 import { MapPanelLayout } from "../layout/MapPanelLayout";
 import { toast } from "../ui";
 
@@ -165,5 +166,27 @@ describe("MapPanelLayout (V8 BR-V8-01/02, TP-V8-1)", () => {
         narrowOrder={["head", "panelTop", "map", "panel"]} {...parts} />,
     );
     expect(order()).toEqual(["P-head", "P-top", "P-map", "P-panel"]);
+  });
+});
+
+
+// V8 code review 01 #38 (S11, L4): the GM's names and order the shared frame must keep
+describe("GmLayout over MapPanelLayout (BR-V8-02)", () => {
+  const s = Object.fromEntries(
+    ["header", "banner", "player", "map", "tools", "error", "band", "tabs"].map((k) => [k, <div key={k} data-testid={`G-${k}`} />]),
+  ) as unknown as Parameters<typeof GmLayout>[0]["s"];
+  const order = () => [...document.querySelectorAll("[data-testid^='G-']")].map((e) => e.getAttribute("data-testid"));
+
+  it("wide: the head is header, banner, player; the panel top is gm-panel-top with tools, error, band", () => {
+    render(<GmLayout wide s={s} />);
+    expect(order()).toEqual(["G-header", "G-banner", "G-player", "G-map", "G-tools", "G-error", "G-band", "G-tabs"]);
+    const top = screen.getByTestId("gm-panel-top");
+    for (const k of ["tools", "error", "band"]) expect(top).toContainElement(screen.getByTestId(`G-${k}`));
+    expect(top).not.toContainElement(screen.getByTestId("G-tabs"));
+  });
+
+  it("narrow: head, the turn tools and band, then the map, then the tabs", () => {
+    render(<GmLayout wide={false} s={s} />);
+    expect(order()).toEqual(["G-header", "G-banner", "G-player", "G-tools", "G-error", "G-band", "G-map", "G-tabs"]);
   });
 });

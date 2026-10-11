@@ -82,9 +82,11 @@ describe("design rules in the source", () => {
   // V8 (BR-V8-04/05/16/22/27, TP-V8-16): the editor too — and nothing that would make a
   // 390 px screen scroll sideways: no 20 rem floor, no fixed pixel width (design review 01 R-14)
   // w-[Npx] or min-w-[Npx]; a max-w-[…] cap is fine
-  const FIXED_WIDTH = /(?<![\w-])(min-)?w-\[\d+px\]/;
+  const FIXED_WIDTH = /(?<![\w-])(min-)?w-\[[\d.]+(px|rem)\]|(?<![\w-])min-w-(64|72|80|96)\b/;
   it("the editor has no toFixed, String(e), outline-none, min-w-80 or fixed pixel width", () => {
     expect("w-[400px] min-w-[320px]").toMatch(FIXED_WIDTH);
+    for (const bad of ["w-[30rem]", "min-w-96", "min-w-[20.5rem]"]) expect(bad).toMatch(FIXED_WIDTH); // code review 01 #38 (T17)
+    for (const ok of ["min-w-0", "max-w-[1240px]", "w-full", "min-w-11"]) expect(ok).not.toMatch(FIXED_WIDTH);
     expect("max-w-[1240px]").not.toMatch(FIXED_WIDTH);
     const scope = FILES.filter(
       (f) => /^src\/features\/editor\//.test(f.path) || /^src\/routes\/EditorPage\.tsx$/.test(f.path),

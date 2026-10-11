@@ -963,3 +963,31 @@ describe("U8 review #2: the build panel across a close", () => {
     expect(screen.getByTestId("build-submit")).toBeDisabled();
   });
 });
+
+// V8 code review 01 #24, #38 (I1): the inspector's words and its one-second "saved"
+describe("RegionInspector: the title it names, the saved label's second", () => {
+  const props = { worldId: "w", regionId: "r1", regions, open: ALL_OPEN, onOpenChange: () => {}, onChanged: () => {}, onDeleted: () => {} };
+
+  it("the delete confirm names knowledge by the title its card shows", async () => {
+    (api.getEditorRegion as Mock).mockResolvedValue({ ...VIEW, knowledge: [{ knowledge: { ...VIEW.knowledge[0].knowledge,
+      title: "Watermill", title_ko: "물레방아" }, scope_region_ids: ["r1"] }] });
+    render(<RegionInspector {...props} />);
+    fireEvent.click(await screen.findByRole("button", { name: t("action.deleteKnowledge", { name: "물레방아" }) }));
+    expect(await screen.findByTestId("confirm-delete")).toHaveTextContent(t("delete.knowledge", { name: "물레방아" }));
+  });
+
+  it("[저장] says it saved, and after a second is [저장] again", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      (api.getEditorRegion as Mock).mockResolvedValue(VIEW);
+      (api.updateRegion as Mock).mockResolvedValue({});
+      render(<RegionInspector {...props} />);
+      fireEvent.click(await screen.findByTestId("region-save"));
+      await waitFor(() => expect(screen.getByTestId("region-save")).toHaveTextContent(t("notice.saved")));
+      act(() => vi.advanceTimersByTime(1001));
+      expect(screen.getByTestId("region-save")).toHaveTextContent(t("editor.region.save"));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

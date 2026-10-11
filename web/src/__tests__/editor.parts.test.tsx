@@ -94,6 +94,21 @@ describe("EditorHeader (TP-V8-2, BR-V8-03/28/34)", () => {
     expect(screen.getByTestId("play-this-world").closest(".order-last")).toBeNull();
   });
 
+  it("Esc on the toggle itself closes the row and keeps the focus there; a press on the open toggle closes it", () => {
+    // code review 01 #38 (T13 H2, H3)
+    head();
+    const toggle = screen.getByTestId("file-menu");
+    fireEvent.click(toggle);
+    toggle.focus();
+    fireEvent.keyDown(toggle, { key: "Escape" });
+    expect(screen.queryByTestId("file-row")).not.toBeInTheDocument();
+    expect(toggle).toHaveFocus();
+    fireEvent.click(toggle);
+    fireEvent.pointerDown(toggle); // a real press: pointerdown, then click
+    fireEvent.click(toggle);
+    expect(screen.queryByTestId("file-row")).not.toBeInTheDocument();
+  });
+
   it("a press outside closes the row; an action starting closes it too", () => {
     const { onBuild } = head();
     fireEvent.click(screen.getByTestId("file-menu"));
@@ -247,6 +262,11 @@ describe("MapTools and MapLegend (TP-V8-15, BR-V8-09/32)", () => {
     expect(tools[2]).toHaveFocus();
     fireEvent.keyDown(tools[2], { key: "ArrowRight" });
     expect(tools[0]).toHaveFocus();
+    // code review 01 #38: the other way round, and Home
+    fireEvent.keyDown(tools[0], { key: "ArrowLeft" });
+    expect(tools[2]).toHaveFocus();
+    fireEvent.keyDown(tools[2], { key: "Home" });
+    expect(tools[0]).toHaveFocus();
   });
 
   it("the legend says the shapes and every connection kind in words", () => {
@@ -284,5 +304,22 @@ describe("NewConnectionDialog (TP-V8-7 form side, BR-V8-13, R-12)", () => {
     expect(screen.getByTestId("connection-exists")).toHaveTextContent(enumLabel("connectionKind", "river"));
     fireEvent.click(screen.getByTestId("connection-save"));
     expect(onSubmit).toHaveBeenCalledWith("river", 0.35); // untouched: the stored weight
+  });
+
+  it("the label follows the slider while it moves; the stored line keeps the stored weight; a kind with none starts at 0.6", async () => {
+    // code review 01 #38 (T6, T7, W12 m7)
+    render(<NewConnectionDialog title="A – B" busy={false} existing={existing} onSubmit={vi.fn()} onCancel={vi.fn()} />);
+    act(() => {
+      fireEvent.change(screen.getByTestId("connection-kind"), { target: { value: "river" } });
+    });
+    await waitFor(() => expect(screen.getByTestId("connection-exists")).toBeInTheDocument());
+    fireEvent.change(screen.getByTestId("connection-weight"), { target: { value: "0.8" } }); // moving, not let go
+    expect(screen.getByTestId("connection-weight-label")).toHaveTextContent(numberWithMeaning("weight", 0.8));
+    expect(screen.getByTestId("connection-exists")).toHaveTextContent(numberWithMeaning("weight", 0.35));
+    act(() => {
+      fireEvent.change(screen.getByTestId("connection-kind"), { target: { value: "route" } });
+    });
+    await waitFor(() => expect(screen.getByTestId("connection-weight")).toHaveValue("0.6"));
+    expect(screen.queryByTestId("connection-exists")).not.toBeInTheDocument();
   });
 });

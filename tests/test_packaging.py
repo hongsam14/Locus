@@ -84,8 +84,11 @@ def test_the_readme_names_only_compose_profiles_that_exist() -> None:
 
 
 def test_tp_v7_14_the_readme_says_what_a_build_makes() -> None:
-    """V7 (BR-V7-16): a build makes regions, connections and knowledge; NPCs and event
-    seeds come from the editor and a rebuild keeps them."""
+    """V7 (BR-V7-16): a build makes regions, connections and knowledge; NPCs come from the
+    editor and event seeds from a World File (V9 code review 01 #2: the editor makes no
+    seed), and a rebuild keeps both."""
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "NPC가 만들어집니다" not in readme
-    assert "NPC와 사건 씨앗은 에디터에서 더하고, 소스로 다시 빌드해도 남습니다" in readme
+    assert "사건 씨앗은 에디터에서" not in readme
+    assert "NPC는 에디터에서 더하고, 사건 씨앗은 World File의 `event_seeds`로 넣습니다" in readme
+    assert "둘 다 소스로 다시 빌드해도 남습니다" in readme

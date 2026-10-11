@@ -5972,3 +5972,30 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **User Input**: (none)
 **AI Response**: Steps 1–10 done on feat/follow-up: `d386805` (dev audit 0, npm 11 for `audit fix`), `d34c0a8` (mypy 0, CI mypy step, scripts linted), `49ca342` (test hygiene: lock-order events, `or True` → real values, recorded retry waits, engine dispose, fake upsert merges / replace replaces, `/health` degraded test), `239f82d` (index.html ko/title/description/favicon, env.example), `5db8ae9` (live scenario 10a direction, non-JSON answers FAIL, poll ≥ 1 s), `7eb0b61` (editor/map ko 24 lines 해요체, 11 unused keys removed, register and key-use tests), `86e225b` (CLAUDE.md, README, web/README, operations.md, 7 docstrings), `fa0927d` (GM manual-turn docstring), `e8e2fe0` (next-cycle list with sources and file:line). Gate GREEN: pytest 1244, vitest 821, mypy 0, npm audit 0/0, ResourceWarning 0, first-screen JS 119.41 kB. Mutants 36/36 caught. Deviations recorded in the summary § 5 (npm 11 for the fix; 5 unused keys outside the named prefixes; register test covers augment./wiki./build.; 10a ids from /state; one more docstring). Summary `construction/V9-debt-docs/code/code-summary.md`.
 **Context**: CONSTRUCTION / V9 — code approval gate next.
+
+---
+## Code Generation — V9 — Approval prompt
+**Timestamp**: 2026-10-11T16:06:55Z
+**AI Response**: Presented the V9 code generation completion (`d386805`..`bc4ac75`, summary `construction/V9-debt-docs/code/code-summary.md`) with the standard REVIEW REQUIRED / WHAT'S NEXT blocks; said that, as in V5–V8, a code review runs after approval before Build and Test.
+**Context**: CONSTRUCTION / V9 — code approval gate.
+
+---
+## Code Generation — V9 — Approval
+**Timestamp**: 2026-10-11T16:06:55Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V9 code generation approved. Starting code review 01 (four review-only angles in separate worktrees, as V5–V8), then Build and Test.
+**Context**: CONSTRUCTION / V9 — code review 01.
+
+---
+## Code Review 01 — V9 — Findings
+**Timestamp**: 2026-10-11T16:42:24Z
+**User Input**: (none)
+**AI Response**: Four review-only angles in separate worktrees at `bc4ac75` (backend & test hygiene, live scenario, web dictionary & head, docs). 40 findings: 0 high, 3 medium (#1 register rule misses 합니다체 before …/(/" and 십시오; #2 README and carry_over docstring say seeds are added in the editor — they come only through World File; #3 next-cycle § 0 uses U8 § 1 numbers under a § 3 abbreviation), 37 low (4 code/script, 19 test, 14 docs). Mutants 72 (40 caught). Record `construction/V9-debt-docs/code/reviews/code-review-01.md`. Asking the human for the fix scope.
+**Context**: CONSTRUCTION / V9 — code review 01.
+
+---
+## Code Review 01 — V9 — Fix scope
+**Timestamp**: 2026-10-11T17:15:02Z
+**User Input**: AskUserQuestion answer "A. 거의 모두 고침 (권장)"
+**AI Response**: Fixed 39 of 40 findings; #26 (pin mypy/langchain) attached to the next-cycle lock-file line (requirements § 9). Commits `10bdc20` (live scenario #4 #5 #8–#12), `011f7e7` (web #1 #13–#20), `c53e527` (backend/tests #6 #7 #21–#25), then docs (#2 #3 #26–#40, README sentence test). pytest 1262, vitest 825, mypy 0, npm audit 0/0, ResourceWarning now an error, first-screen JS 119.39 kB; 34 fix mutants caught. Record § 7 and code-summary § 9 updated. V9 COMPLETE; next Build and Test.
+**Context**: CONSTRUCTION / V9 — code review 01 fixed.

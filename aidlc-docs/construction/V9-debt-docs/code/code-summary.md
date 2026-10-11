@@ -6,7 +6,7 @@
 - 시간 초과에 기대던 시험, 실제로 자던 재시도 시험, 닫지 않던 sqlite 엔진, 공허한 단언 둘을 고쳤다. ResourceWarning은 53줄에서 0줄이 됐다.
 - 라이브 시나리오 10a는 가까운 지역이 더 크게 듣는지 단언하고, 이상한 응답을 FAIL로 기록한다.
 - 페이지가 Locus를 화면의 언어로 말하고 아이콘을 갖는다. `env.example`이 모든 설정을 적는다.
-- 에디터·지도 문장이 해요체이고, 화면이 쓰지 않는 사전 키가 없다.
+- 에디터·지도 문장이 해요체이고, 화면이 쓰지 않는 사전 키가 없다. 〔코드 리뷰 01 #15: `word.rumor.promoted` 하나가 남아 있었다. § 9에서 지웠다.〕
 - CLAUDE.md, README, web/README, operations.md, 낡은 docstring이 코드와 맞는다. 다음 주기 목록은 항목마다 출처와 위치를 갖는다.
 
 이 문서는 바뀐 것, 확인, 이탈, 알려진 한계, 다음에 넘기는 것을 모은다. 다음은 코드 승인 지점이다.
@@ -86,7 +86,7 @@ unit-of-work의 완료 조건 넷(mypy 0과 CI, audit 0, 시험 위생, CLAUDE.m
 | CLAUDE.md Conventions — 교차 월드 prior 검색 | 사실대로 적음: 필터가 `domains`, 색인은 `meta.domains`라 늘 0건. 기능 고치기는 next-cycle § 7 |
 | CLAUDE.md Conventions — "`world_id` partitions every graph" | 고침: 색인된 속성이고, id는 라벨마다 전역 유일 |
 | CLAUDE.md Code 목록 — 빠진 play 파일, DeedPanel 자리 | 고침: rumor 넷, `event/seeds`, `turn/changes`, `deeds/caps`, `storage/clock`, `write_section`, `knowledge/cache`, `world/carry_over`; Frontend 줄은 V2~V8 구조와 `GmTabs`로 |
-| README — "NPC가 만들어집니다" | 이미 고침(앞 유닛). 지금 문장: "NPC와 사건 씨앗은 에디터에서 더하고 …" |
+| README — "NPC가 만들어집니다" | ~~이미 고침(앞 유닛)~~ 〔코드 리뷰 01 #2: 앞 유닛의 문장도 틀렸다. 에디터는 씨앗을 만들지 않는다. § 9에서 "NPC는 에디터에서, 사건 씨앗은 World File의 `event_seeds`로"로 고쳤다〕 |
 | README:11 — 행적과 사건이 한 칸씩 | 고침: 행적 소문은 한 턴에 한 칸, 사건은 같은 턴에 가장 강한 길로 |
 | README · operations — [바로 플레이]는 LLM 없음 | 고침: LLM은 없고, 키가 있으면 API 길은 임베딩을 부른다(CLI `world demo`는 부르지 않는다) |
 | operations — 씨앗 두 번째 시작 409 | 이미 맞음: V5가 겹친 시작을 세션 쓰기 구간으로 줄 세웠다 |
@@ -159,3 +159,45 @@ unit-of-work의 완료 조건 넷(mypy 0과 CI, audit 0, 시험 위생, CLAUDE.m
 
 - **Build and Test**(이번 주기): compose를 띄우는 것은 사람에게 먼저 묻는다(호스트 3000은 다른 서비스가 쓰므로 `WEB_PORT=13000`). 키가 있는 라이브 시나리오 15단계(새 10a 포함), V5 nfr-light § 3의 PG 스모크 P1~P6, nginx 머리, Neo4j 라벨 삭제, 백업 실패, GM·에디터 한 바퀴(next-cycle § 1).
 - 다음 주기: `aidlc-docs/operations/next-cycle.md`(설계 결정 12, 정확성 결함, 화면 넘김 17, RE low·정리, U8 § 2, 진행 중 기능 넷, 범위 밖).
+
+## 9. 코드 리뷰 01 뒤 (2026-10-12)
+
+기록: `reviews/code-review-01.md`(지적 40: high 0, medium 3, low 37). 사람의 답은 **A — 거의 모두 고침**이다. 39건을 고쳤고, #26(mypy·langchain 판 고정)은 next-cycle § 8의 잠금 파일 줄에 붙였다.
+
+| 커밋 | 고친 지적 |
+|---|---|
+| `10bdc20` | 라이브 시나리오 #4, #5, #8~#12 |
+| `011f7e7` | 웹 시험·사전 #1, #13~#20 |
+| `c53e527` | 백엔드·시험 #6, #7, #21~#25 |
+| (이 요약과 같은 커밋) | 문서 #2, #3, #27~#40, README 문장 시험 |
+
+| 항목 | 리뷰 전 (`bc4ac75`) | 고친 뒤 |
+|---|---|---|
+| pytest | 1244 | **1262** |
+| vitest | 821 | **825** |
+| mypy · ruff · black | 0 · clean · clean | 같음 |
+| ResourceWarning | 0 (지키는 것 없음) | 0, 그리고 하나라도 나면 실패(`filterwarnings`) |
+| npm audit 전체 · `--omit=dev` | 0 · 0 | 같음 |
+| 첫 화면 JS gzip | 119.41 kB | 119.39 kB |
+| 저장소 `data/backups`의 시험 백업 | 실행마다 4개씩 늘어 369개 | 늘지 않는다(옛 파일은 그대로 두었다 — 사람이 지울 것) |
+
+고친 것 가운데 동작이 바뀐 것:
+- `scripts/live_scenario.py`
+  - 10a는 항구 왜곡도에서 피드백 몫을 뺀 값이 0.3 + 사건 기여 이상인지 본다.
+  - `--timeout`은 0보다 큰 유한한 수만, `--poll`은 유한한 수만 받는다.
+  - FAIL 문구는 실제로 기다린 시간을 적는다.
+- `locus/world/topology/hierarchy.py` — 순환으로 들어가기만 하는 지역의 부모 고리는 끊지 않는다. 공개 경로로는 닿지 않는 가지다.
+- `pyproject.toml`·`requirements.txt` — `langchain-openai>=0.2`.
+- `pyproject.toml` — pytest가 ResourceWarning과 그로 생긴 unraisable 경고를 오류로 본다.
+- `tests/conftest.py`
+  - 시험이 처음 연결한 엔진만 닫는다.
+  - 데이터 폴더를 임시 폴더로 돌린다.
+- `web/src/i18n/{ko,en}.ts` — `word.rumor.promoted`를 지웠다.
+
+새 시험은 #8~#12, #13~#20, #21~#25의 실패 장면을 하나씩 재현한다. 돌연변이는 웹 X1~X14, 백엔드 F1~F10과 옛 순환 규칙, 라이브 R1~R9로 34개이고 모두 잡혔다.
+- F5(`if False:`)는 꼬리 시험을 끝없이 돌게 해서 실패가 아니라 멈춤으로 나타났다.
+- 옛 규칙 그대로의 돌연변이는 실패로 잡혔다.
+
+알려진 한계(새로 적음):
+- 쓰임 시험에서 `error.`·`timeline.`·`log.`·`tab.`은 앞머리로 센다. 서버나 화면이 넘기는 값으로 키를 만들기 때문이다. 그래서 그 아래 새 키가 쓰이지 않아도 시험이 잡지 못한다.
+- 넓은 범위 픽스처의 엔진은 설정될 때 연결해야 한다. 첫 시험 안에서 처음 연결하면 그 시험 끝에 닫힌다.

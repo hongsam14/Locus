@@ -28,8 +28,9 @@ that every dictionary key is used, and the document head (`index.html`).
 ## Screens
 - `/` — home (`routes/HomePage.tsx`, `features/home/`): the opening lines (`HomeHero`), a card
   per demo in the server's manifest (`DemoCards`, `DemoCard` — no demo name in this code;
-  [play now] loads the demo if it is not there, starts a session at its start region and opens
-  the player screen; [continue] or [new session] once it is there; [edit]; [reload demo]) and
+  [play now] loads the demo if it is not there — or, loaded with no open session, starts one at
+  once — at its start region and opens the player screen; with open sessions [continue] the
+  latest or [new session]; [edit]; [reload demo]) and
   "my worlds" (`MyWorlds`, `WorldRow`: regions, last edit, open sessions, [continue],
   [new session], [edit]; [build a world from sources] in the list's head).
 - `/play/:sessionId` — the player screen (`routes/PlayPage.tsx`, `features/play/`): the region

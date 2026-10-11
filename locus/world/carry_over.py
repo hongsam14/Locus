@@ -1,7 +1,8 @@
 """Carry a world's NPCs and event seeds across a rebuild (V7, FR-C9, RE-W18, Q3=A). Pure.
 
-A build makes regions, connections and knowledge from the sources; NPCs and event seeds
-are added in the editor, so a rebuild from the same sources would lose them. Each one
+A build makes regions, connections and knowledge from the sources; NPCs are added in the
+editor and event seeds come with a World File, so a rebuild from the same sources would lose
+them. Each one
 goes to the new region with the same (normalized name, level) as its old region. When
 that key is not unique — in the new world, or already in the old one — the parents'
 keys must match too (code review #11). What cannot be placed is not carried and is

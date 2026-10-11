@@ -136,7 +136,7 @@ V9에서 고치지 않고 `next-cycle.md`에 적는다(큰 넘김):
 - [x] 8.1 `CLAUDE.md`: Status(Follow-up 주기, V1~V9, 실제 수치), Gates(실제 CI), Conventions(교차 월드 사전 검색은 지금 0건을 돌려줌 — 사실대로, `world_id`는 색인일 뿐 분할이 아님), Code 목록(§ G 표의 빠진 파일과 V2~V8 웹 구조), "127.0.0.1" 주장 바로잡음.
 - [x] 8.2 `README.md`: 사건 퍼짐 문장(행적 소문만 한 칸씩, 사건은 같은 턴에 길을 따라 퍼짐), [바로 플레이]의 LLM 없음 설명(키가 있으면 임베딩 호출).
 - [x] 8.3 `web/README.md` 다시 씀(§ 1.3).
-- [x] 8.4 `aidlc-docs/operations/operations.md`: 제목의 "(placeholder)", Observability의 app·web healthcheck, "Doodly"·SessionBar 언급, V1(CI 러너)·V3(번역 파일) 운영 메모.
+- [x] 8.4 `aidlc-docs/operations/operations.md`: 제목의 "(placeholder)", Observability의 app·web healthcheck, "Doodly"·SessionBar 언급. ~~V1(CI 러너)·V3(번역 파일) 운영 메모~~ — R-02로 하지 않음.
 - [x] 8.5 docstring·주석: `neo4j_repo.py:3,76-77`, `knowledge/loader.py:3-5`, `play/event/dynamics.py:4`, `play/event/suggester.py:4`, `api/routers/play.py:7-8`, `play/storage/postgres_repo.py:7-8`, `Dockerfile:9`.
 - [x] 8.6 확인: 문서가 말하는 수치·경로가 실제와 같은지 하나씩 본다(경로는 `ls`, 수치는 게이트 출력). ruff·black·mypy·pytest(docstring 고침).
 - [x] 8.7 커밋: `docs: CLAUDE.md, README, web/README and operations match the code after the Follow-up cycle (V9, FR-T4)`

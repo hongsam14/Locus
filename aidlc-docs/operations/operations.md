@@ -25,6 +25,8 @@ docker compose --profile service --profile tools down   # stop everything
 3. Query: `GET /api/knowledge/worlds/{world_id}/regions/{id}?include_hearsay=true` ; author: `/api/world/*` (U1 route prefixes).
 4. Designer cross-world reference: `GET /api/world/worlds/{id}/related-priors` — priors from OTHER
    worlds sharing this world's domain tags (read-through; never enters NPC build/query).
+   〔Follow-up V9: it finds nothing today — the filter asks for a top-level `domains` the index
+   keeps under `meta.domains`; next-cycle § 7.〕
 5. `locus world export --world <id> --out <file.world.json>` — World File v1 (also the NPC-runtime static bundle).
 
 > MVP-improvement cycle (2026-06-09) changed only application/data layers — no infra/deploy change.
@@ -41,7 +43,7 @@ locus init-schema --play --localization   # U1: flags pick a subset — --world 
    seeds a default per-region distortion). History: `GET /api/play/worlds/{world_id}/sessions`. GameMaster tools live under `/api/gm/*`.
 2. GameMaster (per turn): generate rumors `POST …/sessions/{sid}/regions/{rid}/rumors` (LLM degree-chain
    distortion of direct + propagated knowledge + existing rumors), regenerate, `PUT …/rumors/{id}/support`,
-   `PUT …/regions/{rid}/distortion`, `POST …/sessions/{sid}/advance-turn` (re-evaluate promotion, turn++).
+   `PUT …/regions/{rid}/distortion`, `POST …/sessions/{sid}/advance-turn` (re-evaluate promotion, turn++). 〔Since U4 the route is `POST /api/gm/sessions/{sid}/advance`, the same engine as a player's action; "advance-turn" below means it.〕
 3. NPC session query: `GET …/sessions/{sid}/regions/{rid}/knowledge` — Knowledge(+promoted rumors as
    direct-like)+rumors; distance-based `propagated`/auto-rumor excluded (designer-only).
 4. Timeline / history: `GET …/sessions/{sid}/timeline`; past (closed) sessions are read-only.
@@ -171,8 +173,9 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   (moves, waits, events, promotion); only rumor drafts are skipped (`llm_available=false`).
 - **Timeline order**: a turn's entries are written in one transaction, so they are stamped
   by the application with a strictly increasing clock (`locus/play/storage/clock.py`) rather
-  than the database default, and read back ordered by `(turn, created_at, id)`. This is the
-  one table whose `created_at` is not DB server time.
+  than the database default, and read back ordered by `(turn, created_at, id)`. 〔Follow-up
+  V9: messages, deeds and appraisals take the same clock; the other tables keep DB server
+  time.〕
 - **Failure records**: a failed run stores the fixed message `turn processing failed`; the
   timeline `turn_run_failed` payload holds only the exception class name (details go to the
   server log). Turns already committed stay.
@@ -204,8 +207,8 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   outage" above). The web image's nginx waits 130s for `/api/` (`web/nginx.conf`), so a slow
   answer is not cut off with a 504 while the backend still saves it. A reverse proxy in
   front of the API needs the same allowance. The call runs before the transaction, so a failed call stores nothing: no
-  conversation row and no message. A call that still fails after its retries answers **500**,
-  because BR-U5-30 only says the error is raised and gives no status. An empty answer is
+  conversation row and no message. A call that still fails after its retries answers **503**
+  with code `llm_failed` (`api/errors.py`; it was a 500 when U5 shipped). An empty answer is
   replaced by a fixed line in the display language.
 - **Display language**: `SUPPORTED_LANGS` (default `ko,en`) is the `?lang=` allow-list.
   `TRANSLATION_TARGET_LANG` is the default, and startup fails if it is not in the list.
@@ -229,7 +232,8 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   leave one harmless row behind, which the next purge removes. A failed purge is logged and
   never fails the request. **Known gap**: the CLI (`locus world build|import|demo` with a
   replace) builds no localization container and purges nothing. Those orphan rows go away
-  with the next API-side replace of that world.
+  with the next API-side replace of that world. 〔Follow-up V3: `world demo` now purges and
+  seeds as the API does; `world build` and `world import` still do not.〕
 - **Accepted risks** (local single-player demo, no auth): the player's text goes into the
   prompt as is. The guard is the system prompt's knowledge boundary plus the length cap, so a
   crafted line can still make the NPC invent things outside its knowledge. Because recent
@@ -337,6 +341,7 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   - The GM tools are split by feature under `web/src/features/gm/`:
     - `GmHub` holds the state.
     - `ManualTurnPanel`, `EventPanel`, `DistortionPanel`, `RumorPanel`, `TimelinePanel` and `DeedPanel` draw it.
+  - 〔Follow-up V6: `GmHub` and `ManualTurnPanel` are gone. The GM screen is reached from the top bar's menu; `GmSessionView` and `useGmData` hold one session's state; `TurnTools` and `TurnBand` sit over five tabs (`GmTabs`: region, events, seeds, record, deeds); the player strip's [back to play] returns to the player screen.〕
 - **World state**
   - `GET /api/gm/sessions/{s}/state` returns one row per world region: distortion, feedback share, active / promoted / deed rumors and active events.
   - The map overlay ("World state") colors regions in five distortion bands and badges `active/promoted` (plus `✦deed`).
@@ -401,7 +406,7 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
 ## World editor (Purpose Restructure U3, 2026-10-01)
 - **Screens**
   - `/` lists the worlds (name, regions, last edit, open sessions) with [Edit] and [Start session], and [Build from sources]. 〔U8〕 Demo cards from the manifest sit above the list, with or without worlds (no [Load the demo] button). 〔Follow-up V4: a demo card owns its demo world; "my worlds" lists the rest with [continue], [new session], [edit]; [build a world from sources] heads the list.〕
-  - `/editor/:worldId` 〔Follow-up V8: the GM's frame〕: a head with the world's name and counts, [play this world] and the file menu (save = download, load = replace after a yes, close open sessions after a second yes, build from sources); the map with its tools beside a 400 px panel of four tabs — Region (the inspector: fields, connections, knowledge and scopes, NPCs; region delete apart) / Unscoped / Augment / Wiki. Below 1024 px one column, the map in a dialog. The open-sessions band is gone; a world with open sessions says so in the head.
+  - `/editor/:worldId` 〔Follow-up V8: the GM's frame〕: a head with the world's name and counts, [play this world] and the file menu (save = download, load = replace after a yes, close open sessions after a second yes, build from sources); the map with its tools beside a 400 px panel of four tabs — Region (the inspector: fields, connections, knowledge and scopes, NPCs; region delete apart) / Unscoped / Augment / Wiki. Below 1024 px one column: the head, the map, then the panel (new region and new connection open as dialogs). The open-sessions band is gone; a world with open sessions says so in the head.
   - The map has three tools: select/move (a click saves nothing; a drag over 4px saves the position once), add region (click an empty spot), connect (click two regions in turn).
 - **Edits** (`/api/world/worlds/{w}/…`, `api/routers/world_editor.py`)
   - An edit replaces the node's properties whole: a cleared field is gone (build and import still merge).
@@ -464,7 +469,7 @@ npm run build        # tsc + vite build -> web/dist
 
 ## Observability (current)
 - Structured stdout from CLI/app; container healthchecks: Neo4j HTTP, OpenSearch cluster health, Postgres `pg_isready`, **app** `curl -sf http://localhost:8000/health` (15 s, 30 s start period), **web** `wget -q --spider http://127.0.0.1/`.
-- `GET /health` is `ok` when every assembled boundary is up and `degraded` otherwise (V9 tests both); `GET /api/capabilities` says which providers are assembled.
+- `GET /health` is `ok` when every assembled boundary is up, `degraded` when some are down, and 503 `unavailable` when none is (V9 tests the first two); an app given its containers (tests) is always `ok`. `GET /api/capabilities` says which providers are assembled.
 - Dashboards/alerting: out of scope (future Operations expansion).
 
 ## Localization & UX (UX Improvement cycle, 2026-08-11)

@@ -222,8 +222,9 @@ def list_distortions(
 # --- turn --------------------------------------------------------------------- #
 @router.post("/sessions/{session_id}/advance", response_model=TurnResult)
 def advance(session_id: str, p: PlayContainer = Depends(get_play)) -> TurnResult:
-    """Manual GM turn: the same engine the player's actions drive (U4, BR-U4-16);
-    runs without an LLM (rumor drafts skipped). 409 while a run is in progress."""
+    """Manual GM turn: the same engine the player's actions drive (U4, BR-U4-16), run in
+    the request; with an LLM it drafts rumors like any turn, without one it skips them.
+    409 while a run is in progress."""
     try:
         return p.turns.advance(session_id).turns[-1]
     except PLAY_ERRORS as exc:

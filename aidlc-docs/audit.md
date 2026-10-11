@@ -5999,3 +5999,17 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **User Input**: AskUserQuestion answer "A. 거의 모두 고침 (권장)"
 **AI Response**: Fixed 39 of 40 findings; #26 (pin mypy/langchain) attached to the next-cycle lock-file line (requirements § 9). Commits `10bdc20` (live scenario #4 #5 #8–#12), `011f7e7` (web #1 #13–#20), `c53e527` (backend/tests #6 #7 #21–#25), then docs (#2 #3 #26–#40, README sentence test). pytest 1262, vitest 825, mypy 0, npm audit 0/0, ResourceWarning now an error, first-screen JS 119.39 kB; 34 fix mutants caught. Record § 7 and code-summary § 9 updated. V9 COMPLETE; next Build and Test.
 **Context**: CONSTRUCTION / V9 — code review 01 fixed.
+
+---
+## Build and Test — Follow-up cycle — Start
+**Timestamp**: 2026-10-11T17:19:51Z
+**User Input**: AskUserQuestion answer "A. 키로 띄워 확인 (권장)"
+**AI Response**: Bringing the stack up with the key (`WEB_PORT=13000 docker compose --profile service up -d --build`), then the live scenario, V5 PG smoke P1–P6, nginx head, Neo4j label delete, backup failure and a GM/editor pass; `down` afterwards, volumes kept.
+**Context**: CONSTRUCTION / Build and Test (Follow-up cycle).
+
+---
+## Build and Test — Follow-up cycle — Done
+**Timestamp**: 2026-10-11T17:32:45Z
+**User Input**: (none)
+**AI Response**: Stack up with the key (`WEB_PORT=13000 docker compose --profile service up -d --build`), five services healthy, /health ok, capabilities all true. Live scenario 15/15 (log `construction/build-and-test/follow-up/live-scenario-2026-10-12.log`). V5 PG smoke P1–P6 and the row-lock check PASS (P5: a graceful restart finished the run as documented, so the app was killed to cut it; then failed/interrupted, turn and region restored, turn_run_failed line). V7 labelled delete and backup failure PASS on the real Neo4j and volume. nginx heads PASS. Headless walk of the editor (new region selected, drag saved, World File load notice) and GM (turn band, seed running, session end) PASS. Server warning stages all on the screen list. Not run: V7 CLI-rebuild cache check and V8 build replace (each needs a full LLM build). emberleaf restored to the demo; stack down, volumes kept. Records: build-instructions, unit-test-instructions, integration-test-instructions, build-and-test-summary under `construction/build-and-test/follow-up/`.
+**Context**: CONSTRUCTION / Build and Test — approval gate next.

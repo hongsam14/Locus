@@ -1,6 +1,6 @@
-# Operations — Locus (placeholder)
+# Operations — Locus
 
-AI-DLC Operations is a **placeholder** stage. For the MVP, operation is local via Docker Compose; no production deploy/monitoring workflow is in scope yet.
+Operation is local via Docker Compose (three profiles); there is no production deploy or monitoring workflow yet. Sections follow the cycles that added them; a note in 〔brackets〕 marks where a later unit changed a line.
 
 ## Run (local)
 ```bash
@@ -46,7 +46,7 @@ locus init-schema --play --localization   # U1: flags pick a subset — --world 
    direct-like)+rumors; distance-based `propagated`/auto-rumor excluded (designer-only).
 4. Timeline / history: `GET …/sessions/{sid}/timeline`; past (closed) sessions are read-only.
 5. Web: SessionBar (create/select/close) + SessionPanel (GameMaster hub: turn, timeline, generate,
-   support/distortion sliders, PROMOTED badge).
+   support/distortion sliders, PROMOTED badge). 〔Follow-up V6: the GM screen `/gm/:sessionId` replaced SessionBar/SessionPanel — `web/README.md`〕
 
 > This cycle ADDS PostgreSQL (session-only) to the infra tier; Neo4j/OpenSearch stack unchanged.
 > LLM rumor generation needs `OPENAI_API_KEY` and is graceful (a failed step is skipped, the turn proceeds).
@@ -64,6 +64,7 @@ Adds **Events** that dynamically evolve per-region distortion over turns. **No n
    live values `GET …/sessions/{sid}/distortions`; events `GET …/sessions/{sid}/events?status=`.
 4. Web: SessionPanel adds an event create form, session-wide event list (Approve/Discard/Resolve), a
    "Suggest events" button, and shows the real per-region distortion. Timeline records EVENT_* entries.
+   〔Follow-up V6: the GM screen `/gm/:sessionId` replaced SessionBar/SessionPanel — `web/README.md`〕
 
 > Distortion/propagation/support evolution are **deterministic** (LLM-independent); only event *suggestion*
 > uses the LLM and is graceful (no suggester / failure → no suggestions, the turn still advances).
@@ -86,7 +87,7 @@ support(공신력) is now the rumor "aliveness" lever, so the set stays finite w
 
 **Build path fixes**: topology now sees this world's persisted common-sense priors (wiki injected before
 `topology.build`); a barrier terrain not bordering exactly 2 regions is reported in `IngestionResult.errors`
-instead of being silently dropped. Web SessionPanel loads its reads in parallel.
+instead of being silently dropped. Web SessionPanel loads its reads in parallel. 〔Follow-up V6: the GM screen `/gm/:sessionId` replaced SessionBar/SessionPanel — `web/README.md`〕
 
 ## World File · demo · backups (Purpose Restructure U2, 2026-09-30)
 - **Save / load a world (World File v1)** — `locus world export --world <id> --out <id>.world.json`, `locus world import --world <id> --file <file> [--replace/--no-replace] [--remap] [--force]`. API: `GET /api/world/worlds/{id}/file` (download), `POST /api/world/worlds/{id}/file?replace=&confirm=&remap=` (JSON body) or `POST .../file/upload` (multipart). Legacy export JSON (no `format_version`) is accepted as v0; other versions → 422. Loading a file into a different world id remaps every id deterministically (`uuid5`); `remap=true` / `--remap` forces it (recovery from an `id collision with another world` error).
@@ -399,8 +400,8 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
 
 ## World editor (Purpose Restructure U3, 2026-10-01)
 - **Screens**
-  - `/` lists the worlds (name, regions, last edit, open sessions) with [Edit] and [Start session], and [Build from sources]. 〔U8〕 Demo cards from the manifest sit above the list, with or without worlds (no [Load the demo] button).
-  - `/editor/:worldId`: the World File bar (save = download, load = replace after a yes, close open sessions after a second yes, build from sources, the "open sessions" band), the map, and the Region / Unscoped / Augment / Wiki tabs.
+  - `/` lists the worlds (name, regions, last edit, open sessions) with [Edit] and [Start session], and [Build from sources]. 〔U8〕 Demo cards from the manifest sit above the list, with or without worlds (no [Load the demo] button). 〔Follow-up V4: a demo card owns its demo world; "my worlds" lists the rest with [continue], [new session], [edit]; [build a world from sources] heads the list.〕
+  - `/editor/:worldId` 〔Follow-up V8: the GM's frame〕: a head with the world's name and counts, [play this world] and the file menu (save = download, load = replace after a yes, close open sessions after a second yes, build from sources); the map with its tools beside a 400 px panel of four tabs — Region (the inspector: fields, connections, knowledge and scopes, NPCs; region delete apart) / Unscoped / Augment / Wiki. Below 1024 px one column, the map in a dialog. The open-sessions band is gone; a world with open sessions says so in the head.
   - The map has three tools: select/move (a click saves nothing; a drag over 4px saves the position once), add region (click an empty spot), connect (click two regions in turn).
 - **Edits** (`/api/world/worlds/{w}/…`, `api/routers/world_editor.py`)
   - An edit replaces the node's properties whole: a cleared field is gone (build and import still merge).
@@ -437,19 +438,19 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
   - Entries are checked once at assembly; a bad entry is left out with a warning (`DemoWorlds.problems`). `python -c "from locus.world.demo import check_packaged; print(check_packaged())"` prints the problems of the installed package ([] when fine; the CI images job runs it).
   - Adding a demo: put `<name>.world.json` (and its sources) in that folder and add an entry; a reinstall (`pip install .` / the image build) ships it.
   - Old command → new: `world demo --name aldermoor` → `world demo --name emberleaf`; `build-world --demo` (alias) → `world build --demo emberleaf`. The old Aldermoor file lives on only as a test fixture (`tests/fixtures/aldermoor/`).
-  - [play now] on a card: load the demo into the world id of its name if it is not there (or on [load fresh]), start a session named "여행자"/"Traveler" at `start_region_id`, open `/play/:id`. Loading never calls an LLM.
+  - [play now] on a card: load the demo into the world id of its name if it is not there (or on [load fresh]), start a session named "여행자"/"Traveler" at `start_region_id`, open `/play/:id`. Loading never calls an LLM; with `OPENAI_API_KEY` set it does call the embedding API for the search documents (without a key it loads with no embeddings).
 - **Event seeds**
   - World File optional section `event_seeds` (format_version stays 1): `id`, `region_id`, `title`, `description`, `category`, `magnitude`, optional `lifecycle`. Stored as `EventSeed` nodes; a region delete removes its seeds (the delete plan lists `seed_ids`).
   - `GET /api/gm/sessions/{sid}/seeds` (each with its region name and running event id) and `POST /api/gm/sessions/{sid}/seeds/{seed_id}/start` → 201 with an ACTIVE event (no LLM), under the GM lease. A second start while its event runs is 409; after a resolve it starts again. The timeline line reads "씨앗 사건 시작: {title}".
   - Hosts running the API outside compose: run `locus init-schema --world` once after upgrading (the `EventSeed` constraint). Compose runs `init-schema` on every start.
-- **Keyless** — `GET /api/capabilities` → `{llm, vlm, embedding}` from the assembled providers. The home, editor and GM screens show one line when `llm` is false and turn the LLM buttons off with "LLM 키가 필요합니다"; a failed read turns nothing off; a 503 naming the provider reads the same.
+- **Keyless** — `GET /api/capabilities` → `{llm, vlm, embedding}` from the assembled providers. The home, editor and GM screens show one line when `llm` is false and turn the LLM buttons off with "LLM 키가 필요합니다"; a failed read turns nothing off; a 503 naming the provider reads the same. 〔Follow-up V2: one band under the top bar of every screen (`AppShell`), and the buttons say "AI 키가 있어야 해요".〕
 - **Ports and profiles**
   - Infra ports bind 127.0.0.1 and take `NEO4J_HTTP_PORT`, `NEO4J_BOLT_PORT`, `OPENSEARCH_PORT`, `SESSION_DB_PORT`, `DASHBOARD_PORT` from `.env` (defaults unchanged). `API_PORT`/`WEB_PORT` stay open on all addresses.
   - A host where 7474/7687 are taken (another Neo4j): add `NEO4J_HTTP_PORT=17474` and `NEO4J_BOLT_PORT=17687` to `.env`; with host uvicorn also set `NEO4J_URI=bolt://localhost:17687`.
   - `web` has a healthcheck (`wget -q --spider http://127.0.0.1/`).
-- **CI** — `.github/workflows/ci.yml`: backend (ruff, black, pytest with a printed hypothesis seed: re-run a failure with `pytest --hypothesis-seed=<seed>`), frontend (`npm ci`, tsc, vitest), audit (`npm audit --omit=dev --audit-level=moderate`), images (both builds, `check_packaged()` in the installed package, `import api.main`). No secrets, no services. mypy stays local (baseline 11).
-- **Live scenario** — `python scripts/live_scenario.py --base http://localhost:8000 --world emberleaf` after `docker compose --profile service up -d --build`. Standard library only, not in CI. It **replaces** the target world, then walks the demo: health and capabilities, demo load (12 regions), a session at the harbor, a move, a talk, a declaration, the end of the talk (when the witness judges the deeds, BR-U6-7), the blight seed, the walk back, the one-hop deed rumor, a wait, the two regions' distortion, a talk about the blight, no deed rumor in Ironcrag by T+2, the world state. Each step prints PASS/FAIL/SKIP (LLM steps SKIP without a key; the spread steps SKIP when no deed was judged worth telling, and a noteworthy judgement with no rumor is a FAIL); any FAIL exits 1. Its first step is the compose check (Infra R-01).
-- **Known gap (A8-10)** — replacing a world from the CLI (`world import`/`world demo`/`world build`) does not purge its translations; the API paths (and so the screens) do. Stale rows are filtered by source hash on read; they only take space.
+- **CI** — `.github/workflows/ci.yml`: backend (ruff, black, pytest with a printed hypothesis seed: re-run a failure with `pytest --hypothesis-seed=<seed>`), frontend (`npm ci`, tsc, vitest), audit (`npm audit --omit=dev --audit-level=moderate`), images (both builds, `check_packaged()` in the installed package, `import api.main`). No secrets, no services. 〔Follow-up V9: backend also runs `mypy locus api` (0 errors) and lints `scripts`.〕
+- **Live scenario** — `python scripts/live_scenario.py --base http://localhost:8000 --world emberleaf` after `docker compose --profile service up -d --build`. Standard library only, not in CI. It **replaces** the target world, then walks the demo: health and capabilities, demo load (12 regions), a session at the harbor, a move, a talk, a declaration, the end of the talk (when the witness judges the deeds, BR-U6-7), the blight seed, the walk back, the one-hop deed rumor, a wait, the two regions' distortion (〔V9〕 the blight reaches the harbor more than Ironcrag, and the harbor is the more distorted, above 0.3), a talk about the blight, no deed rumor in Ironcrag by T+2, the world state. Each step prints PASS/FAIL/SKIP (LLM steps SKIP without a key; the spread steps SKIP when no deed was judged worth telling, and a noteworthy judgement with no rumor is a FAIL); any FAIL exits 1. Its first step is the compose check (Infra R-01). 〔V9〕 An answer that is not JSON, or a broken reply, is a FAIL with what came back, not a traceback; `--poll` is at least 1 s.
+- **Known gap (A8-10)** — replacing a world from the CLI (`world import`/`world demo`/`world build`) does not purge its translations; the API paths (and so the screens) do. Stale rows are filtered by source hash on read; they only take space. 〔Follow-up V3: `world demo` now purges and seeds them as the API does; `world import` and `world build` still do not.〕
 - **License** — MIT (`LICENSE`, `pyproject.toml`). The demo world's credits are in the manifest and the README.
 
 ## Web UI
@@ -462,14 +463,15 @@ npm run build        # tsc + vite build -> web/dist
 - Screens: `/` (demo cards, world list), `/editor/:worldId`, `/gm/:sessionId`, `/play/:sessionId`. See `web/README.md`.
 
 ## Observability (current)
-- Structured stdout from CLI/app; container healthchecks (Neo4j HTTP, OpenSearch cluster health, **Postgres `pg_isready`**).
+- Structured stdout from CLI/app; container healthchecks: Neo4j HTTP, OpenSearch cluster health, Postgres `pg_isready`, **app** `curl -sf http://localhost:8000/health` (15 s, 30 s start period), **web** `wget -q --spider http://127.0.0.1/`.
+- `GET /health` is `ok` when every assembled boundary is up and `degraded` otherwise (V9 tests both); `GET /api/capabilities` says which providers are assembled.
 - Dashboards/alerting: out of scope (future Operations expansion).
 
 ## Localization & UX (UX Improvement cycle, 2026-08-11)
 - **Translation (X1)**: LLM-backed ko translation of session content (rumors/events) + canonical Knowledge, cached in the PostgreSQL `translations` table (created by `init-schema`, additive). Reuses the OpenAI provider. Config: `TRANSLATION_ENABLED`(기본 true), `TRANSLATION_TARGET_LANG`(ko). **Reads never block on the LLM** — cache-only on read, misses warm on a background thread; so the first view of new content may show English, then Korean on refetch. Disabled → all English (graceful).
-- **Turn-change notifications**: `advance-turn` returns `region_changes` (per-region promoted/demoted/pruned/events/added); the web SessionPanel shows one auto-dismiss toast per changed region.
+- **Turn-change notifications**: `advance-turn` returns `region_changes` (per-region promoted/demoted/pruned/events/added); the web SessionPanel shows one auto-dismiss toast per changed region. 〔Follow-up V6: the GM screen shows them in one result band under the turn tools.〕
 - **Regenerate preserves promoted**: `regenerate_region` keeps promoted rumors and reseeds the rest from **canonical knowledge only** (promoted rumors are not reused as chain seeds). Applies to per-region and "전체 재생성".
-- **Frontend (X2/X3)**: Tailwind v4 ("Doodly" paper+ink theme) + self-hosted Gaegu Korean handwriting font (`@fontsource/gaegu`, no CDN). Korean UI labels + timeline i18n (U5: every label is in a ko and an en dictionary in `web/src/i18n.ts`; see the dialogue section for the toggle). Build: `cd web && npm ci && npm run build` (U8: the peer conflict is gone).
+- **Frontend (X2/X3)**: Tailwind v4 ("Doodly" paper+ink theme) + self-hosted Gaegu Korean handwriting font (`@fontsource/gaegu`, no CDN). Korean UI labels + timeline i18n (U5: every label is in a ko and an en dictionary in `web/src/i18n.ts`; see the dialogue section for the toggle). Build: `cd web && npm ci && npm run build` (U8: the peer conflict is gone). 〔Follow-up V2: a dark "lamplit tavern" theme replaced Doodly and Gaegu — self-hosted Noto Sans KR, Nanum Myeongjo and IM Fell English SC, tokens in `web/src/index.css`; the dictionaries are `web/src/i18n/{ko,en}.ts`.〕
 - **No new infra**: canonical graph unchanged; only additive session-layer `translations` table + response-only ko fields + `region_changes`. Rollback is additive-safe.
 
 ## Future Operations (not implemented)

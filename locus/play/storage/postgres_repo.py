@@ -5,7 +5,9 @@ variable/nested parts (``provenance``, timeline ``payload``, turn-run
 ``action``/``result``) are JSON columns (JSONB on PostgreSQL, generic JSON
 elsewhere so the same adapter runs against SQLite in offline tests). Ids are
 application-generated (``new_id``); ``created_at`` is set by the DB server
-(``func.now()``, FD-S1 Q4=A).
+(``CURRENT_TIMESTAMP``, FD-S1 Q4=A), except on timeline entries, messages, deeds and
+appraisals, which take a strictly increasing application clock (``storage/clock.py``)
+so their order holds within one transaction.
 
 U4 (BR-U4-32): every SQL statement lives in ``_PgStores``, which works over one
 ``Connection``. The repository's public methods each open ``engine.begin()``
@@ -287,7 +289,8 @@ class _PgStores:
         # CURRENT_TIMESTAMP default is the transaction start time — identical for every
         # row, which left `ORDER BY turn, created_at` tied and the turn's entries in
         # arbitrary order (code review U4 #1). Stamp them in the application with a
-        # strictly increasing clock instead (deviation from BR-S1-8 for this table only).
+        # strictly increasing clock instead (deviation from BR-S1-8; messages, deeds and
+        # appraisals do the same).
         self._conn.execute(
             timeline_entries.insert().values(
                 id=entry.id,

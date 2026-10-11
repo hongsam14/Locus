@@ -1,8 +1,8 @@
 """Dynamic-distortion pure logic (Phase 2 / P2, FR-P3/P5).
 
 All functions here are pure and deterministic — no LLM, no DB, no side effects
-(NFR-P4, PBT target). The GameMasterService collects inputs, calls these, then
-persists results via the PlayRepository port.
+(NFR-P4, PBT target). The turn advancer and the EventService collect inputs, call
+these, then persist the results through the play stores (``play/ports.py``).
 
 Constants (FD-P2 answers, all A):
 - distortion delta = magnitude * MAX_EVENT_DELTA            (Q1)

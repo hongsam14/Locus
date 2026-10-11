@@ -1,6 +1,6 @@
 """WorldLoader — read one world from the graph into a ``WorldSnapshot`` (U2 K3).
 
-Reads Region / Entity / Knowledge / WikiPrior / NPC / WorldMeta nodes and the
+Reads Region / Entity / Knowledge / WikiPrior / NPC / EventSeed / WorldMeta nodes and the
 CONNECTED_TO / SCOPED_TO / RELATED_TO / PRIOR_RELATED_TO / LIVES_IN edges. A node
 or edge that fails to map is skipped and reported in ``load_warnings`` instead of
 breaking the whole world (BR-U2-16). An empty world raises ``LookupError``.

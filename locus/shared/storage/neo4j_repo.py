@@ -1,6 +1,6 @@
 """Neo4j implementation of GraphRepository (US-9.1).
 
-Idempotent MERGE-based upserts, world_id scoping, weighted traversal. The
+Idempotent MERGE-based upserts and world_id-scoped reads and deletes. The
 ``neo4j`` driver is imported lazily so the module can be imported (and query
 construction unit-tested) without the package or a live database.
 """
@@ -77,8 +77,9 @@ class Neo4jGraphRepository(GraphRepository):
     def ensure_schema(self) -> None:
         """Create uniqueness constraints + world_id indexes (idempotent).
 
-        World nodes are not persisted (CL-A1=A); every label is keyed by id and
-        partitioned by world_id.
+        A world's own metadata is one ``WorldMeta`` node. Each label's ``id`` is unique
+        across all worlds (the constraint is per label); ``world_id`` is an index every
+        read filters on, not a partition.
         """
         for label in self.NODE_LABELS:
             self._run(

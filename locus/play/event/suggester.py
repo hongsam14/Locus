@@ -1,7 +1,7 @@
 """EventSuggester — LLM event proposals (Phase 2 / P2, FR-P2.2).
 
 Given the session state (regions, current turn), proposes candidate events as
-``EventDraft`` objects. These are *uncommitted* — the GameMasterService persists
+``EventDraft`` objects. These are *uncommitted* — the EventService persists
 them as SUGGESTED for the suggest-then-approve gate (CL2.1/2.2). Graceful: any
 LLM failure yields an empty list so the turn/session keeps going (NFR-P3).
 """

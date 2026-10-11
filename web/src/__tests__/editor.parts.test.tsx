@@ -5,13 +5,14 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { HttpError } from "../api/http";
 import { EditorHeader } from "../features/editor/EditorHeader";
+import { loadOutcome } from "../features/editor/FileActions";
 import { MapLegend } from "../features/editor/MapLegend";
 import { MapTools } from "../features/editor/MapTools";
 import { NewConnectionDialog } from "../features/editor/NewConnectionDialog";
 import { DangerZone, RegionPicker } from "../features/editor/RegionTab";
 import { enumLabel, numberWithMeaning } from "../format";
 import { t } from "../i18n";
-import type { ConnectionEdge, Region, WorldExport } from "../types";
+import type { ConnectionEdge, ImportReport, Region, WorldExport } from "../types";
 
 vi.mock("../api", () => ({
   api: {
@@ -104,19 +105,68 @@ describe("EditorHeader (TP-V8-2, BR-V8-03/28/34)", () => {
     expect(screen.queryByTestId("file-row")).not.toBeInTheDocument();
   });
 
-  it("a refused load says its stage in words, under the head, after the row closed", async () => {
-    (api.importWorldFile as Mock).mockResolvedValueOnce({
-      ok: false, replaced: false, closed_session_ids: [], counts: {}, world_id: "w", format_version: 1, source_world_id: "w",
-      remapped: false, forced: false, warnings: [{ stage: "duplicate-ids", severity: "error", message: "duplicate ids in the World File: a" }],
-    });
-    const { onLoaded } = head();
+  const importReport = (over: Partial<ImportReport>): ImportReport => ({
+    ok: true, replaced: true, closed_session_ids: [], counts: {}, world_id: "w", format_version: 1, source_world_id: "w",
+    remapped: false, forced: false, warnings: [], ...over,
+  });
+  async function load(report: ImportReport) {
+    (api.importWorldFile as Mock).mockResolvedValueOnce(report);
+    const out = head();
     const file = new File(['{"format_version":1}'], "w.world.json", { type: "application/json" });
     fireEvent.change(screen.getByTestId("file-input"), { target: { files: [file] } });
     await screen.findByTestId("file-confirm");
     fireEvent.click(screen.getByRole("button", { name: t("action.confirm") }));
+    return out;
+  }
+
+  it("a refused load says nothing was written and why, under the head; the world is not replaced", async () => {
+    // code review 01 #1: duplicate ids stop the load before anything is written (V7)
+    const { onLoaded } = await load(importReport({ ok: false, replaced: false,
+      warnings: [{ stage: "duplicate-ids", severity: "error", message: "duplicate ids in the World File: a" }] }));
     const err = await screen.findByTestId("file-error");
-    expect(err).toHaveTextContent(t("label.stage.duplicate-ids"));
+    expect(err).toHaveTextContent(t("notice.loadRefused"));
+    expect(err).toHaveTextContent(t("notice.loadRefusedDuplicate"));
+    expect(err.querySelector("details")).toHaveTextContent("duplicate ids in the World File: a");
     expect(onLoaded).not.toHaveBeenCalled();
+  });
+
+  it("a load the server wrote but with dropped items is a load: the page replaces the world and the drops are said", async () => {
+    // code review 01 #1: references pointing nowhere are dropped and reported as errors, but
+    // the world IS replaced — before, the screen kept drawing the old one
+    const report = importReport({ ok: false, closed_session_ids: ["s1"], warnings: [
+      { stage: "import", severity: "error", message: "knowledge k9: region r-gone not in the file" },
+      { stage: "import", severity: "error", message: "npc n9: home r-gone not in the file" },
+    ] });
+    const { onLoaded } = await load(report);
+    await waitFor(() => expect(onLoaded).toHaveBeenCalledWith(report));
+    expect(await screen.findByTestId("file-error")).toHaveTextContent(t("notice.loadedDropped", { n: 2 }));
+  });
+
+  it("the load outcome by report", () => {
+    const e = (stage: string, severity: "error" | "warning" = "error") => ({ stage, severity, message: stage });
+    expect(loadOutcome(importReport({})).kind).toBe("loaded");
+    expect(loadOutcome(importReport({})).error).toBeUndefined();
+    expect(loadOutcome(importReport({ ok: false, warnings: [e("import"), e("backup")] }))).toMatchObject({
+      kind: "refused", error: { title: t("notice.loadRefused"), action: t("notice.loadRefusedBackup") } });
+    expect(loadOutcome(importReport({ ok: false, warnings: [e("commit")] }))).toMatchObject({
+      kind: "partial", error: { title: t("notice.loadIncomplete") } });
+    expect(loadOutcome(importReport({ ok: false, warnings: [e("import"), e("carry-over", "warning")] }))).toMatchObject({
+      kind: "partial", error: { title: t("notice.loadedDropped", { n: 1 }) } });
+  });
+
+  it("[파일 ▾] is named by its word alone; the triangle is not read (#33)", () => {
+    head();
+    expect(screen.getByRole("button", { name: t("action.fileMenu") })).toBe(screen.getByTestId("file-menu"));
+  });
+
+  it("the head counts each connection once though the world holds both directions (#4)", () => {
+    const both = { ...world(region("a"), region("b")), connections: [
+      { world_id: "w", source_region_id: "a", target_region_id: "b", kind: "route", weight: 0.5 },
+      { world_id: "w", source_region_id: "b", target_region_id: "a", kind: "route", weight: 0.5 },
+      { world_id: "w", source_region_id: "a", target_region_id: "b", kind: "river", weight: 0.5 },
+    ] } as WorldExport;
+    head({ world: both });
+    expect(screen.getByTestId("graph-status")).toHaveTextContent(t("label.worldCounts", { regions: 2, connections: 2, knowledge: 0 }));
   });
 });
 
@@ -144,9 +194,22 @@ describe("PlayThisWorld (TP-V8-13, BR-V8-27)", () => {
     expect(await screen.findByTestId("new-session-error")).toBeInTheDocument();
   });
 
-  it("is off without a region", () => {
+  it("is off without a region, and says why on the page (#20, BLM § 8.4)", () => {
     head({ world: world() });
-    expect(screen.getByTestId("play-this-world")).toBeDisabled();
+    const play = screen.getByTestId("play-this-world");
+    expect(play).toBeDisabled();
+    expect(screen.getByTestId("play-hint")).toHaveTextContent(t("hint.playNeedsRegion"));
+    expect(play).toHaveAttribute("aria-describedby", screen.getByTestId("play-hint").id);
+  });
+
+  it("[시작] stays off until a name is typed (#18, the assertion the session bar's test held)", async () => {
+    head();
+    fireEvent.click(screen.getByTestId("play-this-world"));
+    await screen.findByTestId("new-session-form");
+    fireEvent.change(screen.getByTestId("new-session-region"), { target: { value: "a" } });
+    expect(screen.getByTestId("new-session-submit")).toBeDisabled();
+    fireEvent.change(screen.getByTestId("new-session-name"), { target: { value: "Ann" } });
+    expect(screen.getByTestId("new-session-submit")).toBeEnabled();
   });
 });
 

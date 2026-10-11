@@ -172,7 +172,9 @@ export function EditorPage() {
     </div>
   );
   const panel = (
-    <div ref={panelRef} className="scroll-mt-4" data-testid="editor-panel">
+    // narrow: at least a screen tall, so the first press on the map can scroll the panel's
+    // head to the top before the inspector has drawn (code review 01 #31)
+    <div ref={panelRef} className={`scroll-mt-4 ${wide ? "" : "min-h-screen"}`} data-testid="editor-panel">
       {w.missing ? (
         <div className="flex flex-col items-start gap-2" data-testid="empty-hint">
           <p className="text-sm text-muted">{t("empty.worldMissing")}</p>

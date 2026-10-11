@@ -308,7 +308,8 @@ describe("TP-V8-8 (UX-21): icon buttons say what they do", () => {
     await ready();
     await pickOnMap("r1");
     for (const k of ["connections", "knowledge", "npcs"]) fireEvent.click(fold(k));
-    expect(screen.getByRole("button", { name: t("action.deleteConnection", { name: "Hollow" }) })).toBeInTheDocument();
+    // code review 01 #32: the far region and the kind, so two kinds of one pair differ
+    expect(screen.getByRole("button", { name: t("action.deleteConnection", { name: `Hollow · ${enumLabel("connectionKind", "route")}` }) })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: t("action.deleteKnowledge", { name: "mill" }) })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: t("action.deleteNpc", { name: "Ada" }) })).toBeInTheDocument();
     expect(screen.getByTestId("npc-edit-n1")).toHaveTextContent(t("action.editNpc"));
@@ -688,5 +689,96 @@ describe("code review 01 #14: on a narrow screen a press on the map scrolls to t
     await ready();
     fireEvent.click(screen.getByTestId("region-marker-r1"));
     expect(calls).toEqual([]);
+  });
+});
+
+describe("code review 01 #5, #6: the keyboard focus stays where the work is", () => {
+  it("[자료로 만들기] from the file row: closing the dialog gives the focus back to [파일 ▾]", async () => {
+    renderEditor();
+    await ready();
+    openFileMenu();
+    const build = screen.getByTestId("file-build");
+    build.focus(); // a browser focuses a pressed button
+    fireEvent.click(build);
+    const dialog = await screen.findByTestId("build-panel");
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByTestId("build-panel")).not.toBeInTheDocument());
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByTestId("file-menu")));
+  });
+
+  it("[불러오기] from the file row: the focus is on [파일 ▾] while the file picker is up", async () => {
+    renderEditor();
+    await ready();
+    openFileMenu();
+    const loadBtn = screen.getByTestId("file-load");
+    loadBtn.focus();
+    fireEvent.click(loadBtn);
+    expect(document.activeElement).toBe(screen.getByTestId("file-menu"));
+  });
+
+  it("a weight step keeps the slider on and focused while its save is out", async () => {
+    const save = deferred<unknown>();
+    (api.saveConnection as Mock).mockReturnValue(save.promise);
+    renderEditor();
+    await ready();
+    await pickOnMap("r1");
+    fireEvent.click(fold("connections"));
+    const range = screen.getByTestId("connection-weight-r1|r2|route") as HTMLInputElement;
+    range.focus();
+    fireEvent.change(range, { target: { value: "0.65" } });
+    fireEvent.keyUp(range, { key: "ArrowRight" });
+    await waitFor(() => expect(api.saveConnection).toHaveBeenCalledTimes(1));
+    expect(range).toBeEnabled();
+    expect(document.activeElement).toBe(range);
+    // a second step while the first is out is refused: the thumb goes back to the stored
+    // weight until the first save's re-read brings the new one
+    fireEvent.change(range, { target: { value: "0.7" } });
+    fireEvent.keyUp(range, { key: "ArrowRight" });
+    await waitFor(() => expect(range.value).toBe("0.6"));
+    expect(api.saveConnection).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(range);
+    await act(async () => save.resolve([]));
+  });
+
+  it("[저장] keeps the focus after the region is saved and drawn again", async () => {
+    (api.updateRegion as Mock).mockResolvedValue({});
+    renderEditor();
+    await ready();
+    await pickOnMap("r1");
+    (api.getEditorRegion as Mock).mockImplementation(async (_w: string, id: string) =>
+      id === "r1" ? { ...view("r1"), region: { ...view("r1").region, name: "Riverton Port" } } : view(id));
+    const saveBtn = screen.getByTestId("region-save");
+    saveBtn.focus();
+    fireEvent.change(screen.getByTestId("region-name"), { target: { value: "Riverton Port" } });
+    fireEvent.click(saveBtn);
+    await waitFor(() => expect(screen.getByTestId("region-save")).toHaveTextContent(t("notice.saved")));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByTestId("region-save")));
+  });
+});
+
+describe("code review 01 #7, #31: long words wrap; the narrow panel is a screen tall", () => {
+  it("a connection's grounds, a person's lines and a scope badge wrap anywhere", async () => {
+    (api.getEditorRegion as Mock).mockImplementation(async (_w: string, id: string) => {
+      const v = view(id);
+      return id === "r1" ? { ...v, connections: v.connections.map((c) => ({ ...c, rationale: "https://example.org/a-very-long-unbroken-reference" })) } : v;
+    });
+    renderEditor();
+    await ready();
+    await pickOnMap("r1");
+    for (const k of ["connections", "knowledge", "npcs"]) fireEvent.click(fold(k));
+    const card = screen.getByTestId("connection-r1|r2|route");
+    expect(within(card).getByText(/a-very-long-unbroken-reference/)).toHaveClass("[overflow-wrap:anywhere]");
+    expect(within(screen.getByTestId("editor-npc-n1")).getByText(/miller/)).toHaveClass("[overflow-wrap:anywhere]");
+  });
+
+  it("narrow: the panel is at least a screen tall; wide: as tall as its content", async () => {
+    const { unmount } = renderEditor();
+    await ready();
+    expect(screen.getByTestId("editor-panel")).toHaveClass("min-h-screen");
+    unmount();
+    wide = true;
+    renderEditor();
+    await ready();
+    expect(screen.getByTestId("editor-panel")).not.toHaveClass("min-h-screen");
   });
 });

@@ -44,3 +44,9 @@ export function regionOptions(regions: Region[]): { value: string; label: string
 export const levelOptions = () => ENUM_VALUES.regionLevel.map((l) => ({ value: l, label: enumLabel("regionLevel", l) }));
 export const kindOptions = () =>
   (ENUM_VALUES.connectionKind as readonly ConnectionKind[]).map((k) => ({ value: k, label: enumLabel("connectionKind", k) }));
+
+/** How many connections the world has: the export holds both directions of each, so a pair
+ * and kind count once — as the map draws them (code review 01 #4). */
+export function connectionCount(edges: ConnectionEdge[]): number {
+  return new Set(edges.map((e) => [e.source_region_id, e.target_region_id].sort().join("|") + "|" + e.kind)).size;
+}

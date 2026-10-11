@@ -16,7 +16,7 @@ export function InlineError({ error, onRetry }: { error: DescribedError; onRetry
         </Button>
       )}
       {error.raw && (
-        <details className="text-xs text-muted">
+        <details className="max-w-full text-xs text-muted [overflow-wrap:anywhere]">
           <summary className="cursor-pointer">{t("action.details")}</summary>
           {error.raw}
         </details>

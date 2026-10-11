@@ -43,13 +43,13 @@ export function KnowledgeList({
               }} />
           ) : (
             <>
-              <strong>{k.title_ko || k.title}</strong>
+              <strong className="[overflow-wrap:anywhere]">{k.title_ko || k.title}</strong>
               <LocalizedText testId={`editor-knowledge-text-${k.id}`} ko={k.statement_ko}
                 original={k.statement} />
             </>
           )}
           <div className="flex flex-wrap gap-1">
-            {scopes.map((rid) => <Badge key={rid}>{name(rid)}</Badge>)}
+            {scopes.map((rid) => <Badge key={rid} className="max-w-full [overflow-wrap:anywhere]">{name(rid)}</Badge>)}
           </div>
           {scoping === k.id ? (
             <ScopePicker regions={regions} initial={scopes} busy={busy}

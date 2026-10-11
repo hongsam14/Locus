@@ -44,9 +44,9 @@ export function NpcEditorList({
             }} />
         ) : (
           <Card key={n.id} data-testid={`editor-npc-${n.id}`} className="text-sm flex flex-col gap-0.5">
-            <strong>{n.name}</strong>
-            <span className="text-xs text-muted">{n.role} · {n.traits.join(", ")}</span>
-            <span className="text-xs">{n.description}</span>
+            <strong className="[overflow-wrap:anywhere]">{n.name}</strong>
+            <span className="text-xs text-muted [overflow-wrap:anywhere]">{n.role} · {n.traits.join(", ")}</span>
+            <span className="text-xs [overflow-wrap:anywhere]">{n.description}</span>
             <div className="flex flex-wrap gap-1">
               <Button size="sm" disabled={busy} data-testid={`npc-edit-${n.id}`}
                 onClick={() => setEditing(n.id)}>{t("action.editNpc")}</Button>

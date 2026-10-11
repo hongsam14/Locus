@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { numberWithMeaning } from "../../format";
+import { enumLabel, numberWithMeaning } from "../../format";
 import { t } from "../../i18n";
 import type { ConnectionKind, ConnectionView } from "../../types";
 import { Button, Card, CommitRange, Select } from "../../ui";
@@ -20,7 +20,8 @@ export function ConnectionList({
   busy: boolean;
   onPickRegion?: (regionId: string) => void; // the other end's name picks that region (§ 4.4)
   onChangeKind: (c: ConnectionView, kind: ConnectionKind) => void;
-  onChangeWeight: (c: ConnectionView, weight: number) => void;
+  /** false (or a promise of it): not saved, the thumb goes back (CommitRange). */
+  onChangeWeight: (c: ConnectionView, weight: number) => void | boolean | Promise<boolean | void>;
   onDelete: (c: ConnectionView) => void;
 }) {
   if (connections.length === 0) {
@@ -30,6 +31,8 @@ export function ConnectionList({
     <div className="flex flex-col gap-1.5" data-testid="connection-list">
       {connections.map((c) => {
         const id = `${c.key.a_region_id}|${c.key.b_region_id}|${c.key.kind}`;
+        // each control says which connection it is: the far region and the kind (code review 01 #32)
+        const which = `${c.other_region_name} · ${enumLabel("connectionKind", c.key.kind)}`;
         return (
           <Card key={id} data-testid={`connection-${id}`} className="flex flex-col gap-1 text-sm">
             <div className="flex flex-wrap items-center gap-2">
@@ -41,19 +44,21 @@ export function ConnectionList({
                   </button>
                 ) : c.other_region_name}
               </strong>
-              <Select label={t("editor.connection.kind")} hideLabel value={c.key.kind} disabled={busy}
+              {/* not turned off while a write is out: a turned-off control drops the keyboard
+                  focus (code review 01 #6); the inspector refuses a second write instead */}
+              <Select label={`${which} — ${t("editor.connection.kind")}`} hideLabel value={c.key.kind}
                 data-testid={`connection-kind-${id}`} options={kindOptions()}
                 onChange={(v) => onChangeKind(c, v as ConnectionKind)} />
               <Button size="sm" variant="danger" disabled={busy} data-testid={`connection-delete-${id}`}
-                aria-label={t("action.deleteConnection", { name: c.other_region_name })}
+                aria-label={t("action.deleteConnection", { name: which })}
                 onClick={() => onDelete(c)}>
                 ✕
               </Button>
             </div>
-            <Weight id={id} weight={c.weight} busy={busy} onCommit={(w) => onChangeWeight(c, w)} />
-            {c.rationale && <div className="text-xs text-muted">{c.rationale}</div>}
+            <Weight id={id} which={which} weight={c.weight} onCommit={(w) => onChangeWeight(c, w)} />
+            {c.rationale && <div className="text-xs text-muted [overflow-wrap:anywhere]">{c.rationale}</div>}
             {c.prior && (
-              <div className={`text-xs ${c.prior.broken ? "text-danger" : "text-muted"}`}
+              <div className={`text-xs [overflow-wrap:anywhere] ${c.prior.broken ? "text-danger" : "text-muted"}`}
                 data-testid={`connection-prior-${id}`}>
                 {c.prior.broken
                   ? t("editor.connection.brokenPrior", { id: c.prior.prior_id })
@@ -68,12 +73,14 @@ export function ConnectionList({
 }
 
 /** One weight control (UX-20, BR-V8-13): a slider whose label is the number and its meaning;
- * moving it writes nothing, letting go saves once (CommitRange, the GM's slider). */
-function Weight({ id, weight, busy, onCommit }: {
+ * moving it writes nothing, letting go saves once (CommitRange, the GM's slider). It stays on
+ * while a save is out, so a keyboard user keeps the focus between steps (code review 01 #6);
+ * a step refused because a write is out puts the thumb back. */
+function Weight({ id, which, weight, onCommit }: {
   id: string;
+  which: string;
   weight: number;
-  busy: boolean;
-  onCommit(w: number): void;
+  onCommit(w: number): void | boolean | Promise<boolean | void>;
 }) {
   const [draft, setDraft] = useState(weight);
   return (
@@ -81,7 +88,8 @@ function Weight({ id, weight, busy, onCommit }: {
       <span className="text-muted" data-testid={`connection-weight-label-${id}`}>
         {t("editor.connection.weight")} · {numberWithMeaning("weight", draft)}
       </span>
-      <CommitRange min={0} max={1} step={0.05} value={weight} disabled={busy} data-testid={`connection-weight-${id}`}
+      <CommitRange min={0} max={1} step={0.05} value={weight} data-testid={`connection-weight-${id}`}
+        aria-label={`${which} — ${t("editor.connection.weight")} · ${numberWithMeaning("weight", draft)}`}
         className="w-full" onDraft={setDraft} onCommit={onCommit} />
     </label>
   );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { t } from "../../i18n";
 import type { Region } from "../../types";
 import { Button, Field, Select, Textarea } from "../../ui";
@@ -40,6 +40,12 @@ export function RegionForm({
   const [level, setLevel] = useState(region.level);
   const [parent, setParent] = useState(region.parent_id ?? "");
   const [desc, setDesc] = useState(region.description ?? "");
+  // the button is turned off while the save is out and the form is drawn anew after it, so
+  // the focus would fall to the page: "saved" puts it back on [save] (code review 01 #6)
+  const saveWrap = useRef<HTMLSpanElement | null>(null); // Button forwards no ref (React 18)
+  useEffect(() => {
+    if (saved) saveWrap.current?.querySelector("button")?.focus();
+  }, [saved]);
   const blocked = descendantsOf(region.id, regions);
   const parents = regions.filter((r) => r.id !== region.id && !blocked.has(r.id));
   return (
@@ -54,11 +60,13 @@ export function RegionForm({
       <Textarea label={t("editor.region.description")} data-testid="region-description" value={desc} rows={3}
         onChange={(e) => setDesc(e.target.value)} />
       <div className="flex gap-2">
+        <span ref={saveWrap} className="inline-flex">
         <Button size="sm" variant="primary" data-testid="region-save" disabled={busy || !name.trim()}
           onClick={() => onSave({ ...region, name: name.trim(), level, parent_id: parent || null,
             description: desc.trim() || null })}>
           {saved ? t("notice.saved") : t("editor.region.save")}
         </Button>
+        </span>
       </div>
     </div>
   );

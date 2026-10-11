@@ -5,7 +5,6 @@ import { describeError, type DescribedError } from "../../errors";
 import { t } from "../../i18n";
 import type { ImportReport } from "../../types";
 import { Button, ConfirmDialog, InlineError } from "../../ui";
-import { groupByStage } from "./buildStages";
 
 /** The World File and build actions behind [파일 ▾] (V8 frontend-components § 4.1, BLM § 7.1,
  * BR-V8-34). The hidden file input lives outside the disclosure, always mounted, so a pick
@@ -69,7 +68,7 @@ export function FileActions({
       setFile(JSON.parse(await readText(f)));
       replace.askReplace();
     } catch (e) {
-      setError({ ...describeError(e), title: t("error.validation_failed.title") }); // not a World File
+      setError({ ...describeError(e), title: t("error.bad_world_file.title") }); // not a World File (review #22)
     }
   }
 
@@ -80,13 +79,11 @@ export function FileActions({
     try {
       const report = await api.importWorldFile(worldId, file, { replace: true, confirm });
       setFile(null);
-      if (report.ok) onLoaded(report);
-      else {
-        // refused before anything was written (duplicate ids, a failed backup): the stage in
-        // words, the server's lines folded (BR-V8-15)
-        const first = groupByStage(report.warnings)[0];
-        setError({ title: first ? first.label : t("label.stage.other"), raw: report.warnings.map((w) => w.message).join("\n") });
-      }
+      const outcome = loadOutcome(report);
+      // written, even with problems: the world on screen is the old one, so the page reads
+      // the new one and clears what belonged to the old (code review 01 #1)
+      if (outcome.kind !== "refused") onLoaded(report);
+      if (outcome.error) setError(outcome.error);
     } catch (e) {
       if (!replace.sessionsAsked(e, confirm)) setError(describeError(e));
     } finally {
@@ -100,7 +97,7 @@ export function FileActions({
         <Button size="sm" data-testid="file-menu" aria-expanded={open} aria-controls="editor-file-row"
           onClick={() => setOpen((v) => !v)}
           onKeyDown={(e) => e.key === "Escape" && open && close()}>
-          {t("action.fileMenu")} ▾
+          {t("action.fileMenu")} <span aria-hidden="true">▾</span>
         </Button>
       </span>
       {open && (
@@ -111,14 +108,16 @@ export function FileActions({
           <Button size="sm" data-testid="file-save" onClick={() => void save()}>{t("file.save")}</Button>
           <Button size="sm" data-testid="file-load" disabled={busy}
             onClick={() => {
-              close(false);
+              // the toggle takes the focus first: the pressed button goes with the row, and a
+              // dialog opened next returns the focus to whatever held it (code review 01 #5)
+              close();
               input.current?.click();
             }}>
             {t("file.load")}
           </Button>
           <Button size="sm" data-testid="file-build"
             onClick={() => {
-              close(false);
+              close();
               onBuild();
             }}>
             {t("file.build")}
@@ -147,6 +146,24 @@ export function FileActions({
       </ConfirmDialog>
     </>
   );
+}
+
+/** What a World File load did, from its report (code review 01 #1). The server answers
+ * `ok=false` both when it stopped before writing anything — duplicate ids, a backup it could
+ * not make (V7) — and when it wrote the world but dropped items whose references point
+ * nowhere, or failed part way after deleting the old world. Only the first is a refusal. */
+export function loadOutcome(report: ImportReport): { kind: "loaded" | "refused" | "partial"; error?: DescribedError } {
+  const warnings = report.warnings ?? [];
+  const raw = warnings.map((w) => w.message).join("\n") || undefined;
+  const errors = warnings.filter((w) => w.severity === "error");
+  const stop = errors.find((w) => w.stage === "duplicate-ids" || w.stage === "backup");
+  if (stop) {
+    return { kind: "refused", error: { title: t("notice.loadRefused"),
+      action: t(stop.stage === "backup" ? "notice.loadRefusedBackup" : "notice.loadRefusedDuplicate"), raw } };
+  }
+  if (report.ok) return { kind: "loaded" };
+  if (errors.some((w) => w.stage === "commit")) return { kind: "partial", error: { title: t("notice.loadIncomplete"), raw } };
+  return { kind: "partial", error: { title: t("notice.loadedDropped", { n: errors.length }), raw } };
 }
 
 /** A file's text (``File.text`` where there is one, else ``FileReader``). */

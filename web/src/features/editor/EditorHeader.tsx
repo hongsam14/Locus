@@ -7,6 +7,7 @@ import { t } from "../../i18n";
 import type { ImportReport, Region, WorldExport } from "../../types";
 import { Button } from "../../ui";
 import { NewSessionForm } from "../play/NewSessionForm";
+import { connectionCount } from "./connections";
 import { FileActions } from "./FileActions";
 
 /** The editor's one head line (V8 frontend-components § 4.1, UX-17, Q2 = A): the world's name
@@ -35,7 +36,7 @@ export function EditorHeader({
         </h1>
         {world && (
           <span className="text-sm text-muted" data-testid="graph-status">
-            {t("label.worldCounts", { regions: world.regions.length, connections: world.connections.length, knowledge: world.knowledge.length })}
+            {t("label.worldCounts", { regions: world.regions.length, connections: connectionCount(world.connections), knowledge: world.knowledge.length })}
           </span>
         )}
         {/* `contents`: the buttons sit on the head line, and the file row opened by [파일 ▾]
@@ -64,9 +65,16 @@ export function PlayThisWorld({ worldId, regions }: { worldId: string; regions: 
   return (
     <>
       <Button size="sm" variant="primary" data-testid="play-this-world" disabled={none}
-        title={none ? t("hint.playNeedsRegion") : undefined} onClick={() => setOpen(true)}>
+        aria-describedby={none ? "play-this-world-hint" : undefined} onClick={() => setOpen(true)}>
         {t("action.playThisWorld")}
       </Button>
+      {/* said on the page, not in a tooltip: a turned-off button takes no focus and a touch
+          screen shows no title (BLM § 8.4, code review 01 #20) */}
+      {none && (
+        <span id="play-this-world-hint" className="text-xs text-muted" data-testid="play-hint">
+          {t("hint.playNeedsRegion")}
+        </span>
+      )}
       <NewSessionForm open={open} worldId={worldId} regions={regions} busy={busy} error={error}
         onCancel={() => {
           setOpen(false);

@@ -113,11 +113,11 @@ V9에서 고치지 않고 `next-cycle.md`에 적는다(큰 넘김):
 - [x] 4.7 커밋: `test: no test waits on a timeout to pass, retries do not sleep, every sqlite engine is closed (V9, FR-T6)`
 
 ### Step 5 — env.example과 문서 머리 (FR-T5, FR-D10)
-- [ ] 5.1 `env.example`: `SESSION_DB_HOST`, `TRANSLATION_WARM_WORKERS`를 기본값·뜻과 함께 더한다.
-- [ ] 5.2 `web/index.html`: `lang="ko"`, 제목, 설명 메타, favicon 링크. `web/public/favicon.svg`.
-- [ ] 5.3 `web/src/i18n/index.ts` `setLang`: `document.documentElement.lang`을 화면 언어로 바꾼다(처음 읽을 때도). 시험 하나(`i18n` 또는 `layout.test`).
-- [ ] 5.4 확인: tsc, vitest, `vite build`(favicon이 빌드에 들어감).
-- [ ] 5.5 커밋: `fix(web): the page says what Locus is, in the language on screen, with an icon; env.example lists every setting (V9, FR-D10, FR-T5)`
+- [x] 5.1 `env.example`: `SESSION_DB_HOST`, `TRANSLATION_WARM_WORKERS`를 기본값·뜻과 함께 더한다.
+- [x] 5.2 `web/index.html`: `lang="ko"`, 제목, 설명 메타, favicon 링크. `web/public/favicon.svg`.
+- [x] 5.3 `web/src/i18n/index.ts` `setLang`: `document.documentElement.lang`을 화면 언어로 바꾼다(처음 읽을 때도). 시험 하나(`i18n` 또는 `layout.test`).
+- [x] 5.4 확인: tsc, vitest, `vite build`(favicon이 빌드에 들어감).
+- [x] 5.5 커밋: `fix(web): the page says what Locus is, in the language on screen, with an icon; env.example lists every setting (V9, FR-D10, FR-T5)`
 
 ### Step 6 — 라이브 시나리오 (FR-T7)
 - [ ] 6.1 `scripts/live_scenario.py`: 10a 방향 단언(§ 1.2), 이상한 응답은 FAIL, poll 하한.

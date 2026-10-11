@@ -6013,3 +6013,17 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **User Input**: (none)
 **AI Response**: Stack up with the key (`WEB_PORT=13000 docker compose --profile service up -d --build`), five services healthy, /health ok, capabilities all true. Live scenario 15/15 (log `construction/build-and-test/follow-up/live-scenario-2026-10-12.log`). V5 PG smoke P1–P6 and the row-lock check PASS (P5: a graceful restart finished the run as documented, so the app was killed to cut it; then failed/interrupted, turn and region restored, turn_run_failed line). V7 labelled delete and backup failure PASS on the real Neo4j and volume. nginx heads PASS. Headless walk of the editor (new region selected, drag saved, World File load notice) and GM (turn band, seed running, session end) PASS. Server warning stages all on the screen list. Not run: V7 CLI-rebuild cache check and V8 build replace (each needs a full LLM build). emberleaf restored to the demo; stack down, volumes kept. Records: build-instructions, unit-test-instructions, integration-test-instructions, build-and-test-summary under `construction/build-and-test/follow-up/`.
 **Context**: CONSTRUCTION / Build and Test — approval gate next.
+
+---
+## Build and Test — Follow-up cycle — Approval
+**Timestamp**: 2026-10-11T17:34:10Z
+**User Input**: "Approve & Continue"
+**AI Response**: Build and Test approved. Operations (placeholder, as in prior cycles): an operator section for the Follow-up cycle in `operations/operations.md`, CLAUDE.md Status to COMPLETE, next-cycle.md § 0/§ 1 from the B&T results, state to cycle COMPLETE.
+**Context**: OPERATIONS (placeholder) — Follow-up cycle.
+
+---
+## Operations — Follow-up cycle — Done
+**Timestamp**: 2026-10-11T17:34:57Z
+**User Input**: (none)
+**AI Response**: Operations placeholder done as in prior cycles: `operations/operations.md` gained a Follow-up cycle section (one API worker for V5's serialization, the demo's Korean file and warm workers, CI runner/mypy/ResourceWarning, langchain-openai floor, where the real-stack checks are, graceful restart vs kill, host clean-up of old test backups); `operations/next-cycle.md` § 0 records the B&T checks that passed, § 1 the two checks not run and the host clean-up, § 2 the add-region tool question; CLAUDE.md Status marks the cycle COMPLETE. FOLLOW-UP CYCLE COMPLETE.
+**Context**: OPERATIONS — Follow-up cycle complete.

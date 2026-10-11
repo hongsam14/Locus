@@ -15,11 +15,15 @@
 - U8 § 1 #5(a)·#9~#15 — V3(#11 매니페스트 검사), V5(#5(a), #9 겹친 해소, #12 겹친 씨앗 시작), V6(#14 PlayerStrip의 늦은 답, #15 일괄 503), V7(#10 중복 id·라벨 없는 삭제, #13 `needs`).
 - CI 액션 버전과 Ubuntu 26 러너 — V1. mypy 11건 → 0건, CI 단계 — V9. dev 의존성 npm audit → 0건 — V9. 라이브 시나리오 10a의 방향 단언 — V9.
 - U3 메모 2를 run 안에서 닫음 — V7 `kept_keys`. run 사이에 기억할지는 § 2에 남는다.
+- 실제 PostgreSQL 동시성(U3 #10)과 앞 유닛의 B&T 확인(V2 nginx 머리, V5 P1~P6·행 잠금, V6 GM 한 바퀴, V7 Neo4j 라벨 삭제·백업 실패, V8 에디터 한 바퀴·경고 단계 이름) — Follow-up Build and Test에서 통과(`construction/build-and-test/follow-up/`, 2026-10-12).
 - 앞 유닛의 넘김: 에디터·지도 문장 해요체와 옛 사전 키(V9), CLAUDE.md Status·Gates(V9), 빌드 리포트의 이어 붙인 수·단계 이름(V8), 409 문장 셋(V6), SessionBar·MapOverlay 지우기(V6·V8), 데모 번역의 엔티티·사전(V9가 "고칠 것 아님"으로 판정 — V9 code-summary).
 
 ## 1. 사람이 확인할 것 (운영자)
-- **실제 PostgreSQL 동시성(U3 #10)** — 확인할 내용이 V5로 바뀌었다. 같은 세션의 GM 쓰기는 이제 프로세스 안의 짧은 쓰기 잠금으로 줄을 선다(`locus/play/write_section.py:37-57`, `locus/play/turn/guard.py:99-110`). 그래서 워커가 하나면(`docker-compose.yml:148`, `--workers 1`) PostgreSQL에서 두 쓰기가 겹칠 수 없고, `FOR UPDATE`는 둘째 겹이다. 볼 것은 셋이다. V5 `nfr/nfr-light.md` § 3의 P1~P6 스모크(겹친 해소 둘, 설정 ∥ 해소, 씨앗 둘 …), psql로 사건 행을 `SELECT … FOR UPDATE`로 쥔 채 해소가 기다리는지(V5 § 7 R-01), 그리고 워커 수.
-- **이번 주기 Build and Test가 볼 것** — nginx 머리, PG 잠금 P1~P6, Neo4j 라벨 삭제, 백업 실패, GM·에디터 한 바퀴(V2 § 6, V5 § 7, V6 § 7, V7 § 8, V8 § 8). 거기서 남는 것은 이 절로 옮긴다.
+- **돌리지 않은 B&T 확인 둘**: 둘 다 소스에서 LLM 빌드가 한 번 들어서 Follow-up B&T에서 돌리지 않았다(`construction/build-and-test/follow-up/build-and-test-summary.md` "하지 않은 것").
+  - V7 § 8: CLI로 다시 빌드하는 동안 API가 읽어도 반쪽 월드를 캐시하지 않는지. 다시 빌드 뒤 첫 읽기에 연결이 있어야 한다.
+  - V8 § 8: 에디터의 [자료로 만들기]로 교체했을 때 빌드 리포트의 이어 붙인 수(NPC·씨앗).
+- **저장소 `data/backups`의 시험 찌꺼기**: V7~V9 동안 시험이 쌓은 `emberleaf-2026…world.json`을 사람이 지운다. `*-before-u8-cleanup`은 진짜 백업이니 남긴다. V9 코드 리뷰 01 #7 뒤로는 더 쌓이지 않는다.
+- **워커 하나**: V5의 GM 쓰기 직렬화는 프로세스 안 잠금이다. 배포를 바꿀 때 `--workers 1`을 지킨다(§ 3.3 "한 프로세스 보장").
 
 ## 2. 정할 것 (설계 결정)
 | 항목 | 한 줄 | 지금 위치 |
@@ -35,6 +39,7 @@
 | U8 메모 8 — 편집마다 월드 다시 읽기 | 편집 쓰기마다 스냅숏 전체를 읽고 캐시를 비운다 | `locus/world/editor/writes.py:46-49`, `:73-78` |
 | U8 메모 9 — `edges_touching`의 라벨 | 라벨 없이 월드 전체 엣지를 훑는다(RE-W13과 같은 뿌리) | `locus/shared/storage/neo4j_repo.py:283-284` |
 | U8 메모 10 — 해석 못 한 본문 | 422 응답이 받은 본문을 길이 제한 없이 되돌려 보낸다 | `api/main.py:45-46`, `:175-178` |
+| [지역 추가] 도구가 켜진 채로 남음 | 지역을 하나 만든 뒤에도 도구가 켜져 있어, 이어서 지도를 누르면 새 지역 대화상자가 또 열린다. 여러 지역을 차례로 놓기에는 맞다. 하나 만들면 [선택·이동]으로 돌아갈지 정한다(Follow-up B&T에서 봄) | `web/src/features/editor/EditorMapPane.tsx`, `web/src/features/editor/MapTools.tsx` |
 | RE-P14 — `*_ko` 칸 이름 | `*_ko` 칸에 실제로는 아무 표시 언어나 들어간다(요구 A-2가 이름을 그대로 두기로 함) | `api/schemas.py:89-103`, `api/deps.py:101` |
 
 ## 3. 정확성 결함

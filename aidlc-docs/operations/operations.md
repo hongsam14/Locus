@@ -458,6 +458,27 @@ instead of being silently dropped. Web SessionPanel loads its reads in parallel.
 - **Known gap (A8-10)** — replacing a world from the CLI (`world import`/`world demo`/`world build`) does not purge its translations; the API paths (and so the screens) do. Stale rows are filtered by source hash on read; they only take space. 〔Follow-up V3: `world demo` now purges and seeds them as the API does; `world import` and `world build` still do not.〕
 - **License** — MIT (`LICENSE`, `pyproject.toml`). The demo world's credits are in the manifest and the README.
 
+## Follow-up cycle (V1~V9, 2026-10-07 → 2026-10-12)
+What an operator needs from this cycle. Line-level changes sit where they belong, marked 〔Follow-up Vn〕.
+- **Screens** — rebuilt on one design system (V2): a dark theme from tokens in `web/src/index.css`, self-hosted fonts, Korean first with an English switch. Home, play (V4), GM (V6) and editor (V8) are described in `web/README.md`.
+- **GM writes** (V5) are serialized per session in the process (see "GM writes (V5)" above). The guarantee holds with **one API worker** (`--workers 1`, as compose runs it). A second worker would need a cross-process lock.
+- **Korean display** (V3)
+  - The demo's Korean names and texts ship as `locus/world/demo/worlds/emberleaf.ko.json` (the manifest's `translations.ko`).
+  - A demo load seeds them: the API path, and `locus world demo` since V3.
+  - Other text is translated by the background warm, `TRANSLATION_WARM_WORKERS` threads (`env.example`).
+- **CI**
+  - Runs on `ubuntu-26.04` with current actions (V1).
+  - The backend job also runs `mypy locus api` (0 errors) and lints `scripts` (V9).
+  - pytest fails on any ResourceWarning (V9).
+- **Dependencies**: `langchain-openai>=0.2` (V9). The providers pass the key as a pydantic v2 `SecretStr`.
+- **Real-stack checks**
+  - The steps and expected answers are in `construction/build-and-test/follow-up/integration-test-instructions.md`: the live scenario, PG smoke P1–P6 and the row lock, the V7 Neo4j checks, nginx heads, an editor and GM walk.
+  - A graceful `docker compose restart app` lets a running turn finish (up to `TURN_SHUTDOWN_TIMEOUT_S`). Only a crash (`docker compose kill app`) leaves an interrupted run for the startup recovery.
+- **Host clean-up**
+  - Tests used to write World File backups into the repo's `./data/backups` on every run (from V7 to V9).
+  - Since V9 code review 01 they write to a temporary folder.
+  - The old `emberleaf-2026…world.json` files there can be deleted by hand. Keep the `*-before-u8-cleanup` backups and any you made yourself.
+
 ## Web UI
 ```bash
 cd web && npm ci     # the lock as committed (no --legacy-peer-deps needed)

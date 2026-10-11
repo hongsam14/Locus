@@ -89,13 +89,13 @@ V9에서 고치지 않고 `next-cycle.md`에 적는다(큰 넘김):
 각 단계는 게이트 GREEN 뒤 커밋 하나다. 커밋 메시지는 단계에 적힌 대로다.
 
 ### Step 1 — 진행 기록과 기준선
-- [ ] 1.1 진행 기록을 커밋한다: audit, state, 이 계획과 그 리뷰(`docs(aidlc): V9 code plan`).
-- [ ] 1.2 기준선을 다시 잰다(§ 머리의 수치). `v9gate.sh`를 만든다(§ 1.3).
+- [x] 1.1 진행 기록을 커밋한다: audit, state, 이 계획과 그 리뷰(`docs(aidlc): V9 code plan`).
+- [x] 1.2 기준선을 다시 잰다(§ 머리의 수치). `v9gate.sh`를 만든다(§ 1.3).
 
 ### Step 2 — dev audit 0 (FR-T2)
-- [ ] 2.1 `web/`에서 `npm audit fix`. 주 버전이 바뀌는 수정은 하지 않는다. 바뀐 패키지와 버전을 기록한다.
-- [ ] 2.2 확인: `npm audit` 0, `npm audit --omit=dev` 0, tsc, vitest 813, `vite build`(첫 화면 gzip이 늘지 않음).
-- [ ] 2.3 커밋: `chore(web): dev dependencies without known advisories (V9, FR-T2)`
+- [x] 2.1 `web/`에서 `npm audit fix`. 주 버전이 바뀌는 수정은 하지 않는다. 바뀐 패키지와 버전을 기록한다.
+- [x] 2.2 확인: `npm audit` 0, `npm audit --omit=dev` 0, tsc, vitest 813, `vite build`(첫 화면 gzip이 늘지 않음).
+- [x] 2.3 커밋: `chore(web): dev dependencies without known advisories (V9, FR-T2)`
 
 ### Step 3 — mypy 0과 CI 단계 (FR-T3, W-3)
 - [ ] 3.1 § 1.2 표의 일곱 곳을 고친다. 동작은 바뀌지 않는다(가드는 지금도 그 길에서 `None`을 돌려주는 것과 같은 결과).

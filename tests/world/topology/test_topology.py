@@ -16,6 +16,7 @@ from locus.shared.models import (
 )
 from locus.world.topology import TopologyBuilder, assign_hierarchy, compute_weight
 from locus.world.topology.builder import collect_connection_candidates
+from locus.world.topology.hierarchy import _break_cycles
 
 
 def _prov() -> Provenance:
@@ -72,6 +73,41 @@ def test_assign_hierarchy_breaks_cycle() -> None:
     assign_hierarchy([a, b])
     # at least one link must be cut to avoid a cycle
     assert (a.parent_id is None) or (b.parent_id is None)
+
+
+def _linked(*pairs: tuple[Region, Region | None]) -> None:
+    for child, parent in pairs:
+        child.parent_id = parent.id if parent else None
+
+
+def test_break_cycles_cuts_one_link_of_a_cycle() -> None:
+    """Code review 01 #23: `assign_hierarchy` drops a same-level parent before this runs, so
+    the cycle walk is tested on its own."""
+    a, b = _region("A", RegionLevel.TOWN), _region("B", RegionLevel.TOWN)
+    _linked((a, b), (b, a))
+    warnings: list = []
+    _break_cycles([a, b], warnings)
+    assert (a.parent_id, b.parent_id) == (None, a.id)
+    assert [w.item_id for w in warnings] == [a.id] and "cycle detected" in warnings[0].message
+
+
+def test_break_cycles_keeps_the_parent_of_a_region_that_only_leads_into_a_cycle() -> None:
+    """Code review 01 #23: t -> a -> b -> a. Walking from t met the cycle and cut t's own
+    parent, though t is not in the cycle."""
+    t, a, b = (_region(n, RegionLevel.TOWN) for n in ("T", "A", "B"))
+    _linked((t, a), (a, b), (b, a))
+    warnings: list = []
+    _break_cycles([t, a, b], warnings)
+    assert t.parent_id == a.id
+    assert (a.parent_id, b.parent_id) == (None, a.id) and len(warnings) == 1
+
+
+def test_break_cycles_leaves_a_chain_alone() -> None:
+    t, a, b = (_region(n, RegionLevel.TOWN) for n in ("T", "A", "B"))
+    _linked((t, a), (a, b), (b, None))
+    warnings: list = []
+    _break_cycles([t, a, b], warnings)
+    assert (t.parent_id, a.parent_id, b.parent_id) == (a.id, b.id, None) and warnings == []
 
 
 # --------------------------------------------------------------------------- #

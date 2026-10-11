@@ -19,7 +19,7 @@ dependencies = [
     "neo4j>=5.0.0,<6",
     "opensearch-py>=2.0.0,<3",
     "langchain>=0.1.0",
-    "langchain-openai>=0.0.5",
+    "langchain-openai>=0.2",  # V9 review #6: the providers pass a pydantic v2 SecretStr
     "langgraph>=0.0.30",
     "openai>=1.0.0",
     "tenacity>=8.0.0",
@@ -74,3 +74,9 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --cov=locus --cov-report=term-missing"
+# V9 code review 01 #22: an unclosed engine, file or socket fails the run instead of
+# printing a ResourceWarning under whatever test the collector happens to run in
+filterwarnings = [
+    "error::ResourceWarning",
+    "error::pytest.PytestUnraisableExceptionWarning",
+]

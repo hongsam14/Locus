@@ -266,6 +266,27 @@ def test_upsert_edges_merges_into_the_stored_edge_like_neo4j() -> None:
     assert edge.properties == {"kind": "route", "weight": 0.9}
 
 
+def test_the_fake_keeps_its_own_copy_of_what_was_written_and_read() -> None:
+    """Code review 01 #25: a stored edge or node shared its ``properties`` dict with the
+    caller and with every reader, which Neo4j never does."""
+    g = InMemoryGraphRepository()
+    written = _conn(weight=0.5)
+    g.upsert_edges([written])
+    written.properties["weight"] = 9.0
+    (read,) = g.get_edges("w")
+    read.properties["leak"] = True
+    (touched,) = g.edges_touching("w", [written.source_id])
+    touched.properties["leak2"] = True
+    assert g.get_edges("w")[0].properties == {"kind": "route", "weight": 0.5}
+    node = Node(id="n", world_id="w", label="Region", properties={"name": "A"})
+    g.upsert_nodes([node])
+    node.properties["name"] = "B"
+    stored = g.get_node("w", "n", label="Region")
+    assert stored is not None and stored.properties["name"] == "A"
+    stored.properties["name"] = "C"
+    assert g.get_node("w", "n", label="Region").properties["name"] == "A"
+
+
 def test_neo4j_upsert_edges_merges_the_map() -> None:
     repo, rec = _neo4j()
     repo.upsert_edges([_conn(weight=0.5)])

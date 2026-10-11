@@ -59,7 +59,7 @@ class InMemoryGraphRepository:
                 merged.update(node.properties)
                 self._nodes[key] = node.model_copy(update={"properties": merged})
             else:
-                self._nodes[key] = node.model_copy()
+                self._nodes[key] = node.model_copy(deep=True)
 
     @staticmethod
     def _edge_key(e: Edge) -> tuple:
@@ -80,7 +80,7 @@ class InMemoryGraphRepository:
                 merged.update(e.properties)
                 self._edges[key] = e.model_copy(update={"properties": merged})
             else:
-                self._edges[key] = e.model_copy()
+                self._edges[key] = e.model_copy(deep=True)
 
     def replace_edges(self, edges: list[Edge]) -> None:
         """U8: properties replaced whole, as Neo4j's ``SET r = $props`` (a property left out
@@ -95,7 +95,7 @@ class InMemoryGraphRepository:
     ) -> list[Edge]:
         ids = set(node_ids)
         out = [  # read the store directly: not a whole-world get_edges (U3 review C10)
-            e.model_copy()
+            e.model_copy(deep=True)
             for e in self._edges.values()
             if e.world_id == world_id
             and (types is None or e.type in types)
@@ -179,11 +179,11 @@ class InMemoryGraphRepository:
             n = next(
                 (v for k, v in self._nodes.items() if k[0] == world_id and k[2] == node_id), None
             )
-        return n.model_copy() if n else None
+        return n.model_copy(deep=True) if n else None
 
     def find_nodes(self, world_id: str, label: str, filters: dict | None = None) -> list[Node]:
         out = [
-            n.model_copy()
+            n.model_copy(deep=True)
             for (wid, _label, _id), n in self._nodes.items()
             if wid == world_id
             and n.label == label
@@ -193,7 +193,7 @@ class InMemoryGraphRepository:
 
     def get_edges(self, world_id: str, types: list[str] | None = None) -> list[Edge]:
         out = [
-            e.model_copy()
+            e.model_copy(deep=True)
             for e in self._edges.values()
             if e.world_id == world_id and (types is None or e.type in types)
         ]

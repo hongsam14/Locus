@@ -54,7 +54,11 @@ def _break_cycles(regions: list[Region], warnings: list[BuildWarning]) -> None:
         seen: set[str] = set()
         cur: Region | None = r
         while cur is not None and cur.parent_id is not None:
-            if cur.parent_id in seen or cur.parent_id == r.id:
+            if cur.parent_id in seen and cur.parent_id != r.id:
+                # the walk ran into a cycle that does not hold r: its own members cut it, and
+                # r keeps its parent (code review 01 #23)
+                break
+            if cur.parent_id == r.id:
                 warnings.append(
                     BuildWarning(
                         stage="topology",

@@ -152,10 +152,10 @@ V9에서 고치지 않고 `next-cycle.md`에 적는다(큰 넘김):
 - [x] 9.3 커밋: `docs(aidlc): next-cycle list after the Follow-up cycle, each item with its source and place (V9, FR-C14)`
 
 ### Step 10 — 마무리
-- [ ] 10.1 `v9gate.sh` 전체 GREEN. 수치: pytest, vitest, mypy 0, audit 0/0, `ResourceWarning` 0, 가장 느린 시험 10개, JS gzip.
-- [ ] 10.2 `construction/V9-debt-docs/code/code-summary.md`
+- [x] 10.1 `v9gate.sh` 전체 GREEN. 수치: pytest, vitest, mypy 0, audit 0/0, `ResourceWarning` 0, 가장 느린 시험 10개, JS gzip.
+- [x] 10.2 `construction/V9-debt-docs/code/code-summary.md`
   - § 1 기준선과 결과, § 2 파일, § 3 요구 → 확인 표, § 4 바뀐 기존 시험, § 5 이탈, § 6 알려진 한계, § 7 돌연변이(시험 위생 고침: `or True`를 되돌리면, 잠금 사건을 빼면 등), § 8 넘기는 것(Build and Test)
-- [ ] 10.3 audit, state 갱신 → 커밋 `docs(aidlc): V9 code summary`
+- [x] 10.3 audit, state 갱신 → 커밋 `docs(aidlc): V9 code summary`
 
 ---
 

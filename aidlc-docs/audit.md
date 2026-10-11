@@ -5965,3 +5965,10 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 - R-06 → Accepted risk
 
 ---
+
+---
+## Code Generation Part 2 — V9 — Done
+**Timestamp**: 2026-10-11T15:57:44Z
+**User Input**: (none)
+**AI Response**: Steps 1–10 done on feat/follow-up: `d386805` (dev audit 0, npm 11 for `audit fix`), `d34c0a8` (mypy 0, CI mypy step, scripts linted), `49ca342` (test hygiene: lock-order events, `or True` → real values, recorded retry waits, engine dispose, fake upsert merges / replace replaces, `/health` degraded test), `239f82d` (index.html ko/title/description/favicon, env.example), `5db8ae9` (live scenario 10a direction, non-JSON answers FAIL, poll ≥ 1 s), `7eb0b61` (editor/map ko 24 lines 해요체, 11 unused keys removed, register and key-use tests), `86e225b` (CLAUDE.md, README, web/README, operations.md, 7 docstrings), `fa0927d` (GM manual-turn docstring), `e8e2fe0` (next-cycle list with sources and file:line). Gate GREEN: pytest 1244, vitest 821, mypy 0, npm audit 0/0, ResourceWarning 0, first-screen JS 119.41 kB. Mutants 36/36 caught. Deviations recorded in the summary § 5 (npm 11 for the fix; 5 unused keys outside the named prefixes; register test covers augment./wiki./build.; 10a ids from /state; one more docstring). Summary `construction/V9-debt-docs/code/code-summary.md`.
+**Context**: CONSTRUCTION / V9 — code approval gate next.

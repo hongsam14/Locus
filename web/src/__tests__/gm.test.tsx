@@ -10,7 +10,6 @@ import type { Mock } from "vitest";
 import { conflictKind } from "../api/http";
 import { mapLimit } from "../features/gm/bulk";
 import { resetCapabilities } from "../capabilities";
-import { MapOverlay } from "../MapOverlay";
 import { ActionBar, declaredLength } from "../features/play/ActionBar";
 import { DeedPanel } from "../features/gm/DeedPanel";
 import { EventPanel } from "../features/gm/EventPanel";

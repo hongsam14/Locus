@@ -5,7 +5,7 @@ import { llmOff, useCapabilities } from "../../capabilities";
 import { describeError, type DescribedError } from "../../errors";
 import { t } from "../../i18n";
 import type { BuildReport } from "../../types";
-import { Button, ConfirmDialog, Dialog, Field, FileInput, InlineError, InProgressBadge } from "../../ui";
+import { Button, ConfirmDialog, Dialog, Field, FileInput, InlineError, InProgressBadge, Textarea } from "../../ui";
 import { BuildReportPanel } from "./BuildReportPanel";
 
 const FIELDS = [
@@ -27,12 +27,15 @@ export function BuildPanel({
   exists,
   onClose,
   onBuilt,
+  onShowUnscoped,
 }: {
   open: boolean;
   worldId?: string; // fixed when building the open world
   exists: boolean;
   onClose: () => void;
   onBuilt: (worldId: string, report: BuildReport) => void;
+  /** The editor: "known nowhere N" closes this panel and opens that tab (V8 UX-22). */
+  onShowUnscoped?: () => void;
 }) {
   const [worldId, setWorldId] = useState(fixedId ?? "");
   const [name, setName] = useState("");
@@ -105,11 +108,8 @@ export function BuildPanel({
         <Field label={t("build.name")} value={name} onChange={(e) => setName(e.target.value)} />
         <Field label={t("build.description")} value={description}
           onChange={(e) => setDescription(e.target.value)} />
-        <label className="inline-flex flex-col gap-0.5 text-sm">
-          <span className="text-muted">{t("build.memoText")}</span>
-          <textarea data-testid="build-memo" rows={3} value={memo} onChange={(e) => setMemo(e.target.value)}
-            className="border border-line-strong rounded-md bg-surface px-2 py-1 text-sm" />
-        </label>
+        <Textarea label={t("build.memoText")} data-testid="build-memo" rows={3} value={memo}
+          onChange={(e) => setMemo(e.target.value)} />
         {FIELDS.map((f) => (
           <FileInput key={f.name} multiple accept={f.accept} data-testid={`build-${f.name}`}
             label={<>
@@ -125,7 +125,13 @@ export function BuildPanel({
             <InlineError error={error} />
           </div>
         )}
-        {report && <BuildReportPanel report={report} />}
+        {report && (
+          <BuildReportPanel report={report}
+            onShowUnscoped={onShowUnscoped && (() => {
+              close();
+              onShowUnscoped();
+            })} />
+        )}
         <div className="flex items-center justify-end gap-2">
           {noLlm && <span className="text-xs text-muted" data-testid="llm-required">{t("llm.required")}</span>}
           <Button size="sm" onClick={close}>{t("action.close")}</Button>

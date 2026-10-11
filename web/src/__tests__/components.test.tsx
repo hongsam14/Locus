@@ -3,12 +3,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "../api/http";
-import { MapOverlay } from "../MapOverlay";
+import { WorldMap } from "../map";
 // U3 intended change (C-8): the GM's read-only knowledge panel (was RegionPanel);
 // the augmentation panel moved to features/editor with the kept-run API (C-3)
 import { RegionKnowledgePanel } from "../features/gm/RegionKnowledgePanel";
-import { AugmentPanel } from "../features/editor/AugmentPanel";
-import { SessionBar } from "../SessionBar";
+import { AugHost } from "../test/editor";
 import { App } from "../App";
 import { resetCapabilities } from "../capabilities";
 import { t } from "../i18n";
@@ -75,10 +74,11 @@ const connections: ConnectionEdge[] = [
   { source_region_id: "r1", target_region_id: "r2", kind: "blocked", weight: 0.2 },
 ];
 
-describe("MapOverlay", () => {
+// V8 intended change (§ 7.1): the editor draws `WorldMap` in edit mode directly
+describe("WorldMap in edit mode", () => {
   it("renders a marker per region and a line per connection", () => {
     render(
-      <MapOverlay regions={regions} connections={connections} onSelect={() => {}} onMove={() => {}} />,
+      <WorldMap mode="edit" label="map" regions={regions} connections={connections} onSelect={() => {}} onMove={() => {}} />,
     );
     expect(screen.getByTestId("region-marker-r1")).toBeInTheDocument();
     expect(screen.getByTestId("region-marker-r2")).toBeInTheDocument();
@@ -88,7 +88,7 @@ describe("MapOverlay", () => {
   it("calls onSelect when a marker is clicked", () => {
     const onSelect = vi.fn();
     render(
-      <MapOverlay regions={regions} connections={[]} onSelect={onSelect} onMove={() => {}} />,
+      <WorldMap mode="edit" label="map" regions={regions} connections={[]} onSelect={onSelect} onMove={() => {}} />,
     );
     fireEvent.click(screen.getByTestId("region-marker-r1"));
     expect(onSelect).toHaveBeenCalledWith("r1");
@@ -152,7 +152,7 @@ describe("AugmentPanel", () => {
         text: "What is known here?", actions: ["add", "ignore"],
         target: { kind: "region", id: "r1", name: "Riverton" } }],
     });
-    render(<AugmentPanel worldId="w" regions={regions} entities={[]} onChanged={() => {}} />);
+    render(<AugHost regions={regions} />); // V8: the page's hook around the panel
     fireEvent.click(screen.getByTestId("augment-find"));
     await waitFor(() => expect(screen.getByText(/What is known here/)).toBeInTheDocument());
     expect(screen.getByTestId("augment-action-add")).toBeInTheDocument();
@@ -160,24 +160,8 @@ describe("AugmentPanel", () => {
   });
 });
 
+// V8 intended change (Q2 = A): the session bar and its [new session] are gone
 const OPEN_SESSION: GameSession = { id: "s1", world_id: "w", status: "open", turn: 2 };
-
-describe("SessionBar", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it("lists sessions and starts a new one", async () => {
-    (api.listSessions as Mock).mockResolvedValue([]);
-    (api.startSession as Mock).mockResolvedValue(OPEN_SESSION);
-    const onSelect = vi.fn();
-    render(<SessionBar worldId="w" sessionId={null} onSelect={onSelect} />);
-    await waitFor(() => expect(api.listSessions).toHaveBeenCalledWith("w"));
-    fireEvent.click(screen.getByTestId("session-new-btn"));
-    await waitFor(() => expect(api.startSession).toHaveBeenCalledWith("w"));
-    await waitFor(() =>
-      expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: "s1" })),
-    );
-  });
-});
 
 // V6: the GmHub tests moved to gm.layout.test.tsx (the screen) and gm.parts.test.tsx (the
 // parts) — frontend-components § 7.1, TP-V6-17; each behaviour they asserted is kept there.
@@ -237,6 +221,8 @@ describe("App routing (F1 / AD-R8)", () => {
     );
     await waitFor(() => expect(api.exportWorld).toHaveBeenCalledWith("aldermoor"));
     await waitFor(() => expect(screen.getByTestId("graph-status")).toBeInTheDocument());
+    // V8 (Q2 = A): the editor's one session action is the player start
+    expect(screen.getByTestId("play-this-world")).toBeInTheDocument();
     expect(screen.queryByTestId("session-close-btn")).not.toBeInTheDocument();
   });
 

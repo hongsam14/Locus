@@ -170,11 +170,11 @@
 - [x] 4.5 게이트 GREEN → 커밋 `feat(web): new editor parts — one head with a file menu and a play start, a map pane with tools and a legend, a keyboard region picker and a danger zone (V8, FR-S4)`
 
 ### Step 5 — 바꿔 끼우기: 화면 조립, 기존 부품, 옛 부품 없애기 (BLM 전부, BR-V8-01~34, frontend-components § 7.1)
-- [ ] 5.1 `routes/EditorPage.tsx`를 다시 쓴다.
+- [x] 5.1 `routes/EditorPage.tsx`를 다시 쓴다.
   - `MapPanelLayout` + `EditorHeader` + `EditorMapPane` + `ui/Tabs`(넷)
   - `useEditorWorld`, `useAugmentation`, `inspectorOpen`, `unscopedPick`
   - 지도 누름 → [지역] 탭(좁음에서 `scrollIntoView?.()`)
-- [ ] 5.2 기존 부품
+- [x] 5.2 기존 부품
   - `RegionInspector`: 섹션 넷, 머리 수, `reload()` 등록, `describeError`
   - `RegionForm`: 위험 칸 분리, `Textarea`
   - `ConnectionList`: `CommitRange`, 놓을 때 저장, 이름 있는 ✕, 종류 라벨
@@ -185,13 +185,13 @@
   - `WikiPanel`: 영역·종류 라벨, 수치 + 뜻
   - `BuildPanel`·`BuildReportPanel`: 이어 붙인 수, 단계 묶음과 펼침, `sessions` 줄, [범위 없는 지식 보기] → 탭
   - 모든 `String(e)`를 `describeError`·`InlineError`로 바꾼다. 첫 읽기 로딩, 빈 상태 문장, 알림도 맞춘다.
-- [ ] 5.3 없앤다: `MapOverlay.tsx`, `SessionBar.tsx`, `WorldFileBar.tsx`, `MapCanvas.tsx`. `gm.test.tsx:13` import 한 줄도 지운다.
-- [ ] 5.4 옛 시험을 고친다(frontend-components § 7.1 표 그대로).
+- [x] 5.3 없앤다: `MapOverlay.tsx`, `SessionBar.tsx`, `WorldFileBar.tsx`, `MapCanvas.tsx`. `gm.test.tsx:13` import 한 줄도 지운다.
+- [x] 5.4 옛 시험을 고친다(frontend-components § 7.1 표 그대로).
   - `editor.test.tsx`, `components.test.tsx`, `play.test.tsx`
   - 시험 도우미 `openFileMenu()`
-- [ ] 5.5 새 시험 `editor.layout.test.tsx`: TP-V8-1, TP-V8-4(입력 유지), TP-V8-6(섹션), TP-V8-8(이름 있는 단추), TP-V8-11(상태), TP-V8-12(쓰기), TP-V8-14(빌드 리포트), TP-V8-15(탭 키보드)
-- [ ] 5.6 돌연변이 확인: UX-25, UX-24, R-15, R-16, 변경 설명 라벨, 위험 칸 분리
-- [ ] 5.7 게이트 GREEN → 커밋 `feat(web): editor rebuilt — map beside a 400 px panel of four tabs, a folding inspector with a separate danger zone, one weight control, words for every value and error, play from the editor (V8, FR-S4, UX-17..25, UX-27)`
+- [x] 5.5 새 시험 `editor.layout.test.tsx`: TP-V8-1, TP-V8-4(입력 유지), TP-V8-6(섹션), TP-V8-8(이름 있는 단추), TP-V8-11(상태), TP-V8-12(쓰기), TP-V8-14(빌드 리포트), TP-V8-15(탭 키보드)
+- [x] 5.6 돌연변이 확인: UX-25, UX-24, R-15, R-16, 변경 설명 라벨, 위험 칸 분리
+- [x] 5.7 게이트 GREEN → 커밋 `feat(web): editor rebuilt — map beside a 400 px panel of four tabs, a folding inspector with a separate danger zone, one weight control, words for every value and error, play from the editor (V8, FR-S4, UX-17..25, UX-27)`
 
 ### Step 6 — FR-D8 검사와 소스 검사 (BR-V8-15·16·22·05·27, TP-V8-9·16)
 - [ ] 6.1 `fr-d8.test.tsx`: 에디터를 넣는다. 대상은 머리, 범례, 대화상자, 인스펙터, 보강, 사전, 빌드 리포트이고, 단계·종류·보강 값을 전부 돌린다. 원문 enum, `type:action`, 열쇠 글자가 없어야 한다.

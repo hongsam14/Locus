@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "../../i18n";
 import type { NPC, NpcDraft } from "../../types";
-import { Button, Card, Field } from "../../ui";
+import { Button, Card, Field, Textarea } from "../../ui";
 import { NpcDraftCards } from "./NpcDraftCards";
 
 export interface NpcFields {
@@ -47,10 +47,11 @@ export function NpcEditorList({
             <strong>{n.name}</strong>
             <span className="text-xs text-muted">{n.role} · {n.traits.join(", ")}</span>
             <span className="text-xs">{n.description}</span>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
               <Button size="sm" disabled={busy} data-testid={`npc-edit-${n.id}`}
-                onClick={() => setEditing(n.id)}>{t("editor.knowledge.edit")}</Button>
+                onClick={() => setEditing(n.id)}>{t("action.editNpc")}</Button>
               <Button size="sm" variant="danger" disabled={busy} data-testid={`npc-delete-${n.id}`}
+                aria-label={t("action.deleteNpc", { name: n.name })}
                 onClick={() => onDelete(n)}>✕</Button>
             </div>
           </Card>
@@ -89,7 +90,7 @@ function NpcForm({ initial, busy, onSubmit, onCancel }: {
         onChange={(e) => setName(e.target.value)} />
       <Field label={t("editor.npc.role")} data-testid="npc-role" value={role}
         onChange={(e) => setRole(e.target.value)} />
-      <Field label={t("editor.npc.description")} data-testid="npc-description" value={description}
+      <Textarea label={t("editor.npc.description")} data-testid="npc-description" value={description} rows={2}
         onChange={(e) => setDescription(e.target.value)} />
       <Field label={t("editor.npc.traits")} value={traits} onChange={(e) => setTraits(e.target.value)} />
       <div className="flex gap-1">

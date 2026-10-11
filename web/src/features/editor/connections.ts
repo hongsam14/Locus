@@ -1,8 +1,8 @@
 import { ENUM_VALUES, enumLabel } from "../../format";
 import type { ConnectionEdge, ConnectionKind, Region } from "../../types";
 
-// What the editor's map and inspector share (V8 code plan § 1.4 R-06: out of `MapCanvas`,
-// which goes in Step 5).
+// What the editor's map and inspector share (V8 code plan § 1.4 R-06: moved here from the old
+// map canvas).
 
 export type MapTool = "select" | "addRegion" | "connect";
 

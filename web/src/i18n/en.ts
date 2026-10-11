@@ -10,14 +10,10 @@ export const en: Record<Key, string> = {
   "lang.label": "Display language",
 
   "common.loading": "Loading…",
-  "common.turn": "turn {n}",
   "label.decay": "decay",
   "badge.hearsay": "hearsay",
   "badge.rumor": "rumor",
 
-  "toolbar.pickMap": "Map:",
-  "editor.status":
-    "world {world} · regions {regions} · connections {connections} · entities {entities} · knowledge {knowledge}",
 
   "region.title": "Region knowledge",
   "region.unique": "unique {n}",
@@ -30,9 +26,6 @@ export const en: Record<Key, string> = {
   "augment.titleLabel": "Title (empty: from the statement)",
   "augment.confidence": "Confidence (0–1, empty: unchanged)",
 
-  "session.title": "Session",
-  "session.new": "New session",
-  "session.close": "Close",
   "session.none": "— none —",
   "session.play": "Start playing",
   "session.playTitle": "New play session",
@@ -138,9 +131,7 @@ export const en: Record<Key, string> = {
   "notif.events_resolved": "{n} event(s) resolved",
 
   // U3 world editor (frontend-components §4)
-  "home.empty": "No world yet.",
   "home.edit": "Edit",
-  "home.startSession": "Start session",
   "home.buildFromSources": "Build a new world from sources",
   "home.regions": "{n} regions",
   "home.updated": "edited {when}",
@@ -151,11 +142,6 @@ export const en: Record<Key, string> = {
   "map.hint.addRegion": "Click an empty spot to add a region there",
   "map.hint.connect": "Click two regions in turn to connect them",
   "map.hint.connectSecond": "Now click the region to connect {name} to",
-  "editor.tab.region": "Region",
-  "editor.tab.unscoped": "Unscoped {n}",
-  "editor.tab.augment": "Augment",
-  "editor.tab.wiki": "Wiki",
-  "editor.pickRegion": "Pick a region on the map",
   "editor.region.title": "Region",
   "editor.region.add": "New region",
   "editor.region.name": "Name",
@@ -214,8 +200,8 @@ export const en: Record<Key, string> = {
   "delete.region.scopeRemoved": "{n} item(s) lose this scope only: {names}",
   "delete.region.entities": "{n} entit(ies) lose their location: {names}",
   "delete.region.seeds": "{n} event seed(s) of this region are deleted",
-  "delete.region.blocked": "A player of an open session stands here: {ids}. Close the session or move the player first.",
-  "delete.region.done": "Deleted: {children} moved · {npcs} NPCs · {connections} connections · {unscoped} unscoped",
+  "delete.region.blocked": "A player of {n} open sessions stands here, so it cannot be deleted. Close the session or move the player on the GM screen.",
+  "delete.region.done": "{children} children moved · {npcs} NPCs · {connections} connections · {unscoped} unscoped",
   "augment.find": "Find gaps",
   "augment.target.knowledge": "knowledge",
   "augment.target.entity": "entity",
@@ -271,7 +257,6 @@ export const en: Record<Key, string> = {
   "file.build": "Build from sources",
   "file.replaceConfirm": "Replace this world with the file?",
   "file.closeSessionsConfirm": "Close {n} open session(s) and replace?",
-  "file.openSessions": "{n} open sessions",
   // U8: demo cards, the LLM-off notice, event seeds, the in-progress badge
   "demo.heading": "Demo worlds",
   "demo.play": "Play now",
@@ -643,7 +628,6 @@ export const en: Record<Key, string> = {
   "action.deleteNpc": "Delete NPC: {name}",
   "action.editNpc": "Edit NPC",
   "action.showUnscoped": "Show {n} facts known nowhere",
-  "action.showDetails": "Details",
   "notice.openSessions": "{n} open sessions · a replace closes them.",
   "notice.augmentStopped": "It stopped at the answer limit.",
   "notice.augmentConverged": "Nothing more to ask.",

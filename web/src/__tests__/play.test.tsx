@@ -8,7 +8,6 @@ import { HttpError } from "../api/http";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Mock } from "vitest";
-import { SessionBar } from "../SessionBar";
 import { degreeWord } from "../format";
 import { t } from "../i18n";
 import { PlayPage } from "../routes/PlayPage";
@@ -301,49 +300,9 @@ describe("PlayPage", () => {
   });
 });
 
-describe("SessionBar player start (US-3.1)", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    (api.listSessions as Mock).mockResolvedValue([]);
-  });
-
-  it("opens the form, requires a name and a region, and hands the session to onPlay", async () => {
-    (api.startSession as Mock).mockResolvedValue({
-      session: { ...SESSION, id: "s2" },
-      player: { id: "p2", session_id: "s2", name: "Ari", region_id: "a", turns_spent: 0 },
-    });
-    const onPlay = vi.fn();
-    const onSelect = vi.fn();
-    render(
-      <SessionBar
-        worldId="w"
-        sessionId={null}
-        onSelect={onSelect}
-        variant="picker"
-        regions={[{ id: "a", name: "Riverton", level: "town" }]}
-        onPlay={onPlay}
-      />,
-    );
-    expect(screen.getByTestId("session-new-btn")).toBeInTheDocument(); // GM button untouched
-    fireEvent.click(screen.getByTestId("session-play-btn"));
-    expect(screen.getByTestId("new-session-submit")).toBeDisabled();
-    fireEvent.change(screen.getByTestId("new-session-name"), { target: { value: "Ari" } });
-    expect(screen.getByTestId("new-session-submit")).toBeDisabled(); // region still missing
-    fireEvent.change(screen.getByTestId("new-session-region"), { target: { value: "a" } });
-    expect(screen.getByTestId("new-session-submit")).toBeEnabled();
-    fireEvent.click(screen.getByTestId("new-session-submit"));
-    await waitFor(() =>
-      expect(api.startSession).toHaveBeenCalledWith("w", { name: "Ari", start_region_id: "a" }),
-    );
-    await waitFor(() => expect(onPlay).toHaveBeenCalledWith(expect.objectContaining({ session: expect.objectContaining({ id: "s2" }) })));
-    expect(onSelect).not.toHaveBeenCalledWith(expect.objectContaining({ id: "s2" }));
-  });
-
-  it("hides the play button when no onPlay handler is given (GM screen)", () => {
-    render(<SessionBar worldId="w" sessionId={null} onSelect={vi.fn()} />);
-    expect(screen.queryByTestId("session-play-btn")).not.toBeInTheDocument();
-  });
-});
+// V8 intended change (Q2 = A, frontend-components § 7.1): the session bar is gone; the
+// player form is tested from the home (home.test) and the editor's [이 월드로 플레이]
+// (editor.parts.test, TP-V8-13)
 
 describe("declaredLength / edge spaces (U7 review §3 EDGE_SPACE)", () => {
   it("strips like the server and stays linear on long inner spaces", async () => {

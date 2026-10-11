@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { t } from "../../i18n";
 import type { Region } from "../../types";
-import { Button, Field, Select } from "../../ui";
-import { LEVELS } from "./MapCanvas";
+import { Button, Field, Select, Textarea } from "../../ui";
+import { levelOptions, regionOptions } from "./connections";
 
 /** Regions under ``id`` (its children, theirs, …): a parent must not be one (BR-U3-7). */
 export function descendantsOf(id: string, regions: Region[]): Set<string> {
@@ -21,19 +21,20 @@ export function descendantsOf(id: string, regions: Region[]): Set<string> {
 }
 
 /** The region's own fields (US-2.2 첫째): name, level, parent, description. Saving is a
- * replace write — a cleared description is gone (BR-U3-1). */
+ * replace write — a cleared description is gone (BR-U3-1). Deleting the region is not here:
+ * it sits in the inspector's danger zone, apart from [save] (V8 UX-19, BR-V8-12). */
 export function RegionForm({
   region,
   regions,
   busy,
+  saved = false,
   onSave,
-  onDelete,
 }: {
   region: Region;
   regions: Region[];
   busy: boolean;
+  saved?: boolean; // the inspector says "saved" on the button for a second (BLM § 5)
   onSave: (r: Region) => void;
-  onDelete: () => void;
 }) {
   const [name, setName] = useState(region.name);
   const [level, setLevel] = useState(region.level);
@@ -46,25 +47,17 @@ export function RegionForm({
       <Field label={t("editor.region.name")} data-testid="region-name" value={name}
         onChange={(e) => setName(e.target.value)} />
       <Select label={t("editor.region.level")} data-testid="region-level" value={level}
-        options={LEVELS.map((l) => ({ value: l, label: l }))} onChange={setLevel} />
+        options={levelOptions()} onChange={setLevel} />
       <Select label={t("editor.region.parent")} data-testid="region-parent" value={parent}
-        options={[{ value: "", label: t("editor.region.noParent") }, ...parents.map((r) => ({ value: r.id, label: r.name }))]}
+        options={[{ value: "", label: t("editor.region.noParent") }, ...regionOptions(parents)]}
         onChange={setParent} />
-      <label className="inline-flex flex-col gap-0.5 text-sm">
-        <span className="text-muted">{t("editor.region.description")}</span>
-        <textarea data-testid="region-description" value={desc} rows={3}
-          onChange={(e) => setDesc(e.target.value)}
-          className="border border-line-strong rounded-md bg-surface px-2 py-1 text-sm" />
-      </label>
+      <Textarea label={t("editor.region.description")} data-testid="region-description" value={desc} rows={3}
+        onChange={(e) => setDesc(e.target.value)} />
       <div className="flex gap-2">
         <Button size="sm" variant="primary" data-testid="region-save" disabled={busy || !name.trim()}
           onClick={() => onSave({ ...region, name: name.trim(), level, parent_id: parent || null,
             description: desc.trim() || null })}>
-          {t("editor.region.save")}
-        </Button>
-        <Button size="sm" variant="danger" data-testid="region-delete" disabled={busy}
-          onClick={onDelete}>
-          {t("editor.region.delete")}
+          {saved ? t("notice.saved") : t("editor.region.save")}
         </Button>
       </div>
     </div>

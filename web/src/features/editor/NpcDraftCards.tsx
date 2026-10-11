@@ -2,9 +2,10 @@ import { useState } from "react";
 import { api } from "../../api";
 import { needsLlm } from "../../api/http";
 import { llmOff, useCapabilities } from "../../capabilities";
+import { describeError, type DescribedError } from "../../errors";
 import { t } from "../../i18n";
 import type { NpcDraft } from "../../types";
-import { Button, Card } from "../../ui";
+import { Button, Card, InlineError } from "../../ui";
 
 /** NPC suggestions for a region (US-2.5): one LLM call, 0–3 cards, nothing saved until
  * one is accepted; a failed call is a notice, not an error (BR-U3-20/21). */
@@ -22,7 +23,7 @@ export function NpcDraftCards({
   const [drafts, setDrafts] = useState<NpcDraft[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [asking, setAsking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<DescribedError | null>(null);
   const noLlm = llmOff(useCapabilities()); // U8 (BR-U8-25)
   async function suggest() {
     setAsking(true);
@@ -33,7 +34,7 @@ export function NpcDraftCards({
       setDrafts(r.drafts);
       setFailed(r.failed);
     } catch (e) {
-      setError(needsLlm(e) ? t("llm.required") : String(e)); // BR-U8-27
+      setError(needsLlm(e) ? { title: t("llm.required") } : describeError(e)); // BR-U8-27
     } finally {
       setAsking(false);
     }
@@ -48,7 +49,7 @@ export function NpcDraftCards({
         {noLlm && <span className="text-xs text-muted" data-testid="llm-required">{t("llm.required")}</span>}
       </span>
       {failed && <div className="text-xs text-danger" data-testid="npc-draft-failed">{t("editor.npcDraft.failed")}</div>}
-      {error && <div className="text-xs text-danger">{error}</div>}
+      {error && <InlineError error={error} />}
       {drafts && drafts.length === 0 && !failed && (
         <div className="text-xs text-muted">{t("editor.npcDraft.none")}</div>
       )}

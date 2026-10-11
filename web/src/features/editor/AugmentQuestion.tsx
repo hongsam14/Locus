@@ -1,4 +1,5 @@
 import { t } from "../../i18n";
+import { fieldLabel } from "./augmentNames";
 import type { AugAction, AugInput, AugQuestion, NameRef, Region } from "../../types";
 import { Badge, Button, Card, Field, Select as UiSelect } from "../../ui";
 
@@ -38,13 +39,13 @@ export function AugmentQuestion({
 }) {
   const takes = inputsOf(q);
   return (
-    <Card data-testid="augment-question" className="text-sm flex flex-col gap-1">
+    <Card data-testid="augment-question" className="flex flex-col gap-1 break-words text-sm">
       {q.target && (
         <div className="flex flex-wrap items-center gap-1" data-testid="augment-target">
           <Badge>{t(`augment.target.${q.target.kind}`)}</Badge>
           <strong>{q.target.name}</strong>
           {q.target.region_name && <span className="text-xs text-muted">@ {q.target.region_name}</span>}
-          {q.target.field && <code className="text-xs">{q.target.field}</code>}
+          {q.target.field && <span className="text-xs text-muted" data-testid="augment-field">{fieldLabel(q.target.field)}</span>}
         </div>
       )}
       <div>{q.text}</div>

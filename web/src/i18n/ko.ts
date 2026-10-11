@@ -11,15 +11,11 @@ export const ko = {
 
   // shared fragments
   "common.loading": "불러오는 중…",
-  "common.turn": "턴 {n}",
   "label.decay": "감쇠",
   "badge.hearsay": "전언",
   "badge.rumor": "소문",
 
   // editor toolbar / editor screen
-  "toolbar.pickMap": "지도:",
-  "editor.status":
-    "월드 {world} · 지역 {regions} · 연결 {connections} · 엔티티 {entities} · 지식 {knowledge}",
 
   // region knowledge panel (editor / GM)
   "region.title": "지역 지식",
@@ -35,9 +31,6 @@ export const ko = {
   "augment.confidence": "신뢰도(0~1, 비우면 그대로)",
 
   // session bar
-  "session.title": "세션",
-  "session.new": "새 세션",
-  "session.close": "닫기",
   "session.none": "— 없음 —",
   "session.play": "플레이 시작",
   "session.playTitle": "새 플레이 세션",
@@ -154,9 +147,7 @@ export const ko = {
   "notif.events_resolved": "사건 {n}건 해소",
 
   // U3 world editor (frontend-components §4)
-  "home.empty": "아직 월드가 없습니다.",
   "home.edit": "편집",
-  "home.startSession": "세션 시작",
   "home.buildFromSources": "자료로 새 월드 만들기",
   "home.regions": "지역 {n}",
   "home.updated": "수정 {when}",
@@ -167,11 +158,6 @@ export const ko = {
   "map.hint.addRegion": "빈 곳을 누르면 그 자리에 지역을 만듭니다",
   "map.hint.connect": "잇고 싶은 지역 둘을 차례로 누르세요",
   "map.hint.connectSecond": "{name}에서 이을 지역을 누르세요",
-  "editor.tab.region": "지역",
-  "editor.tab.unscoped": "스코프 없음 {n}",
-  "editor.tab.augment": "보강",
-  "editor.tab.wiki": "wiki",
-  "editor.pickRegion": "지도에서 지역을 고르세요",
   "editor.region.title": "지역",
   "editor.region.add": "새 지역",
   "editor.region.name": "이름",
@@ -184,7 +170,7 @@ export const ko = {
   "editor.connection.title": "연결",
   "editor.connection.add": "새 연결",
   "editor.connection.edit": "연결 고치기",
-  "editor.connection.exists": "이 두 지역 사이에 {kind} 연결이 이미 있습니다(가중치 {weight}). 저장하면 그 연결의 가중치만 바뀌고 근거·prior는 남습니다.",
+  "editor.connection.exists": "이 두 지역 사이에 {kind} 연결이 이미 있습니다(가중치 {weight}). 저장하면 그 연결의 가중치만 바뀌고 근거는 남습니다.",
   "editor.connection.kind": "종류",
   "editor.connection.weight": "통하는 정도",
   "editor.connection.save": "저장",
@@ -198,8 +184,8 @@ export const ko = {
   "editor.knowledge.edit": "고치기",
   "editor.knowledge.save": "저장",
   "editor.knowledge.none": "이곳에 붙은 지식이 없습니다",
-  "editor.scopes": "스코프",
-  "editor.scopes.save": "스코프 저장",
+  "editor.scopes": "범위",
+  "editor.scopes.save": "범위 저장",
   "editor.npc.title": "주민",
   "editor.npc.add": "NPC 추가",
   "editor.npc.name": "이름",
@@ -212,7 +198,7 @@ export const ko = {
   "editor.npcDraft.accept": "받아들이기",
   "editor.npcDraft.failed": "제안을 받지 못했어요. 잠시 뒤 다시 해 보세요.",
   "editor.npcDraft.none": "제안이 없습니다",
-  "editor.unscoped.title": "스코프 없는 지식",
+  "editor.unscoped.title": "범위 없는 지식",
   "editor.unscoped.none": "모든 지식이 어느 지역엔가 붙어 있습니다",
   "editor.unscoped.pick": "지역 고르기",
   "editor.unscoped.assign": "지정",
@@ -226,12 +212,12 @@ export const ko = {
   "delete.region.children": "자식 지역 {n}곳은 위 지역 밑으로 옮깁니다: {names}",
   "delete.region.connections": "연결 {n}개를 지웁니다: {names}",
   "delete.region.npcs": "NPC {n}명을 지웁니다: {names}",
-  "delete.region.unscope": "지식 {n}개는 스코프 없음이 됩니다: {names}",
-  "delete.region.scopeRemoved": "지식 {n}개는 이 지역 스코프만 빠집니다: {names}",
+  "delete.region.unscope": "지식 {n}개는 범위 없는 지식이 됩니다: {names}",
+  "delete.region.scopeRemoved": "지식 {n}개는 이 지역 범위만 빠집니다: {names}",
   "delete.region.entities": "엔티티 {n}개의 위치를 비웁니다: {names}",
   "delete.region.seeds": "이 지역의 사건 씨앗 {n}개를 지웁니다",
-  "delete.region.blocked": "열린 세션의 플레이어가 이곳에 있어 지울 수 없습니다: {ids}. GM 화면에서 세션을 닫거나 플레이어를 옮기세요.",
-  "delete.region.done": "지웠습니다: 자식 {children} 옮김 · NPC {npcs} · 연결 {connections} · 스코프 없음 {unscoped}",
+  "delete.region.blocked": "열린 세션 {n}개의 플레이어가 이곳에 있어 지울 수 없습니다. GM 화면에서 세션을 닫거나 플레이어를 옮기세요.",
+  "delete.region.done": "자식 {children} 옮김 · NPC {npcs} · 연결 {connections} · 범위 없음 {unscoped}",
   "augment.find": "빈틈 찾기",
   "augment.target.knowledge": "지식",
   "augment.target.entity": "엔티티",
@@ -278,7 +264,7 @@ export const ko = {
   "build.report.ok": "완료",
   "build.report.failed": "문제가 있었습니다",
   "build.report.counts": "지역 {regions} · 연결 {connections} · 엔티티 {entities} · 지식 {knowledge} · 보강 {corroborations} · 근거 {priors}",
-  "build.report.unscoped": "스코프 없음 {n}",
+  "build.report.unscoped": "범위 없음 {n}",
   "build.report.calls": "LLM {llm} · 임베딩 {embedding}",
   "build.report.replaced": "교체함 · 닫은 세션 {n}",
   "build.report.backup": "백업: {path}",
@@ -287,7 +273,6 @@ export const ko = {
   "file.build": "자료로 만들기",
   "file.replaceConfirm": "이 월드를 파일 내용으로 교체할까요?",
   "file.closeSessionsConfirm": "열린 세션 {n}개를 닫고 교체할까요?",
-  "file.openSessions": "열린 세션 {n}개",
   // U8: demo cards, the LLM-off notice, event seeds, the in-progress badge
   "demo.heading": "데모 월드",
   "demo.play": "바로 플레이",
@@ -659,7 +644,6 @@ export const ko = {
   "action.deleteNpc": "NPC 지우기: {name}",
   "action.editNpc": "NPC 고치기",
   "action.showUnscoped": "범위 없는 지식 {n}개 보기",
-  "action.showDetails": "자세히",
   "notice.openSessions": "열린 세션 {n}개 · 교체하면 닫혀요.",
   "notice.augmentStopped": "답 한도에 닿아 멈췄어요.",
   "notice.augmentConverged": "더 물을 것이 없어요.",

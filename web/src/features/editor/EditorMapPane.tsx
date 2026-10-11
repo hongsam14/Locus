@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DescribedError } from "../../errors";
 import { t } from "../../i18n";
 import { WorldMap } from "../../map";
@@ -55,6 +55,15 @@ export function EditorMapPane({
   const [at, setAt] = useState<Norm | null>(null); // new region spot
   const [first, setFirst] = useState<string | null>(null); // connect: first region
   const [pair, setPair] = useState<[string, string] | null>(null); // connect: form open
+  // a closed form gives the focus back to the tool that opened it (BR-V8-33), not to whatever
+  // held it before — a tab trigger there would take the tab back on focus
+  const tools = useRef<HTMLDivElement>(null);
+  const formOpen = useRef(false);
+  useEffect(() => {
+    const open = at != null || pair != null;
+    if (formOpen.current && !open) tools.current?.querySelector<HTMLElement>('[aria-pressed="true"]')?.focus();
+    formOpen.current = open;
+  }, [at, pair]);
 
   const name = (id: string) => regions.find((r) => r.id === id)?.name ?? id;
   function pick(id: string) {
@@ -74,7 +83,9 @@ export function EditorMapPane({
   return (
     <section data-testid="map-canvas" className="flex flex-col gap-2">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-        <MapTools tool={tool} disabled={disabled} hint={hint} onTool={(next) => { setTool(next); setFirst(null); }} />
+        <div ref={tools} className="min-w-0">
+          <MapTools tool={tool} disabled={disabled} hint={hint} onTool={(next) => { setTool(next); setFirst(null); }} />
+        </div>
         <FileInput label={t("label.mapPicture")} hint={t("hint.mapPictureLocal")} accept="image/*" data-testid="map-file-input"
           chosen={mapName ? [mapName] : undefined} onFiles={([f]) => f && onMapFile(f)} />
       </div>

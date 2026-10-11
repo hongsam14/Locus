@@ -5893,3 +5893,10 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V8 — code review.
 
 ---
+## Code Review 01 — V8 — Findings
+**Timestamp**: 2026-10-11T06:13:59Z
+**User Input**: (none)
+**AI Response**: Four review-only angles (data flow; screen/layout/a11y; words/errors/dictionary; test strength) in separate worktrees (based on main, each checked out a64a05d), 142 mutants. Record: `aidlc-docs/construction/V8-editor/code/reviews/code-review-01.md` — 1 high (#1 a World File load the server committed but answered ok=false is treated as a refusal: old world stays, nothing cleared, no notice; regression), 8 medium code (#2 drag body from a stale read, #3 question card shows server text/raw kind/English template and no issue label, #4 head counts both directions, #5 focus to body after build/load from the file row, #6 weight slider loses focus on every step, #7 long unbroken text side-scrolls, #8 drag overlay can stick, #9 priors read once per opening), 9 medium tests/tools (#10 the 390 capture check was blind under mobile emulation — re-measured without it: 17/17 no side scroll on the demo; #11–#18 test gaps and load timeouts), 19 low code (#19–#37), 1 low test bundle (#38). Session re-check: #1, #2, #3, #6 confirmed in code; #10 re-measured. Two worktrees remain locked by the harness, clean. Next: the human picks the fix scope.
+**Context**: CONSTRUCTION / V8 — code review 01.
+
+---

@@ -5886,3 +5886,10 @@ Open 2. Record: `aidlc-docs/construction/plans/reviews/V4-home-play-code-generat
 **Context**: CONSTRUCTION / V8 — code approval gate.
 
 ---
+## Code Generation — V8 — Approval
+**Timestamp**: 2026-10-11T04:58:59Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: V8 code approved. Starting the V8 code review (four angles, review-only agents in separate worktrees), as for V5–V7; the record goes to `construction/V8-editor/code/reviews/code-review-01.md`.
+**Context**: CONSTRUCTION / V8 — code review.
+
+---
